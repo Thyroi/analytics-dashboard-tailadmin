@@ -1,20 +1,15 @@
-"use client";
-
-import { useEffect } from "react";
-import { usePathname } from "next/navigation";
+import "./globals.css";
+import { SidebarProvider } from "@/context/SidebarContext";
+import AdminLayout from "@/layout/AdminLayout";
+import { ThemeProviders } from "@/components/ThemeProviders";
 import Script from "next/script";
-import { pageview } from "@/lib/gtag";
+
+export const metadata = {
+  title: "Dashboard",
+  description: "Base layout con Sidebar y Header",
+};
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname();
-
-  // Enviar pageview cuando cambia la ruta
-  useEffect(() => {
-    if (pathname) {
-      pageview(pathname);
-    }
-  }, [pathname]);
-
   return (
     <html lang="en" suppressHydrationWarning>
       <body>
@@ -38,8 +33,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           </>
         )}
 
-        {children}
+        <ThemeProviders>
+          <SidebarProvider>
+            <AdminLayout>{children}</AdminLayout>
+          </SidebarProvider>
+        </ThemeProviders>
       </body>
     </html>
   );
 }
+
