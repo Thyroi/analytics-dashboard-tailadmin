@@ -1,3 +1,9 @@
+import { MonthlyVisitsChart } from "@/components/charts";
+
 export default function AnalyticsPage() {
-  return <h1 className="p-6 text-2xl font-bold">Analytics Dashboard</h1>;
+  return (
+    <div className="p-6">
+      <MonthlyVisitsChart />
+    </div>
+  );
 }
