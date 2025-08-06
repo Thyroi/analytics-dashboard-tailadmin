@@ -14,7 +14,7 @@ export async function GET() {
       );
     }
 
-    // Autenticación con Google Service Account
+    // Autenticación con Google
     const auth = new google.auth.GoogleAuth({
       credentials: {
         client_email: clientEmail,
@@ -28,31 +28,41 @@ export async function GET() {
       auth,
     });
 
-    // Consulta datos por mes (últimos 12 meses)
+    // Consulta últimos 30 días
     const response = await analyticsData.properties.runReport({
       property: propertyId,
       requestBody: {
-        dateRanges: [{ startDate: "365daysAgo", endDate: "today" }],
+        dateRanges: [{ startDate: "30daysAgo", endDate: "yesterday" }],
         metrics: [{ name: "activeUsers" }],
-        dimensions: [{ name: "yearMonth" }],
-        orderBys: [{ dimension: { dimensionName: "yearMonth" } }],
+        dimensions: [{ name: "date" }],
+        orderBys: [{ dimension: { dimensionName: "date" } }],
       },
     });
 
-    // Transformar datos al formato de la gráfica
     const rows = response.data.rows ?? [];
 
-    const categories = rows.map((row) => {
-      const ym = row.dimensionValues?.[0].value || "";
-      const year = ym.substring(0, 4);
-      const month = ym.substring(4, 6);
-      const date = new Date(`${year}-${month}-01`);
-      return date.toLocaleString("es-ES", { month: "short" });
+    // Convertir a estructura usable
+    const allDays = rows.map((row) => {
+      const dateStr = row.dimensionValues?.[0].value ?? "";
+      const year = dateStr.substring(0, 4);
+      const month = dateStr.substring(4, 6);
+      const day = dateStr.substring(6, 8);
+      const date = new Date(`${year}-${month}-${day}`);
+      return {
+        date,
+        value: Number(row.metricValues?.[0].value ?? 0),
+      };
     });
 
-    const dataValues = rows.map((row) =>
-      Number(row.metricValues?.[0].value ?? 0)
+    // Filtrar los últimos 7 días con datos > 0
+    const activeDays = allDays.filter((d) => d.value > 0);
+    const last7Active = activeDays.slice(-7); // últimos 7 con visitas
+
+    // Preparar categorías y valores
+    const categories = last7Active.map((d) =>
+      d.date.toLocaleDateString("es-ES", { day: "2-digit", month: "short" })
     );
+    const dataValues = last7Active.map((d) => d.value);
 
     return NextResponse.json({
       series: [{ name: "Usuarios activos", data: dataValues }],

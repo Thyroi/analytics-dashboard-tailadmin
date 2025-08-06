@@ -1,4 +1,4 @@
-@import 'tailwindcss';
+@import "tailwindcss";
 
 /* ---------------------------------
    DARK MODE VARIANT
@@ -73,20 +73,16 @@
   --color-warning-500: #f79009;
 
   /* Sombras */
-  --shadow-theme-sm:
-    0px 1px 3px 0px rgba(16, 24, 40, 0.1),
+  --shadow-theme-sm: 0px 1px 3px 0px rgba(16, 24, 40, 0.1),
     0px 1px 2px 0px rgba(16, 24, 40, 0.06);
 
-  --shadow-theme-md:
-    0px 4px 8px -2px rgba(16, 24, 40, 0.1),
+  --shadow-theme-md: 0px 4px 8px -2px rgba(16, 24, 40, 0.1),
     0px 2px 4px -2px rgba(16, 24, 40, 0.06);
 
-  --shadow-theme-lg:
-    0px 12px 16px -4px rgba(16, 24, 40, 0.08),
+  --shadow-theme-lg: 0px 12px 16px -4px rgba(16, 24, 40, 0.08),
     0px 4px 6px -2px rgba(16, 24, 40, 0.03);
 
-  --shadow-theme-xl:
-    0px 20px 24px -4px rgba(16, 24, 40, 0.08),
+  --shadow-theme-xl: 0px 20px 24px -4px rgba(16, 24, 40, 0.08),
     0px 8px 8px -4px rgba(16, 24, 40, 0.03);
 }
 
@@ -171,4 +167,100 @@
 }
 .header-actions {
   @apply flex items-center gap-4;
+}
+
+/* =============================
+   ESTILOS BASE FLATPICKR
+============================= */
+
+/* Contenedor general del calendario */
+.flatpickr-calendar {
+  @apply rounded-xl border border-gray-200 bg-white shadow-theme-lg dark:border-gray-800 dark:bg-gray-900 dark:shadow-theme-xl;
+  font-family: Outfit, sans-serif;
+  font-size: 14px;
+  padding: 12px 8px !important;
+  gap: 0 !important;
+}
+
+/* Header (mes y año) */
+.flatpickr-current-month {
+  @apply !p-0 text-lg font-medium text-gray-800 dark:text-white/90;
+}
+
+/* Flechas de navegación del mes */
+.flatpickr-months .flatpickr-prev-month,
+.flatpickr-months .flatpickr-next-month {
+  @apply !top-4 dark:!fill-white dark:!text-white hover:!fill-none;
+}
+
+/* Días de la semana */
+.flatpickr-weekdays {
+  @apply mt-4 mb-2;
+}
+
+.flatpickr-weekday {
+  @apply text-theme-sm font-medium text-gray-500 dark:text-gray-400;
+}
+
+/* =============================
+   RESET DE GAPS Y BORDES
+============================= */
+
+/* Elimina gap/padding entre celdas y contenedor */
+.flatpickr-days,
+.flatpickr-days .dayContainer {
+  margin: 0 !important;
+  padding: 0 !important;
+  gap: 0 !important;
+  border: none !important;
+}
+
+/* Celdas de día */
+.flatpickr-day {
+  margin: 0 !important;
+  padding: 0 !important;
+  border: none !important;
+  box-shadow: none !important;
+  @apply flex items-center justify-center text-theme-sm font-medium text-gray-800 rounded-md dark:text-white/90 hover:bg-gray-100 dark:hover:bg-white/10;
+  height: 34px;
+  width: 34px;
+  line-height: 34px;
+}
+
+/* =============================
+   SELECCIÓN DE RANGO
+============================= */
+
+/* Inicio y fin del rango */
+.flatpickr-day.selected,
+.flatpickr-day.startRange,
+.flatpickr-day.endRange {
+  @apply bg-brand-500 text-white border-brand-500;
+}
+
+/* Días dentro del rango */
+.flatpickr-day.inRange {
+  @apply bg-gray-50 dark:bg-white/5;
+  box-shadow: none !important; /* Quita el pseudo-borde del rango */
+}
+
+/* Hover en días dentro del rango */
+.flatpickr-day.inRange:hover {
+  @apply bg-gray-100 dark:bg-white/10;
+}
+
+/* =============================
+   MODO OSCURO
+============================= */
+
+.dark .flatpickr-calendar {
+  @apply border-gray-800 bg-gray-900 shadow-theme-xl;
+}
+
+.dark .flatpickr-day {
+  @apply text-white/90 hover:bg-white/10;
+}
+
+.dark .flatpickr-day.inRange {
+  @apply bg-white/5;
 }
