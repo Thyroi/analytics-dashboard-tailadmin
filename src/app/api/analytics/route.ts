@@ -30,11 +30,16 @@ export async function GET() {
     });
 
     // Consulta a GA4
-    const response = await analyticsData.properties.runRealtimeReport({
-      property: `${process.env.GA_PROPERTY_ID}`, // tu ID
+    const response = await analyticsData.properties.runReport({
+      property: process.env.GA_PROPERTY_ID as string,
       requestBody: {
+        dateRanges: [
+          { startDate: "30daysAgo", endDate: "today", name: "current" },
+          { startDate: "60daysAgo", endDate: "31daysAgo", name: "previous" },
+        ],
         metrics: [{ name: "activeUsers" }],
-        dimensions: [{ name: "unifiedScreenName" }], // opcional: ver páginas activas
+        dimensions: [{ name: "date" }],
+        orderBys: [{ dimension: { dimensionName: "date" } }],
       },
     });
 
