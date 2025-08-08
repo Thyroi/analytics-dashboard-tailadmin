@@ -264,3 +264,56 @@
 .dark .flatpickr-day.inRange {
   @apply bg-white/5;
 }
+
+/* Cards coherentes en todo el dashboard */
+.card{
+  @apply rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03];
+}
+
+.card-header{
+  @apply flex items-center justify-between gap-3 px-6 pt-5 pb-4;
+}
+
+.card-title{
+  @apply text-lg font-semibold text-gray-800 dark:text-white/90;
+}
+
+.card-subtitle{
+  @apply mt-1 text-gray-500 text-theme-sm dark:text-gray-400;
+}
+
+.card-body{
+  @apply px-6 pb-6;
+}
+
+/* Skeleton / shimmer */
+@keyframes dash-shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: rgba(148,163,184,0.15); /* slate-400/15 */
+  border-radius: 0.75rem; /* rounded-xl aprox */
+}
+
+.dark .skeleton {
+  background: rgba(255,255,255,0.06);
+}
+
+.skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255,255,255,0.5) 50%,
+    transparent 100%
+  );
+  animation: dash-shimmer 1.2s infinite;
+  transform: translateX(-100%);
+  opacity: .35;
+}
