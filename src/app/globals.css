@@ -308,3 +308,17 @@
   transform: translateX(-100%);
   opacity: .35;
 }
+
+/* Masonry por columnas */
+.masonry {
+  column-gap: 24px; /* mismo gap vertical que uses abajo en margin-bottom */
+}
+.masonry-item {
+  display: inline-block;
+  width: 100%;
+  break-inside: avoid;
+  -webkit-column-break-inside: avoid;
+  -moz-column-break-inside: avoid;
+  margin-bottom: 24px;
+}
+
