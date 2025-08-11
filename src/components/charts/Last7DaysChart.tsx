@@ -10,17 +10,9 @@ const ReactApexChart = dynamic(() => import("react-apexcharts"), { ssr: false })
 
 type ApexSeries = { name: string; data: number[] }[];
 
-type Props = {
-  height?: number;
-  wrapInCard?: boolean;  // evita card doble
-  showHeader?: boolean;  // muestra/oculta header interno
-};
+const CHART_HEIGHT = 200;
 
-export default function Last7DaysChart({
-  height = 200,
-  wrapInCard = true,
-  showHeader = true,
-}: Props) {
+export default function Last7DaysChart() {
   const [series, setSeries] = useState<ApexSeries>([]);
   const [categories, setCategories] = useState<string[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -42,7 +34,7 @@ export default function Last7DaysChart({
         console.error("Error al obtener datos de Analytics:", e);
         if (!cancelled) { setSeries([]); setCategories([]); }
       } finally {
-        if (!cancelled) setTimeout(() => setLoading(false), 120); // anti‑flash
+        if (!cancelled) setTimeout(() => setLoading(false), 120); // anti-flash
       }
     })();
     return () => { cancelled = true; };
@@ -52,7 +44,7 @@ export default function Last7DaysChart({
     colors: [isDark ? "#7592FF" : "#465fff"],
     chart: {
       type: "line",
-      height,
+      height: CHART_HEIGHT,
       fontFamily: "Outfit, sans-serif",
       toolbar: { show: false },
       animations: { enabled: !loading },
@@ -74,38 +66,31 @@ export default function Last7DaysChart({
     },
   };
 
-  // Gate de skeleton
   if (loading) {
-    return <LineChartSkeleton height={height} wrapInCard={wrapInCard} showHeader={showHeader} />;
+    // Ajusta LineChartSkeleton para aceptar solo { height?: number }
+    return <LineChartSkeleton height={CHART_HEIGHT} />;
   }
-
-  const Header = showHeader ? (
-    <div className="card-header">
-      <div>
-        <h3 className="card-title">Últimos 7 días</h3>
-        <p className="card-subtitle">Usuarios activos por día</p>
-      </div>
-    </div>
-  ) : null;
-
-  const Body = (
-    <div className="card-body">
-      <div className="w-full overflow-hidden">
-        {series.length ? (
-          <ReactApexChart options={options} series={series} type="line" height={height} />
-        ) : (
-          <div style={{ height }} />
-        )}
-      </div>
-    </div>
-  );
-
-  if (!wrapInCard) return (<>{Header}{Body}</>);
 
   return (
     <div className="card overflow-hidden">
-      {Header}
-      {Body}
+      {/* Header interno */}
+      <div className="card-header">
+        <div>
+          <h3 className="card-title">Últimos 7 días</h3>
+          <p className="card-subtitle">Usuarios activos por día</p>
+        </div>
+      </div>
+
+      {/* Body */}
+      <div className="card-body">
+        <div className="w-full overflow-hidden">
+          {series.length ? (
+            <ReactApexChart options={options} series={series} type="line" height={CHART_HEIGHT} />
+          ) : (
+            <div style={{ height: CHART_HEIGHT }} />
+          )}
+        </div>
+      </div>
     </div>
   );
 }

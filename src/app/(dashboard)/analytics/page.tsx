@@ -1,80 +1,44 @@
-// src/app/(dashboard)/page.tsx
 import {
   MonthlyVisitsChart,
   Last7DaysChart,
   MonthlyRangeChart,
   CustomersDemographicCard,
 } from "@/components/charts";
+import KPICard from "@/components/dashboard/KPICard";
+import CompareLineChart from "@/components/charts/CompareLineChart";
+import DonutChartCard from "@/components/charts/DonutChartCard";
 
-export default function DashboardPage() {
+export default function AnalyticsPage() {
   return (
-    <div className="mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-8">
-      {/* Título de página */}
-      <div className="mb-6 sm:mb-8">
-        <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">
-          Ideanto Analytics
-        </h1>
-      </div>
+    <div className="grid grid-cols-12 gap-6">
+      {/* KPI row */}
+      <section className="col-span-12 grid grid-cols-12 gap-6">
+        <KPICard className="col-span-12 sm:col-span-6 lg:col-span-3" title="Revenue" value="$21,424" delta="+4.6%" />
+        <KPICard className="col-span-12 sm:col-span-6 lg:col-span-3" title="Orders" value="940" delta="+1.2%" />
+        <KPICard className="col-span-12 sm:col-span-6 lg:col-span-3" title="Users" value="2,145" delta="-0.8%" deltaVariant="down" />
+        <KPICard className="col-span-12 sm:col-span-6 lg:col-span-3" title="Bounce" value="38%" delta="-2.1%" deltaVariant="down" />
+      </section>
 
-      <div className="grid grid-cols-12 gap-6 2xl:gap-8">
-        <section className="col-span-12 xl:col-span-8">
-          <div className="card">
-            <div className="card-header">
-              <div>
-                <h3 className="card-title">Visitas mensuales</h3>
-                <p className="card-subtitle">Usuarios activos por mes</p>
-              </div>
-            </div>
-            <MonthlyVisitsChart
-              height={180}
-              wrapInCard={false}
-              showHeader={false}
-            />
-          </div>
-        </section>
+      {/* Row 1 */}
+      <section className="col-span-12 lg:col-span-7">
+        <MonthlyVisitsChart />
+      </section>
+      <section className="col-span-12 lg:col-span-5">
+        <CompareLineChart />
+      </section>
 
-        <section className="col-span-12 xl:col-span-4">
-          <div className="card h-full">
-            <div className="card-header">
-              <div>
-                <h3 className="card-title">Últimos 7 días</h3>
-                <p className="card-subtitle">Tendencia semanal</p>
-              </div>
-            </div>
-            <div className="card-body">
-              <Last7DaysChart
-                height={160}
-                wrapInCard={false}
-                showHeader={false}
-              />
-            </div>
-          </div>
-        </section>
+      {/* Row 2 */}
+      <section className="col-span-12 lg:col-span-7">
+        <MonthlyRangeChart />
+      </section>
+      <section className="col-span-12 lg:col-span-5">
+        <DonutChartCard />
+      </section>
 
-        <section className="col-span-12 xl:col-span-8">
-              <MonthlyRangeChart
-                height={180}
-              />
-        </section>
-
-        <section className="col-span-12 xl:col-span-4">
-          <div className="card h-full">
-            <div className="card-header">
-              <div>
-                <h3 className="card-title">Demografía de clientes</h3>
-                <p className="card-subtitle">
-                  Número de clientes según el país
-                </p>
-              </div>
-            </div>
-            <CustomersDemographicCard
-              height={180}
-              wrapInCard={false}
-              showHeader={false}
-            />
-          </div>
-        </section>
-      </div>
+      {/* Row 3 */}
+      <section className="col-span-12">
+        <CustomersDemographicCard />
+      </section>
     </div>
   );
 }

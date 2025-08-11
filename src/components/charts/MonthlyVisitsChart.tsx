@@ -11,17 +11,9 @@ const ReactApexChart = dynamic(() => import("react-apexcharts"), { ssr: false })
 
 type ApexSeries = { name: string; data: number[] }[];
 
-type Props = {
-  height?: number;
-  wrapInCard?: boolean;   // evitar card doble
-  showHeader?: boolean;   // mostrar/ocultar header interno
-};
+const CHART_HEIGHT = 180;
 
-export default function MonthlyVisitsChart({
-  height = 180,
-  wrapInCard = true,
-  showHeader = true,
-}: Props) {
+export default function MonthlyVisitsChart() {
   const [series, setSeries] = useState<ApexSeries>([]);
   const [categories, setCategories] = useState<string[]>([]);
   const [isOpen, setIsOpen] = useState(false);
@@ -60,7 +52,7 @@ export default function MonthlyVisitsChart({
     chart: {
       fontFamily: "Outfit, sans-serif",
       type: "bar",
-      height,
+      height: CHART_HEIGHT,
       toolbar: { show: false },
       animations: { enabled: !loading },
       redrawOnParentResize: false,
@@ -99,56 +91,52 @@ export default function MonthlyVisitsChart({
     },
   };
 
-  const Header = showHeader ? (
-    <div className="flex items-center justify-between card-header">
-      <h3 className="card-title">Visitas mensuales</h3>
-      <div className="relative">
-        <button
-          onClick={() => setIsOpen((s) => !s)}
-          className="p-1 rounded hover:bg-gray-100 dark:hover:bg-white/5"
-        >
-          <EllipsisVerticalIcon className="w-5 h-5 text-gray-400 hover:text-gray-700 dark:hover:text-gray-300" />
-        </button>
-        {isOpen && (
-          <div className="absolute right-0 mt-2 w-40 rounded-lg bg-white border border-gray-200 shadow-lg dark:bg-gray-800 dark:border-gray-700">
-            <button
-              onClick={() => setIsOpen(false)}
-              className="block w-full px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-white/5 text-left"
-            >
-              Ver más
-            </button>
-          </div>
-        )}
-      </div>
-    </div>
-  ) : null;
-
-  const Body = (
-    <div className="card-body">
-      <div className="max-w-full">
-        <div className="-ml-5 min-w-[650px] xl:min-w-full pl-2">
-          {!loading && series.length > 0 ? (
-            <ReactApexChart options={options} series={series} type="bar" height={height} />
-          ) : (
-            // fallback mínimo si se intenta render sin datos (normalmente no pasa por el gate de skeleton)
-            <div style={{ height }} />
-          )}
-        </div>
-      </div>
-    </div>
-  );
-
-  // Gate de skeleton
   if (loading) {
-    return <ChartSkeleton height={height} wrapInCard={wrapInCard} showHeader={showHeader} />;
+    // Ajusta ChartSkeleton para que acepte solo { height?: number }
+    return <ChartSkeleton height={CHART_HEIGHT} />;
   }
-
-  if (!wrapInCard) return (<>{Header}{Body}</>);
 
   return (
     <div className="card overflow-hidden">
-      {Header}
-      {Body}
+      {/* Header interno del componente */}
+      <div className="flex items-center justify-between card-header">
+        <div>
+          <h3 className="card-title">Visitas mensuales</h3>
+          <p className="card-subtitle">Usuarios activos por mes</p>
+        </div>
+
+        <div className="relative">
+          <button
+            onClick={() => setIsOpen((s) => !s)}
+            className="p-1 rounded hover:bg-gray-100 dark:hover:bg-white/5"
+          >
+            <EllipsisVerticalIcon className="w-5 h-5 text-gray-400 hover:text-gray-700 dark:hover:text-gray-300" />
+          </button>
+          {isOpen && (
+            <div className="absolute right-0 mt-2 w-40 rounded-lg bg-white border border-gray-200 shadow-lg dark:bg-gray-800 dark:border-gray-700">
+              <button
+                onClick={() => setIsOpen(false)}
+                className="block w-full px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-white/5 text-left"
+              >
+                Ver más
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Body */}
+      <div className="card-body">
+        <div className="max-w-full">
+          <div className="-ml-5 min-w-[650px] xl:min-w-full pl-2">
+            {series.length > 0 ? (
+              <ReactApexChart options={options} series={series} type="bar" height={CHART_HEIGHT} />
+            ) : (
+              <div style={{ height: CHART_HEIGHT }} />
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

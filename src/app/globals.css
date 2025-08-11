@@ -267,24 +267,15 @@
 
 /* Cards coherentes en todo el dashboard */
 .card{
-  @apply rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03];
+  @apply rounded-2xl border border-gray-200/70 bg-white shadow-sm
+         dark:border-gray-800 dark:bg-white/[0.03];
 }
-
 .card-header{
-  @apply flex items-center justify-between gap-3 px-6 pt-5 pb-4;
+  @apply flex items-center justify-between gap-3 px-6 pt-5 pb-4
+         border-b border-gray-100/80 dark:border-white/5;
 }
+.card-body{ @apply px-6 pb-6; }
 
-.card-title{
-  @apply text-lg font-semibold text-gray-800 dark:text-white/90;
-}
-
-.card-subtitle{
-  @apply mt-1 text-gray-500 text-theme-sm dark:text-gray-400;
-}
-
-.card-body{
-  @apply px-6 pb-6;
-}
 
 /* Skeleton / shimmer */
 @keyframes dash-shimmer {

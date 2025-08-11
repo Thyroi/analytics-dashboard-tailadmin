@@ -17,14 +17,6 @@ type CountriesResponse = { total: number; rows: ApiRow[] };
 type CardRow = ApiRow & { lat?: number; lng?: number };
 type WorldTopoJSON = { type: "Topology"; objects: { countries: unknown } };
 
-type Props = {
-  height?: number;
-  /** Si true, el componente incluye su propia .card/.card-header */
-  wrapInCard?: boolean;
-  /** Si true, muestra el header interno (título + picker) */
-  showHeader?: boolean;
-};
-
 const countryCentroids: Record<string, { lat: number; lng: number }> = {
   US: { lat: 37.0902, lng: -95.7129 },
   FR: { lat: 46.2276, lng: 2.2137 },
@@ -48,11 +40,9 @@ const countryCentroids: Record<string, { lat: number; lng: number }> = {
   JP: { lat: 36.2048, lng: 138.2529 },
 };
 
-export default function CustomersDemographicCard({
-  height = 260,
-  wrapInCard = true,
-  showHeader = true,
-}: Props) {
+const MAP_HEIGHT = 260;
+
+export default function CustomersDemographicCard() {
   // Rango por defecto
   const today = new Date();
   const monthAgo = new Date();
@@ -72,7 +62,7 @@ export default function CustomersDemographicCard({
 
   const formatDate = (d: Date) => d.toISOString().split("T")[0];
 
-  // Fetch GA4
+  // Fetch GA4 (países)
   const lastRange = useRef<string>("");
   useEffect(() => {
     const key = `${formatDate(startDate)}_${formatDate(endDate)}`;
@@ -83,9 +73,7 @@ export default function CustomersDemographicCard({
       setDataLoading(true);
       try {
         const res = await fetch(
-          `/api/analytics/countries?start=${formatDate(
-            startDate
-          )}&end=${formatDate(endDate)}`
+          `/api/analytics/countries?start=${formatDate(startDate)}&end=${formatDate(endDate)}`
         );
         const data: CountriesResponse = await res.json();
         const list: CardRow[] = (data.rows ?? []).map((r) => ({
@@ -126,7 +114,7 @@ export default function CustomersDemographicCard({
 
   // Proyección
   const viewBoxWidth = 1000;
-  const viewBoxHeight = Math.max(200, height);
+  const viewBoxHeight = Math.max(200, MAP_HEIGHT);
   const projection = useMemo(() => {
     const p = d3geo.geoMercator();
     p.scale((viewBoxWidth / (2 * Math.PI)) * 0.95).translate([
@@ -145,152 +133,115 @@ export default function CustomersDemographicCard({
   // Skeleton gate
   const isLoading = !mapReady || dataLoading;
   if (isLoading) {
-    return (
-      <CustomersDemographicSkeleton
-        height={height}
-        rows={6}
-        wrapInCard={wrapInCard}
-        showHeader={showHeader}
-      />
-    );
+    // Ajusta el skeleton para aceptar solo { height?: number; rows?: number }
+    return <CustomersDemographicSkeleton height={MAP_HEIGHT} rows={6} />;
   }
 
-  // Body (contenido real)
-  const Body = (
-    <div className="card-body">
-      {/* Mapa */}
-      <div className="mb-6 rounded-2xl border border-gray-200 bg-gray-50/60 p-2 dark:border-gray-800 dark:bg-white/[0.05]">
-        <div className="rounded-xl bg-white p-2 dark:bg-white/5">
-          <svg
-            viewBox={`0 0 ${viewBoxWidth} ${viewBoxHeight}`}
-            role="img"
-            aria-label="World map"
-            className="w-full"
-            style={{ height }}
-          >
-            {geo &&
-              geo.features.map((f: Feature<Geometry>, idx: number) => {
-                const d = path(f) ?? "";
-                return (
-                  <path
-                    key={idx}
-                    d={d}
-                    fill="rgba(148,163,184,0.25)"
-                    stroke="rgba(148,163,184,0.35)"
-                    strokeWidth={0.5}
-                  />
-                );
-              })}
-
-            {rows.map((r) => {
-              if (r.lat === undefined || r.lng === undefined) return null;
-              const point = projection([r.lng, r.lat]);
-              if (!point) return null;
-              const [x, y] = point;
-              return (
-                <g key={r.code} transform={`translate(${x}, ${y})`}>
-                  <circle r={10} fill="#465FFF" opacity={0.15} />
-                  <circle r={5} fill="#465FFF" opacity={0.9} />
-                </g>
-              );
-            })}
-          </svg>
-        </div>
-      </div>
-
-      {/* Lista */}
-      <div className="space-y-4">
-        {top.map((d) => (
-          <div key={d.code} className="flex items-center gap-4">
-            <div className="flex min-w-0 flex-1 items-center gap-3">
-              <ReactCountryFlag
-                svg
-                countryCode={d.code}
-                style={{ width: "28px", height: "20px", borderRadius: 4 }}
-                title={d.country}
-              />
-              <div className="min-w-0">
-                <div className="truncate font-medium text-gray-800 dark:text-white/90">
-                  {d.country}
-                </div>
-                <div className="text-xs text-gray-500 dark:text-gray-400">
-                  {d.customers.toLocaleString()} Customers
-                </div>
-              </div>
-            </div>
-
-            <div className="flex w-1/2 min-w-[180px] items-center gap-3">
-              <div className="h-2 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-white/10">
-                <div
-                  className="h-full rounded-full"
-                  style={{
-                    width: `${d.pct}%`,
-                    background:
-                      "linear-gradient(90deg, rgba(70,95,255,1) 0%, rgba(70,95,255,0.6) 100%)",
-                  }}
-                />
-              </div>
-              <div className="w-10 text-right text-sm font-semibold text-gray-700 dark:text-white/80">
-                {d.pct}%
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Total */}
-      <div className="mt-4 text-right text-xs text-gray-500 dark:text-gray-400">
-        Total: {total.toLocaleString()} users
-      </div>
-    </div>
-  );
-
-  // Wrapper opcional de card + header interno
-  if (!wrapInCard) {
-    // cuando ya lo envuelves en una .card desde la página
-    return (
-      <>
-        {showHeader && (
-          <div className="card-header">
-            <div>
-              <h3 className="card-title">Demografía de clientes</h3>
-              <p className="card-subtitle">Número de clientes según el país</p>
-            </div>
-            <DateRangePicker
-              startDate={startDate}
-              endDate={endDate}
-              onRangeChange={(s, e) => {
-                setStartDate(s);
-                setEndDate(e);
-              }}
-            />
-          </div>
-        )}
-        {Body}
-      </>
-    );
-  }
-
-  // Card completa (modo autónomo)
   return (
     <div className="card">
-      {showHeader && (
-        <div className="card-header">
-          <div>
-            <h3 className="card-title">Demografía de clientes</h3>
-            <p className="card-subtitle">Número de clientes según el país</p>
-          </div>
-          <DateRangePicker
-            startDate={startDate}
-            endDate={endDate}
-            onRangeChange={(s, e) => {
-              setStartDate(s);
-              setEndDate(e);
-            }}
-          />
+      {/* Header interno */}
+      <div className="card-header">
+        <div>
+          <h3 className="card-title">Demografía de clientes</h3>
+          <p className="card-subtitle">Número de clientes según el país</p>
         </div>
-      )}
-      {Body}
+        <DateRangePicker
+          startDate={startDate}
+          endDate={endDate}
+          onRangeChange={(s, e) => {
+            setStartDate(s);
+            setEndDate(e);
+          }}
+        />
+      </div>
+
+      {/* Body */}
+      <div className="card-body">
+        {/* Mapa */}
+        <div className="mb-6 rounded-2xl border border-gray-200 bg-gray-50/60 p-2 dark:border-gray-800 dark:bg-white/[0.05]">
+          <div className="rounded-xl bg-white p-2 dark:bg-white/5">
+            <svg
+              viewBox={`0 0 ${viewBoxWidth} ${viewBoxHeight}`}
+              role="img"
+              aria-label="World map"
+              className="w-full"
+              style={{ height: MAP_HEIGHT }}
+            >
+              {geo &&
+                geo.features.map((f: Feature<Geometry>, idx: number) => {
+                  const d = path(f) ?? "";
+                  return (
+                    <path
+                      key={idx}
+                      d={d}
+                      fill="rgba(148,163,184,0.25)"
+                      stroke="rgba(148,163,184,0.35)"
+                      strokeWidth={0.5}
+                    />
+                  );
+                })}
+
+              {rows.map((r) => {
+                if (r.lat === undefined || r.lng === undefined) return null;
+                const point = projection([r.lng, r.lat]);
+                if (!point) return null;
+                const [x, y] = point;
+                return (
+                  <g key={r.code} transform={`translate(${x}, ${y})`}>
+                    <circle r={10} fill="#465FFF" opacity={0.15} />
+                    <circle r={5} fill="#465FFF" opacity={0.9} />
+                  </g>
+                );
+              })}
+            </svg>
+          </div>
+        </div>
+
+        {/* Lista */}
+        <div className="space-y-4">
+          {top.map((d) => (
+            <div key={d.code} className="flex items-center gap-4">
+              <div className="flex min-w-0 flex-1 items-center gap-3">
+                <ReactCountryFlag
+                  svg
+                  countryCode={d.code}
+                  style={{ width: "28px", height: "20px", borderRadius: 4 }}
+                  title={d.country}
+                />
+                <div className="min-w-0">
+                  <div className="truncate font-medium text-gray-800 dark:text-white/90">
+                    {d.country}
+                  </div>
+                  <div className="text-xs text-gray-500 dark:text-gray-400">
+                    {d.customers.toLocaleString()} Customers
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex w-1/2 min-w-[180px] items-center gap-3">
+                <div className="h-2 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-white/10">
+                  <div
+                    className="h-full rounded-full"
+                    style={{
+                      width: `${d.pct}%`,
+                      background:
+                        "linear-gradient(90deg, rgba(70,95,255,1) 0%, rgba(70,95,255,0.6) 100%)",
+                    }}
+                  />
+                </div>
+                <div className="w-10 text-right text-sm font-semibold text-gray-700 dark:text:white/80">
+                  {d.pct}%
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Total */}
+        <div className="mt-4 text-right text-xs text-gray-500 dark:text-gray-400">
+          Total: {total.toLocaleString()} users
+        </div>
+      </div>
     </div>
   );
 }

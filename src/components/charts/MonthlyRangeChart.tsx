@@ -6,33 +6,20 @@ import DateRangePicker from "@/components/ui/DateRangePicker";
 import { AreaChartSkeleton } from "@/components/skeletons";
 import { ApexOptions } from "apexcharts";
 
-const ReactApexChart = dynamic(() => import("react-apexcharts"), {
-  ssr: false,
-});
+const ReactApexChart = dynamic(() => import("react-apexcharts"), { ssr: false });
 
 type ChartData = { categories: string[]; series: number[] };
 
-type Props = {
-  height?: number;
-  wrapInCard?: boolean; // evita card doble
-  showHeader?: boolean; // muestra/oculta header interno (título + picker)
-};
+const CHART_HEIGHT = 310;
 
-export default function MonthlyRangeChart({
-  height = 310,
-  wrapInCard = true,
-  showHeader = true,
-}: Props) {
+export default function MonthlyRangeChart() {
   const today = new Date();
   const lastMonth = new Date();
   lastMonth.setMonth(today.getMonth() - 1);
 
   const [startDate, setStartDate] = useState<Date>(lastMonth);
   const [endDate, setEndDate] = useState<Date>(today);
-  const [chartData, setChartData] = useState<ChartData>({
-    categories: [],
-    series: [],
-  });
+  const [chartData, setChartData] = useState<ChartData>({ categories: [], series: [] });
   const [loading, setLoading] = useState<boolean>(true);
 
   const formatDate = (date: Date) => date.toISOString().split("T")[0];
@@ -41,9 +28,7 @@ export default function MonthlyRangeChart({
     setLoading(true);
     try {
       const res = await fetch(
-        `/api/analytics/monthly-range?start=${formatDate(
-          start
-        )}&end=${formatDate(end)}`
+        `/api/analytics/monthly-range?start=${formatDate(start)}&end=${formatDate(end)}`
       );
       const data: {
         rows?: Array<{
@@ -58,20 +43,17 @@ export default function MonthlyRangeChart({
       }
 
       const categories = data.rows.map((row) => row.dimensionValues[0]?.value);
-      const series = data.rows.map((row) =>
-        Number(row.metricValues[0]?.value || 0)
-      );
+      const series = data.rows.map((row) => Number(row.metricValues[0]?.value || 0));
       setChartData({ categories, series });
     } catch (error) {
       console.error("Error fetching chart data:", error);
       setChartData({ categories: [], series: [] });
     } finally {
-      // pequeño delay anti-flash
-      setTimeout(() => setLoading(false), 120);
+      setTimeout(() => setLoading(false), 120); // anti-flash
     }
   };
 
-  // Evita doble fetch/loops
+  // Evita doble fetch en el mismo rango
   const lastRangeRef = useRef<string>("");
   useEffect(() => {
     const rangeKey = `${formatDate(startDate)}_${formatDate(endDate)}`;
@@ -95,7 +77,7 @@ export default function MonthlyRangeChart({
       chart: {
         fontFamily: "Outfit, sans-serif",
         type: "area",
-        height,
+        height: CHART_HEIGHT,
         toolbar: { show: false },
         animations: { enabled: !loading },
         redrawOnParentResize: false,
@@ -103,10 +85,7 @@ export default function MonthlyRangeChart({
       },
       stroke: { curve: "straight", width: 2 },
       fill: { type: "gradient", gradient: { opacityFrom: 0.55, opacityTo: 0 } },
-      grid: {
-        yaxis: { lines: { show: true } },
-        xaxis: { lines: { show: false } },
-      },
+      grid: { yaxis: { lines: { show: true } }, xaxis: { lines: { show: false } } },
       dataLabels: { enabled: false },
       xaxis: {
         categories: chartData.categories,
@@ -116,70 +95,50 @@ export default function MonthlyRangeChart({
       tooltip: { enabled: true },
       colors: ["#465FFF"],
     }),
-    [loading, chartData.categories, height]
+    [loading, chartData.categories]
   );
 
-  const hasData =
-    chartData.categories.length > 0 && chartData.series.length > 0;
+  const hasData = chartData.categories.length > 0 && chartData.series.length > 0;
 
-  // Gate de skeleton
+  // Skeleton simple
   if (loading) {
-    return (
-      <AreaChartSkeleton
-        height={height}
-        wrapInCard={wrapInCard}
-        showHeader={showHeader}
-      />
-    );
+    // Asegúrate de que AreaChartSkeleton acepte solo { height?: number }
+    return <AreaChartSkeleton height={CHART_HEIGHT} />;
   }
-
-  // Body (contenido real)
-  const Header = showHeader ? (
-    <div className="card-header">
-      <div>
-        <h3 className="card-title">Visitas por rango</h3>
-        <p className="card-subtitle">
-          Selecciona un rango de fechas para ver las visitas diarias
-        </p>
-      </div>
-      <DateRangePicker
-        startDate={startDate}
-        endDate={endDate}
-        onRangeChange={handleRangeChange}
-      />
-    </div>
-  ) : null;
-
-  const Body = (
-    <div className="card-body">
-      <div className="w-full overflow-hidden">
-        {hasData ? (
-          <ReactApexChart
-            key={rangeKey}
-            options={options}
-            series={[{ name: "Visitas", data: chartData.series }]}
-            type="area"
-            height={height}
-          />
-        ) : (
-          <div style={{ height }} />
-        )}
-      </div>
-    </div>
-  );
-
-  if (!wrapInCard)
-    return (
-      <>
-        {Header}
-        {Body}
-      </>
-    );
 
   return (
     <div className="card">
-      {Header}
-      {Body}
+      {/* Header interno: título + date range picker */}
+      <div className="card-header">
+        <div>
+          <h3 className="card-title">Visitas por rango</h3>
+          <p className="card-subtitle">
+            Selecciona un rango de fechas para ver las visitas diarias
+          </p>
+        </div>
+        <DateRangePicker
+          startDate={startDate}
+          endDate={endDate}
+          onRangeChange={handleRangeChange}
+        />
+      </div>
+
+      {/* Body */}
+      <div className="card-body">
+        <div className="w-full overflow-hidden">
+          {hasData ? (
+            <ReactApexChart
+              key={rangeKey}
+              options={options}
+              series={[{ name: "Visitas", data: chartData.series }]}
+              type="area"
+              height={CHART_HEIGHT}
+            />
+          ) : (
+            <div style={{ height: CHART_HEIGHT }} />
+          )}
+        </div>
+      </div>
     </div>
   );
 }
