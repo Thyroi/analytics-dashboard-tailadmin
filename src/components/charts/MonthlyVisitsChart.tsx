@@ -21,7 +21,6 @@ export default function MonthlyVisitsChart() {
   const { theme } = useTheme();
   const isDark = theme === "dark";
 
-  // Fetch de datos
   useEffect(() => {
     let cancelled = false;
     async function fetchAnalytics() {
@@ -40,11 +39,13 @@ export default function MonthlyVisitsChart() {
           setCategories([]);
         }
       } finally {
-        if (!cancelled) setTimeout(() => setLoading(false), 120); // anti-flash
+        if (!cancelled) setTimeout(() => setLoading(false), 120);
       }
     }
     fetchAnalytics();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const options: ApexOptions = {
@@ -53,15 +54,20 @@ export default function MonthlyVisitsChart() {
       fontFamily: "Outfit, sans-serif",
       type: "bar",
       height: CHART_HEIGHT,
+      width: "100%",
       toolbar: { show: false },
       animations: { enabled: !loading },
-      redrawOnParentResize: false,
+      redrawOnParentResize: true, // <- reescala
       parentHeightOffset: 0,
+    },
+    grid: {
+      yaxis: { lines: { show: true } },
+      padding: { left: 6, right: 6 }, // <- no se corta en bordes
     },
     plotOptions: {
       bar: {
         horizontal: false,
-        columnWidth: "39%",
+        columnWidth: "45%",
         borderRadius: 5,
         borderRadiusApplication: "end",
       },
@@ -72,16 +78,20 @@ export default function MonthlyVisitsChart() {
       categories,
       axisBorder: { show: false },
       axisTicks: { show: false },
-      labels: { style: { fontSize: "12px" } },
+      labels: {
+        style: { fontSize: "12px" },
+        rotate: -35,
+        rotateAlways: false,
+        hideOverlappingLabels: true,
+        trim: true,
+        minHeight: 24,
+        maxHeight: 32,
+      },
     },
     legend: {
-      show: true,
-      position: "top",
-      horizontalAlign: "left",
-      fontFamily: "Outfit",
+      show: false, // una sola serie; ahorra alto y evita empujes
     },
     yaxis: { title: { text: undefined } },
-    grid: { yaxis: { lines: { show: true } } },
     fill: { opacity: 1 },
     tooltip: {
       theme: isDark ? "dark" : "light",
@@ -89,16 +99,30 @@ export default function MonthlyVisitsChart() {
       x: { show: false },
       y: { formatter: (val: number) => `${val}` },
     },
+    responsive: [
+      {
+        breakpoint: 640, // sm
+        options: {
+          plotOptions: { bar: { columnWidth: "55%" } },
+          xaxis: { labels: { rotate: -45 } },
+          grid: { padding: { left: 4, right: 4 } },
+        },
+      },
+      {
+        breakpoint: 400, // móviles muy estrechos
+        options: {
+          plotOptions: { bar: { columnWidth: "65%" } },
+          xaxis: { labels: { rotate: -55 } },
+        },
+      },
+    ],
   };
 
-  if (loading) {
-    // Ajusta ChartSkeleton para que acepte solo { height?: number }
-    return <ChartSkeleton height={CHART_HEIGHT} />;
-  }
+  if (loading) return <ChartSkeleton height={CHART_HEIGHT} />;
 
   return (
     <div className="card overflow-hidden">
-      {/* Header interno del componente */}
+      {/* Header */}
       <div className="flex items-center justify-between card-header">
         <div>
           <h3 className="card-title">Visitas mensuales</h3>
@@ -127,14 +151,13 @@ export default function MonthlyVisitsChart() {
 
       {/* Body */}
       <div className="card-body">
-        <div className="max-w-full">
-          <div className="-ml-5 min-w-[650px] xl:min-w-full pl-2">
-            {series.length > 0 ? (
-              <ReactApexChart options={options} series={series} type="bar" height={CHART_HEIGHT} />
-            ) : (
-              <div style={{ height: CHART_HEIGHT }} />
-            )}
-          </div>
+        {/* Contenedor 100% sin min-widths ni márgenes negativos */}
+        <div className="w-full">
+          {series.length > 0 ? (
+            <ReactApexChart options={options} series={series} type="bar" height={CHART_HEIGHT} />
+          ) : (
+            <div style={{ height: CHART_HEIGHT }} />
+          )}
         </div>
       </div>
     </div>
