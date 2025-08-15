@@ -1,11 +1,12 @@
 "use client";
 
-import MonthlyRangeChart from "@/components/charts/MonthlyRangeChart";
-import DonutChartCard from "@/components/charts/DonutChartCard";
-import { CustomersDemographicCard, MonthlyVisitsChart } from "@/components/charts";
-import CompareLineChart from "@/components/charts/CompareLineChart";
-import UserAcquisitionChart from "@/components/charts/UserAcquisitionChart";
-import AnalyticsKPICards from "@/components/charts/AnalyticsKPICards";
+import CustomersDemographicsSection from "@/features/analytics/components/CustomersDemographicsSection";
+import DevicesOsDonutSection from "@/features/analytics/components/DevicesOsDonutSection";
+import MonthlyRangeSection from "@/features/analytics/components/MonthlyRangeSection";
+import MonthlyVisitsSection from "@/features/analytics/components/MonthlyVisitsSection";
+import UserActivityComparisonSection from "@/features/analytics/components/UserActivityComparisonSection";
+import AnalyticsKPICards from "@features/analytics/components/AnalyticsKPISection";
+import UserAcquisitionChart from "@features/analytics/components/UserAcquisitionSection";
 
 export default function AnalyticsPage() {
   return (
@@ -22,24 +23,23 @@ export default function AnalyticsPage() {
       {/* ROW 2 */}
       <div className="col-span-12 lg:col-span-4 min-w-0">
         <div className="flex flex-col gap-6">
-          <DonutChartCard />
-          <MonthlyVisitsChart />
+          <DevicesOsDonutSection />
+          <MonthlyVisitsSection />
         </div>
       </div>
 
-      {/* OJO: antes tenías col-span-16; cámbialo a 12 */}
       <div className="col-span-12 lg:col-span-8 min-w-0">
-        <CustomersDemographicCard />
+        <CustomersDemographicsSection />
       </div>
 
       {/* ROW 3 */}
       <div className="col-span-12 min-w-0">
-        <CompareLineChart />
+        <UserActivityComparisonSection />
       </div>
 
       {/* ROW 4 */}
       <div className="col-span-12 min-w-0">
-        <MonthlyRangeChart />
+        <MonthlyRangeSection />
       </div>
     </div>
   );
