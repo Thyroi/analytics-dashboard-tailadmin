@@ -3,45 +3,80 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSidebar } from "@/context/SidebarContext";
-import { Squares2X2Icon, ChevronDownIcon } from "@heroicons/react/24/outline";
-import { useEffect, useState, useRef, useCallback } from "react";
+import {
+  Squares2X2Icon,
+  ChevronDownIcon,
+  UserGroupIcon,
+} from "@heroicons/react/24/outline";
+import { useEffect, useState, useRef, useCallback, useMemo } from "react";
+
+// TRPC client
+import { trpc } from "@/lib/trpc/client";
+// Tipo del usuario desde Zod (solo type)
+import type { User as MeUser } from "@/server/trpc/schemas/user";
 
 export default function AppSidebar() {
   const { isExpanded, isHovered, isMobileOpen, setIsHovered, setIsMobileOpen } =
     useSidebar();
   const pathname = usePathname();
 
-  const [openSubmenu, setOpenSubmenu] = useState(false);
-  const subMenuRef = useRef<HTMLDivElement | null>(null);
-  const [subMenuHeight, setSubMenuHeight] = useState(0);
+  // ---- Me (dentro del componente) ----
+  const { data: me } = trpc.user.me.useQuery<MeUser | null>(undefined, {
+    staleTime: 5 * 60 * 1000,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    placeholderData: (prev) => prev, // reduce flicker un poco
+  });
 
-  const subItems = [
-    { name: "Ecommerce", path: "/ecommerce" },
-    { name: "Analytics", path: "/analytics" },
-  ];
+  const isAdmin = useMemo(
+    () => me?.roles?.some((r) => r.role?.name?.toUpperCase() === "ADMIN") ?? false,
+    [me]
+  );
+
+  // ---- Items ----
+  const dashboardItems = useMemo(
+    () => [
+      { name: "Analytics", path: "/analytics" },
+    ],
+    []
+  );
+
+  const adminItems = useMemo(
+    () => [{ name: "Users", path: "/users" }],
+    []
+  );
 
   const isActive = useCallback((path: string) => pathname === path, [pathname]);
 
-  // Detectar si hay subitem activo solo al inicio o cuando cambia la ruta
-  useEffect(() => {
-    if (subItems.some((sub) => sub.path === pathname)) {
-      setOpenSubmenu(true);
-    }
-  }, [pathname]);
+  // ---- Submenu: Dashboard ----
+  const [openDashboard, setOpenDashboard] = useState(false);
+  const dashRef = useRef<HTMLDivElement | null>(null);
+  const [dashHeight, setDashHeight] = useState(0);
+  const dashHasActive = dashboardItems.some((sub) => isActive(sub.path));
 
-  // Calcular altura del submenu
   useEffect(() => {
-    if (openSubmenu && subMenuRef.current) {
-      setSubMenuHeight(subMenuRef.current.scrollHeight);
-    } else {
-      setSubMenuHeight(0);
-    }
-  }, [openSubmenu]);
+    if (dashHasActive) setOpenDashboard(true);
+  }, [dashHasActive]);
 
-  // Toggle manual
-  const handleToggle = () => {
-    setOpenSubmenu((prev) => !prev);
-  };
+  useEffect(() => {
+    if (openDashboard && dashRef.current) setDashHeight(dashRef.current.scrollHeight);
+    else setDashHeight(0);
+  }, [openDashboard]);
+
+  // ---- Submenu: Admin ----
+  const [openAdmin, setOpenAdmin] = useState(false);
+  const adminRef = useRef<HTMLDivElement | null>(null);
+  const [adminHeight, setAdminHeight] = useState(0);
+  const adminHasActive = adminItems.some((sub) => isActive(sub.path));
+
+  useEffect(() => {
+    if (adminHasActive) setOpenAdmin(true);
+  }, [adminHasActive]);
+
+  useEffect(() => {
+    if (openAdmin && adminRef.current) setAdminHeight(adminRef.current.scrollHeight);
+    else setAdminHeight(0);
+  }, [openAdmin]);
 
   return (
     <aside
@@ -63,21 +98,18 @@ export default function AppSidebar() {
         </Link>
       </div>
 
-      {/* Dashboard */}
+      {/* Navegación */}
       <nav className="flex flex-col gap-4 px-4">
+        {/* === Dashboard === */}
         <button
-          onClick={handleToggle}
+          onClick={() => setOpenDashboard((p) => !p)}
           className={`menu-item group ${
-            openSubmenu || subItems.some((sub) => isActive(sub.path))
-              ? "menu-item-active"
-              : "menu-item-inactive"
+            dashHasActive ? "menu-item-active" : "menu-item-inactive"
           }`}
         >
           <span
             className={`${
-              openSubmenu || subItems.some((sub) => isActive(sub.path))
-                ? "menu-item-icon-active"
-                : "menu-item-icon-inactive"
+              dashHasActive ? "menu-item-icon-active" : "menu-item-icon-inactive"
             }`}
           >
             <Squares2X2Icon className="w-5 h-5" />
@@ -86,20 +118,20 @@ export default function AppSidebar() {
           {(isExpanded || isHovered || isMobileOpen) && (
             <ChevronDownIcon
               className={`ml-auto w-5 h-5 transition-transform duration-200 ${
-                openSubmenu ? "rotate-180 text-brand-500" : ""
+                openDashboard ? "rotate-180 text-brand-500" : ""
               }`}
             />
           )}
         </button>
 
-        {/* Subitems */}
+        {/* Subitems Dashboard */}
         <div
-          ref={subMenuRef}
+          ref={dashRef}
           className="overflow-hidden transition-all duration-300"
-          style={{ height: `${subMenuHeight}px` }}
+          style={{ height: `${dashHeight}px` }}
         >
           <ul className="mt-2 ml-8 space-y-2">
-            {subItems.map((sub) => (
+            {dashboardItems.map((sub) => (
               <li key={sub.name}>
                 <Link
                   href={sub.path}
@@ -116,7 +148,61 @@ export default function AppSidebar() {
             ))}
           </ul>
         </div>
+
+        {/* === Admin (solo si isAdmin) === */}
+        {isAdmin && (
+          <>
+            <button
+              onClick={() => setOpenAdmin((p) => !p)}
+              className={`menu-item group ${
+                adminHasActive ? "menu-item-active" : "menu-item-inactive"
+              }`}
+            >
+              <span
+                className={`${
+                  adminHasActive ? "menu-item-icon-active" : "menu-item-icon-inactive"
+                }`}
+              >
+                <UserGroupIcon className="w-5 h-5" />
+              </span>
+              {(isExpanded || isHovered || isMobileOpen) && <span>Admin</span>}
+              {(isExpanded || isHovered || isMobileOpen) && (
+                <ChevronDownIcon
+                  className={`ml-auto w-5 h-5 transition-transform duration-200 ${
+                    openAdmin ? "rotate-180 text-brand-500" : ""
+                  }`}
+                />
+              )}
+            </button>
+
+            {/* Subitems Admin */}
+            <div
+              ref={adminRef}
+              className="overflow-hidden transition-all duration-300"
+              style={{ height: `${adminHeight}px` }}
+            >
+              <ul className="mt-2 ml-8 space-y-2">
+                {adminItems.map((sub) => (
+                  <li key={sub.name}>
+                    <Link
+                      href={sub.path}
+                      className={`menu-dropdown-item ${
+                        isActive(sub.path)
+                          ? "menu-dropdown-item-active"
+                          : "menu-dropdown-item-inactive"
+                      }`}
+                      onClick={() => setIsMobileOpen(false)}
+                    >
+                      {sub.name}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </>
+        )}
       </nav>
     </aside>
   );
 }
+
