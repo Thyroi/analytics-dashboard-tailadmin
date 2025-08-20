@@ -1,7 +1,10 @@
+// src/app/layout.tsx
 import "./globals.css";
 import { SidebarProvider } from "@/context/SidebarContext";
 import AdminLayout from "@/layout/AdminLayout";
 import { ThemeProviders } from "@/components/ThemeProviders";
+import Providers from "./providers";
+import { WarmupUser } from "./providers";
 
 export const metadata = {
   title: "Dashboard",
@@ -12,11 +15,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" suppressHydrationWarning>
       <body>
-
         <ThemeProviders>
-          <SidebarProvider>
-            <AdminLayout>{children}</AdminLayout>
-          </SidebarProvider>
+          <Providers>
+            <WarmupUser />
+            <SidebarProvider>
+              <AdminLayout>{children}</AdminLayout>
+            </SidebarProvider>
+          </Providers>
         </ThemeProviders>
       </body>
     </html>
