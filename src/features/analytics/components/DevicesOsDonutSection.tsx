@@ -1,10 +1,9 @@
 "use client";
 
-import DonutChart from "@/components/charts/DonutChart";
+import PieChart, { type PieDatum } from "@/components/charts/PieChart";
 import ChartSkeleton from "@/components/skeletons/ChartSkeleton";
 import { fetchDevicesOs } from "@/features/analytics/services/devicesOs";
-import { useTheme } from "next-themes";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 const CHART_HEIGHT = 260;
 
@@ -20,9 +19,6 @@ const OS_COLORS: Record<string, string> = {
 };
 
 export default function DevicesOsDonutSection() {
-  const { theme } = useTheme();
-  const isDark = theme === "dark";
-
   const [labels, setLabels] = useState<string[]>([]);
   const [values, setValues] = useState<number[]>([]);
   const [loading, setLoading] = useState(true);
@@ -32,7 +28,7 @@ export default function DevicesOsDonutSection() {
     (async () => {
       try {
         setLoading(true);
-        const data = await fetchDevicesOs(); // último ~30 días por default (server)
+        const data = await fetchDevicesOs();
         if (!cancelled) {
           setLabels(data.labels);
           setValues(data.values);
@@ -52,6 +48,11 @@ export default function DevicesOsDonutSection() {
     };
   }, []);
 
+  const data: PieDatum[] = useMemo(
+    () => labels.map((label, i) => ({ label, value: values[i] ?? 0 })),
+    [labels, values]
+  );
+
   if (loading) return <ChartSkeleton height={CHART_HEIGHT} />;
 
   return (
@@ -61,15 +62,16 @@ export default function DevicesOsDonutSection() {
       </div>
 
       <div className="card-body">
-        {values.length > 0 ? (
-          <DonutChart
-            labels={labels}
-            values={values}
+        {data.length > 0 ? (
+          <PieChart
+            type="donut"                 // usamos el componente genérico en modo donut
+            data={data}
             height={CHART_HEIGHT}
-            colorsByName={OS_COLORS}
-            tooltipTheme={isDark ? "dark" : "light"}
-            showTotal
-            totalLabel="Total"
+            colorsByLabel={OS_COLORS}    // mapa de colores por etiqueta
+            dataLabels="percent"
+            donutTotalLabel="Total"
+            legendPosition="bottom"
+            showLegend
           />
         ) : (
           <div
