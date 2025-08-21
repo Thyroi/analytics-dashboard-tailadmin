@@ -25,7 +25,7 @@ export default function AppSidebar() {
     staleTime: 5 * 60 * 1000,
     refetchOnMount: false,
     refetchOnWindowFocus: false,
-    placeholderData: (prev) => prev, // reduce flicker un poco
+    placeholderData: (prev) => prev,
   });
 
   const isAdmin = useMemo(
@@ -37,14 +37,12 @@ export default function AppSidebar() {
   const dashboardItems = useMemo(
     () => [
       { name: "Analytics", path: "/analytics" },
+      { name: "Chatbot Insights", path: "/chatbot" },
     ],
     []
   );
 
-  const adminItems = useMemo(
-    () => [{ name: "Users", path: "/users" }],
-    []
-  );
+  const adminItems = useMemo(() => [{ name: "Users", path: "/users" }], []);
 
   const isActive = useCallback((path: string) => pathname === path, [pathname]);
 
@@ -205,4 +203,3 @@ export default function AppSidebar() {
     </aside>
   );
 }
-
