@@ -1,5 +1,6 @@
 "use client";
 
+import AnalyticsTagsSection from "@/features/analytics/components/AnalyticsTagsSection";
 import CustomersDemographicsSection from "@/features/analytics/components/CustomersDemographicsSection";
 import DevicesOsDonutSection from "@/features/analytics/components/DevicesOsDonutSection";
 import MonthlyRangeSection from "@/features/analytics/components/MonthlyRangeSection";
@@ -40,6 +41,10 @@ export default function AnalyticsPage() {
       {/* ROW 4 */}
       <div className="col-span-12 min-w-0">
         <MonthlyRangeSection />
+      </div>
+      {/* ROW 5 */}
+      <div className="col-span-12 min-w-0">
+        <AnalyticsTagsSection />
       </div>
     </div>
   );
