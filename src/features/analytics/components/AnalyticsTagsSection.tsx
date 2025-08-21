@@ -1,5 +1,6 @@
 "use client";
 
+import AnalyticsTagsSkeleton from "@/components/skeletons/AnalyticsTagsSkeleton";
 import {
   tags,
   trend,
@@ -23,6 +24,13 @@ import WordCloudHeat from "./WordCloudHeat";
 const PROJECT = "project_huelva";
 
 export default function AnalyticsTagsSection() {
+  // ⬇️ mostrar skeleton por 3s
+  const [showSkeleton, setShowSkeleton] = useState(true);
+  useEffect(() => {
+    const t = setTimeout(() => setShowSkeleton(false), 3000);
+    return () => clearTimeout(t);
+  }, []);
+
   const { start, end } = lastNDays(30);
   const [range] = useState({ start: fmt(start), end: fmt(end) });
   const [granularity, setGranularity] = useState<Granularity>("day");
@@ -104,6 +112,9 @@ export default function AnalyticsTagsSection() {
     [subSelected]
   );
 
+  // ⬇️ mientras “cargamos”
+  if (showSkeleton) return <AnalyticsTagsSkeleton />;
+
   return (
     <div
       className="
@@ -169,12 +180,7 @@ export default function AnalyticsTagsSection() {
 
       {/* Cloud + Chips */}
       <div className="px-5 pt-4 pb-2">
-        <div
-          className="
-            rounded-xl px-4 py-3
-            dark:border-white/10
-          "
-        >
+        <div className="rounded-xl px-4 py-3 dark:border-white/10">
           <WordCloudHeat
             items={top}
             onSelect={cloudSelect}

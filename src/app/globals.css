@@ -368,19 +368,3 @@ html:not(.dark) .apexcharts-tooltip {
   border-radius: 12px !important;
   box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15) !important;
 }
-
-/* grid y ejes más sutiles en dark */
-html.dark .apexcharts-gridline,
-html.dark .apexcharts-xaxis .apexcharts-xaxis-tick,
-html.dark .apexcharts-xaxis .apexcharts-axis-border,
-html.dark .apexcharts-yaxis .apexcharts-axis-border {
-  stroke: rgba(255,255,255,0.08) !important;
-}
-
-/* texto de ejes y leyenda consistente */
-html.dark .apexcharts-xaxis text,
-html.dark .apexcharts-yaxis text,
-html.dark .apexcharts-legend-text {
-  fill: #9CA3AF !important; /* gray-400 */
-  color: #CBD5E1 !important; /* legend fallback */
-}
