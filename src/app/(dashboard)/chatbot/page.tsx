@@ -1,5 +1,6 @@
 "use client";
 
+import AllTagsAnalyticsGrid from "@/features/chatbot/components/AllTagsAnalyticsGrid";
 import AnalyticsTagsSection from "@/features/chatbot/components/AnalyticsTagsSection";
 import TagsPieGrid from "@/features/chatbot/components/TagsPieGrid";
 
@@ -10,11 +11,17 @@ export default function AnalyticsPage() {
       <div className="col-span-12 min-w-0">
         <AnalyticsTagsSection />
       </div>
-      
+
       {/* ROW 2 */}
       <div className="col-span-12 min-w-0">
         <TagsPieGrid />
       </div>
+
+      {/* ROW 3 */}
+      <div className="col-span-12 min-w-0">
+        <AllTagsAnalyticsGrid />
+      </div>
+
     </div>
   );
 }
