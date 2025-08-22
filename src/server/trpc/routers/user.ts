@@ -1,6 +1,6 @@
 // server/trpc/routers/user.ts
 import { Prisma } from "@prisma/client";
-import { protectedProcedure, router } from "../router";
+import { router, protectedProcedure, publicProcedure } from "../router";
 import {
   ProfileSchema,
   SocialSchema,
@@ -30,7 +30,7 @@ function encodeSocial(
 }
 
 export const userRouter = router({
-  // === GET ME ===
+  /** === ME (requiere sesión y usuario ya creado) === */
   me: protectedProcedure
     .output(UserSchema.nullable())
     .query(async ({ ctx }) => {
@@ -41,33 +41,66 @@ export const userRouter = router({
           roles: { include: { role: true } },
         },
       });
-
       if (!user) return null;
 
       const social = normalizeSocialFromPrisma(user.profile?.social ?? null);
-
       return {
         ...user,
-        profile: user.profile
-          ? {
-              ...user.profile,
-              social,
-            }
-          : null,
+        profile: user.profile ? { ...user.profile, social } : null,
       };
     }),
 
-  // === UPDATE / UPSERT PROFILE ===
+  /** === ME (opcional): NO lanza 401, y AUTO-CREA usuario en DB si hay sesión === */
+  meOptional: publicProcedure
+    .output(UserSchema.nullable())
+    .query(async ({ ctx }) => {
+      // si no hay sesión Auth0 → null silencioso (nada de 401)
+      const sessUser = ctx.session?.user;
+      if (!sessUser) return null;
+
+      // datos mínimos de Auth0
+      const sub = (sessUser as Record<string, unknown>)["sub"] as string | undefined;
+      const email = (sessUser as Record<string, unknown>)["email"] as string | undefined;
+      const picture = (sessUser as Record<string, unknown>)["picture"] as string | undefined;
+
+      if (!sub || !email) {
+        // sesión inválida/incompleta → tratar como no autenticado
+        return null;
+      }
+
+      // upsert para que exista en DB (y actualizar avatar si cambió)
+      const dbUser = await ctx.prisma.user.upsert({
+        where: { auth0Sub: sub },
+        create: {
+          auth0Sub: sub,
+          email,
+          avatarUrl: picture ?? null,
+        },
+        update: {
+          avatarUrl: picture ?? null,
+        },
+        include: {
+          profile: true,
+          roles: { include: { role: true } },
+        },
+      });
+
+      const social = normalizeSocialFromPrisma(dbUser.profile?.social ?? null);
+      return {
+        ...dbUser,
+        profile: dbUser.profile ? { ...dbUser.profile, social } : null,
+      };
+    }),
+
+  /** === UPDATE / UPSERT PROFILE === */
   updateProfile: protectedProcedure
     .input(UpdateProfileSchema)
     .output(ProfileSchema)
     .mutation(async ({ ctx, input }) => {
       const { social, ...rest } = input;
 
-      // Tipado estricto para Prisma
       const updateData: Prisma.ProfileUpdateInput = {
         ...rest,
-        // si viene undefined no se toca; si es null se guarda {} ; si objeto se guarda tal cual
         social: encodeSocial(social),
       };
 

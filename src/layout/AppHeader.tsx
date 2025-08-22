@@ -1,4 +1,3 @@
-// src/components/layout/AppHeader.tsx
 "use client";
 
 import { useSidebar } from "@/context/SidebarContext";

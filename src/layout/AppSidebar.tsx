@@ -9,22 +9,20 @@ import {
   UserGroupIcon,
 } from "@heroicons/react/24/outline";
 import { useEffect, useState, useRef, useCallback, useMemo } from "react";
-
-// TRPC client
 import { trpc } from "@/lib/trpc/client";
-// Tipo del usuario desde Zod (solo type)
-import type { User as MeUser } from "@/server/trpc/schemas/user";
 
 export default function AppSidebar() {
   const { isExpanded, isHovered, isMobileOpen, setIsHovered, setIsMobileOpen } =
     useSidebar();
   const pathname = usePathname();
 
-  // ---- Me (dentro del componente) ----
-  const { data: me } = trpc.user.me.useQuery<MeUser | null>(undefined, {
-    staleTime: 5 * 60 * 1000,
+  // 👇 usa el optional para evitar 401 cuando no hay sesión
+  const { data: me } = trpc.user.meOptional.useQuery(undefined, {
+    staleTime: 10 * 60 * 1000,
     refetchOnMount: false,
     refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    retry: 0,
     placeholderData: (prev) => prev,
   });
 
@@ -33,7 +31,6 @@ export default function AppSidebar() {
     [me]
   );
 
-  // ---- Items ----
   const dashboardItems = useMemo(
     () => [
       { name: "Analytics", path: "/analytics" },
@@ -41,12 +38,10 @@ export default function AppSidebar() {
     ],
     []
   );
-
   const adminItems = useMemo(() => [{ name: "Users", path: "/users" }], []);
 
   const isActive = useCallback((path: string) => pathname === path, [pathname]);
 
-  // ---- Submenu: Dashboard ----
   const [openDashboard, setOpenDashboard] = useState(false);
   const dashRef = useRef<HTMLDivElement | null>(null);
   const [dashHeight, setDashHeight] = useState(0);
@@ -61,7 +56,6 @@ export default function AppSidebar() {
     else setDashHeight(0);
   }, [openDashboard]);
 
-  // ---- Submenu: Admin ----
   const [openAdmin, setOpenAdmin] = useState(false);
   const adminRef = useRef<HTMLDivElement | null>(null);
   const [adminHeight, setAdminHeight] = useState(0);
@@ -85,7 +79,6 @@ export default function AppSidebar() {
       onMouseEnter={() => !isExpanded && setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      {/* Logo */}
       <div
         className={`py-6 flex ${
           !isExpanded && !isHovered ? "lg:justify-center" : "justify-start px-4"
@@ -96,20 +89,15 @@ export default function AppSidebar() {
         </Link>
       </div>
 
-      {/* Navegación */}
       <nav className="flex flex-col gap-4 px-4">
-        {/* === Dashboard === */}
+        {/* Dashboard */}
         <button
           onClick={() => setOpenDashboard((p) => !p)}
           className={`menu-item group ${
             dashHasActive ? "menu-item-active" : "menu-item-inactive"
           }`}
         >
-          <span
-            className={`${
-              dashHasActive ? "menu-item-icon-active" : "menu-item-icon-inactive"
-            }`}
-          >
+          <span className={`${dashHasActive ? "menu-item-icon-active" : "menu-item-icon-inactive"}`}>
             <Squares2X2Icon className="w-5 h-5" />
           </span>
           {(isExpanded || isHovered || isMobileOpen) && <span>Dashboard</span>}
@@ -122,7 +110,6 @@ export default function AppSidebar() {
           )}
         </button>
 
-        {/* Subitems Dashboard */}
         <div
           ref={dashRef}
           className="overflow-hidden transition-all duration-300"
@@ -134,9 +121,7 @@ export default function AppSidebar() {
                 <Link
                   href={sub.path}
                   className={`menu-dropdown-item ${
-                    isActive(sub.path)
-                      ? "menu-dropdown-item-active"
-                      : "menu-dropdown-item-inactive"
+                    isActive(sub.path) ? "menu-dropdown-item-active" : "menu-dropdown-item-inactive"
                   }`}
                   onClick={() => setIsMobileOpen(false)}
                 >
@@ -147,7 +132,7 @@ export default function AppSidebar() {
           </ul>
         </div>
 
-        {/* === Admin (solo si isAdmin) === */}
+        {/* Admin (solo si ADMIN) */}
         {isAdmin && (
           <>
             <button
@@ -156,11 +141,7 @@ export default function AppSidebar() {
                 adminHasActive ? "menu-item-active" : "menu-item-inactive"
               }`}
             >
-              <span
-                className={`${
-                  adminHasActive ? "menu-item-icon-active" : "menu-item-icon-inactive"
-                }`}
-              >
+              <span className={`${adminHasActive ? "menu-item-icon-active" : "menu-item-icon-inactive"}`}>
                 <UserGroupIcon className="w-5 h-5" />
               </span>
               {(isExpanded || isHovered || isMobileOpen) && <span>Admin</span>}
@@ -173,7 +154,6 @@ export default function AppSidebar() {
               )}
             </button>
 
-            {/* Subitems Admin */}
             <div
               ref={adminRef}
               className="overflow-hidden transition-all duration-300"
