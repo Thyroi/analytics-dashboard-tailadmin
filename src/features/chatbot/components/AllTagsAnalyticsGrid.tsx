@@ -61,9 +61,6 @@ export default function AllTagsAnalyticsGrid({
           key={t.tagPath}
           tagPath={t.tagPath}
           projectId={projectId}
-          start={range.start}
-          end={range.end}
-          donutRefreshMs={donutRefreshMs}
         />
       ))}
     </div>
