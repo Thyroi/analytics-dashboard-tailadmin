@@ -1,244 +1,264 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { CalendarDaysIcon } from "@heroicons/react/24/outline";
-import LineChart, { type LineSeries } from "@/components/charts/LineChart";
-import LineChartSkeleton from "@/components/skeletons/LineChartSkeleton";
 import PieChart from "@/components/charts/PieChart";
-import PieChartSkeleton from "@/components/skeletons/PieChartSkeleton";
-import SubtagChecklist from "./SubtagChecklist";
-import { tags, type TagCountItem } from "@/lib/analytics/adapter";
-import { fmt, lastNDays } from "@/lib/analytics/utils";
+import ComparativeLines from "@/features/chatbot/components/ComparativeLines";
+import SubtagChecklist from "@/features/chatbot/components/SubtagChecklist";
+import { CalendarDaysIcon } from "@heroicons/react/24/outline";
+import { useEffect, useMemo, useState, type ChangeEvent } from "react";
+
+import {
+  tags,
+  trend,
+  type TagCountItem,
+  type TrendPoint,
+} from "@/lib/analytics/adapter";
+import {
+  fmt,
+  lastNDays,
+  listDays,
+  type Granularity,
+} from "@/lib/analytics/utils";
 
 type Props = {
   projectId?: string;
-  /** tagPath de primer nivel, ej: "playa" */
+  /** Tag de primer nivel, ej: "playa" */
   tagPath: string;
-  /** rango inicial (por defecto últimos 30 días) */
-  start?: string;
-  end?: string;
-  /** refresco “realtime” para la donut (ms). 0 = sin refresco */
-  donutRefreshMs?: number;
-  /** seleccionar por defecto los primeros N subtags (para la línea) */
+  /** cuántos subtags seleccionar por defecto */
   defaultSelectN?: number;
 };
 
-const CARD_BG_DARK = "dark:bg-[#14181e]";
+const PROJECT_FALLBACK = "project_huelva";
 
 export default function SingleTagAnalytics({
-  projectId = "project_huelva",
+  projectId = PROJECT_FALLBACK,
   tagPath,
-  start,
-  end,
-  donutRefreshMs = 5000,
-  defaultSelectN = 5,
+  defaultSelectN = 3,
 }: Props) {
-  const defaultRange = useMemo(() => {
-    const { start: s, end: e } = lastNDays(30);
-    return { start: fmt(s), end: fmt(e) };
-  }, []);
-  const range = { start: start ?? defaultRange.start, end: end ?? defaultRange.end };
+  // Rango por defecto (últimos 30 días)
+  const { start, end } = lastNDays(30);
+  const [range] = useState({ start: fmt(start), end: fmt(end) });
 
+  // Estado de granularidad (igual al ejemplo)
+  const [granularity, setGranularity] = useState<Granularity>("day");
+
+  // Subtags y selección actual
   const [subs, setSubs] = useState<TagCountItem[]>([]);
-  const [loadingSubs, setLoadingSubs] = useState(true);
-
-  // Donut data (actualizable)
-  const [donutData, setDonutData] = useState<{ label: string; value: number }[]>(
-    []
-  );
-  const [donutLoading, setDonutLoading] = useState(true);
-
-  // Selección para línea
   const [selected, setSelected] = useState<string[]>([]);
 
-  // Carga inicial de subtags (y selección)
+  // 1) Cargar subtags del tag fijo
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      try {
-        setLoadingSubs(true);
-        const list = await tags({
-          projectId,
-          tagPath,
-          start: range.start,
-          end: range.end,
-        });
-        if (cancelled) return;
-        setSubs(list);
-        setSelected(list.slice(0, defaultSelectN).map((i) => i.tagPath));
-      } finally {
-        if (!cancelled) setLoadingSubs(false);
-      }
+      const list = await tags({
+        projectId,
+        tagPath,
+        start: range.start,
+        end: range.end,
+      });
+      if (cancelled) return;
+      setSubs(list);
+      // seleccionar N por defecto (orden de llegada)
+      setSelected(list.slice(0, defaultSelectN).map((i) => i.tagPath));
     })();
     return () => {
       cancelled = true;
     };
   }, [projectId, tagPath, range.start, range.end, defaultSelectN]);
 
-  // Donut: refresco periódico (realtime-like)
+  // 2) Cargar series de tendencia por cada subtag seleccionado
+  const [series, setSeries] = useState<Record<string, TrendPoint[]>>({});
   useEffect(() => {
-    let cancelled = false;
-    let timer: number | undefined;
-
-    const fetchDonut = async () => {
-      try {
-        if (!cancelled) setDonutLoading(true);
-        const list = await tags({
-          projectId,
-          tagPath,
-          start: range.start,
-          end: range.end,
-        });
-        if (cancelled) return;
-        setDonutData(list.map((s) => ({ label: s.label, value: s.count })));
-      } finally {
-        if (!cancelled) window.setTimeout(() => setDonutLoading(false), 120);
-      }
-    };
-
-    fetchDonut();
-
-    if (donutRefreshMs > 0) {
-      timer = window.setInterval(fetchDonut, donutRefreshMs);
+    if (selected.length === 0) {
+      setSeries({});
+      return;
     }
+    let cancelled = false;
+    (async () => {
+      const arr = await Promise.all(
+        selected.map((p) =>
+          trend({
+            projectId,
+            tagPath: p,
+            start: range.start,
+            end: range.end,
+            granularity,
+          })
+        )
+      );
+      if (cancelled) return;
+      const m: Record<string, TrendPoint[]> = {};
+      selected.forEach((k, i) => {
+        m[k] = arr[i];
+      });
+      setSeries(m);
+    })();
     return () => {
-      if (typeof timer === "number") window.clearInterval(timer);
       cancelled = true;
     };
-  }, [projectId, tagPath, range.start, range.end, donutRefreshMs]);
+  }, [selected, projectId, tagPath, range.start, range.end, granularity]);
 
+  // Handlers selección
   const toggleSub = (p: string) =>
     setSelected((s) => (s.includes(p) ? s.filter((x) => x !== p) : [...s, p]));
   const toggleAll = (checked: boolean) =>
     setSelected(checked ? subs.map((i) => i.tagPath) : []);
 
-  // Datos para la línea (categorías = subtags seleccionados, serie única)
-  const lineCategories = useMemo(
+  // Fechas/categorías para la línea (igual al ejemplo)
+  const dates = useMemo(() => {
+    if (granularity !== "day") {
+      const keys = new Set<string>();
+      Object.values(series).forEach((arr) =>
+        arr.forEach((p) => keys.add(p.date))
+      );
+      return [...keys].sort();
+    }
+    return listDays(new Date(range.start), new Date(range.end));
+  }, [series, range.start, range.end, granularity]);
+
+  // Columnas (series) con label legible
+  const columns = useMemo(
     () =>
-      subs
-        .filter((s) => selected.includes(s.tagPath))
-        .map((s) => s.label),
-    [subs, selected]
+      selected.map((p) => ({
+        key: p,
+        label: p.split(".").pop() ?? p,
+      })),
+    [selected]
   );
 
-  const lineSeries: LineSeries[] = useMemo(() => {
-    const data = subs
-      .filter((s) => selected.includes(s.tagPath))
-      .map((s) => s.count);
-    return [{ name: "Consultas", data }];
-  }, [subs, selected]);
+  // Datos para el pie (distribución total por subtag en el rango)
+  const pieData = useMemo(
+    () => subs.map((s) => ({ label: s.label, value: s.count })),
+    [subs]
+  );
 
   return (
     <div
-      className={`
+      className="
         rounded-2xl shadow-sm
         border border-gray-200 dark:border-white/10
-        bg-white ${CARD_BG_DARK}
-      `}
+        bg-white dark:bg-[#14181e]
+      "
     >
       {/* Header */}
-      <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-white/10">
+      <div
+        className="
+          flex items-center justify-between px-5 py-4
+          border-b border-gray-100 dark:border-white/10
+        "
+      >
         <div>
           <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 capitalize">
             {tagPath}
           </h2>
           <p className="text-xs text-gray-500 dark:text-gray-400">
-            Subtags, línea por selección y donut en “tiempo real”.
+            Checklist + Pie (izquierda) y tendencia temporal por subtag
+            (derecha)
           </p>
         </div>
-        <div
-          className="
-            hidden md:flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm
-            border border-gray-200 dark:border-white/10
-            text-gray-700 dark:text-gray-300
-            bg-white/70 dark:bg-[#14181e]
-          "
-          title="Rango de fechas"
-        >
-          <CalendarDaysIcon className="h-4 w-4 text-gray-500 dark:text-gray-400" />
-          <span>
-            {range.start} — {range.end}
-          </span>
+
+        <div className="flex items-center gap-2">
+          <div
+            className="
+              hidden md:flex items-center gap-2
+              rounded-lg px-3 py-1.5 text-sm
+              border border-gray-200 dark:border-white/10
+              text-gray-700 dark:text-gray-300
+              bg-white/70 dark:bg-[#14181e]
+            "
+            title="Rango de fechas"
+          >
+            <CalendarDaysIcon className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+            <span>
+              {range.start} — {range.end}
+            </span>
+          </div>
         </div>
       </div>
 
       {/* Body */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 p-5">
-        {/* Checklist */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 px-5 pb-5 pt-4">
+        {/* IZQUIERDA: Checklist + Pie en el MISMO card */}
         <div
           className="
-            rounded-xl px-4 py-4
+            md:col-span-1 rounded-xl px-4 py-4
             border border-gray-100 dark:border-white/10
             bg-white/60 dark:bg-[#14181e]
           "
         >
-          <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-3">
-            Subtags de {tagPath}
-          </h3>
-
-          {loadingSubs ? (
-            <div className="space-y-4">
-              {[1, 2, 3, 4].map((k) => (
-                <div key={k} className="h-6 rounded bg-gray-200/70 dark:bg-white/10" />
-              ))}
-            </div>
-          ) : (
-            <SubtagChecklist
-              items={subs}
-              selected={selected}
-              onToggle={toggleSub}
-              onToggleAll={toggleAll}
-            />
-          )}
-        </div>
-
-        {/* Línea */}
-        <div
-          className="
-            lg:col-span-2 rounded-xl p-3
-            border border-gray-100 dark:border-white/10
-            bg-white/60 dark:bg-[#14181e]
-          "
-        >
-          {loadingSubs ? (
-            <LineChartSkeleton height={280} />
-          ) : lineCategories.length === 0 ? (
-            <div className="rounded-lg border border-dashed border-gray-200 dark:border-white/10 p-6 text-sm text-gray-500 dark:text-gray-400">
-              Selecciona subtags para visualizar.
-            </div>
-          ) : (
-            <LineChart
-              categories={lineCategories}
-              series={lineSeries}
-              height={280}
-              smooth
-              type="line"
-              optionsExtra={{
-                markers: { size: 3 }, // puntos para que se lea mejor sobre categorías discretas
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200">
+              Subtags de {tagPath}
+            </h3>
+            <select
+              className="
+                rounded-lg px-2 py-1 text-xs
+                border border-gray-200 dark:border-white/10
+                bg-transparent
+                text-gray-700 dark:text-gray-300
+              "
+              value={granularity}
+              onChange={(e: ChangeEvent<HTMLSelectElement>) => {
+                const v = e.target.value;
+                if (v === "day" || v === "week" || v === "month")
+                  setGranularity(v);
               }}
-            />
-          )}
+              title="Granularidad"
+            >
+              <option value="day">Día</option>
+              <option value="week">Semana</option>
+              <option value="month">Mes</option>
+            </select>
+          </div>
 
-          {/* Donut “realtime” */}
-          <div className="mt-6">
-            {donutLoading ? (
-              <PieChartSkeleton height={260} />
-            ) : donutData.length === 0 ? (
-              <div className="rounded-lg border border-dashed border-gray-200 dark:border-white/10 p-6 text-sm text-gray-500 dark:text-gray-400">
-                Sin datos para la donut.
+          {/* Checklist */}
+          <SubtagChecklist
+            items={subs}
+            selected={selected}
+            onToggle={toggleSub}
+            onToggleAll={toggleAll}
+          />
+
+          {/* Pie debajo del checklist */}
+          <div className="mt-4 rounded-lg border border-gray-100 dark:border-white/10 p-2">
+            {pieData.length === 0 ? (
+              <div className="rounded-md border border-dashed border-gray-200 dark:border-white/10 p-4 text-xs text-gray-500 dark:text-gray-400">
+                Sin datos para mostrar.
               </div>
             ) : (
               <PieChart
-                type="donut"
-                data={donutData}
-                height={260}
+                type="donut" // <- pie (no donut), como pediste
+                data={pieData}
+                height={220}
                 dataLabels="percent"
-                donutTotalLabel="Total"
                 legendPosition="bottom"
                 showLegend
               />
             )}
           </div>
+        </div>
+
+        {/* DERECHA: Línea comparativa (tiempo) */}
+        <div
+          className="
+            md:col-span-2 rounded-xl p-3
+            border border-gray-100 dark:border-white/10
+            bg-white/60 dark:bg-[#14181e]
+          "
+        >
+          {columns.length === 0 ? (
+            <div className="rounded-lg border border-dashed border-gray-200 dark:border-white/10 p-6 text-sm text-gray-500 dark:text-gray-400">
+              Selecciona subtags para comparar.
+            </div>
+          ) : (
+            <ComparativeLines
+              columns={columns}
+              categories={dates}
+              seriesByKey={series}
+              height={360}
+              smooth
+              type="line"
+            />
+          )}
         </div>
       </div>
     </div>

@@ -5,7 +5,6 @@ import type { ApexOptions } from "apexcharts";
 import dynamic from "next/dynamic";
 import { useTheme } from "next-themes";
 import { useMemo } from "react";
-import PieChartSkeleton from "@/components/skeletons/PieChartSkeleton";
 
 const ReactApexChart = dynamic(() => import("react-apexcharts"), { ssr: false });
 
@@ -25,22 +24,12 @@ type Props = {
   donutTotalFormatter?: (total: number) => string;
   optionsExtra?: ApexOptions;
   className?: string;
-
-  /** Skeleton */
-  isLoading?: boolean;
-  skeletonLegendItems?: number;
 };
 
 const DEFAULT_HEIGHT = 300;
 const DEFAULT_PALETTE = [
-  "#465FFF",
-  "#22C55E",
-  "#F59E0B",
-  "#F163AA",
-  "#EF4444",
-  "#10B981",
-  "#38BDF8",
-  "#A78BFA",
+  "#465FFF", "#22C55E", "#F59E0B", "#F163AA",
+  "#EF4444", "#10B981", "#38BDF8", "#A78BFA",
 ];
 
 export default function PieChart({
@@ -56,21 +45,59 @@ export default function PieChart({
   donutTotalFormatter,
   optionsExtra,
   className = "",
-  isLoading = false,
-  skeletonLegendItems,
 }: Props) {
   const { theme } = useTheme();
   const isDark = theme === "dark";
 
-  // Hooks SIEMPRE al principio (sin early returns)
   const labels = useMemo(() => data.map((d) => d.label), [data]);
   const series = useMemo(() => data.map((d) => d.value), [data]);
-  const total = useMemo(() => series.reduce((acc, v) => acc + v, 0), [series]);
+  const total  = useMemo(() => series.reduce((a, b) => a + b, 0), [series]);
 
   const colors = useMemo(() => {
     const byIndex = (i: number) => palette[i % palette.length];
     return data.map((d, i) => colorsByLabel?.[d.label] ?? byIndex(i));
   }, [data, colorsByLabel, palette]);
+
+  const pieOptions = useMemo(() => {
+    const base: NonNullable<ApexOptions["plotOptions"]>["pie"] = {
+      expandOnClick: true,
+    };
+
+    if (type === "donut") {
+      base.donut = {
+        size: "65%",
+        labels: {
+          show: true,
+          name: {
+            show: true,
+            fontSize: "12px",
+            color: isDark ? "#94a3b8" : "#6b7280",
+          },
+          value: {
+            show: true,
+            fontSize: "16px",
+            color: isDark ? "#e5e7eb" : "#111827",
+            formatter: (v: string) => Intl.NumberFormat().format(Number(v)),
+          },
+          total: {
+            show: true,
+            label: donutTotalLabel,
+            color: isDark ? "#94a3b8" : "#6b7280",
+            formatter: (w: unknown) => {
+              const gw = w as { globals?: { seriesTotals?: number[] } };
+              const sum = (gw.globals?.seriesTotals ?? []).reduce((a, b) => a + b, 0);
+              const value = sum || total;
+              return donutTotalFormatter
+                ? donutTotalFormatter(value)
+                : Intl.NumberFormat().format(value);
+            },
+          },
+        },
+      };
+    }
+
+    return base;
+  }, [type, isDark, donutTotalLabel, donutTotalFormatter, total]);
 
   const options: ApexOptions = useMemo(() => {
     const dlEnabled = dataLabels !== "none";
@@ -104,90 +131,37 @@ export default function PieChart({
         style: { fontSize: "12px" },
       },
       colors,
-      plotOptions: {
-        pie: {
-          expandOnClick: true,
-          donut:
-            type === "donut"
-              ? {
-                  size: "65%",
-                  labels: {
-                    show: true,
-                    name: {
-                      show: true,
-                      fontSize: "12px",
-                      color: isDark ? "#94a3b8" : "#6b7280",
-                    },
-                    value: {
-                      show: true,
-                      fontSize: "16px",
-                      color: isDark ? "#e5e7eb" : "#111827",
-                      formatter: (v: string) =>
-                        Intl.NumberFormat().format(Number(v)),
-                    },
-                    total: {
-                      show: true,
-                      label: donutTotalLabel,
-                      color: isDark ? "#94a3b8" : "#6b7280",
-                      formatter: (w: unknown) => {
-                        const gw = w as { globals?: { seriesTotals?: number[] } };
-                        const sum = (gw.globals?.seriesTotals ?? []).reduce(
-                          (a, b) => a + b,
-                          0
-                        );
-                        const value = sum || total;
-                        return donutTotalFormatter
-                          ? donutTotalFormatter(value)
-                          : Intl.NumberFormat().format(value);
-                      },
-                    },
-                  },
-                }
-              : undefined,
-        },
-      },
+      plotOptions: { pie: pieOptions },
       stroke: { width: 1, colors: [isDark ? "#0b0f14" : "#ffffff"] },
       states: { hover: { filter: { type: "none" } } },
     };
     return { ...base, ...(optionsExtra ?? {}) };
   }, [
-    colors,
-    dataLabels,
-    donutTotalFormatter,
-    donutTotalLabel,
-    height,
-    isDark,
-    labels,
-    legendPosition,
-    optionsExtra,
-    showLegend,
-    total,
-    type,
+    colors, dataLabels, height, isDark, labels,
+    legendPosition, optionsExtra, pieOptions, showLegend, type,
   ]);
 
-  // No useMemo: string barato de computar, y así evitamos hooks condicionales
   const key =
     `${type}-${isDark ? "dark" : "light"}-` +
     `${labels.join("|")}__${series.join(",")}`;
 
+  // Extra: evita montar Apex con datos vacíos (opcional pero sano)
+  if (series.length === 0) {
+    return (
+      <div className={`w-full overflow-hidden ${className}`}>
+        <div
+          className="rounded-lg border border-dashed border-gray-200 dark:border-white/10 p-6 text-sm text-gray-500 dark:text-gray-400"
+          style={{ height }}
+        >
+          Sin datos para mostrar.
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className={`w-full overflow-hidden ${className}`}>
-      {isLoading ? (
-        <PieChartSkeleton
-          height={height}
-          showLegend={showLegend}
-          legendItems={skeletonLegendItems ?? 3}
-          className=""
-        />
-      ) : (
-        <ReactApexChart
-          key={key}
-          options={options}
-          series={series}
-          type={type}
-          height={height}
-        />
-      )}
+      <ReactApexChart key={key} options={options} series={series} type={type} height={height} />
     </div>
   );
 }
