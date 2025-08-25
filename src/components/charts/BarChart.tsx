@@ -13,7 +13,7 @@ export type BarSeries = { name: string; data: number[] };
 type Props = {
   categories: string[];
   series: BarSeries[]; // 1..N series
-  height?: number; // default 180
+  height?: number | string;  // default 180
   className?: string;
 
   /** Colores por nombre de serie (tiene prioridad) */

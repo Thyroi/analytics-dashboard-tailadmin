@@ -368,3 +368,134 @@ html:not(.dark) .apexcharts-tooltip {
   border-radius: 12px !important;
   box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15) !important;
 }
+
+/***** ===== KPI STYLES (corregidas) ===== *****/
+
+/* Grid contenedor de KPIs: modo auto y modo 1 columna */
+.kpi-grid {
+  display: grid;
+  gap: 1rem; /* ~16px */
+}
+.kpi-grid--auto {
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+.kpi-grid--one {
+  grid-template-columns: 1fr;
+}
+
+/* Tarjeta KPI con container queries SOLO por ancho */
+.kpi-card {
+  border-radius: 1rem; /* rounded-2xl */
+  border: 1px solid rgba(17, 24, 39, 0.08); /* gris claro */
+  background: #fff;
+  padding: 1rem; /* p-4 */
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: .75rem;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+
+  /* ✅ importante: SOLO ancho, para no romper el alto */
+  container-type: inline-size;
+
+  /* un mínimo visual para que no se “aplane” jamás */
+  min-height: 112px;
+}
+.dark .kpi-card {
+  border-color: rgba(255, 255, 255, .1);
+  background: #14181e;
+}
+
+/* Header (título) */
+.kpi-title {
+  color: #6b7280; /* text-gray-500 */
+  font-size: var(--text-theme-sm);
+  line-height: var(--text-theme-sm--line-height);
+}
+.dark .kpi-title { color: #9ca3af; }
+@media (min-width: var(--breakpoint-xl)) {
+  .kpi-title {
+    font-size: var(--text-theme-xl);
+    line-height: var(--text-theme-xl--line-height);
+  }
+}
+
+/* Fila valor + delta (por defecto en fila) */
+.kpi-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: .5rem;
+  min-width: 0;
+}
+
+/* Valor (número grande) */
+.kpi-value {
+  font-weight: 600;
+  color: #111827;
+  font-size: var(--text-title-sm);
+  line-height: var(--text-title-sm--line-height);
+  min-width: 0;
+}
+.dark .kpi-value { color: #fff; }
+@media (min-width: var(--breakpoint-md)) {
+  .kpi-value {
+    font-size: var(--text-title-md);
+    line-height: var(--text-title-md--line-height);
+  }
+}
+@media (min-width: var(--breakpoint-xl)) {
+  .kpi-value {
+    font-size: var(--text-title-lg);
+    line-height: var(--text-title-lg--line-height);
+  }
+}
+@media (min-width: var(--breakpoint-2xl)) {
+  .kpi-value {
+    font-size: var(--text-title-xl);
+    line-height: var(--text-title-xl--line-height);
+  }
+}
+
+/* Delta (badge) + variantes */
+.kpi-delta {
+  white-space: nowrap;
+  border-radius: .5rem;
+  padding: .25rem .5rem;
+  font-size: var(--text-theme-xs);
+  line-height: var(--text-theme-xs--line-height);
+}
+@media (min-width: var(--breakpoint-md)) {
+  .kpi-delta {
+    font-size: var(--text-theme-sm);
+    line-height: var(--text-theme-sm--line-height);
+  }
+}
+.kpi-delta--up   { background: #ecfdf5; color: #059669; } /* green-50/600 */
+.kpi-delta--down { background: #fef2f2; color: #dc2626; } /* red-50/600 */
+
+/* ===== Mini-breakpoints por tarjeta (SOLO por ancho, sin comas) ===== */
+/* Si la tarjeta es estrecha en ANCHO (<120px) -> columna y tamaño menor */
+@container (inline-size < 120px) {
+  .kpi-row {
+    grid-template-columns: 1fr; /* columna */
+    align-items: start;
+    row-gap: .375rem;
+  }
+  .kpi-delta { justify-self: start; }
+  .kpi-value {
+    font-size: var(--text-title-sm);
+    line-height: var(--text-title-sm--line-height);
+  }
+}
+
+/* Más compacto si la tarjeta cae por debajo de 260px de ancho */
+@container (inline-size < 260px) {
+  .kpi-value {
+    font-size: var(--text-theme-xl);
+    line-height: var(--text-theme-xl--line-height);
+  }
+}

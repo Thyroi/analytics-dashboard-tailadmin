@@ -23,7 +23,7 @@ import WordCloudHeat from "./WordCloudHeat";
 
 const PROJECT = "project_huelva";
 
-export default function AnalyticsTagsSection() {
+export default function AnalyticsTagsSection({ className = "" }: { className?: string }) {
   // ⬇️ mostrar skeleton por 3s
   const [showSkeleton, setShowSkeleton] = useState(true);
   useEffect(() => {
@@ -40,12 +40,12 @@ export default function AnalyticsTagsSection() {
   const [top, setTop] = useState<TagCountItem[]>([]);
   const [subs, setSubs] = useState<TagCountItem[]>([]);
 
+  // Top tags
   useEffect(() => {
-    tags({ projectId: PROJECT, start: range.start, end: range.end }).then(
-      setTop
-    );
+    tags({ projectId: PROJECT, start: range.start, end: range.end }).then(setTop);
   }, [range.start, range.end]);
 
+  // Subtags del tag seleccionado
   useEffect(() => {
     if (!selectedTag) {
       setSubs([]);
@@ -63,6 +63,7 @@ export default function AnalyticsTagsSection() {
     });
   }, [selectedTag, range.start, range.end]);
 
+  // Series para la comparativa
   const [series, setSeries] = useState<Record<string, TrendPoint[]>>({});
   useEffect(() => {
     if (subSelected.length === 0) {
@@ -90,18 +91,14 @@ export default function AnalyticsTagsSection() {
 
   const cloudSelect = (p: string) => setSelectedTag(p);
   const toggleSub = (p: string) =>
-    setSubSelected((s) =>
-      s.includes(p) ? s.filter((x) => x !== p) : [...s, p]
-    );
+    setSubSelected((s) => (s.includes(p) ? s.filter((x) => x !== p) : [...s, p]));
   const toggleAll = (checked: boolean) =>
     setSubSelected(checked ? subs.map((i) => i.tagPath) : []);
 
   const dates = useMemo(() => {
     if (granularity !== "day") {
       const keys = new Set<string>();
-      Object.values(series).forEach((arr) =>
-        arr.forEach((p) => keys.add(p.date))
-      );
+      Object.values(series).forEach((arr) => arr.forEach((p) => keys.add(p.date)));
       return [...keys].sort();
     }
     return listDays(new Date(range.start), new Date(range.end));
@@ -112,16 +109,18 @@ export default function AnalyticsTagsSection() {
     [subSelected]
   );
 
-  // ⬇️ mientras “cargamos”
+  // ⬇️ Mientras “cargamos”
   if (showSkeleton) return <AnalyticsTagsSkeleton />;
 
   return (
     <div
-      className="
+      className={`
         rounded-2xl shadow-sm
         border border-gray-200 dark:border-white/10
         bg-white dark:bg-[#14181e]
-      "
+        h-full flex flex-col
+        ${className}
+      `}
     >
       {/* Header */}
       <div
@@ -166,8 +165,7 @@ export default function AnalyticsTagsSection() {
             value={granularity}
             onChange={(e: ChangeEvent<HTMLSelectElement>) => {
               const v = e.target.value;
-              if (v === "day" || v === "week" || v === "month")
-                setGranularity(v);
+              if (v === "day" || v === "week" || v === "month") setGranularity(v);
             }}
             title="Granularidad"
           >
@@ -178,68 +176,63 @@ export default function AnalyticsTagsSection() {
         </div>
       </div>
 
-      {/* Cloud + Chips */}
-      <div className="px-5 pt-4 pb-2">
-        <div className="rounded-xl px-4 py-3 dark:border-white/10">
-          <WordCloudHeat
-            items={top}
-            onSelect={cloudSelect}
-            selected={selectedTag}
-          />
+      {/* Body */}
+      <div className="flex-1 min-h-0 flex flex-col">
+        {/* Cloud + Chips */}
+        <div className="px-5 pt-4 pb-2">
+          <div className="rounded-xl px-4 py-3 dark:border-white/10">
+            <WordCloudHeat items={top} onSelect={cloudSelect} selected={selectedTag} />
+          </div>
+
+          <div className="mt-3">
+            <HeatChips items={top} onSelect={cloudSelect} selected={selectedTag} />
+          </div>
         </div>
 
-        <div className="mt-3">
-          <HeatChips
-            items={top}
-            onSelect={cloudSelect}
-            selected={selectedTag}
-          />
-        </div>
-      </div>
-
-      {/* Panel inferior */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 px-5 pb-5">
-        {/* Izquierda: checklist */}
-        <div
-          className="
-            md:col-span-1 rounded-xl px-4 py-4
-            border border-gray-100 dark:border-white/10
-            bg-white/60 dark:bg-[#14181e]
-          "
-        >
-          <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-3">
-            Subtags {selectedTag ? `de ${selectedTag}` : ""}
-          </h3>
-          <SubtagChecklist
-            items={subs}
-            selected={subSelected}
-            onToggle={toggleSub}
-            onToggleAll={toggleAll}
-          />
-        </div>
-
-        {/* Derecha: línea comparativa */}
-        <div
-          className="
-            md:col-span-2 rounded-xl p-3
-            border border-gray-100 dark:border-white/10
-            bg-white/60 dark:bg-[#14181e]
-          "
-        >
-          {columns.length === 0 ? (
-            <div className="rounded-lg border border-dashed border-gray-200 dark:border-white/10 p-6 text-sm text-gray-500 dark:text-gray-400">
-              Selecciona subtags para comparar.
-            </div>
-          ) : (
-            <ComparativeLines
-              columns={columns}
-              categories={dates}
-              seriesByKey={series}
-              height={360}
-              smooth
-              type="line"
+        {/* Panel inferior */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 px-5 pb-5 mt-auto">
+          {/* Izquierda: checklist */}
+          <div
+            className="
+              md:col-span-1 rounded-xl px-4 py-4
+              border border-gray-100 dark:border-white/10
+              bg-white/60 dark:bg-[#14181e]
+            "
+          >
+            <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-3">
+              Subtags {selectedTag ? `de ${selectedTag}` : ""}
+            </h3>
+            <SubtagChecklist
+              items={subs}
+              selected={subSelected}
+              onToggle={toggleSub}
+              onToggleAll={toggleAll}
             />
-          )}
+          </div>
+
+          {/* Derecha: línea comparativa */}
+          <div
+            className="
+              md:col-span-2 rounded-xl p-3
+              border border-gray-100 dark:border-white/10
+              bg-white/60 dark:bg-[#14181e]
+            "
+          >
+            {columns.length === 0 ? (
+              <div className="rounded-lg border border-dashed border-gray-200 dark:border-white/10 p-6 text-sm text-gray-500 dark:text-gray-400">
+                Selecciona subtags para comparar.
+              </div>
+            ) : (
+              <ComparativeLines
+                columns={columns}
+                categories={dates}
+                seriesByKey={series}
+                height={360}
+                smooth
+                type="line"
+              />
+            )}
+          </div>
         </div>
       </div>
     </div>

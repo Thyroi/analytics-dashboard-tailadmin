@@ -18,12 +18,16 @@ export default function KPICard({
   const isDown = deltaVariant === "down";
 
   return (
-    <div className={`card p-4 flex flex-col justify-between ${className}`}>
-      <div className="flex items-start justify-between">
-        <div className="text-sm text-gray-500">{title}</div>
+    <div className={`kpi-card ${className}`}>
+      {/* Header */}
+      <div className="flex items-start justify-between gap-3 min-w-0">
+        <div className="kpi-title" title={title}>
+          {title}
+        </div>
         {icon ? (
           <div
-            className="h-8 w-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center
+            className="hidden md:flex h-8 w-8 shrink-0 rounded-xl
+                       bg-blue-50 text-blue-600 items-center justify-center
                        dark:bg-white/5 dark:text-blue-300"
             aria-hidden="true"
           >
@@ -32,12 +36,16 @@ export default function KPICard({
         ) : null}
       </div>
 
-      <div className="mt-1 flex items-end justify-between">
-        <div className="text-2xl font-semibold text-gray-900 dark:text-white">{value}</div>
+      {/* Valor + Delta */}
+      <div className="kpi-row">
+        <div className="kpi-value" title={value}>
+          {value}
+        </div>
         <div
-          className={`text-xs font-medium px-2 py-1 rounded-lg ${
-            isDown ? "bg-red-50 text-red-600" : "bg-green-50 text-green-600"
-          }`}
+          className={`kpi-delta ${
+            isDown ? "kpi-delta--down" : "kpi-delta--up"
+          } shrink-0`}
+          title={delta}
         >
           {delta}
         </div>
