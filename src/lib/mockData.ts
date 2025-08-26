@@ -169,3 +169,34 @@ export function getLastDate(series: SeriesDict = SERIES): string {
   }
   return last;
 }
+
+const TAILWIND_TO_HEX: Record<string, string> = {
+  "text-blue-600": "#2563EB",
+  "text-emerald-600": "#059669",
+  "text-amber-600": "#D97706",
+  "text-rose-600": "#E11D48",
+  "text-slate-700": "#334155",
+  "text-fuchsia-600": "#C026D3",
+  "text-orange-600": "#EA580C",
+  "text-teal-600": "#0D9488",
+  "text-violet-600": "#7C3AED",
+  "text-indigo-600": "#4F46E5",
+  "text-gray-600": "#4B5563",       // fallback
+  "text-gray-700": "#374151",
+};
+
+/** Extrae el primer token "text-*-N" de meta.color y lo pasa a HEX */
+function metaToHex(meta: TagMeta): string {
+  const token = meta.color.split(/\s+/).find((c) => c.startsWith("text-"));
+  return (token && TAILWIND_TO_HEX[token]) || TAILWIND_TO_HEX["text-gray-600"];
+}
+
+/** Colores HEX por tag raíz (clave = id del tag en SERIES) */
+export const TAG_COLOR_HEX_BY_TAG: Record<string, string> = Object.fromEntries(
+  Object.entries(TAG_META).map(([tag, meta]) => [tag, metaToHex(meta)])
+);
+
+/** Colores HEX por etiqueta mostrada (clave = meta.label) */
+export const TAG_COLOR_HEX_BY_LABEL: Record<string, string> = Object.fromEntries(
+  Object.values(TAG_META).map((meta) => [meta.label, metaToHex(meta)])
+);

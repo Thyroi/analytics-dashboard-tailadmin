@@ -6,7 +6,7 @@ import { DEFAULT_TAG_META, TAG_META } from "@/lib/mockData";
 
 export default function TagsDashboard() {
   return (
-    <main className="px-6 py-8">
+    <main className="py-8">
       {/* Header */}
       <Header
         title="Top tags con más búsquedas"

@@ -1,14 +1,14 @@
 "use client";
 
-import * as React from "react";
-import TagStat from "@/components/dashboard/TagsStat";
-import GranularityTabs from "./GranularityTabs";
-import PagerDots from "./PagerDots";
-import { useTopTags } from "@/hooks/useTopTags";
 import LineChart from "@/components/charts/LineChart";
+import * as React from "react";
+import GranularityTabs from "./GranularityTabs";
+import TagsDrawer from "./TagsDrawer";
+
+import Header from "@/components/common/Header";
+import { useTopTags } from "@/hooks/useTopTags";
 import { buildTrendForTags } from "@/lib/chatbot/tags";
-import { SERIES } from "@/lib/mockData";
-import SectionTitle from "@/components/common/SectionTitle";
+import { SERIES, TAG_COLOR_HEX_BY_LABEL, TAG_META } from "@/lib/mockData";
 
 type HeroIcon = React.ComponentType<React.SVGProps<SVGSVGElement>>;
 type TagMetaEntry = { label: string; icon: HeroIcon; color: string };
@@ -36,65 +36,44 @@ export default function TopTagsSection({
     [visibleTags, gran]
   );
 
+  const colorsByName = React.useMemo(() => TAG_COLOR_HEX_BY_LABEL, []);
+
   return (
     <section className="mb-10">
+      {/* Header */}
       <div className="flex items-center justify-between gap-3 mb-4">
-        <div>
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-            {title}
-          </h2>
-          <p className="text-sm text-gray-600 dark:text-gray-400">
-            {subtitle} — {rangeLabel}
-          </p>
-        </div>
+        <Header title={title} subtitle={`${subtitle} — ${rangeLabel}`} />
         <GranularityTabs value={gran} onChange={setGran} />
       </div>
 
-      <div className="grid grid-cols-12 gap-6 items-stretch">
-        {/* 1/3: lista */}
-        <div className="col-span-12 lg:col-span-4">
-          {view.map(({ tag, total }) => {
-            const meta = tagMeta[tag] ?? defaultTagMeta;
-            return (
-              <TagStat
-                key={tag}
-                label={meta.label}
-                count={total}
-                icon={meta.icon}
-                iconClassName={meta.color}
-              />
-            );
-          })}
-          <PagerDots page={page} pages={pages} onPrev={prev} onNext={next} />
-        </div>
+      <div className="space-y-6">
+        {/* Drawer de tags con paginado */}
+        <TagsDrawer
+          rows={view}
+          tagMeta={tagMeta}
+          defaultTagMeta={defaultTagMeta}
+          page={page}
+          pages={pages}
+          onPrev={prev}
+          onNext={next}
+        />
 
-        {/* 2/3: gráfica (sin fondo/borde) */}
-        <div className="col-span-12 lg:col-span-8 flex flex-col">
-          <div className="p-2 flex flex-col flex-1">
-            <div className="mb-3">
-              <SectionTitle
-                title="Tendencia por tags (líneas)"
-                subtitle="Comparación de vistas por tag en el tiempo"
-              />
-            </div>
-
-            {/* Wrapper del chart: ocupa todo el alto disponible y tiene min-height responsivo */}
-            <div className="flex-1 min-h-0 h-full min-h-[320px] sm:min-h-[360px] lg:min-h-[320px]">
-              <LineChart
-                type="area"
-                smooth
-                categories={trend.categories}
-                series={trend.series.map((s) => ({
-                  name: tagMeta[s.name]?.label ?? s.name,
-                  data: s.data,
-                }))}
-                showLegend
-                legendPosition="bottom"
-                height="100%"   // llena el contenedor
-                className="h-full"
-              />
-            </div>
-          </div>
+        {/* GRÁFICA */}
+        <div className="mt-3 w-full h-[320px] sm:h-[360px] lg:h-[420px]">
+          <LineChart
+            type="area"
+            smooth
+            categories={trend.categories}
+            series={trend.series.map((s) => {
+              const meta = TAG_META[s.name] ?? defaultTagMeta;
+              return { name: meta.label, data: s.data };
+            })}
+            showLegend
+            legendPosition="bottom"
+            height="100%"
+            className="h-full"
+            colorsByName={colorsByName}
+          />
         </div>
       </div>
     </section>
