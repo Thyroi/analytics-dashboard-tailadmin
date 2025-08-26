@@ -1,11 +1,61 @@
+// src/lib/mockData.ts
 // Datos "quemados": series diarias por tagPath
 export type SeriesDict = Record<string, Record<string, number>>;
 
-/** ---------- Configuración del mock ---------- */
+// ---------- Configuración del mock ----------
 const START = "2025-05-01";
 const END   = "2025-08-31";
 
-/** 10 tags con ≥4 subtags cada uno */
+// Heroicons (para la metadata de cada tag raíz)
+import type * as React from "react";
+import {
+  ShoppingBagIcon,
+  BuildingOfficeIcon,
+  TruckIcon,
+  MusicalNoteIcon,
+  ShieldCheckIcon,
+  SparklesIcon,
+  AcademicCapIcon,
+  SunIcon,
+  MapPinIcon,
+  QuestionMarkCircleIcon,
+} from "@heroicons/react/24/outline";
+
+// ---------- Metadata UI por tag raíz ----------
+export type TagMeta = {
+  /** Label legible (puedes cambiar a lo que quieras mostrar) */
+  label: string;
+  /** Componente de ícono (Heroicons) */
+  icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
+  /** Clases Tailwind para el “chip” del ícono */
+  color: string;
+};
+
+/**
+ * TAG_META: estilos e íconos por cada tag raíz.
+ * Así evitas definirlos en las pages.
+ */
+export const TAG_META: Record<string, TagMeta> = {
+  playa:        { label: "Playa",        icon: SunIcon,            color: "bg-blue-50 text-blue-600 dark:bg-white/5 dark:text-blue-300" },
+  museos:       { label: "Museos",       icon: AcademicCapIcon,    color: "bg-emerald-50 text-emerald-600 dark:bg-white/5 dark:text-emerald-300" },
+  gastronomia:  { label: "Gastronomía",  icon: SparklesIcon,       color: "bg-amber-50 text-amber-600 dark:bg-white/5 dark:text-amber-300" },
+  alojamiento:  { label: "Alojamiento",  icon: BuildingOfficeIcon, color: "bg-rose-50 text-rose-600 dark:bg-white/5 dark:text-rose-300" },
+  transporte:   { label: "Transporte",   icon: TruckIcon,          color: "bg-slate-100 text-slate-700 dark:bg-white/5 dark:text-slate-200" },
+  eventos:      { label: "Eventos",      icon: MusicalNoteIcon,    color: "bg-fuchsia-50 text-fuchsia-600 dark:bg-white/5 dark:text-fuchsia-300" },
+  naturaleza:   { label: "Naturaleza",   icon: MapPinIcon,         color: "bg-orange-50 text-orange-600 dark:bg-white/5 dark:text-orange-300" },
+  compras:      { label: "Compras",      icon: ShoppingBagIcon,    color: "bg-teal-50 text-teal-600 dark:bg-white/5 dark:text-teal-300" },
+  deportes:     { label: "Deportes",     icon: SparklesIcon,       color: "bg-violet-50 text-violet-600 dark:bg-white/5 dark:text-violet-300" },
+  seguridad:    { label: "Seguridad",    icon: ShieldCheckIcon,    color: "bg-indigo-50 text-indigo-600 dark:bg-white/5 dark:text-indigo-300" },
+};
+
+// Fallback para tags no mapeados (por si agregas más en el futuro)
+export const DEFAULT_TAG_META: TagMeta = {
+  label: "Desconocido",
+  icon: QuestionMarkCircleIcon,
+  color: "bg-gray-100 text-gray-600 dark:bg-white/5 dark:text-gray-300",
+};
+
+// ---------- Especificación de tags y subtags ----------
 const TAG_SPECS: Array<{ id: string; subtags: string[] }> = [
   { id: "playa",        subtags: ["limpieza", "ubicacion", "chiringuitos", "accesos", "banderaAzul"] },
   { id: "museos",       subtags: ["horarios", "precios", "entradas", "exposiciones", "ubicacion"] },
@@ -19,7 +69,7 @@ const TAG_SPECS: Array<{ id: string; subtags: string[] }> = [
   { id: "seguridad",    subtags: ["policia", "hospitales", "farmacias", "emergencias", "recomendaciones"] },
 ];
 
-/** ---------- Utilidades deterministas (PRNG) ---------- */
+// ---------- Utilidades deterministas (PRNG) ----------
 function hashStr(s: string): number {
   let h = 2166136261 >>> 0;
   for (let i = 0; i < s.length; i++) {
@@ -47,7 +97,7 @@ function dateRangeDays(startISO: string, endISO: string): string[] {
   return out;
 }
 
-/** ---------- Generación de las series ---------- */
+// ---------- Generación de las series ----------
 function buildMockSeries(): SeriesDict {
   const dates = dateRangeDays(START, END);
   const series: SeriesDict = {};
@@ -103,11 +153,19 @@ function buildMockSeries(): SeriesDict {
   return series;
 }
 
-/** ---------- Export: SERIES quemado ---------- */
+// ---------- Export: SERIES quemado ----------
 export const SERIES: SeriesDict = buildMockSeries();
 
-/** Sugerencia:
- *  - START/END controlan el rango (día/semana/mes OK).
- *  - TAG_SPECS te permite añadir/quitar tags o subtags rápido.
- *  - Las series son deterministas (misma salida en cada build).
- */
+/** Helpers opcionales (por si te sirven en más lugares) */
+
+/** Última fecha disponible en SERIES (mirando solo tags raíz) */
+export function getLastDate(series: SeriesDict = SERIES): string {
+  let last = "";
+  for (const [key, byDate] of Object.entries(series)) {
+    if (key.includes(".")) continue;
+    for (const date of Object.keys(byDate)) {
+      if (date > last) last = date;
+    }
+  }
+  return last;
+}

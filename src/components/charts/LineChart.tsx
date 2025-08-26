@@ -1,4 +1,3 @@
-// src/components/charts/LineChart.tsx
 "use client";
 
 import type { ApexOptions } from "apexcharts";
@@ -8,11 +7,8 @@ import { useMemo } from "react";
 
 export type LineSeries = { name: string; data: number[] };
 
-const ReactApexChart = dynamic(() => import("react-apexcharts"), {
-  ssr: false,
-});
+const ReactApexChart = dynamic(() => import("react-apexcharts"), { ssr: false });
 
-const DEFAULT_HEIGHT = 310;
 const DEFAULT_PALETTE = [
   "#465FFF",
   "#22C55E",
@@ -26,7 +22,8 @@ type Props = {
   categories: string[];
   series: LineSeries[];
   type?: "line" | "area";
-  height?: number;
+  /** Puede ser número (px) o "100%" para llenar el contenedor */
+  height?: number | string;
   palette?: readonly string[];
   colorsByName?: Record<string, string>;
   showLegend?: boolean;
@@ -40,7 +37,7 @@ export default function LineChart({
   categories,
   series,
   type = "line",
-  height = DEFAULT_HEIGHT,
+  height = 310, // valor por defecto; puedes pasar "100%"
   palette = DEFAULT_PALETTE,
   colorsByName,
   showLegend = true,
@@ -68,12 +65,12 @@ export default function LineChart({
       chart: {
         fontFamily: "Outfit, sans-serif",
         type,
-        height,
+        height,                         // ← puede ser "100%"
         background: "transparent",
         toolbar: { show: false },
-        redrawOnParentResize: false,
+        redrawOnParentResize: true,     // ← importante para 100%
         parentHeightOffset: 0,
-        foreColor, // labels/legend/tooltip coherentes con el tema
+        foreColor,                      // labels/legend/tooltip coherentes con el tema
       },
       stroke: { curve: smooth ? "smooth" : "straight", width: 2 },
       markers: { size: 0, hover: { sizeOffset: 3 } },
@@ -92,25 +89,15 @@ export default function LineChart({
         labels: { style: { fontSize: "12px", colors: axisLabelColor } },
         axisBorder: { show: true, color: gridColor },
         axisTicks: { show: true, color: gridColor },
-        tickAmount: undefined, // dejar que Apex decida; se puede ajustar por rango
       },
       yaxis: {
         labels: { style: { fontSize: "12px", colors: axisLabelColor } },
         decimalsInFloat: 0,
       },
-      tooltip: {
-        enabled: true,
-        shared: true,
-        theme: isDark ? "dark" : "light",
-      },
-      legend: {
-        show: showLegend,
-        position: legendPosition,
-        labels: { colors: foreColor },
-      },
+      tooltip: { enabled: true, shared: true, theme: isDark ? "dark" : "light" },
+      legend: { show: showLegend, position: legendPosition, labels: { colors: foreColor } },
       colors,
     };
-
     return { ...base, ...(optionsExtra ?? {}) };
   }, [
     axisLabelColor,
@@ -130,21 +117,15 @@ export default function LineChart({
   // Re-render controlado cuando cambian props claves/tema
   const key = useMemo(
     () =>
-      `${type}-${smooth ? "smooth" : "straight"}-${
-        isDark ? "dark" : "light"
-      }|${categories.join(",")}|${series.map((s) => s.name).join(",")}`,
+      `${type}-${smooth ? "smooth" : "straight"}-${isDark ? "dark" : "light"}|${categories.join(
+        ","
+      )}|${series.map((s) => s.name).join(",")}`,
     [type, smooth, isDark, categories, series]
   );
 
   return (
-    <div className={`w-full overflow-hidden ${className}`}>
-      <ReactApexChart
-        key={key}
-        options={options}
-        series={series}
-        type={type}
-        height={height}
-      />
+    <div className={`w-full ${typeof height === "string" ? "h-full" : ""} overflow-hidden ${className}`}>
+      <ReactApexChart key={key} options={options} series={series} type={type} height={height} />
     </div>
   );
 }
