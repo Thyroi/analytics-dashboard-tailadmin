@@ -12,7 +12,7 @@ const SectionTitle: React.FC<SectionTitleProps> = ({
   className = "",
 }) => {
   return (
-    <header className={`mb-8 ${className}`}>
+    <header className={`${className}`}>
       <h3 className="text-base font-semibold text-gray-900 dark:text-white">
         {title}
       </h3>
