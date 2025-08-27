@@ -15,7 +15,7 @@ export default function SubtagsSection() {
     rows, donutData, colorsByLabel, totalVisible,
     donutHeight, compareHeight, subtitleSuffix,
     tagOptions, donutOptions,
-    windowDates, // ⬅️ fechas exactas para pasar a la gráfica
+    windowDates, dateRangeLabel,
   } = useSubtagsData();
 
   return (
@@ -75,9 +75,9 @@ export default function SubtagsSection() {
               colorsByLabel={colorsByLabel}
               height={compareHeight}
               title="Comparativa de subtags (líneas)"
-              subtitle={`Tendencia por subtag — ${subtitleSuffix}`}
+              subtitle={`Tendencia por subtag — ${subtitleSuffix}${dateRangeLabel ? ` · ${dateRangeLabel}` : ""}`}
               maxSeries={6}
-              windowDates={windowDates} // ⬅️ MISMA ventana que donut/lista
+              windowDates={windowDates}
             />
           </div>
         </div>

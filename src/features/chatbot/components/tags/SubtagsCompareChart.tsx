@@ -10,17 +10,12 @@ import {
 } from "@/lib/chatbot/tags";
 import {
   generateDistinctColors,
-  makeDayTickFormatter,
+  makeDayTickFormatterNumbersOnly,
   makeWeekTickFormatter,
   makeMonthTickFormatter,
 } from "@/lib/chatbot/trendUtils";
 
-/* ===== Tipos ===== */
-export type SubtagRow = {
-  key: string;
-  label: string;
-  total: number;
-};
+export type SubtagRow = { key: string; label: string; total: number };
 
 type Props = {
   rows: SubtagRow[];
@@ -30,7 +25,6 @@ type Props = {
   maxSeries?: number;
   title?: string;
   subtitle?: string;
-  /** Fechas diarias exactas de la ventana (para alinear 1:1 con lista/donut). */
   windowDates?: string[];
 };
 
@@ -47,7 +41,6 @@ export default function SubtagsCompareChart({
   const selected = React.useMemo(() => rows.slice(0, maxSeries), [rows, maxSeries]);
   const keys = React.useMemo(() => selected.map((r) => r.key), [selected]);
 
-  // Trend: usar exactamente la ventana si viene; si no, fallback.
   const trend = React.useMemo(
     () =>
       windowDates && windowDates.length > 0
@@ -73,11 +66,10 @@ export default function SubtagsCompareChart({
     return generateDistinctColors(labels);
   }, [colorsByLabel, prettySeries]);
 
-  // ===== NUEVO: formatters de eje X según granularidad =====
   const xLabelFormatter = React.useMemo(() => {
-    if (gran === "day")   return makeDayTickFormatter(trend.categories);
-    if (gran === "week")  return makeWeekTickFormatter();
-    return makeMonthTickFormatter();
+    if (gran === "day")   return makeDayTickFormatterNumbersOnly(trend.categories);
+    if (gran === "week")  return makeWeekTickFormatter(trend.categories);
+    return makeMonthTickFormatter(trend.categories);
   }, [gran, trend.categories]);
 
   return (
@@ -97,7 +89,11 @@ export default function SubtagsCompareChart({
         legendPosition="bottom"
         colorsByName={internalColorsByName}
         optionsExtra={{
-          xaxis: { labels: { formatter: xLabelFormatter } },
+          xaxis: {
+            type: "category",
+            categories: trend.categories,
+            labels: { formatter: xLabelFormatter },
+          },
           fill: { type: "gradient", gradient: { opacityFrom: 0.45, opacityTo: 0 } },
         }}
       />

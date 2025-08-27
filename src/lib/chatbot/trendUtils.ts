@@ -21,8 +21,8 @@ export function addDays(dt: Date, n: number): Date {
   return c;
 }
 export function startOfWeekUTC(dt: Date): Date {
-  const day = dt.getUTCDay();            // 0..6 (Domingo=0)
-  const offset = (day + 6) % 7;          // 0->6, 1->0, ..., 6->5
+  const day = dt.getUTCDay();
+  const offset = (day + 6) % 7;
   return addDays(new Date(Date.UTC(dt.getUTCFullYear(), dt.getUTCMonth(), dt.getUTCDate())), -offset);
 }
 export function startOfMonthUTC(dt: Date): Date {
@@ -35,7 +35,6 @@ export function endOfMonthUTC(dt: Date): Date {
 
 /* ========= Labels ========= */
 export function fmtDateLabel(bucket: string): string {
-  // YYYY-MM-DD -> "dd MMM"
   if (/^\d{4}-\d{2}-\d{2}$/.test(bucket)) {
     const dt = parseISO(bucket)!;
     return dt.toLocaleDateString(undefined, { day: "2-digit", month: "short" });
@@ -49,8 +48,6 @@ export function sumDaily(tags: string[], isoDay: string): number {
   for (const t of tags) s += SERIES[t]?.[isoDay] ?? 0;
   return s;
 }
-
-/** Ventana ANTERIOR robusta (día/semana/mes) con mismo largo que `categories`. */
 export function buildPrevWindowFallback(
   tags: string[],
   categories: string[],
@@ -58,7 +55,6 @@ export function buildPrevWindowFallback(
 ): number[] {
   const n = categories.length;
   if (n === 0) return [];
-
   const firstKey = categories[0];
   const firstDt = parseISO(firstKey) ?? new Date(Date.parse(firstKey));
 
@@ -85,7 +81,6 @@ export function buildPrevWindowFallback(
     return out;
   }
 
-  // month
   const firstMonthStart = startOfMonthUTC(firstDt);
   const prevFirst = new Date(Date.UTC(firstMonthStart.getUTCFullYear(), firstMonthStart.getUTCMonth() - n, 1));
   const out: number[] = [];
@@ -103,7 +98,6 @@ export function buildPrevWindowFallback(
 
 /* ========= Color helpers ========= */
 function clamp01(x: number): number { return Math.min(1, Math.max(0, x)); }
-
 export function hexToHsl(hex: string): { h: number; s: number; l: number } {
   const m = hex.replace("#", "");
   const num = parseInt(m.length === 3 ? m.split("").map((c) => c + c).join("") : m, 16);
@@ -124,7 +118,6 @@ export function hexToHsl(hex: string): { h: number; s: number; l: number } {
   }
   return { h, s: s * 100, l: l * 100 };
 }
-
 export function hslToHex(h: number, s: number, l: number): string {
   const _s = clamp01(s / 100), _l = clamp01(l / 100);
   const c = (1 - Math.abs(2 * _l - 1)) * _s;
@@ -145,7 +138,7 @@ export function hslToHex(h: number, s: number, l: number): string {
   return `#${toHex(R)}${toHex(G)}${toHex(B)}`;
 }
 
-/* ========= Donut options (Apex subset tipado) ========= */
+/* ========= Donut options ========= */
 export type DonutOptions = {
   plotOptions: {
     pie: {
@@ -161,11 +154,8 @@ export type DonutOptions = {
       };
     };
   };
-  tooltip: {
-    y: { formatter: (v: number) => string };
-  };
+  tooltip: { y: { formatter: (v: number) => string } };
 };
-
 export function buildDonutOptions(
   formatNumber: (v: number) => string,
   totalLabel: string = "Total",
@@ -233,11 +223,10 @@ export function generateDistinctColors(
 
 /* ========= X-Axis label formatters ========= */
 
-/** Firma de Apex para el formatter de labels del eje X (subset necesario). */
 export type XLabelFormatter = (
   value: string | number,
   timestamp?: number,
-  opts?: { w: { globals: { categoryLabels: string[] } } }
+  opts?: { w: { globals: { categoryLabels?: string[]; labels?: (string | number)[] } } }
 ) => string;
 
 function shortMonth(d: Date): string {
@@ -247,10 +236,9 @@ function shortMonthYear(d: Date): string {
   return d.toLocaleDateString(undefined, { month: "short", year: "numeric" });
 }
 
-/** Monday (UTC) de una ISO semana */
 function isoWeekStart(y: number, w: number): Date {
   const jan4 = new Date(Date.UTC(y, 0, 4));
-  const jan4Dow = (jan4.getUTCDay() + 6) % 7; // 0=Mon
+  const jan4Dow = (jan4.getUTCDay() + 6) % 7;
   const mondayW1 = new Date(jan4);
   mondayW1.setUTCDate(jan4.getUTCDate() - jan4Dow);
   const d = new Date(mondayW1);
@@ -258,73 +246,69 @@ function isoWeekStart(y: number, w: number): Date {
   return d;
 }
 
-/** Día: muestra solo el día (1..30), pero en el primer tick y en cambios de mes añade mes/año. */
-export function makeDayTickFormatter(categories: string[]): XLabelFormatter {
-  const catIndex: Record<string, number> = {};
-  categories.forEach((c, i) => { catIndex[c] = i; });
+/** Lee el label real desde Apex o desde el fallback `categories`. */
+function resolveCategoryLabel(
+  rawValue: string | number,
+  opts?: { w: { globals: { categoryLabels?: string[]; labels?: (string | number)[] } } },
+  fallback?: string[]
+): string {
+  const v = String(rawValue);
+  if (/^\d{4}-\d{2}(-\d{2})?$/.test(v) || /^\d{4}-W\d{2}$/.test(v)) return v;
 
-  return (value) => {
-    const iso = String(value);
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return iso;
+  const labels =
+    (opts?.w?.globals?.categoryLabels as string[] | undefined) ??
+    (opts?.w?.globals?.labels?.map(String) as string[] | undefined) ??
+    fallback;
+
+  if (!labels || labels.length === 0) return v;
+
+  const n = Number(v);
+  if (!Number.isNaN(n)) {
+    const idxFrom1 = n - 1;
+    if (labels[idxFrom1] !== undefined) return labels[idxFrom1];
+    if (labels[n] !== undefined) return labels[n];
+  }
+  return v;
+}
+
+/** Día (solo números): devuelve siempre el día del mes. */
+export function makeDayTickFormatterNumbersOnly(categories?: string[]): XLabelFormatter {
+  return (value, _ts, opts) => {
+    const iso = resolveCategoryLabel(value, opts, categories);
+    const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!m) return String(value);
     const dt = parseISO(iso)!;
-    const i = catIndex[iso] ?? -1;
-    const day = String(dt.getUTCDate());
-
-    const isFirst = i === 0;
-    const isFirstOfMonth = dt.getUTCDate() === 1;
-    const prevIso = i > 0 ? categories[i - 1] : null;
-    const changedMonth =
-      !!prevIso && prevIso.slice(0, 7) !== iso.slice(0, 7);
-
-    if (isFirst || isFirstOfMonth || changedMonth) {
-      // si es el primer tick o hay cambio de mes, mostramos dd MMM (y año si es primer tick o cambio de año)
-      const withYear =
-        isFirst || (!!prevIso && prevIso.slice(0, 4) !== iso.slice(0, 4));
-      return withYear
-        ? `${day} ${shortMonth(dt)} ${dt.getUTCFullYear()}`
-        : `${day} ${shortMonth(dt)}`;
-    }
-
-    return day; // día "ligero"
+    return String(dt.getUTCDate());
   };
 }
 
-/** Semana: convierte YYYY-Www en rango "dd MMM – dd MMM (yyyy cuando cambia)". */
-export function makeWeekTickFormatter(): XLabelFormatter {
-  return (value) => {
-    const v = String(value);
+/** Semana (corto): "dd MMM – dd MMM" sin año para etiquetas compactas. */
+export function makeWeekTickFormatter(categories?: string[]): XLabelFormatter {
+  return (value, _ts, opts) => {
+    const v = resolveCategoryLabel(value, opts, categories);
     const m = v.match(/^(\d{4})-W(\d{2})$/);
-    if (!m) return v;
+    if (!m) return String(value);
+
     const y = Number(m[1]);
     const w = Number(m[2]);
-
     const start = isoWeekStart(y, w);
     const end = addDays(start, 6);
 
-    const sameYear = start.getUTCFullYear() === end.getUTCFullYear();
-    const sameMonth = sameYear && start.getUTCMonth() === end.getUTCMonth();
+    const sameMonth =
+      start.getUTCFullYear() === end.getUTCFullYear() &&
+      start.getUTCMonth() === end.getUTCMonth();
 
-    if (sameMonth) {
-      // "12–18 ago 2025"
-      return `${start.getUTCDate()}–${end.getUTCDate()} ${shortMonthYear(end)}`;
-    }
-
-    if (sameYear) {
-      // "29 jul – 4 ago 2025"
-      return `${start.getUTCDate()} ${shortMonth(start)} – ${end.getUTCDate()} ${shortMonthYear(end)}`;
-    }
-
-    // Cruza de año: "29 dic 2025 – 4 ene 2026"
-    return `${start.getUTCDate()} ${shortMonthYear(start)} – ${end.getUTCDate()} ${shortMonthYear(end)}`;
+    if (sameMonth) return `${start.getUTCDate()}–${end.getUTCDate()} ${shortMonth(end)}`;
+    return `${start.getUTCDate()} ${shortMonth(start)} – ${end.getUTCDate()} ${shortMonth(end)}`;
   };
 }
 
 /** Mes: convierte YYYY-MM a "MMM yyyy". */
-export function makeMonthTickFormatter(): XLabelFormatter {
-  return (value) => {
-    const v = String(value);
+export function makeMonthTickFormatter(categories?: string[]): XLabelFormatter {
+  return (value, _ts, opts) => {
+    const v = resolveCategoryLabel(value, opts, categories);
     const m = v.match(/^(\d{4})-(\d{2})$/);
-    if (!m) return v;
+    if (!m) return String(value);
     const y = Number(m[1]);
     const mo = Number(m[2]) - 1;
     const dt = new Date(Date.UTC(y, mo, 1));
