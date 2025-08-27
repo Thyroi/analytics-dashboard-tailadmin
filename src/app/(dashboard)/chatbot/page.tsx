@@ -1,5 +1,7 @@
 "use client";
 
+import * as React from "react";
+import { Suspense } from "react";
 import Header from "@/components/common/Header";
 import SubtagsSection from "@/features/chatbot/components/tags/SubTagsSection";
 import TopTagsSection from "@/features/chatbot/components/tags/TopTagsSection";
@@ -14,8 +16,15 @@ export default function TagsDashboard() {
           title="Top tags con más búsquedas"
           subtitle="Icono, número de búsquedas y etiqueta"
         />
-        <TopTagsSection tagMeta={TAG_META} defaultTagMeta={DEFAULT_TAG_META} />
-        <SubtagsSection />
+
+        {/* Cualquier componente que use useSearchParams/usePathname debe ir dentro de Suspense */}
+        <Suspense fallback={<div className="h-24" />}>
+          <TopTagsSection tagMeta={TAG_META} defaultTagMeta={DEFAULT_TAG_META} />
+        </Suspense>
+
+        <Suspense fallback={<div className="h-96" />}>
+          <SubtagsSection />
+        </Suspense>
       </main>
     </TopTagsProvider>
   );
