@@ -75,3 +75,33 @@ export type CountriesPayload = {
   rows: CountryRow[];
 };
 
+export type ISODate = `${number}-${number}-${number}`; // YYYY-MM-DD
+
+export interface TopPageItem {
+  path: string;
+  title?: string;
+  views: number;
+}
+
+export interface TopPagesSummary {
+  range: { start: ISODate; end: ISODate };
+  totalViews: number; // suma total (todas las páginas, no solo top N)
+  pages: TopPageItem[]; // top N
+}
+
+export interface SeriesItem {
+  name: string;
+  data: number[];
+}
+
+export interface TopPagesTrend {
+  categories: ISODate[]; // días
+  series: SeriesItem[];  // una serie por pagePath (name = title || path)
+}
+
+export interface TopPagesResponse {
+  summary: TopPagesSummary;
+  trend: TopPagesTrend;
+}
+
+

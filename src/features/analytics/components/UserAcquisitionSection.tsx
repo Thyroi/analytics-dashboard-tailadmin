@@ -1,8 +1,8 @@
 "use client";
 
 import LineChart from "@/components/charts/LineChart";
+import DateRangePicker from "@/components/common/DateRangePicker";
 import { AreaChartSkeleton } from "@/components/skeletons";
-import DateRangePicker from "@/components/ui/DateRangePicker";
 import { fetchUserAcquisitionRange } from "@/features/analytics/services/userAcquisitionRange";
 import type { AcquisitionRangePayload } from "@/features/analytics/types";
 import { useEffect, useRef, useState } from "react";

@@ -1,8 +1,8 @@
 "use client";
 
 import WorldBubbleMap, { MapMarker } from "@/components/charts/WorldBubbleMap";
+import DateRangePicker from "@/components/common/DateRangePicker";
 import CustomersDemographicSkeleton from "@/components/skeletons/CustomersDemographicSkeleton";
-import DateRangePicker from "@/components/ui/DateRangePicker";
 import { fetchCountries } from "@/features/analytics/services/countries";
 import type { CountriesPayload } from "@/features/analytics/types";
 import { useEffect, useMemo, useRef, useState } from "react";

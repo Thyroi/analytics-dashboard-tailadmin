@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import DataTable, { Column, RowAction } from "@/components/ui/DataTable";
+import DataTable, { Column, RowAction } from "@/components/common/DataTable";
 import { trpc } from "@/lib/trpc/client";
 import type { User as MeUser } from "@/server/trpc/schemas/user";
 
