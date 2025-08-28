@@ -1,18 +1,16 @@
 @import "tailwindcss";
 
-/* ---------------------------------
-   DARK MODE VARIANT
---------------------------------- */
+/* ===== Dark variant ===== */
 @custom-variant dark (&:is(.dark *));
 
-/* ---------------------------------
-   THEME VARIABLES (tipos, breakpoints, colores, sombras)
---------------------------------- */
+/* =========================
+   THEME TOKENS
+========================= */
 @theme {
-  /* Tipografía */
+  /* Fonts */
   --font-outfit: Outfit, sans-serif;
 
-  /* Breakpoints personalizados */
+  /* Breakpoints (conservamos todos por compatibilidad) */
   --breakpoint-2xsm: 375px;
   --breakpoint-xsm: 425px;
   --breakpoint-3xl: 2000px;
@@ -22,7 +20,7 @@
   --breakpoint-xl: 1280px;
   --breakpoint-2xl: 1536px;
 
-  /* Tamaños de texto usados en headers y dashboard */
+  /* Display sizes */
   --text-title-2xl: 72px;
   --text-title-2xl--line-height: 90px;
   --text-title-xl: 60px;
@@ -34,6 +32,7 @@
   --text-title-sm: 30px;
   --text-title-sm--line-height: 38px;
 
+  /* Theme text */
   --text-theme-xl: 20px;
   --text-theme-xl--line-height: 30px;
   --text-theme-sm: 14px;
@@ -41,7 +40,7 @@
   --text-theme-xs: 12px;
   --text-theme-xs--line-height: 18px;
 
-  /* Paleta de colores principal (brand, grays y estados) */
+  /* Brand palette */
   --color-brand-25: #f2f7ff;
   --color-brand-50: #ecf3ff;
   --color-brand-100: #dde9ff;
@@ -55,6 +54,7 @@
   --color-brand-900: #262e89;
   --color-brand-950: #161950;
 
+  /* Grays */
   --color-gray-25: #fcfcfd;
   --color-gray-50: #f9fafb;
   --color-gray-100: #f2f4f7;
@@ -67,28 +67,25 @@
   --color-gray-800: #1d2939;
   --color-gray-900: #101828;
 
-  /* Estados */
+  /* States */
   --color-success-500: #12b76a;
   --color-error-500: #f04438;
   --color-warning-500: #f79009;
 
-  /* Sombras */
-  --shadow-theme-sm: 0px 1px 3px 0px rgba(16, 24, 40, 0.1),
-    0px 1px 2px 0px rgba(16, 24, 40, 0.06);
-
-  --shadow-theme-md: 0px 4px 8px -2px rgba(16, 24, 40, 0.1),
-    0px 2px 4px -2px rgba(16, 24, 40, 0.06);
-
-  --shadow-theme-lg: 0px 12px 16px -4px rgba(16, 24, 40, 0.08),
-    0px 4px 6px -2px rgba(16, 24, 40, 0.03);
-
-  --shadow-theme-xl: 0px 20px 24px -4px rgba(16, 24, 40, 0.08),
-    0px 8px 8px -4px rgba(16, 24, 40, 0.03);
+  /* Shadows */
+  --shadow-theme-sm: 0 1px 3px rgba(16, 24, 40, 0.1),
+    0 1px 2px rgba(16, 24, 40, 0.06);
+  --shadow-theme-md: 0 4px 8px -2px rgba(16, 24, 40, 0.1),
+    0 2px 4px -2px rgba(16, 24, 40, 0.06);
+  --shadow-theme-lg: 0 12px 16px -4px rgba(16, 24, 40, 0.08),
+    0 4px 6px -2px rgba(16, 24, 40, 0.03);
+  --shadow-theme-xl: 0 20px 24px -4px rgba(16, 24, 40, 0.08),
+    0 8px 8px -4px rgba(16, 24, 40, 0.03);
 }
 
-/* ---------------------------------
-   BASE GLOBAL
---------------------------------- */
+/* =========================
+   BASE
+========================= */
 @layer base {
   *,
   ::after,
@@ -102,17 +99,17 @@
   }
 }
 
-/* ---------------------------------
-   UTILIDADES SIDEBAR
---------------------------------- */
+/* =========================
+   UTILITIES (sidebar + scroll)
+========================= */
 @utility menu-item {
   @apply relative flex items-center w-full gap-3 px-3 py-2 font-medium rounded-lg text-theme-sm;
 }
 @utility menu-item-active {
-  @apply bg-brand-50 text-brand-500 dark:bg-brand-500/[0.12] dark:text-brand-400;
+  @apply bg-brand-50 text-brand-500 dark:bg-brand-500/10 dark:text-brand-400;
 }
 @utility menu-item-inactive {
-  @apply text-gray-700 hover:bg-gray-100 group-hover:text-gray-700 dark:text-gray-300 dark:hover:bg-white/5 dark:hover:text-gray-300;
+  @apply text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-white/5;
 }
 @utility menu-item-icon-active {
   @apply text-brand-500 dark:text-brand-400;
@@ -120,15 +117,17 @@
 @utility menu-item-icon-inactive {
   @apply text-gray-500 group-hover:text-gray-700 dark:text-gray-400 dark:group-hover:text-gray-300;
 }
+
 @utility menu-dropdown-item {
   @apply relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-theme-sm font-medium;
 }
 @utility menu-dropdown-item-active {
-  @apply bg-brand-50 text-brand-500 dark:bg-brand-500/[0.12] dark:text-brand-400;
+  @apply bg-brand-50 text-brand-500 dark:bg-brand-500/10 dark:text-brand-400;
 }
 @utility menu-dropdown-item-inactive {
   @apply text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-white/5;
 }
+
 @utility menu-dropdown-badge {
   @apply block rounded-full px-2.5 py-0.5 text-xs font-medium uppercase text-brand-500 dark:text-brand-400;
 }
@@ -139,7 +138,6 @@
   @apply bg-brand-50 group-hover:bg-brand-100 dark:bg-brand-500/15 dark:group-hover:bg-brand-500/20;
 }
 
-/* Scrollbar personalizado */
 @utility no-scrollbar {
   &::-webkit-scrollbar {
     display: none;
@@ -156,9 +154,9 @@
   }
 }
 
-/* ---------------------------------
-   HEADER
---------------------------------- */
+/* =========================
+   HEADER (genérico)
+========================= */
 .header-container {
   @apply flex justify-between items-center px-4 py-2 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900;
 }
@@ -169,117 +167,19 @@
   @apply flex items-center gap-4;
 }
 
-/* =============================
-   ESTILOS BASE FLATPICKR
-============================= */
-
-/* Contenedor general del calendario */
-.flatpickr-calendar {
-  @apply rounded-xl border border-gray-200 bg-white shadow-theme-lg dark:border-gray-800 dark:bg-gray-900 dark:shadow-theme-xl;
-  font-family: Outfit, sans-serif;
-  font-size: 14px;
-  padding: 12px 8px !important;
-  gap: 0 !important;
-}
-
-/* Header (mes y año) */
-.flatpickr-current-month {
-  @apply !p-0 text-lg font-medium text-gray-800 dark:text-white/90;
-}
-
-/* Flechas de navegación del mes */
-.flatpickr-months .flatpickr-prev-month,
-.flatpickr-months .flatpickr-next-month {
-  @apply !top-4 dark:!fill-white dark:!text-white hover:!fill-none;
-}
-
-/* Días de la semana */
-.flatpickr-weekdays {
-  @apply mt-4 mb-2;
-}
-
-.flatpickr-weekday {
-  @apply text-theme-sm font-medium text-gray-500 dark:text-gray-400;
-}
-
-/* =============================
-   RESET DE GAPS Y BORDES
-============================= */
-
-/* Elimina gap/padding entre celdas y contenedor */
-.flatpickr-days,
-.flatpickr-days .dayContainer {
-  margin: 0 !important;
-  padding: 0 !important;
-  gap: 0 !important;
-  border: none !important;
-}
-
-/* Celdas de día */
-.flatpickr-day {
-  margin: 0 !important;
-  padding: 0 !important;
-  border: none !important;
-  box-shadow: none !important;
-  @apply flex items-center justify-center text-theme-sm font-medium text-gray-800 rounded-md dark:text-white/90 hover:bg-gray-100 dark:hover:bg-white/10;
-  height: 34px;
-  width: 34px;
-  line-height: 34px;
-}
-
-/* =============================
-   SELECCIÓN DE RANGO
-============================= */
-
-/* Inicio y fin del rango */
-.flatpickr-day.selected,
-.flatpickr-day.startRange,
-.flatpickr-day.endRange {
-  @apply bg-brand-500 text-white border-brand-500;
-}
-
-/* Días dentro del rango */
-.flatpickr-day.inRange {
-  @apply bg-gray-50 dark:bg-white/5;
-  box-shadow: none !important; /* Quita el pseudo-borde del rango */
-}
-
-/* Hover en días dentro del rango */
-.flatpickr-day.inRange:hover {
-  @apply bg-gray-100 dark:bg-white/10;
-}
-
-/* =============================
-   MODO OSCURO
-============================= */
-
-.dark .flatpickr-calendar {
-  @apply border-gray-800 bg-gray-900 shadow-theme-xl;
-}
-
-.dark .flatpickr-day {
-  @apply text-white/90 hover:bg-white/10;
-}
-
-.dark .flatpickr-day.inRange {
-  @apply bg-white/5;
-}
-
-/* Cards coherentes en todo el dashboard */
+/* =========================
+   CARDS + SKELETON
+========================= */
 .card {
-  @apply w-full rounded-2xl border border-gray-100 bg-white shadow-sm
-         dark:bg-neutral-900/60 dark:border-white/10;
+  @apply w-full rounded-2xl border border-gray-100 bg-white shadow-sm dark:bg-neutral-900/60 dark:border-white/10;
 }
-
 .card-header {
-  @apply flex items-center justify-between gap-3 px-6 pt-5 pb-4
-         border-b border-gray-100/80 dark:border-white/5;
+  @apply flex items-center justify-between gap-3 px-6 pt-5 pb-4 border-b border-gray-100/80 dark:border-white/5;
 }
 .card-body {
   @apply px-6 pb-6;
 }
 
-/* Skeleton / shimmer */
 @keyframes dash-shimmer {
   0% {
     transform: translateX(-100%);
@@ -288,22 +188,21 @@
     transform: translateX(100%);
   }
 }
-
 .skeleton {
   position: relative;
   overflow: hidden;
-  background: rgba(148, 163, 184, 0.15); /* slate-400/15 */
-  border-radius: 0.75rem; /* rounded-xl aprox */
+  border-radius: 0.75rem;
+  background: rgba(148, 163, 184, 0.15);
 }
-
 .dark .skeleton {
   background: rgba(255, 255, 255, 0.06);
 }
-
 .skeleton::after {
   content: "";
   position: absolute;
   inset: 0;
+  opacity: 0.35;
+  transform: translateX(-100%);
   background: linear-gradient(
     90deg,
     transparent 0%,
@@ -311,13 +210,13 @@
     transparent 100%
   );
   animation: dash-shimmer 1.2s infinite;
-  transform: translateX(-100%);
-  opacity: 0.35;
 }
 
-/* Masonry por columnas */
+/* =========================
+   MASONRY
+========================= */
 .masonry {
-  column-gap: 24px; /* mismo gap vertical que uses abajo en margin-bottom */
+  column-gap: 24px;
 }
 .masonry-item {
   display: inline-block;
@@ -328,53 +227,45 @@
   margin-bottom: 24px;
 }
 
-/* Asegura que los tooltips de Apex se vean por encima del header/card */
+/* =========================
+   APEXCHARTS TOOLTIPS
+========================= */
 .apexcharts-tooltip,
 .apexcharts-xaxistooltip,
 .apexcharts-yaxistooltip {
   z-index: 60 !important;
 }
 
-/* ===== ApexCharts: dark mode tooltip & crosshair ===== */
-html.dark .apexcharts-tooltip,
-html.dark .apexcharts-xaxistooltip,
-html.dark .apexcharts-yaxistooltip {
-  background: rgba(17, 24, 39, 0.98) !important; /* bg-gray-900 */
-  color: #e5e7eb !important; /* text-gray-200 */
+html.dark
+  :is(.apexcharts-tooltip, .apexcharts-xaxistooltip, .apexcharts-yaxistooltip) {
+  background: rgba(17, 24, 39, 0.98) !important;
+  color: #e5e7eb !important;
   border: 1px solid rgba(255, 255, 255, 0.08) !important;
   border-radius: 12px !important;
   box-shadow: 0 10px 20px rgba(0, 0, 0, 0.6) !important;
 }
-
-/* título del tooltip */
 html.dark .apexcharts-tooltip-title {
   background: transparent !important;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
   color: #e5e7eb !important;
 }
-
-/* puntos y texto dentro de cada fila del tooltip */
 html.dark .apexcharts-tooltip-series-group {
   color: #e5e7eb !important;
 }
-
-/* tooltip de la etiqueta del eje X (la “píldora” bajo la línea vertical) */
 html.dark .apexcharts-xaxistooltip {
   border-radius: 10px !important;
 }
-
-/* opcional: estilo en light para uniformar */
 html:not(.dark) .apexcharts-tooltip {
   border-radius: 12px !important;
   box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15) !important;
 }
 
-/***** ===== KPI STYLES (corregidas) ===== *****/
-
-/* Grid contenedor de KPIs: modo auto y modo 1 columna */
+/* =========================
+   KPI CARDS
+========================= */
 .kpi-grid {
   display: grid;
-  gap: 1rem; /* ~16px */
+  gap: 1rem;
 }
 .kpi-grid--auto {
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
@@ -383,39 +274,35 @@ html:not(.dark) .apexcharts-tooltip {
   grid-template-columns: 1fr;
 }
 
-/* Tarjeta KPI con container queries SOLO por ancho */
 .kpi-card {
-  border-radius: 1rem; /* rounded-2xl */
-  border: 1px solid rgba(17, 24, 39, 0.08); /* gris claro */
+  border-radius: 1rem;
+  border: 1px solid rgba(17, 24, 39, 0.08);
   background: #fff;
-  padding: 1rem; /* p-4 */
+  padding: 1rem;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  gap: .75rem;
+  gap: 0.75rem;
   width: 100%;
   max-width: 100%;
   min-width: 0;
   overflow: hidden;
-
-  /* ✅ importante: SOLO ancho, para no romper el alto */
   container-type: inline-size;
-
-  /* un mínimo visual para que no se “aplane” jamás */
   min-height: 112px;
 }
 .dark .kpi-card {
-  border-color: rgba(255, 255, 255, .1);
+  border-color: rgba(255, 255, 255, 0.1);
   background: #14181e;
 }
 
-/* Header (título) */
 .kpi-title {
-  color: #6b7280; /* text-gray-500 */
+  color: #6b7280;
   font-size: var(--text-theme-sm);
   line-height: var(--text-theme-sm--line-height);
 }
-.dark .kpi-title { color: #9ca3af; }
+.dark .kpi-title {
+  color: #9ca3af;
+}
 @media (min-width: var(--breakpoint-xl)) {
   .kpi-title {
     font-size: var(--text-theme-xl);
@@ -423,16 +310,13 @@ html:not(.dark) .apexcharts-tooltip {
   }
 }
 
-/* Fila valor + delta (por defecto en fila) */
 .kpi-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: end;
-  gap: .5rem;
+  gap: 0.5rem;
   min-width: 0;
 }
-
-/* Valor (número grande) */
 .kpi-value {
   font-weight: 600;
   color: #111827;
@@ -440,7 +324,9 @@ html:not(.dark) .apexcharts-tooltip {
   line-height: var(--text-title-sm--line-height);
   min-width: 0;
 }
-.dark .kpi-value { color: #fff; }
+.dark .kpi-value {
+  color: #fff;
+}
 @media (min-width: var(--breakpoint-md)) {
   .kpi-value {
     font-size: var(--text-title-md);
@@ -460,11 +346,10 @@ html:not(.dark) .apexcharts-tooltip {
   }
 }
 
-/* Delta (badge) + variantes */
 .kpi-delta {
   white-space: nowrap;
-  border-radius: .5rem;
-  padding: .25rem .5rem;
+  border-radius: 0.5rem;
+  padding: 0.25rem 0.5rem;
   font-size: var(--text-theme-xs);
   line-height: var(--text-theme-xs--line-height);
 }
@@ -474,32 +359,313 @@ html:not(.dark) .apexcharts-tooltip {
     line-height: var(--text-theme-sm--line-height);
   }
 }
-.kpi-delta--up   { background: #ecfdf5; color: #059669; } /* green-50/600 */
-.kpi-delta--down { background: #fef2f2; color: #dc2626; } /* red-50/600 */
+.kpi-delta--up {
+  background: #ecfdf5;
+  color: #059669;
+}
+.kpi-delta--down {
+  background: #fef2f2;
+  color: #dc2626;
+}
 
-/* ===== Mini-breakpoints por tarjeta (SOLO por ancho, sin comas) ===== */
-/* Si la tarjeta es estrecha en ANCHO (<120px) -> columna y tamaño menor */
 @container (inline-size < 120px) {
   .kpi-row {
-    grid-template-columns: 1fr; /* columna */
+    grid-template-columns: 1fr;
     align-items: start;
-    row-gap: .375rem;
+    row-gap: 0.375rem;
   }
-  .kpi-delta { justify-self: start; }
+  .kpi-delta {
+    justify-self: start;
+  }
   .kpi-value {
     font-size: var(--text-title-sm);
     line-height: var(--text-title-sm--line-height);
   }
 }
-
-/* Más compacto si la tarjeta cae por debajo de 260px de ancho */
 @container (inline-size < 260px) {
   .kpi-value {
     font-size: var(--text-theme-xl);
     line-height: var(--text-theme-xl--line-height);
   }
 }
-/* ====== Grid de TagStats responsiva ====== */
+
+/* =========================
+   TAG STATS GRID
+========================= */
 .tag-grid {
   @apply grid gap-3 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 [grid-auto-rows:1fr];
+}
+
+/* ===============================
+   Flatpickr — Estilos completos
+   (pégalo después de flatpickr.css)
+=============================== */
+
+/* Variables de tamaño y color */
+:root {
+  --fp-cell: 34px; /* tamaño de cada día */
+  --fp-brand: #465fff; /* color marca selección */
+  --fp-range-light: rgba(16, 24, 40, 0.06); /* franja rango (light) */
+  --fp-range-dark: rgba(70, 95, 255, 0.22); /* franja rango (dark) */
+  --fp-dark-bg: #14181e; /* fondo panel dark */
+  --fp-dark-text: #e5e7eb; /* texto días dark */
+  --fp-dark-muted: rgba(229, 231, 235, 0.4); /* texto otros meses dark */
+  --fp-dark-border: var(--color-gray-700);
+}
+
+.flatpickr-wrapper {
+  width: 100%;
+}
+
+/* ===== Panel ===== */
+.flatpickr-calendar {
+  margin-top: 0.5rem !important;
+  background: #fff !important;
+  color: #475569 !important; /* gray-600 */
+  border: 1px solid #e5e7eb !important; /* gray-200 */
+  border-radius: 12px !important;
+  padding: 20px !important;
+  box-shadow: none !important;
+}
+.dark .flatpickr-calendar {
+  background: var(--fp-dark-bg) !important;
+  color: var(--fp-dark-text) !important;
+  border: 1px solid var(--fp-dark-border) !important;  /* ← borde igual al del input */
+  border-radius: 12px !important;
+}
+
+/* sin “triangulito” */
+.flatpickr-calendar.arrowTop:before,
+.flatpickr-calendar.arrowTop:after {
+  display: none !important;
+}
+
+/* ===== Header (mes/año) + flechas ===== */
+.flatpickr-months {
+  position: relative !important;
+}
+
+.flatpickr-current-month {
+  padding: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.flatpickr-current-month .cur-month,
+.flatpickr-current-month input.cur-year {
+  height: auto !important;
+  padding-top: 0 !important;
+  font-size: 1.125rem !important; /* text-lg */
+  font-weight: 600 !important;
+  color: #111827 !important; /* gray-900 */
+  background: transparent !important;
+  border: 0 !important;
+}
+.dark .flatpickr-current-month .cur-month,
+.dark .flatpickr-current-month input.cur-year {
+  color: #f3f4f6 !important; /* gray-100 */
+}
+
+/* Flechas prev/next con padding, centradas verticalmente */
+.flatpickr-months .flatpickr-prev-month,
+.flatpickr-months .flatpickr-next-month {
+  position: absolute !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  padding: 0.5rem !important;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent !important;
+  border-radius: 0.5rem;
+  line-height: 1;
+}
+.flatpickr-months .flatpickr-prev-month {
+  left: 12px !important;
+}
+.flatpickr-months .flatpickr-next-month {
+  right: 12px !important;
+}
+
+.flatpickr-months .flatpickr-prev-month:hover,
+.flatpickr-months .flatpickr-next-month:hover {
+  background: #f3f4f6 !important; /* gray-100 */
+}
+.dark .flatpickr-months .flatpickr-prev-month:hover,
+.dark .flatpickr-months .flatpickr-next-month:hover {
+  background: rgba(255, 255, 255, 0.08) !important;
+}
+
+/* Color de los SVG (light & dark) */
+.flatpickr-months .flatpickr-prev-month svg,
+.flatpickr-months .flatpickr-next-month svg {
+  transition: 120ms;
+  fill: none !important;
+  stroke: #111827 !important; /* gray-900 */
+}
+.flatpickr-months .flatpickr-prev-month:hover svg,
+.flatpickr-months .flatpickr-next-month:hover svg {
+  stroke: var(--fp-brand) !important;
+}
+.dark .flatpickr-months .flatpickr-prev-month svg,
+.dark .flatpickr-months .flatpickr-next-month svg {
+  stroke: var(--fp-dark-text) !important; /* blanco suave */
+}
+.dark .flatpickr-months .flatpickr-prev-month:hover svg,
+.dark .flatpickr-months .flatpickr-next-month:hover svg {
+  stroke: var(--fp-brand) !important;
+}
+
+/* ===== Weekdays ===== */
+.flatpickr-weekdays {
+  margin-top: 1.5rem;
+  margin-bottom: 1rem;
+  background: transparent !important;
+}
+.flatpickr-weekday {
+  background: transparent !important;
+  font-size: 0.875rem !important; /* text-sm */
+  font-weight: 600 !important;
+  color: #6b7280 !important; /* gray-500 */
+}
+.dark .flatpickr-weekday {
+  color: #9ca3af !important;
+} /* gray-400 */
+
+/* ===== Grilla de días SIN gaps ===== */
+.flatpickr-days,
+.flatpickr-days .dayContainer {
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
+/* Grid 7 columnas, cero gap */
+.flatpickr-days .dayContainer {
+  display: grid !important;
+  grid-template-columns: repeat(7, 1fr) !important;
+  gap: 0 !important;
+}
+
+/* Celdas base */
+.flatpickr-day {
+  margin: 0 !important;
+  width: 100% !important;
+  max-width: none !important;
+  height: var(--fp-cell);
+  line-height: var(--fp-cell);
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  outline: none !important;
+  border-radius: 0 !important; /* sin radios por defecto */
+  font-size: 0.875rem !important; /* text-sm */
+  font-weight: 600 !important;
+  color: #1f2937 !important; /* gray-800 */
+  background: transparent !important;
+}
+.dark .flatpickr-day {
+  color: var(--fp-dark-text) !important;
+}
+
+/* Días de otros meses */
+.flatpickr-day.prevMonthDay,
+.flatpickr-day.nextMonthDay {
+  color: #9ca3af !important; /* gray-400 */
+  background: transparent !important;
+}
+.dark .flatpickr-day.prevMonthDay,
+.dark .flatpickr-day.nextMonthDay {
+  color: var(--fp-dark-muted) !important;
+}
+
+/* Hover */
+.flatpickr-day:hover {
+  background: #f3f4f6 !important;
+} /* gray-100 */
+.dark .flatpickr-day:hover {
+  background: rgba(255, 255, 255, 0.06) !important;
+}
+
+/* ===== Rango (franja) ===== */
+.flatpickr-day.inRange {
+  background: var(--fp-range-light) !important;
+}
+.dark .flatpickr-day.inRange {
+  background: var(--fp-range-dark) !important;
+  color: var(--fp-dark-text) !important;
+  border-radius: 0 !important; /* tramo central plano */
+}
+
+/* ===== Selección / Extremos ===== */
+/* Selección simple mantiene círculo */
+.flatpickr-day.selected:not(.startRange):not(.endRange) {
+  background: var(--fp-brand) !important;
+  color: #fff !important;
+  border-radius: 9999px !important;
+  border: 0 !important;
+}
+
+/* Extremo izquierdo: redondeado afuera, recto hacia adentro */
+.flatpickr-day.startRange:not(.endRange) {
+  background: var(--fp-brand) !important;
+  color: #fff !important;
+  border: 0 !important;
+  border-radius: 9999px 0 0 9999px !important;
+}
+
+/* Extremo derecho: recto hacia adentro, redondeado afuera */
+.flatpickr-day.endRange:not(.startRange) {
+  background: var(--fp-brand) !important;
+  color: #fff !important;
+  border: 0 !important;
+  border-radius: 0 9999px 9999px 0 !important;
+}
+
+/* Caso start==end → píldora redonda */
+.flatpickr-day.startRange.endRange {
+  background: var(--fp-brand) !important;
+  color: #fff !important;
+  border-radius: 9999px !important;
+  border: 0 !important;
+}
+
+/* Asegura unión visual también en días de otros meses */
+.flatpickr-day.prevMonthDay.inRange,
+.flatpickr-day.nextMonthDay.inRange {
+  border-radius: 0 !important;
+}
+
+/* ===== “Hoy” si no está seleccionado ===== */
+.flatpickr-day.today:not(.selected):not(.startRange):not(.endRange) {
+  border: 1px solid #e5e7eb !important; /* gray-200 */
+}
+.dark .flatpickr-day.today:not(.selected):not(.startRange):not(.endRange) {
+  border: 0 !important; /* sin borde en dark */
+}
+
+/* ===== Limpieza de fondos/dropdowns ===== */
+.flatpickr-months > .flatpickr-month,
+.flatpickr-month .flatpickr-current-month .flatpickr-monthDropdown-months {
+  background: none !important;
+  appearance: none;
+  background-image: none !important;
+  font-weight: 600;
+}
+.flatpickr-month
+  .flatpickr-current-month
+  .flatpickr-monthDropdown-months:focus {
+  outline: none !important;
+  border: 0 !important;
+}
+
+/* Si usas modo “static” alineado a la derecha */
+.flatpickr-calendar.static {
+  right: 0;
 }
