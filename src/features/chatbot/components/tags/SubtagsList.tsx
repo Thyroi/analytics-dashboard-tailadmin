@@ -37,19 +37,10 @@ export default function SubtagsList({
   stickyHeader = true,
   onItemClick,
 }: Props) {
-  // ==== Header ====
   const HeaderBlock = (
-    <div
-      className={
-        stickyHeader
-          ? "sticky top-0 z-10 bg-white dark:bg-[#14181e]"
-          : undefined
-      }
-    >
+    <div className={stickyHeader ? "sticky top-0 z-10 bg-white dark:bg-[#14181e]" : undefined}>
       <div className="flex items-center justify-between pb-2 pt-0">
-        <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
-          {title}
-        </h3>
+        <h3 className="text-sm font-semibold text-gray-900 dark:text-white">{title}</h3>
         <div className="text-xs text-gray-500 dark:text-gray-400">
           {totalLabel}{" "}
           <span className="font-semibold text-gray-900 dark:text-white tabular-nums">
@@ -65,27 +56,27 @@ export default function SubtagsList({
     return (
       <div className={className}>
         {HeaderBlock}
-        <div className="py-3 text-sm text-gray-500 dark:text-gray-400">
-          No subtags found.
-        </div>
+        <div className="py-3 text-sm text-gray-500 dark:text-gray-400">No subtags found.</div>
       </div>
     );
   }
 
-  // Alto máximo efectivo (por defecto 270px)
-  const computedMaxHeight =
+  // ¿Hace falta scroll?
+  const visibleCap = Math.max(1, maxVisible);
+  const totalHeight = rows.length * rowHeightPx;
+  const capHeight = typeof maxHeightPx === "number" ? maxHeightPx : visibleCap * rowHeightPx;
+  const needsScroll =
     typeof maxHeightPx === "number"
-      ? maxHeightPx
-      : Math.max(1, maxVisible) * rowHeightPx || 270;
+      ? totalHeight > maxHeightPx
+      : rows.length > visibleCap;
 
   return (
     <div className={className}>
       {HeaderBlock}
 
-      {/* Scroll vertical — por defecto a la DERECHA */}
       <div
-        className="mt-2 overflow-y-auto"
-        style={{ maxHeight: computedMaxHeight }}
+        className={needsScroll ? "mt-2 overflow-y-auto" : "mt-2 overflow-visible"}
+        style={needsScroll ? { maxHeight: capHeight } : undefined}
         aria-label="Subtags list"
       >
         <ul className="divide-y divide-transparent pt-2" role="list">
@@ -105,10 +96,7 @@ export default function SubtagsList({
                     style={{ backgroundColor: color }}
                     aria-hidden
                   />
-                  <span
-                    className="truncate text-sm text-gray-800 dark:text-gray-100"
-                    title={row.label}
-                  >
+                  <span className="truncate text-sm text-gray-800 dark:text-gray-100" title={row.label}>
                     {row.label}
                   </span>
                 </div>
