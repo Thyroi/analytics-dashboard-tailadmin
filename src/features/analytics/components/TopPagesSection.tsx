@@ -2,12 +2,7 @@
 
 import * as React from "react";
 import { fetchTopPages } from "../services/topPages";
-import type {
-  ISODate,
-  TopPagesResponse,
-  SeriesItem,
-  TopPageItem,
-} from "../types";
+import type { ISODate, TopPagesResponse, SeriesItem, TopPageItem } from "../types";
 import {
   generateDistinctColors,
   buildDonutOptions,
@@ -18,8 +13,6 @@ import PieChart, { type PieDatum } from "@/components/charts/PieChart";
 import Header from "@/components/common/Header";
 import MetricList, { type MetricListItem } from "@/components/common/MetricList";
 import TopPagesCardSkeleton from "@/components/skeletons/TopPagesCardSkeleton";
-
-// ⬅️ Ajusta esta ruta a donde pusiste tu DateRangePicker
 import DateRangePicker from "@/components/common/DateRangePicker";
 
 /* ===== Helpers de fechas (UTC) ===== */
@@ -30,18 +23,17 @@ function toISODateUTC(d: Date): ISODate {
   return `${y}-${m}-${day}` as ISODate;
 }
 function parseISODateUTC(iso: ISODate): Date {
-  // Forzamos UTC agregando T00:00:00Z
   return new Date(`${iso}T00:00:00Z`);
 }
 function defaultLastNDays(n: number): { start: Date; end: Date } {
-  const end = new Date(); // ahora
-  const start = new Date(Date.UTC(end.getUTCFullYear(), end.getUTCMonth(), end.getUTCDate()));
-  start.setUTCDate(start.getUTCDate() - (n - 1)); // n días incluyendo hoy
-  return { start, end: new Date(Date.UTC(end.getUTCFullYear(), end.getUTCMonth(), end.getUTCDate())) };
+  const now = new Date();
+  const end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  const start = new Date(end);
+  start.setUTCDate(start.getUTCDate() - (n - 1));
+  return { start, end };
 }
 
 type Props = {
-  /** Si pasas start/end, los usamos como valor inicial del selector; luego el usuario puede cambiarlos con el datepicker. */
   start?: ISODate;
   end?: ISODate;
   limit?: number;
@@ -56,7 +48,6 @@ export default function TopPagesSection({
   title = "Top pages",
   subtitle = "Most viewed pages in the selected range",
 }: Props) {
-  // ====== Rango controlado por el DateRangePicker ======
   const initial = React.useMemo(() => {
     if (start && end) return { start: parseISODateUTC(start), end: parseISODateUTC(end) };
     return defaultLastNDays(30);
@@ -68,7 +59,6 @@ export default function TopPagesSection({
   const isoStart: ISODate = React.useMemo(() => toISODateUTC(rangeStart), [rangeStart]);
   const isoEnd: ISODate = React.useMemo(() => toISODateUTC(rangeEnd), [rangeEnd]);
 
-  // ====== Datos ======
   const [data, setData] = React.useState<TopPagesResponse | null>(null);
   const [loading, setLoading] = React.useState<boolean>(true);
   const [error, setError] = React.useState<string | null>(null);
@@ -84,44 +74,44 @@ export default function TopPagesSection({
     return () => ctrl.abort();
   }, [isoStart, isoEnd, limit]);
 
-  // ===== Hooks NO condicionales (derivados) =====
-  const seriesNames: string[] = React.useMemo(() => {
+  const seriesNames = React.useMemo(() => {
     const series = (data?.trend.series ?? []) as SeriesItem[];
-    return series.map((s: SeriesItem) => s.name);
+    return series.map((s) => s.name);
   }, [data?.trend.series]);
 
-  const colorsByName: Record<string, string> = React.useMemo(() => {
-    return generateDistinctColors(seriesNames);
-  }, [seriesNames]);
+  const colorsByName = React.useMemo(
+    () => generateDistinctColors(seriesNames),
+    [seriesNames]
+  );
 
   const donutData: PieDatum[] = React.useMemo(() => {
     const pages = (data?.summary.pages ?? []) as TopPageItem[];
     const total = data?.summary.totalViews ?? 0;
-    const topSlices: PieDatum[] = pages.map((p: TopPageItem) => ({
+    const topSlices = pages.map((p) => ({
       label: p.title ?? p.path,
       value: p.views,
     }));
-    const sumTop = topSlices.reduce((a: number, s: PieDatum) => a + s.value, 0);
+    const sumTop = topSlices.reduce((a, s) => a + s.value, 0);
     const other = Math.max(0, total - sumTop);
     return other > 0 ? [...topSlices, { label: "Other", value: other }] : topSlices;
   }, [data?.summary.pages, data?.summary.totalViews]);
 
-  const donutColorsByLabel: Record<string, string> = React.useMemo(() => {
+  const donutColorsByLabel = React.useMemo(() => {
     const map: Record<string, string> = {};
-    donutData.forEach((d: PieDatum) => {
+    donutData.forEach((d) => {
       map[d.label] = colorsByName[d.label] ?? (d.label === "Other" ? "#9CA3AF" : "#9CA3AF");
     });
     return map;
   }, [donutData, colorsByName]);
 
   const donutOptionsBase: DonutOptions = React.useMemo(
-    () => buildDonutOptions((v: number) => Intl.NumberFormat().format(v), "Total", "68%"),
+    () => buildDonutOptions((v) => Intl.NumberFormat().format(v), "Total", "68%"),
     []
   );
 
   const donutOptions: DonutOptions = React.useMemo(() => {
     const total = data?.summary.totalViews ?? 0;
-    const pctFormatter = (raw: string): string => {
+    const pctFormatter = (raw: string) => {
       const n = Number(raw || 0);
       const pct = total > 0 ? Math.round((n / total) * 100) : 0;
       return `${pct}%`;
@@ -135,10 +125,7 @@ export default function TopPagesSection({
             labels: {
               show: true,
               name: { ...donutOptionsBase.plotOptions.pie.donut.labels.name },
-              value: {
-                ...donutOptionsBase.plotOptions.pie.donut.labels.value,
-                formatter: pctFormatter,
-              },
+              value: { ...donutOptionsBase.plotOptions.pie.donut.labels.value, formatter: pctFormatter },
               total: { ...donutOptionsBase.plotOptions.pie.donut.labels.total, show: false },
             },
           },
@@ -150,7 +137,7 @@ export default function TopPagesSection({
 
   const listItems: MetricListItem[] = React.useMemo(() => {
     const pages = (data?.summary.pages ?? []) as TopPageItem[];
-    return pages.map((p: TopPageItem, idx: number) => {
+    return pages.map((p, idx) => {
       const name = p.title ?? p.path;
       return {
         id: `${p.path}::${idx}`,
@@ -163,7 +150,6 @@ export default function TopPagesSection({
     });
   }, [data?.summary.pages, colorsByName]);
 
-  // ===== Renders =====
   if (loading) return <TopPagesCardSkeleton donutSize={220} chartHeight={320} rows={6} />;
   if (error)
     return (
@@ -175,15 +161,14 @@ export default function TopPagesSection({
 
   return (
     <section className="mt-8">
-      <div className="rounded-2xl border border-gray-200 dark:border-white/10 bg-white dark:bg-[#14181e]">
-        {/* ==== Header superior de la card: Título + DateRangePicker ==== */}
-        <div className="flex items-start justify-between px-4 pt-4">
+      <div className="rounded-2xl border border-gray-200 dark:border-white/10 bg-white dark:bg-[#14181e] p-8">
+        {/* fila superior: título + datepicker */}
+        <div className="flex items-start justify-between px-9">
           <Header title={title} subtitle={subtitle} />
           <DateRangePicker
             startDate={rangeStart}
             endDate={rangeEnd}
-            onRangeChange={(startD: Date, endD: Date) => {
-              // Normalizamos a UTC (sin horas)
+            onRangeChange={(startD, endD) => {
               const s = new Date(Date.UTC(startD.getUTCFullYear(), startD.getUTCMonth(), startD.getUTCDate()));
               const e = new Date(Date.UTC(endD.getUTCFullYear(), endD.getUTCMonth(), endD.getUTCDate()));
               setRangeStart(s);
@@ -192,13 +177,13 @@ export default function TopPagesSection({
           />
         </div>
 
-        {/* ==== Contenido: grid 3 columnas como en Subtags ==== */}
+        {/* fila inferior: 3 columnas alineadas arriba */}
         <div className="p-4 pl-10">
-          <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 items-stretch">
-            {/* Izquierda: lista (con header y total integrado) */}
+          <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 items-start">
+            {/* izquierda: lista (sin mt para alinear top) */}
             <div className="xl:col-span-3 flex flex-col">
               <MetricList
-                className="flex-1 mt-2"
+                className="flex-1"
                 title="Pages"
                 totalLabel="Total views"
                 totalValue={data.summary.totalViews}
@@ -206,8 +191,8 @@ export default function TopPagesSection({
               />
             </div>
 
-            {/* Centro: Donut */}
-            <div className="xl:col-span-3 flex items-center justify-center">
+            {/* centro: donut (sin items-center para no centrar vertical) */}
+            <div className="xl:col-span-3 flex justify-center items-start">
               {donutData.length ? (
                 <PieChart
                   type="donut"
@@ -225,7 +210,7 @@ export default function TopPagesSection({
               )}
             </div>
 
-            {/* Derecha: líneas */}
+            {/* derecha: líneas */}
             <div className="xl:col-span-6 flex flex-col">
               <LineChart
                 type="area"
