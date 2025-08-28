@@ -1,4 +1,5 @@
 "use client";
+
 import * as React from "react";
 
 export type SubtagRow = { key: string; label: string; total: number };
@@ -10,6 +11,17 @@ type Props = {
   colorsByLabel: Record<string, string>;
   totalVisible: number;
   className?: string;
+
+  /** Máximo de filas visibles (si no usas maxHeightPx) */
+  maxVisible?: number;          // default: 5
+  /** Alto por fila (para calcular maxVisible) */
+  rowHeightPx?: number;         // default: 36
+  /** Alto máximo absoluto de la lista (gana sobre maxVisible) */
+  maxHeightPx?: number;         // default: 270
+  /** Si true, el header (título + total) queda fijo al hacer scroll */
+  stickyHeader?: boolean;       // default: true
+  /** Click opcional sobre item */
+  onItemClick?: (row: SubtagRow) => void;
 };
 
 export default function SubtagsList({
@@ -19,12 +31,25 @@ export default function SubtagsList({
   colorsByLabel,
   totalVisible,
   className = "",
+  maxVisible = 5,
+  rowHeightPx = 36,
+  maxHeightPx,
+  stickyHeader = true,
+  onItemClick,
 }: Props) {
-  return (
-    <div className={className}>
-      {/* Header de la lista */}
-      <div className="flex items-center justify-between pb-2">
-        <h3 className="text-sm font-semibold text-gray-900 dark:text-white">{title}</h3>
+  // ==== Header ====
+  const HeaderBlock = (
+    <div
+      className={
+        stickyHeader
+          ? "sticky top-0 z-10 bg-white dark:bg-[#14181e]"
+          : undefined
+      }
+    >
+      <div className="flex items-center justify-between pb-2 pt-0">
+        <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
+          {title}
+        </h3>
         <div className="text-xs text-gray-500 dark:text-gray-400">
           {totalLabel}{" "}
           <span className="font-semibold text-gray-900 dark:text-white tabular-nums">
@@ -32,34 +57,69 @@ export default function SubtagsList({
           </span>
         </div>
       </div>
-
       <div className="border-t border-gray-200 dark:border-white/10" />
+    </div>
+  );
 
-      {/* Ítems */}
-      {rows.length === 0 ? (
-        <div className="text-sm text-gray-500 dark:text-gray-400 py-3">No subtags found.</div>
-      ) : (
-        <ul className="divide-y divide-transparent pt-2">
-          {rows.map(({ key, label, total }) => {
-            const color = colorsByLabel[label] ?? "#9CA3AF";
+  if (rows.length === 0) {
+    return (
+      <div className={className}>
+        {HeaderBlock}
+        <div className="py-3 text-sm text-gray-500 dark:text-gray-400">
+          No subtags found.
+        </div>
+      </div>
+    );
+  }
+
+  // Alto máximo efectivo (por defecto 270px)
+  const computedMaxHeight =
+    typeof maxHeightPx === "number"
+      ? maxHeightPx
+      : Math.max(1, maxVisible) * rowHeightPx || 270;
+
+  return (
+    <div className={className}>
+      {HeaderBlock}
+
+      {/* Scroll vertical — por defecto a la DERECHA */}
+      <div
+        className="mt-2 overflow-y-auto"
+        style={{ maxHeight: computedMaxHeight }}
+        aria-label="Subtags list"
+      >
+        <ul className="divide-y divide-transparent pt-2" role="list">
+          {rows.map((row) => {
+            const color = colorsByLabel[row.label] ?? "#9CA3AF";
             return (
-              <li key={key} className="py-1.5 flex items-center justify-between gap-4">
-                <div className="flex items-center gap-2 min-w-0">
+              <li
+                key={row.key}
+                className="flex items-center justify-between gap-4 py-1.5"
+                style={{ minHeight: rowHeightPx }}
+                onClick={() => onItemClick?.(row)}
+                role={onItemClick ? "button" : undefined}
+              >
+                <div className="flex min-w-0 items-center gap-2">
                   <span
                     className="h-2.5 w-2.5 rounded-[3px] border border-black/5 dark:border-white/10"
                     style={{ backgroundColor: color }}
                     aria-hidden
                   />
-                  <span className="truncate text-sm text-gray-800 dark:text-gray-100">{label}</span>
+                  <span
+                    className="truncate text-sm text-gray-800 dark:text-gray-100"
+                    title={row.label}
+                  >
+                    {row.label}
+                  </span>
                 </div>
-                <span className="text-sm font-semibold text-gray-900 dark:text-white tabular-nums">
-                  {Intl.NumberFormat().format(total)}
+                <span className="tabular-nums text-sm font-semibold text-gray-900 dark:text-white">
+                  {Intl.NumberFormat().format(row.total)}
                 </span>
               </li>
             );
           })}
         </ul>
-      )}
+      </div>
     </div>
   );
 }

@@ -2,72 +2,179 @@
 // Datos "quemados": series diarias por tagPath
 export type SeriesDict = Record<string, Record<string, number>>;
 
-// ---------- Configuración del mock ----------
+// ---------- RANGO DE FECHAS QUE GENERA MOCK ----------
 const START = "2025-05-01";
 const END   = "2025-08-31";
 
 // Heroicons (para la metadata de cada tag raíz)
 import type * as React from "react";
 import {
-  ShoppingBagIcon,
-  BuildingOfficeIcon,
-  TruckIcon,
-  MusicalNoteIcon,
-  ShieldCheckIcon,
-  SparklesIcon,
-  AcademicCapIcon,
   SunIcon,
+  MapIcon,
   MapPinIcon,
+  BuildingLibraryIcon,
+  BuildingOffice2Icon,
+  HomeModernIcon,
+  ShoppingBagIcon,
+  SparklesIcon,
+  FlagIcon,
+  BugAntIcon,
   QuestionMarkCircleIcon,
 } from "@heroicons/react/24/outline";
 
 // ---------- Metadata UI por tag raíz ----------
 export type TagMeta = {
-  /** Label legible (puedes cambiar a lo que quieras mostrar) */
   label: string;
-  /** Componente de ícono (Heroicons) */
   icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
-  /** Clases Tailwind para el “chip” del ícono */
-  color: string;
+  color: string; // tailwind classes para el “chip”
 };
 
 /**
  * TAG_META: estilos e íconos por cada tag raíz.
- * Así evitas definirlos en las pages.
+ * (puedes ajustar colores/icons a tu gusto)
  */
 export const TAG_META: Record<string, TagMeta> = {
-  playa:        { label: "Playa",        icon: SunIcon,            color: "bg-blue-50 text-blue-600 dark:bg-white/5 dark:text-blue-300" },
-  museos:       { label: "Museos",       icon: AcademicCapIcon,    color: "bg-emerald-50 text-emerald-600 dark:bg-white/5 dark:text-emerald-300" },
-  gastronomia:  { label: "Gastronomía",  icon: SparklesIcon,       color: "bg-amber-50 text-amber-600 dark:bg-white/5 dark:text-amber-300" },
-  alojamiento:  { label: "Alojamiento",  icon: BuildingOfficeIcon, color: "bg-rose-50 text-rose-600 dark:bg-white/5 dark:text-rose-300" },
-  transporte:   { label: "Transporte",   icon: TruckIcon,          color: "bg-slate-100 text-slate-700 dark:bg-white/5 dark:text-slate-200" },
-  eventos:      { label: "Eventos",      icon: MusicalNoteIcon,    color: "bg-fuchsia-50 text-fuchsia-600 dark:bg-white/5 dark:text-fuchsia-300" },
-  naturaleza:   { label: "Naturaleza",   icon: MapPinIcon,         color: "bg-orange-50 text-orange-600 dark:bg-white/5 dark:text-orange-300" },
-  compras:      { label: "Compras",      icon: ShoppingBagIcon,    color: "bg-teal-50 text-teal-600 dark:bg-white/5 dark:text-teal-300" },
-  deportes:     { label: "Deportes",     icon: SparklesIcon,       color: "bg-violet-50 text-violet-600 dark:bg-white/5 dark:text-violet-300" },
-  seguridad:    { label: "Seguridad",    icon: ShieldCheckIcon,    color: "bg-indigo-50 text-indigo-600 dark:bg-white/5 dark:text-indigo-300" },
+  circuitoMonteblanco: { label: "Circuito Monteblanco", icon: FlagIcon,              color: "bg-indigo-50 text-indigo-600 dark:bg-white/5 dark:text-indigo-300" },
+  donana:              { label: "Doñana",              icon: BugAntIcon,               color: "bg-emerald-50 text-emerald-600 dark:bg-white/5 dark:text-emerald-300" },
+  espaciosMuseisticos: { label: "Espacios museísticos",icon: BuildingLibraryIcon,    color: "bg-sky-50 text-sky-600 dark:bg-white/5 dark:text-sky-300" },
+  fiestasTradiciones:  { label: "Fiestas y tradiciones",icon: SparklesIcon,          color: "bg-fuchsia-50 text-fuchsia-600 dark:bg-white/5 dark:text-fuchsia-300" },
+  laRabida:            { label: "La Rábida",           icon: BuildingOffice2Icon,    color: "bg-rose-50 text-rose-600 dark:bg-white/5 dark:text-rose-300" },
+  lugaresColombinos:   { label: "Lugares colombinos",  icon: MapIcon,                color: "bg-teal-50 text-teal-600 dark:bg-white/5 dark:text-teal-300" },
+  naturaleza:          { label: "Naturaleza",          icon: MapPinIcon,             color: "bg-orange-50 text-orange-600 dark:bg-white/5 dark:text-orange-300" },
+  patrimonio:          { label: "Patrimonio",          icon: HomeModernIcon,         color: "bg-violet-50 text-violet-600 dark:bg-white/5 dark:text-violet-300" },
+  playa:               { label: "Playa",               icon: SunIcon,                color: "bg-blue-50 text-blue-600 dark:bg-white/5 dark:text-blue-300" },
+  rutasCulturales:     { label: "Rutas culturales",    icon: MapIcon,                color: "bg-amber-50 text-amber-600 dark:bg-white/5 dark:text-amber-300" },
+  rutasSenderismo:     { label: "Rutas senderismo y cicloturistas", icon: MapIcon,   color: "bg-lime-50 text-lime-600 dark:bg-white/5 dark:text-lime-300" },
+  sabor:               { label: "Sabor",               icon: ShoppingBagIcon,        color: "bg-pink-50 text-pink-600 dark:bg-white/5 dark:text-pink-300" },
+  pueblos:             { label: "Pueblos",             icon: MapPinIcon,             color: "bg-slate-100 text-slate-700 dark:bg-white/5 dark:text-slate-200" },
+  // (si en el futuro agregas “museos”, “deportes”, etc. puedes extender aquí)
 };
 
-// Fallback para tags no mapeados (por si agregas más en el futuro)
+// Fallback para tags no mapeados
 export const DEFAULT_TAG_META: TagMeta = {
   label: "Desconocido",
   icon: QuestionMarkCircleIcon,
   color: "bg-gray-100 text-gray-600 dark:bg-white/5 dark:text-gray-300",
 };
 
-// ---------- Especificación de tags y subtags ----------
+// ---------- Definición de tags y subtags ----------
+// Subtags inventados (slugs) coherentes con cada ámbito.
+// Para “pueblos” usamos exactamente la lista que nos diste.
 const TAG_SPECS: Array<{ id: string; subtags: string[] }> = [
-  { id: "playa",        subtags: ["limpieza", "ubicacion", "chiringuitos", "accesos", "banderaAzul"] },
-  { id: "museos",       subtags: ["horarios", "precios", "entradas", "exposiciones", "ubicacion"] },
-  { id: "gastronomia",  subtags: ["tapas", "restaurantes", "reservas", "precios", "horarios"] },
-  { id: "alojamiento",  subtags: ["hoteles", "apartamentos", "disponibilidad", "precios", "resenas"] },
-  { id: "transporte",   subtags: ["autobuses", "trenes", "taxis", "aparcamiento", "tarifas"] },
-  { id: "eventos",      subtags: ["conciertos", "festivales", "ferias", "horarios", "entradas"] },
-  { id: "naturaleza",   subtags: ["rutas", "parques", "senderismo", "fauna", "miradores"] },
-  { id: "compras",      subtags: ["centros", "mercados", "horarios", "souvenirs", "precios"] },
-  { id: "deportes",     subtags: ["surf", "ciclismo", "running", "futbol", "baloncesto"] },
-  { id: "seguridad",    subtags: ["policia", "hospitales", "farmacias", "emergencias", "recomendaciones"] },
+  {
+    id: "circuitoMonteblanco",
+    subtags: ["eventos", "carreras", "escuela", "visitas", "alquilerPista"],
+  },
+  {
+    id: "donana",
+    subtags: ["fauna", "flora", "rutas", "avistamiento", "centrosVisita"],
+  },
+  {
+    id: "espaciosMuseisticos",
+    subtags: ["exposiciones", "horarios", "entradas", "guias", "talleres"],
+  },
+  {
+    id: "fiestasTradiciones",
+    subtags: ["romerias", "carnavales", "ferias", "gastronomia", "artesanias"],
+  },
+  {
+    id: "laRabida",
+    subtags: ["monasterio", "jardines", "muelleCarabelas", "eventos", "miradores"],
+  },
+  {
+    id: "lugaresColombinos",
+    subtags: ["rutasHistoricas", "monumentos", "centrosInterpretacion", "muelleCarabelas", "miradores"],
+  },
+  {
+    id: "naturaleza",
+    subtags: ["parques", "senderos", "miradores", "rios", "playasNaturales"],
+  },
+  {
+    id: "patrimonio",
+    subtags: ["castillos", "iglesias", "murallas", "plazasHistoricas", "yacimientos"],
+  },
+  {
+    id: "playa",
+    subtags: ["servicios", "banderaAzul", "chiringuitos", "accesibilidad", "deportesAcuaticos"],
+  },
+  {
+    id: "rutasCulturales",
+    subtags: ["barroco", "colombina", "vinicola", "minera", "industrial"],
+  },
+  {
+    id: "rutasSenderismo",
+    subtags: ["familiares", "intermedias", "avanzadas", "btt", "viasVerdes"],
+  },
+  {
+    id: "sabor",
+    subtags: ["vinos", "jamon", "mariscos", "tapas", "mercados"],
+  },
+  {
+    id: "pueblos",
+    subtags: [
+      "almonte",
+      "bollullos",
+      "bonares",
+      "chucena",
+      "crucesMayoBonares",
+      "escacena",
+      "hinojos",
+      "laPalmaDelCondado",
+      "lucenaDelPuerto",
+      "manzanilla",
+      "niebla",
+      "palos",
+      "paternaDelCampo",
+      "puertasMurallaNiebla",
+      "rocianaDelCondado",
+      "sinCategoria",
+      "villalba",
+      "villarrasa",
+    ],
+  },
 ];
+
+// ---------- Ponderadores según “items” (tu entrada) ----------
+/** Peso por TAG raíz para escalar su volumen total. */
+const TAG_ITEM_HINTS: Record<string, number> = {
+  circuitoMonteblanco: 2,
+  donana: 21,
+  espaciosMuseisticos: 27,
+  fiestasTradiciones: 130,
+  laRabida: 10,
+  lugaresColombinos: 7,
+  naturaleza: 36,
+  patrimonio: 151,
+  playa: 7,
+  rutasCulturales: 5,
+  rutasSenderismo: 59,
+  sabor: 0,
+  pueblos: 0, // se reparte por subtags abajo
+};
+
+/** Peso por SUBTAG (solo donde nos diste valores —pueblos—). */
+const SUBTAG_ITEM_HINTS: Record<string, Record<string, number>> = {
+  pueblos: {
+    almonte: 56,
+    bollullos: 25,
+    bonares: 22,
+    chucena: 15,
+    crucesMayoBonares: 8,
+    escacena: 25,
+    hinojos: 26,
+    laPalmaDelCondado: 31,
+    lucenaDelPuerto: 16,
+    manzanilla: 19,
+    niebla: 27,
+    palos: 29,
+    paternaDelCampo: 37,
+    puertasMurallaNiebla: 5,
+    rocianaDelCondado: 20,
+    sinCategoria: 2,
+    villalba: 19,
+    villarrasa: 22,
+  },
+};
 
 // ---------- Utilidades deterministas (PRNG) ----------
 function hashStr(s: string): number {
@@ -98,52 +205,84 @@ function dateRangeDays(startISO: string, endISO: string): string[] {
 }
 
 // ---------- Generación de las series ----------
+function normalizeWeights(obj: Record<string, number>): Record<string, number> {
+  const total = Object.values(obj).reduce((a, b) => a + b, 0);
+  if (total <= 0) {
+    const n = Object.keys(obj).length || 1;
+    const eq = 1 / n;
+    const out: Record<string, number> = {};
+    Object.keys(obj).forEach((k) => (out[k] = eq));
+    return out;
+  }
+  const out: Record<string, number> = {};
+  Object.entries(obj).forEach(([k, v]) => (out[k] = v / total));
+  return out;
+}
+
 function buildMockSeries(): SeriesDict {
   const dates = dateRangeDays(START, END);
   const series: SeriesDict = {};
 
+  const maxTagItems = Math.max(1, ...Object.values(TAG_ITEM_HINTS));
+
   for (const { id: tag, subtags } of TAG_SPECS) {
     // Semilla por tag para patrones estables
     const rndTag = mulberry32(hashStr(tag));
-    // Media y amplitud base por tag (estables pero distintas)
-    const baseMean = Math.round(90 + rndTag() * 110);   // 90–200
-    const amplitude = 0.35 + rndTag() * 0.35;           // 0.35–0.70
+
+    // Base por popularidad (según items): 80–220 aprox.
+    const popularity = TAG_ITEM_HINTS[tag] ?? 0;
+    const baseMean = Math.round(80 + (popularity / maxTagItems) * (220 - 80));
+
+    const amplitude = 0.35 + rndTag() * 0.35; // 0.35–0.70
     const phase = rndTag() * Math.PI * 2;
 
-    // Pesos por subtag que suman ~1 (normalizados)
-    const rawW = subtags.map((s) => 0.6 + mulberry32(hashStr(tag + "." + s))() * 1.4);
-    const sumW = rawW.reduce((a, b) => a + b, 0);
-    const weights = rawW.map((w) => w / sumW);
+    // Pesos por subtag
+    const weightMap: Record<string, number> = {};
+    const subHints = SUBTAG_ITEM_HINTS[tag];
+
+    if (subHints) {
+      // Si tenemos hints concretos (pueblos), los usamos.
+      subtags.forEach((s) => {
+        weightMap[s] = subHints[s] ?? 1;
+      });
+    } else {
+      // Caso general: pesos pseudo-aleatorios estables pero repartidos
+      subtags.forEach((s) => {
+        const r = 0.6 + mulberry32(hashStr(`${tag}.${s}:w`))() * 1.4; // 0.6–2.0
+        weightMap[s] = r;
+      });
+    }
+
+    const weights = normalizeWeights(weightMap);
 
     // Inicializar contenedores
     series[tag] = {};
     for (const s of subtags) series[`${tag}.${s}`] = {};
 
-    // Para cada día: señal estacional + ruido leve
+    // Para cada día
     dates.forEach((date, idx) => {
-      const season = Math.sin((idx / 18) + phase); // ciclo ~36 días
-      const dayOfWeek = new Date(date + "T00:00:00Z").getUTCDay(); // 0..6
-      const weekendBoost = (dayOfWeek === 0 || dayOfWeek === 6) ? 1.12 : 1.0;
+      const season = Math.sin(idx / 18 + phase); // ciclo ~36 días
+      const dow = new Date(date + "T00:00:00Z").getUTCDay(); // 0..6
+      const weekendBoost = (dow === 0 || dow === 6) ? 1.12 : 1.0;
+      const noise = (rndTag() - 0.5) * 0.18; // ±9%
 
-      // nivel total del tag para ese día
-      const noise = (rndTag() - 0.5) * 0.2; // ±10%
       let total = baseMean * (1 + amplitude * season) * weekendBoost * (1 + noise);
       if (total < 0) total = 0;
 
-      // repartir entre subtags según pesos (más un poquito de ruido)
+      // repartir entre subtags según pesos + pequeño jitter
       let sumSub = 0;
-      const parts: number[] = [];
-      for (let i = 0; i < subtags.length; i++) {
-        const r = mulberry32(hashStr(`${tag}.${subtags[i]}:${date}`))();
-        const jitter = 0.85 + r * 0.3; // 0.85–1.15
-        const val = Math.max(0, Math.round(total * weights[i] * jitter));
-        parts.push(val);
+      const parts: Record<string, number> = {};
+      subtags.forEach((s) => {
+        const r = mulberry32(hashStr(`${tag}.${s}:${date}`))();
+        const jitter = 0.9 + r * 0.2; // 0.9–1.1
+        const val = Math.max(0, Math.round(total * weights[s] * jitter));
+        parts[s] = val;
         sumSub += val;
-      }
+      });
 
       // guardar subtags
-      subtags.forEach((s, i) => {
-        series[`${tag}.${s}`][date] = parts[i];
+      subtags.forEach((s) => {
+        series[`${tag}.${s}`][date] = parts[s];
       });
 
       // el nivel del tag = suma de subtags (consistente)
@@ -157,8 +296,6 @@ function buildMockSeries(): SeriesDict {
 export const SERIES: SeriesDict = buildMockSeries();
 
 /** Helpers opcionales (por si te sirven en más lugares) */
-
-/** Última fecha disponible en SERIES (mirando solo tags raíz) */
 export function getLastDate(series: SeriesDict = SERIES): string {
   let last = "";
   for (const [key, byDate] of Object.entries(series)) {
@@ -170,6 +307,7 @@ export function getLastDate(series: SeriesDict = SERIES): string {
   return last;
 }
 
+// Mapeo tailwind -> HEX (para chips/leyendas)
 const TAILWIND_TO_HEX: Record<string, string> = {
   "text-blue-600": "#2563EB",
   "text-emerald-600": "#059669",
@@ -181,7 +319,10 @@ const TAILWIND_TO_HEX: Record<string, string> = {
   "text-teal-600": "#0D9488",
   "text-violet-600": "#7C3AED",
   "text-indigo-600": "#4F46E5",
-  "text-gray-600": "#4B5563",       // fallback
+  "text-sky-600": "#0284C7",
+  "text-lime-600": "#65A30D",
+  "text-pink-600": "#DB2777",
+  "text-gray-600": "#4B5563",
   "text-gray-700": "#374151",
 };
 
