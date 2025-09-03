@@ -9,7 +9,7 @@ import { trpc } from "@/lib/trpc/client";
 import SidebarSection from "@/components/sidebar/SidebarSection";
 import { PRIMARY_ITEMS, SECONDARY_ITEMS_BASE, ADMIN_ITEM } from "@/components/sidebar/menu";
 
-export default function Sidebar() {
+export default function AppSidebar() {
   const { isExpanded, isHovered, isMobileOpen, setIsHovered } = useSidebar();
   const pathname = usePathname();
 

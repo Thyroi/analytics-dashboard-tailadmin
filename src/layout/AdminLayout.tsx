@@ -1,14 +1,24 @@
 "use client";
 
 import { useSidebar } from "@/context/SidebarContext";
+import { usePathname } from "next/navigation";
 import AppHeader from "@/layout/AppHeader";
 import AppSidebar from "@/layout/AppSidebar";
 import Backdrop from "@/layout/Backdrop";
-import React from "react";
 import SubHeader from "./SubHeader";
+import React from "react";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const { isExpanded, isHovered, isMobileOpen } = useSidebar();
+  const pathname = usePathname();
+
+  // Rutas válidas donde SÍ debe mostrarse el SubHeader
+  const validRoutes = ["/", "/analytics", "/chatbot", "/users", "/test-tags"];
+
+  // Si la ruta actual no coincide con ninguna válida => 404
+  const is404 = !validRoutes.some((route) =>
+    route === "/" ? pathname === "/" : pathname.startsWith(route)
+  );
 
   const mainContentMargin = isMobileOpen
     ? "ml-0"
@@ -25,7 +35,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       >
         <AppHeader />
         <div className="p-4 mx-auto max-w-(--breakpoint-2xl) md:p-6">
-          <SubHeader />
+          {/* Solo mostramos SubHeader si NO es 404 */}
+          {!is404 && <SubHeader />}
           {children}
         </div>
       </div>

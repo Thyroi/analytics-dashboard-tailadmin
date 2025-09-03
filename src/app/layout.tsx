@@ -1,4 +1,3 @@
-// src/app/layout.tsx
 import "./globals.css";
 import { SidebarProvider } from "@/context/SidebarContext";
 import AdminLayout from "@/layout/AdminLayout";
