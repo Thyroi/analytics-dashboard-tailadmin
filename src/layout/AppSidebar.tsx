@@ -9,6 +9,13 @@ import { trpc } from "@/lib/trpc/client";
 import SidebarSection from "@/components/sidebar/SidebarSection";
 import { PRIMARY_ITEMS, SECONDARY_ITEMS_BASE, ADMIN_ITEM } from "@/components/sidebar/menu";
 
+function cleanPath(p: string) {
+  // quita query/hash y el trailing slash
+  const noQS = p.split("?")[0].split("#")[0];
+  const trimmed = noQS.replace(/\/+$/, "");
+  return trimmed === "" ? "/" : trimmed;
+}
+
 export default function AppSidebar() {
   const { isExpanded, isHovered, isMobileOpen, setIsHovered } = useSidebar();
   const pathname = usePathname();
@@ -25,7 +32,15 @@ export default function AppSidebar() {
   const isAdmin =
     me?.roles?.some((r) => r.role?.name?.toUpperCase() === "ADMIN") ?? false;
 
-  const isActive = useCallback((p: string) => pathname === p, [pathname]);
+  const isActive = useCallback(
+    (path: string) => {
+      const a = cleanPath(pathname || "/");
+      const b = cleanPath(path);
+      if (b === "/") return a === "/";            // Home solo exacto
+      return a === b || a.startsWith(b + "/");     // Marca activo también en subrutas
+    },
+    [pathname]
+  );
 
   const secondaryItems = useMemo(
     () => (isAdmin ? [...SECONDARY_ITEMS_BASE, ADMIN_ITEM] : SECONDARY_ITEMS_BASE),
@@ -50,6 +65,7 @@ export default function AppSidebar() {
           My Dashboard
         </Link>
       </div>
+
       <nav className="flex flex-col gap-2 px-3">
         <SidebarSection items={PRIMARY_ITEMS} isActive={isActive} />
         <div className="my-3 border-t border-gray-200 dark:border-gray-800" />
