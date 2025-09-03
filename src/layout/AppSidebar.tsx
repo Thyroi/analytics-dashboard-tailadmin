@@ -3,72 +3,34 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSidebar } from "@/context/SidebarContext";
-import {
-  Squares2X2Icon,
-  ChevronDownIcon,
-  UserGroupIcon,
-} from "@heroicons/react/24/outline";
-import { useEffect, useState, useRef, useCallback, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { trpc } from "@/lib/trpc/client";
 
-export default function AppSidebar() {
-  const { isExpanded, isHovered, isMobileOpen, setIsHovered, setIsMobileOpen } =
-    useSidebar();
+import SidebarSection from "@/components/sidebar/SidebarSection";
+import { PRIMARY_ITEMS, SECONDARY_ITEMS_BASE, ADMIN_ITEM } from "@/components/sidebar/menu";
+
+export default function Sidebar() {
+  const { isExpanded, isHovered, isMobileOpen, setIsHovered } = useSidebar();
   const pathname = usePathname();
 
-  // 👇 usa el optional para evitar 401 cuando no hay sesión
   const { data: me } = trpc.user.meOptional.useQuery(undefined, {
     staleTime: 10 * 60 * 1000,
     refetchOnMount: false,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
     retry: 0,
-    placeholderData: (prev) => prev,
+    placeholderData: (p) => p,
   });
 
-  const isAdmin = useMemo(
-    () => me?.roles?.some((r) => r.role?.name?.toUpperCase() === "ADMIN") ?? false,
-    [me]
+  const isAdmin =
+    me?.roles?.some((r) => r.role?.name?.toUpperCase() === "ADMIN") ?? false;
+
+  const isActive = useCallback((p: string) => pathname === p, [pathname]);
+
+  const secondaryItems = useMemo(
+    () => (isAdmin ? [...SECONDARY_ITEMS_BASE, ADMIN_ITEM] : SECONDARY_ITEMS_BASE),
+    [isAdmin]
   );
-
-  const dashboardItems = useMemo(
-    () => [
-      { name: "Analytics", path: "/analytics" },
-      { name: "Chatbot Insights", path: "/chatbot" },
-    ],
-    []
-  );
-  const adminItems = useMemo(() => [{ name: "Users", path: "/users" }], []);
-
-  const isActive = useCallback((path: string) => pathname === path, [pathname]);
-
-  const [openDashboard, setOpenDashboard] = useState(false);
-  const dashRef = useRef<HTMLDivElement | null>(null);
-  const [dashHeight, setDashHeight] = useState(0);
-  const dashHasActive = dashboardItems.some((sub) => isActive(sub.path));
-
-  useEffect(() => {
-    if (dashHasActive) setOpenDashboard(true);
-  }, [dashHasActive]);
-
-  useEffect(() => {
-    if (openDashboard && dashRef.current) setDashHeight(dashRef.current.scrollHeight);
-    else setDashHeight(0);
-  }, [openDashboard]);
-
-  const [openAdmin, setOpenAdmin] = useState(false);
-  const adminRef = useRef<HTMLDivElement | null>(null);
-  const [adminHeight, setAdminHeight] = useState(0);
-  const adminHasActive = adminItems.some((sub) => isActive(sub.path));
-
-  useEffect(() => {
-    if (adminHasActive) setOpenAdmin(true);
-  }, [adminHasActive]);
-
-  useEffect(() => {
-    if (openAdmin && adminRef.current) setAdminHeight(adminRef.current.scrollHeight);
-    else setAdminHeight(0);
-  }, [openAdmin]);
 
   return (
     <aside
@@ -84,101 +46,14 @@ export default function AppSidebar() {
           !isExpanded && !isHovered ? "lg:justify-center" : "justify-start px-4"
         }`}
       >
-        <Link href="/" className="text-lg font-bold text-gray-900 dark:text-white">
+        <Link href="/" className="text-lg font-bold text-huelva-primary dark:text-white">
           My Dashboard
         </Link>
       </div>
-
-      <nav className="flex flex-col gap-4 px-4">
-        {/* Dashboard */}
-        <button
-          onClick={() => setOpenDashboard((p) => !p)}
-          className={`menu-item group ${
-            dashHasActive ? "menu-item-active" : "menu-item-inactive"
-          }`}
-        >
-          <span className={`${dashHasActive ? "menu-item-icon-active" : "menu-item-icon-inactive"}`}>
-            <Squares2X2Icon className="w-5 h-5" />
-          </span>
-          {(isExpanded || isHovered || isMobileOpen) && <span>Dashboard</span>}
-          {(isExpanded || isHovered || isMobileOpen) && (
-            <ChevronDownIcon
-              className={`ml-auto w-5 h-5 transition-transform duration-200 ${
-                openDashboard ? "rotate-180 text-brand-500" : ""
-              }`}
-            />
-          )}
-        </button>
-
-        <div
-          ref={dashRef}
-          className="overflow-hidden transition-all duration-300"
-          style={{ height: `${dashHeight}px` }}
-        >
-          <ul className="mt-2 ml-8 space-y-2">
-            {dashboardItems.map((sub) => (
-              <li key={sub.name}>
-                <Link
-                  href={sub.path}
-                  className={`menu-dropdown-item ${
-                    isActive(sub.path) ? "menu-dropdown-item-active" : "menu-dropdown-item-inactive"
-                  }`}
-                  onClick={() => setIsMobileOpen(false)}
-                >
-                  {sub.name}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </div>
-
-        {/* Admin (solo si ADMIN) */}
-        {isAdmin && (
-          <>
-            <button
-              onClick={() => setOpenAdmin((p) => !p)}
-              className={`menu-item group ${
-                adminHasActive ? "menu-item-active" : "menu-item-inactive"
-              }`}
-            >
-              <span className={`${adminHasActive ? "menu-item-icon-active" : "menu-item-icon-inactive"}`}>
-                <UserGroupIcon className="w-5 h-5" />
-              </span>
-              {(isExpanded || isHovered || isMobileOpen) && <span>Admin</span>}
-              {(isExpanded || isHovered || isMobileOpen) && (
-                <ChevronDownIcon
-                  className={`ml-auto w-5 h-5 transition-transform duration-200 ${
-                    openAdmin ? "rotate-180 text-brand-500" : ""
-                  }`}
-                />
-              )}
-            </button>
-
-            <div
-              ref={adminRef}
-              className="overflow-hidden transition-all duration-300"
-              style={{ height: `${adminHeight}px` }}
-            >
-              <ul className="mt-2 ml-8 space-y-2">
-                {adminItems.map((sub) => (
-                  <li key={sub.name}>
-                    <Link
-                      href={sub.path}
-                      className={`menu-dropdown-item ${
-                        isActive(sub.path)
-                          ? "menu-dropdown-item-active"
-                          : "menu-dropdown-item-inactive"
-                      }`}
-                      onClick={() => setIsMobileOpen(false)}
-                    >
-                      {sub.name}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </>
-        )}
+      <nav className="flex flex-col gap-2 px-3">
+        <SidebarSection items={PRIMARY_ITEMS} isActive={isActive} />
+        <div className="my-3 border-t border-gray-200 dark:border-gray-800" />
+        <SidebarSection items={secondaryItems} isActive={isActive} />
       </nav>
     </aside>
   );

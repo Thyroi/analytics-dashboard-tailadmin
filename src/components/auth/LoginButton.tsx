@@ -15,7 +15,7 @@ export default function LoginButton({
   return (
     <a
       href={`/auth/login`}
-      className={`inline-flex items-center gap-2 rounded-full px-3 h-9 text-sm bg-blue-600 text-white hover:bg-blue-700 ${className}`}
+      className={`inline-flex items-center gap-2 rounded-full px-3 h-9 text-sm bg-huelva-primary text-white hover:bg-huelva-dark ${className}`}
     >
       {children}
     </a>

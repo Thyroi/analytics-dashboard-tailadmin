@@ -1,10 +1,10 @@
 "use client";
 
+import AuthUserMenu from "@/components/auth/AuthUserMenu";
 import { useSidebar } from "@/context/SidebarContext";
 import { Bars3Icon, MoonIcon, SunIcon } from "@heroicons/react/24/outline";
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
-import AuthUserMenu from "@/components/auth/AuthUserMenu"; // ⬅️ nuevo
 
 export default function AppHeader() {
   const { setIsMobileOpen } = useSidebar();
@@ -15,7 +15,8 @@ export default function AppHeader() {
   if (!mounted) return null;
 
   return (
-    <header className="header-container">
+    <header className="flex items-center h-14 px-4 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
+      {/* Botón menú (izquierda) */}
       <button
         className="lg:hidden p-2 text-gray-700 dark:text-gray-300"
         onClick={() => setIsMobileOpen(true)}
@@ -24,9 +25,11 @@ export default function AppHeader() {
         <Bars3Icon className="w-6 h-6" />
       </button>
 
-      <h1 className="header-title">Dashboard</h1>
+      {/* Empuja las acciones a la derecha */}
+      <div className="ml-auto" />
 
-      <div className="header-actions flex items-center gap-3">
+      {/* Acciones (derecha) */}
+      <div className="flex items-center gap-3">
         <button
           onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
           className="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-800 transition"
@@ -39,7 +42,6 @@ export default function AppHeader() {
           )}
         </button>
 
-        {/* Aquí decide: dropdown si hay sesión, o botón de login si no */}
         <AuthUserMenu className="ml-1" connection="google-workspace" />
       </div>
     </header>

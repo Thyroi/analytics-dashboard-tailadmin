@@ -5,12 +5,13 @@
 
 /* =========================
    THEME TOKENS
+   Updated with Huelva Colors
 ========================= */
 @theme {
   /* Fonts */
   --font-outfit: Outfit, sans-serif;
 
-  /* Breakpoints (conservamos todos por compatibilidad) */
+  /* Breakpoints */
   --breakpoint-2xsm: 375px;
   --breakpoint-xsm: 425px;
   --breakpoint-3xl: 2000px;
@@ -40,7 +41,20 @@
   --text-theme-xs: 12px;
   --text-theme-xs--line-height: 18px;
 
-  /* Brand palette */
+  /* =========================
+     HUELVA COLORS (NEW)
+  ========================== */
+  --color-huelva-primary: #E55338; /* Naranja principal, botones */
+  --color-huelva-secondary: #F5AA35; /* Naranja claro, inicio degradado */
+  --color-huelva-dark: #902919; /* Rojo oscuro, acentos y contrastes */
+
+  /* Gradient */
+  --gradient-huelva: linear-gradient(90deg, var(--color-huelva-primary), var(--color-huelva-secondary));
+
+  /* =========================
+     ORIGINAL BRAND PALETTE
+     (Retained for compatibility)
+  ========================== */
   --color-brand-25: #f2f7ff;
   --color-brand-50: #ecf3ff;
   --color-brand-100: #dde9ff;
@@ -82,6 +96,7 @@
   --shadow-theme-xl: 0 20px 24px -4px rgba(16, 24, 40, 0.08),
     0 8px 8px -4px rgba(16, 24, 40, 0.03);
 }
+
 
 /* =========================
    BASE
