@@ -3,8 +3,8 @@
 import LineChart from "@/components/charts/LineChart";
 import Header from "@/components/common/Header";
 import * as React from "react";
+import GranularityTabs from "../../../../components/dashboard/GranularityTabs";
 import DonutTopShareCard from "./DonutTopShareCard";
-import GranularityTabs from "./GranularityTabs";
 import TagsDrawer from "./TagsDrawer";
 
 import { useTopTags } from "@/hooks/useTopTags";

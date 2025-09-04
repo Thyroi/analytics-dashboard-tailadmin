@@ -1,7 +1,7 @@
 import { SERIES } from "@/lib/mockData";
 
 export type TagTotal = { tag: string; total: number };
-export type Granularity = "day" | "week" | "month";
+export type Granularity = "d" | "w" | "m" | "y";
 export type SeriesByDate = Record<string, number>;
 export type SeriesMap = Record<string, SeriesByDate>;
 export type SubtagRow = { key: string; label: string; total: number };
@@ -30,12 +30,12 @@ export function datesForGranularity(series: typeof SERIES, gran: Granularity): s
   const endISO = getLastDate(series); if (!endISO) return [];
   const end = parseISO(endISO);
 
-  if (gran === "day") {
+  if (gran === "d") {
     const start = addDays(end, -29); // 30 días exactos
     return daysRange(start, end);
   }
 
-  if (gran === "week") {
+  if (gran === "w") {
     const start = addDays(end, -((7 * 8) - 1)); // 8 semanas (56 días) exactos
     return daysRange(start, end);
   }
@@ -135,7 +135,7 @@ export function buildTrendForTagsFromDates(
 ): { categories: string[]; series: { name: string; data: number[] }[] } {
   if (dates.length === 0 || tagIds.length === 0) return { categories: [], series: [] };
 
-  if (gran === "day") {
+  if (gran === "d") {
     return {
       categories: dates,
       series: tagIds.map((t) => ({
@@ -145,7 +145,7 @@ export function buildTrendForTagsFromDates(
     };
   }
 
-  if (gran === "week") {
+  if (gran === "w") {
     const keys = Array.from(new Set(dates.map(isoWeekKey)));
     return {
       categories: keys,

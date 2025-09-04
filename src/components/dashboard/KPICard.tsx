@@ -1,53 +1,80 @@
+"use client";
+
 import React from "react";
+
+type Props = {
+  title: string;
+  value: string | number;
+  icon?: React.ReactNode;
+  className?: string;
+  delta?: string;
+  deltaVariant?: "up" | "down";
+};
 
 export default function KPICard({
   title,
   value,
-  delta,
-  deltaVariant = "up",
   icon,
   className = "",
-}: {
-  title: string;
-  value: string;
-  delta: string;
-  deltaVariant?: "up" | "down";
-  icon?: React.ReactNode;
-  className?: string;
-}) {
+  delta,
+  deltaVariant = "up",
+}: Props) {
   const isDown = deltaVariant === "down";
 
   return (
-    <div className={`kpi-card ${className}`}>
-      {/* Header */}
-      <div className="flex items-start justify-between gap-3 min-w-0">
-        <div className="kpi-title" title={title}>
-          {title}
-        </div>
-        {icon ? (
-          <div
-            className="hidden md:flex h-8 w-8 shrink-0 rounded-xl
-                       bg-blue-50 text-blue-600 items-center justify-center
-                       dark:bg-white/5 dark:text-blue-300"
-            aria-hidden="true"
-          >
-            {icon}
+    <div
+      className={`w-[250px] rounded-xl bg-white dark:bg-gray-900 shadow-sm ring-1 ring-black/5 overflow-hidden p-4 ${className}`}
+    >
+      <div className="grid grid-cols-[64px_1fr] grid-rows-2 h-full">
+        {/* Icono (col izquierda, ocupa ambas filas) */}
+        <div className="row-span-2 flex items-center justify-center">
+          <div className="h-10 w-10 rounded-full bg-huelva-primary text-white flex items-center justify-center">
+            {icon ?? null}
           </div>
-        ) : null}
-      </div>
-
-      {/* Valor + Delta */}
-      <div className="kpi-row">
-        <div className="kpi-value" title={value}>
-          {value}
         </div>
-        <div
-          className={`kpi-delta ${
-            isDown ? "kpi-delta--down" : "kpi-delta--up"
-          } shrink-0`}
-          title={delta}
-        >
-          {delta}
+
+        {/* Título (fila 1) */}
+        <div className="flex items-end justify-start px-2">
+          <span
+            title={title}
+            className="font-semibold text-gray-900 dark:text-gray-100 leading-tight"
+            style={{
+              fontSize: "var(--text-theme-sm)",
+              lineHeight: "var(--text-theme-sm--line-height)",
+              display: "-webkit-box",
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: "vertical",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+            }}
+          >
+            {title}
+          </span>
+        </div>
+
+        {/* Valor (fila 2) + Delta */}
+        <div className="flex items-center justify-start px-2">
+          <span
+            title={String(value)}
+            className="font-extrabold text-gray-900 dark:text-white leading-none"
+            style={{
+              fontSize: "clamp(18px, 3.5vw, var(--text-theme-xl))",
+              lineHeight: "calc(var(--text-theme-xl--line-height) - 6px)",
+            }}
+          >
+            {value}
+          </span>
+
+          {delta ? (
+            <span
+              className={`ml-auto inline-flex items-center justify-center rounded-full px-2 py-[2px] text-[11px] font-medium leading-none ${
+                isDown ? "bg-red-500 text-white" : "bg-green-500 text-white"
+              }`}
+              title={delta}
+            >
+              {delta}
+            </span>
+          ) : null}
         </div>
       </div>
     </div>

@@ -1,21 +1,30 @@
 "use client";
 
-import * as React from "react";
-import GranularityTabs from "./GranularityTabs";
 import PieChart from "@/components/charts/PieChart";
-import SubtagsCompareChart from "./SubtagsCompareChart";
 import Header from "@/components/common/Header";
+import { useSubtagsData } from "@/hooks/useSubtagsData";
+import GranularityTabs from "../../../../components/dashboard/GranularityTabs";
+import SubtagsCompareChart from "./SubtagsCompareChart";
 import SubtagsList from "./SubtagsList";
 import TagSelector from "./TagSelector";
-import { useSubtagsData } from "@/hooks/useSubtagsData";
 
 export default function SubtagsSection() {
   const {
-    tag, subGran, setSubGran, onChangeTag,
-    rows, donutData, colorsByLabel, totalVisible,
-    donutHeight, compareHeight, subtitleSuffix,
-    tagOptions, donutOptions,
-    windowDates, dateRangeLabel,
+    tag,
+    subGran,
+    setSubGran,
+    onChangeTag,
+    rows,
+    donutData,
+    colorsByLabel,
+    totalVisible,
+    donutHeight,
+    compareHeight,
+    subtitleSuffix,
+    tagOptions,
+    donutOptions,
+    windowDates,
+    dateRangeLabel,
   } = useSubtagsData();
 
   return (
@@ -37,7 +46,10 @@ export default function SubtagsSection() {
         <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 items-stretch">
           {/* Izquierda */}
           <div className="xl:col-span-3 flex flex-col">
-            <Header title="Issues Discovered" subtitle="Newly found and yet to be solved" />
+            <Header
+              title="Issues Discovered"
+              subtitle="Newly found and yet to be solved"
+            />
             <SubtagsList
               className="flex-1 mt-4"
               rows={rows}
@@ -75,7 +87,9 @@ export default function SubtagsSection() {
               colorsByLabel={colorsByLabel}
               height={compareHeight}
               title="Comparativa de subtags (líneas)"
-              subtitle={`Tendencia por subtag — ${subtitleSuffix}${dateRangeLabel ? ` · ${dateRangeLabel}` : ""}`}
+              subtitle={`Tendencia por subtag — ${subtitleSuffix}${
+                dateRangeLabel ? ` · ${dateRangeLabel}` : ""
+              }`}
               maxSeries={6}
               windowDates={windowDates}
             />

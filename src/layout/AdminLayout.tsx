@@ -35,7 +35,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       >
         <AppHeader />
         <div className="p-4 mx-auto max-w-(--breakpoint-2xl) md:p-6">
-          {/* Solo mostramos SubHeader si NO es 404 */}
           {!is404 && <SubHeader />}
           {children}
         </div>

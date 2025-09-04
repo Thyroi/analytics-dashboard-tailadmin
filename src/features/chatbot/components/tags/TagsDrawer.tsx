@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import TagStat from "@/components/dashboard/TagsStat";
-import PagerDots from "./PagerDots";
+import PagerDots from "../../../../components/common/PagerDots";
 import { useTopTagsCtx } from "@/features/chatbot/context/TopTagsCtx";
 import { useRouter, useSearchParams } from "next/navigation";
 

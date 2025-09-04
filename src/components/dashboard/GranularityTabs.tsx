@@ -1,14 +1,14 @@
 "use client";
 
 import * as React from "react";
-import type { Granularity } from "@/hooks/useTopTags";
+import type { Granularity } from "@/lib/chatbot/tags";
 
 export default function GranularityTabs({
   value, onChange, className = "",
 }: { value: Granularity; onChange: (g: Granularity) => void; className?: string }) {
   return (
     <div className={`inline-flex rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-[#14181e] p-1 ${className}`}>
-      {(["day","week","month"] as Granularity[]).map((g) => (
+      {(["d","w","m", "y"] as Granularity[]).map((g) => (
         <button
           key={g}
           onClick={() => onChange(g)}
@@ -18,7 +18,7 @@ export default function GranularityTabs({
           }`}
           aria-pressed={value === g}
         >
-          {g === "day" ? "Día" : g === "week" ? "Semana" : "Mes"}
+          {g === "d" ? "Día" : g === "w" ? "Semana" : g === "m" ? "Mes":"Año"}
         </button>
       ))}
     </div>

@@ -4,7 +4,7 @@ import * as React from "react";
 import { SERIES } from "@/lib/mockData";
 import { datesForGranularity, computeTop, type Granularity } from "@/lib/chatbot/tags";
 
-export function useTopTags(pageSize = 5, initialGran: Granularity = "day") {
+export function useTopTags(pageSize = 5, initialGran: Granularity = "d") {
   const [gran, setGran] = React.useState<Granularity>(initialGran);
   const [page, setPage] = React.useState(0);
 
@@ -20,7 +20,7 @@ export function useTopTags(pageSize = 5, initialGran: Granularity = "day") {
   const next = () => setPage((p) => Math.min(pages - 1, p + 1));
   const prev = () => setPage((p) => Math.max(0, p - 1));
 
-  const rangeLabel = gran === "day" ? "Último día" : gran === "week" ? "Últimos 7 días" : "Últimos 30 días";
+  const rangeLabel = gran === "d" ? "Último día" : gran === "w" ? "Últimos 7 días" : "Últimos 30 días";
 
   return { gran, setGran, page, setPage, pages, view, rangeLabel, next, prev };
 }
