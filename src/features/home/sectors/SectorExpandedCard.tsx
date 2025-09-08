@@ -75,7 +75,7 @@ export default function SectorExpandedCard(props: Props) {
   } = props;
 
   const isUp = deltaPct >= 0;
-  console.log(isTown);
+
   const { categories, currData, prevData } = useMemo(() => {
     const n = Math.min(current.length, previous.length);
     const curr = current.slice(current.length - n);
