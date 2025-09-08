@@ -111,8 +111,14 @@ function prettyLabel(s: string): string {
     .trim();
 }
 
+// ===== type guard para StaticImport =====
+type StaticImageImport = { src: string };
+function isStaticImageImport(value: unknown): value is StaticImageImport {
+  return typeof value === "object" && value !== null && "src" in value;
+}
+
 // ===== componente =====
-const ROW_H = 260; // altura de cada fila “galería”
+const ROW_H = 260;
 
 export default function SectorsByTagSection() {
   const [granularity, setGranularity] = useState<Granularity>("m");
@@ -139,8 +145,14 @@ export default function SectorsByTagSection() {
       );
       if (granularity === "d") return { current: dCurr, previous: dPrev };
       if (granularity === "w")
-        return { current: aggregateWeekly(dCurr), previous: aggregateWeekly(dPrev) };
-      return { current: aggregateMonthly(dCurr), previous: aggregateMonthly(dPrev) };
+        return {
+          current: aggregateWeekly(dCurr),
+          previous: aggregateWeekly(dPrev),
+        };
+      return {
+        current: aggregateMonthly(dCurr),
+        previous: aggregateMonthly(dPrev),
+      };
     },
     [granularity, prevRange.endTime, prevRange.startTime, range.endTime, range.startTime]
   );
@@ -180,7 +192,6 @@ export default function SectorsByTagSection() {
         </span>
       </h3>
 
-      {/* GRID “galería”: 1–4 columnas, filas fijas y empaquetado denso */}
       <div
         className="
           grid grid-flow-dense
@@ -195,7 +206,9 @@ export default function SectorsByTagSection() {
           const deltaPct = Math.round(pctChange(curr, prev));
           const Title = TAG_META[id].label;
           const IconSvg = TAG_META[id].icon;
-          const imgSrc = TAG_IMAGE_BY_ID[id];
+
+          const rawImg = TAG_IMAGE_BY_ID[id];
+          const imgSrc = typeof rawImg === "string" ? rawImg : isStaticImageImport(rawImg) ? rawImg.src : undefined;
 
           if (expandedId === id) {
             const s = seriesFor(id);
@@ -205,27 +218,45 @@ export default function SectorsByTagSection() {
               <div
                 key={`expanded-${id}`}
                 className="
-                  col-span-1 sm:col-span-2 lg:col-span-3 xl:col-span-4
-                  row-span-2
+                  col-span-1 sm:col-span-2 lg:grid-cols-3 xl:grid-cols-4
+                  row-span-2 sm:col-span-2 lg:col-span-3 xl:col-span-4
                 "
               >
-                {/* La card ocupa toda el área asignada por la grid */}
-                <SectorExpandedCard
-                  title={Title}
-                  Icon={IconSvg}
-                  deltaPct={deltaPct}
-                  mode="granularity"
-                  granularity={granularity}
-                  onGranularityChange={setGranularity}
-                  startDate={new Date(range.startTime)}
-                  endDate={new Date(range.endTime)}
-                  onRangeChange={() => {}}
-                  onClearRange={() => {}}
-                  current={s.current}
-                  previous={s.previous}
-                  donutData={donutData}
-                  onClose={() => setExpandedId(null)}
-                />
+                {imgSrc ? (
+                  <SectorExpandedCard
+                    title={Title}
+                    imgSrc={imgSrc}
+                    deltaPct={deltaPct}
+                    mode="granularity"
+                    granularity={granularity}
+                    onGranularityChange={setGranularity}
+                    startDate={new Date(range.startTime)}
+                    endDate={new Date(range.endTime)}
+                    onRangeChange={() => {}}
+                    onClearRange={() => {}}
+                    current={s.current}
+                    previous={s.previous}
+                    donutData={donutData}
+                    onClose={() => setExpandedId(null)}
+                  />
+                ) : (
+                  <SectorExpandedCard
+                    title={Title}
+                    Icon={IconSvg}
+                    deltaPct={deltaPct}
+                    mode="granularity"
+                    granularity={granularity}
+                    onGranularityChange={setGranularity}
+                    startDate={new Date(range.startTime)}
+                    endDate={new Date(range.endTime)}
+                    onRangeChange={() => {}}
+                    onClearRange={() => {}}
+                    current={s.current}
+                    previous={s.previous}
+                    donutData={donutData}
+                    onClose={() => setExpandedId(null)}
+                  />
+                )}
               </div>
             );
           }

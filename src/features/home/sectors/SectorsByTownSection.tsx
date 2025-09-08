@@ -1,11 +1,11 @@
 "use client";
 
+import React, { useMemo, useState } from "react";
 import type { Granularity } from "@/lib/chatbot/tags";
-import { PUEBLO_META, SERIES, TAG_META } from "@/lib/mockData";
-import { useMemo, useState } from "react";
+import { SERIES, TAG_META, PUEBLO_META } from "@/lib/mockData";
+import { TOWN_IMAGE_BY_ID } from "./tag-assets";
 import SectorDeltaCard from "./SectorDeltaCard";
 import SectorExpandedCard from "./SectorExpandedCard";
-import { TOWN_IMAGE_BY_ID } from "./tag-assets";
 
 export type SeriesPoint = { label: string; value: number };
 
@@ -162,7 +162,7 @@ export default function SectorsByTownSection() {
         </span>
       </h3>
 
-      {/* GRID tipo galería */}
+      {/* GRID tipo galería (auto-rows + col-span/row-span) */}
       <div
         className="
           grid grid-flow-dense
@@ -231,26 +231,43 @@ export default function SectorsByTownSection() {
                   row-span-2
                 "
               >
-                <SectorExpandedCard
-                  title={Title}
-                  Icon={IconSvg}
-                  deltaPct={deltaPct}
-                  // controles
-                  mode="granularity"
-                  granularity={granularity}
-                  onGranularityChange={setGranularity}
-                  startDate={new Date(range.startTime)}
-                  endDate={new Date(range.endTime)}
-                  onRangeChange={() => {}}
-                  onClearRange={() => {}}
-                  // series
-                  current={series.current}
-                  previous={series.previous}
-                  // donut
-                  donutData={donutData}
-                  onClose={() => setExpandedId(null)}
-                  isTown
-                />
+                {imgSrc ? (
+                  <SectorExpandedCard
+                    title={Title}
+                    imgSrc={imgSrc}         // PNG del escudo
+                    deltaPct={deltaPct}
+                    mode="granularity"
+                    granularity={granularity}
+                    onGranularityChange={setGranularity}
+                    startDate={new Date(range.startTime)}
+                    endDate={new Date(range.endTime)}
+                    onRangeChange={() => {}}
+                    onClearRange={() => {}}
+                    current={series.current}
+                    previous={series.previous}
+                    donutData={donutData}
+                    onClose={() => setExpandedId(null)}
+                    isTown
+                  />
+                ) : (
+                  <SectorExpandedCard
+                    title={Title}
+                    Icon={IconSvg!}        // fallback al SVG
+                    deltaPct={deltaPct}
+                    mode="granularity"
+                    granularity={granularity}
+                    onGranularityChange={setGranularity}
+                    startDate={new Date(range.startTime)}
+                    endDate={new Date(range.endTime)}
+                    onRangeChange={() => {}}
+                    onClearRange={() => {}}
+                    current={series.current}
+                    previous={series.previous}
+                    donutData={donutData}
+                    onClose={() => setExpandedId(null)}
+                    isTown
+                  />
+                )}
               </div>
             );
           }
@@ -275,7 +292,7 @@ export default function SectorsByTownSection() {
                 <SectorDeltaCard
                   title={Title}
                   deltaPct={deltaPct}
-                  Icon={IconSvg}
+                  Icon={IconSvg!}
                   height={ROW_H}
                   ringSize={96}
                   ringThickness={8}
