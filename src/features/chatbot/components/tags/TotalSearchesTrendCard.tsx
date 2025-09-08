@@ -3,21 +3,21 @@
 import * as React from "react";
 import LineChart from "@/components/charts/LineChart";
 import SectionTitle from "@/components/common/SectionTitle";
-import { buildTrendForTags } from "@/lib/chatbot/tags";
+import { buildTrendForTags, Granularity } from "@/lib/chatbot/tags";
 import { SERIES } from "@/lib/mockData";
 import { buildPrevWindowFallback, fmtDateLabel } from "@/lib/chatbot/trendUtils";
 
 export default function TotalSearchesTrendCard({
   visibleTags,
   categories,             // buckets (día/semana/mes) del panel principal
-  gran,                   // "day" | "week" | "month"
+  gran,
   title = "Total de búsquedas",
   subtitle = "Último periodo vs. anterior",
   height = 240,
 }: {
   visibleTags: string[];
   categories: string[];
-  gran: "day" | "week" | "month";
+  gran: Granularity;
   title?: string;
   subtitle?: string;
   height?: number;

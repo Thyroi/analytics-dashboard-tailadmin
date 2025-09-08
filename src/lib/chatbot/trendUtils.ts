@@ -1,4 +1,5 @@
 // src/lib/chatbot/trendUtils.ts
+import { Granularity } from "@/features/chatbot/types/tags";
 import { SERIES } from "@/lib/mockData";
 
 /* ========= Date helpers ========= */
@@ -51,14 +52,14 @@ export function sumDaily(tags: string[], isoDay: string): number {
 export function buildPrevWindowFallback(
   tags: string[],
   categories: string[],
-  gran: "day" | "week" | "month"
+  gran: Granularity
 ): number[] {
   const n = categories.length;
   if (n === 0) return [];
   const firstKey = categories[0];
   const firstDt = parseISO(firstKey) ?? new Date(Date.parse(firstKey));
 
-  if (gran === "day") {
+  if (gran === "d") {
     const startPrev = addDays(firstDt, -n);
     const out: number[] = [];
     for (let i = 0; i < n; i++) {
@@ -68,7 +69,7 @@ export function buildPrevWindowFallback(
     return out;
   }
 
-  if (gran === "week") {
+  if (gran === "w") {
     const firstWeekStart = startOfWeekUTC(firstDt);
     const prevStart = addDays(firstWeekStart, -7 * n);
     const out: number[] = [];
