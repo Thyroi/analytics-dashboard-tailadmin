@@ -208,7 +208,7 @@ export default function SectorsByTagSection() {
           const IconSvg = TAG_META[id].icon;
 
           const rawImg = TAG_IMAGE_BY_ID[id];
-          const imgSrc = typeof rawImg === "string" ? rawImg : isStaticImageImport(rawImg) ? rawImg.src : undefined;
+          const imgSrc = typeof rawImg === "string" ? rawImg : isStaticImageImport(rawImg) ? (rawImg as StaticImageImport).src : undefined;
 
           if (expandedId === id) {
             const s = seriesFor(id);
