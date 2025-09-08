@@ -66,11 +66,11 @@ export default function SubtagsCompareChart({
     return generateDistinctColors(labels);
   }, [colorsByLabel, prettySeries]);
 
-  const xLabelFormatter = React.useMemo(() => {
-    if (gran === "day")   return makeDayTickFormatterNumbersOnly(trend.categories);
-    if (gran === "week")  return makeWeekTickFormatter(trend.categories);
-    return makeMonthTickFormatter(trend.categories);
-  }, [gran, trend.categories]);
+  // const xLabelFormatter = React.useMemo(() => {
+  //   if (gran === "day")   return makeDayTickFormatterNumbersOnly(trend.categories);
+  //   if (gran === "week")  return makeWeekTickFormatter(trend.categories);
+  //   return makeMonthTickFormatter(trend.categories);
+  // }, [gran, trend.categories]);
 
   return (
     <div className="bg-white dark:bg-[#14181e] p-4">
@@ -92,7 +92,6 @@ export default function SubtagsCompareChart({
           xaxis: {
             type: "category",
             categories: trend.categories,
-            labels: { formatter: xLabelFormatter },
           },
           fill: { type: "gradient", gradient: { opacityFrom: 0.45, opacityTo: 0 } },
         }}
