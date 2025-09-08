@@ -42,6 +42,7 @@ export default function UserAcquisitionSection() {
         start: toISO(start),
         end: toISO(end),
       });
+
       setData(resp);
     } catch (e) {
       console.error("UserAcquisitionSection:", e);

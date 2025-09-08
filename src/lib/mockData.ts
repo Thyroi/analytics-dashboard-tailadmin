@@ -184,7 +184,6 @@ const PUEBLOS = [
   "paternaDelCampo",
   "puertasMurallaNiebla",
   "rocianaDelCondado",
-  "sinCategoria",
   "villalba",
   "villarrasa",
 ];
@@ -223,7 +222,6 @@ const PUEBLO_HINTS: Record<string, number> = {
   paternaDelCampo: 37,
   puertasMurallaNiebla: 5,
   rocianaDelCondado: 20,
-  sinCategoria: 2,
   villalba: 19,
   villarrasa: 22,
 };

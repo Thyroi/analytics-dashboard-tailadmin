@@ -56,6 +56,7 @@ export async function buildUserAcquisitionRangePayload(
 
   const analyticsData = google.analyticsdata({ version: "v1beta", auth });
 
+  // --- Aquí hacemos la llamada a la API ---
   const response = await analyticsData.properties.runReport({
     property,
     requestBody: {
@@ -68,6 +69,12 @@ export async function buildUserAcquisitionRangePayload(
       ],
     },
   });
+
+  // 👇 Aquí loggeamos la respuesta RAW de Google Analytics
+  console.log(
+    "Google Analytics RAW response:",
+    JSON.stringify(response.data, null, 2)
+  );
 
   const rows: GaRow[] = Array.isArray(response.data.rows)
     ? (response.data.rows as GaRow[])
@@ -135,7 +142,12 @@ export async function buildUserAcquisitionRangePayload(
       return sum;
     }),
   };
-
+  console.log("Processed series data:", {
+    categoriesISO,
+    channels,
+    series,
+    totalSeries,
+  });
   return {
     categoriesISO,
     categoriesLabels,

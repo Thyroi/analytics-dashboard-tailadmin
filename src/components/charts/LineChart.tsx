@@ -22,8 +22,7 @@ type Props = {
   categories: string[];
   series: LineSeries[];
   type?: "line" | "area";
-  /** Puede ser número (px) o "100%" para llenar el contenedor */
-  height?: number | string;
+  height?: number | string; // usa "100%" para llenar contenedor
   palette?: readonly string[];
   colorsByName?: Record<string, string>;
   showLegend?: boolean;
@@ -37,7 +36,7 @@ export default function LineChart({
   categories,
   series,
   type = "line",
-  height = 310, // valor por defecto; puedes pasar "100%"
+  height = "100%",
   palette = DEFAULT_PALETTE,
   colorsByName,
   showLegend = true,
@@ -49,13 +48,11 @@ export default function LineChart({
   const { theme } = useTheme();
   const isDark = theme === "dark";
 
-  // Colores: primero por nombre de serie, luego por índice en la paleta
   const colors = useMemo(() => {
     const byIndex = (i: number) => palette[i % palette.length];
     return series.map((s, i) => colorsByName?.[s.name] ?? byIndex(i));
   }, [series, colorsByName, palette]);
 
-  // Tokens dependientes del tema
   const axisLabelColor = isDark ? "#9CA3AF" : "#6B7280";
   const gridColor = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)";
   const foreColor = isDark ? "#E5E7EB" : "#374151";
@@ -65,12 +62,12 @@ export default function LineChart({
       chart: {
         fontFamily: "Outfit, sans-serif",
         type,
-        height,                         // ← puede ser "100%"
+        height: "100%",
         background: "transparent",
         toolbar: { show: false },
-        redrawOnParentResize: true,     // ← importante para 100%
+        redrawOnParentResize: true,
         parentHeightOffset: 0,
-        foreColor,                      // labels/legend/tooltip coherentes con el tema
+        foreColor,
       },
       stroke: { curve: smooth ? "smooth" : "straight", width: 2 },
       markers: { size: 0, hover: { sizeOffset: 3 } },
@@ -82,11 +79,20 @@ export default function LineChart({
         borderColor: gridColor,
         yaxis: { lines: { show: true } },
         xaxis: { lines: { show: false } },
+        // ⬇️ Elimina márgenes a los lados del plot
+        padding: { left: 0, right: 0, top: 0, bottom: 0 },
       },
       dataLabels: { enabled: false },
       xaxis: {
         categories,
-        labels: { style: { fontSize: "12px", colors: axisLabelColor } },
+        // ⬇️ Clave: coloca los ticks SOBRE las categorías (sin margen extra)
+        tickPlacement: "on",
+        labels: {
+          style: { fontSize: "12px", colors: axisLabelColor },
+          rotate: 0,
+          trim: true,
+          hideOverlappingLabels: true,
+        },
         axisBorder: { show: true, color: gridColor },
         axisTicks: { show: true, color: gridColor },
       },
@@ -105,7 +111,6 @@ export default function LineChart({
     colors,
     foreColor,
     gridColor,
-    height,
     isDark,
     legendPosition,
     optionsExtra,
@@ -114,18 +119,24 @@ export default function LineChart({
     showLegend,
   ]);
 
-  // Re-render controlado cuando cambian props claves/tema
   const key = useMemo(
     () =>
-      `${type}-${smooth ? "smooth" : "straight"}-${isDark ? "dark" : "light"}|${categories.join(
-        ","
-      )}|${series.map((s) => s.name).join(",")}`,
-    [type, smooth, isDark, categories, series]
+      `${type}-${smooth ? "smooth" : "straight"}-${isDark ? "dark" : "light"}|${categories.length}|${series
+        .map((s) => s.name)
+        .join(",")}`,
+    [type, smooth, isDark, categories.length, series]
   );
 
   return (
-    <div className={`w-full ${typeof height === "string" ? "h-full" : ""} overflow-hidden ${className}`}>
-      <ReactApexChart key={key} options={options} series={series} type={type} height={height} />
+    <div className={`w-full h-full overflow-hidden ${className}`}>
+      <ReactApexChart
+        key={key}
+        options={options}
+        series={series}
+        type={type}
+        height="100%"
+        width="100%"
+      />
     </div>
   );
 }

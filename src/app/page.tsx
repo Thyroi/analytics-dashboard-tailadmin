@@ -1,67 +1,34 @@
 "use client";
 
-import DateRangePicker from "@/components/common/DateRangePicker";
-import GranularityTabs from "@/components/dashboard/GranularityTabs";
-import TotalsStats from "@/features/home/TotalsStats";
-import TownTotalsList from "@/features/home/TownTotalsList";
-import type { Granularity } from "@/lib/chatbot/tags";
-import { useMemo, useState } from "react";
-
-function dateToISO(d: Date): string {
-  // YYYY-MM-DD (UTC) para alinear con SERIES
-  const y = d.getUTCFullYear();
-  const m = String(d.getUTCMonth() + 1).padStart(2, "0");
-  const day = String(d.getUTCDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
+import GeneralDataRow from "@/features/home/generalSection/GeneralDataRow";
+import SectorsByTagSection from "@/features/home/sectors/SectorsByTagSection";
+import SectorsByTownSection from "@/features/home/sectors/SectorsByTownSection";
 
 export default function Home() {
-  const [granularity, setGranularity] = useState<Granularity>("m");
-  const [startDate, setStartDate] = useState<Date | null>(null);
-  const [endDate, setEndDate] = useState<Date | null>(null);
-
-  const startISO = useMemo(
-    () => (startDate ? dateToISO(startDate) : undefined),
-    [startDate]
-  );
-  const endISO = useMemo(
-    () => (endDate ? dateToISO(endDate) : undefined),
-    [endDate]
-  );
-
   return (
-    <main className="p-4">
-      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="text-2xl font-bold">Dashboard</h1>
-        <div className="flex items-center gap-3">
-          <GranularityTabs value={granularity} onChange={setGranularity} />
-          <DateRangePicker
-            startDate={startDate ?? new Date()}
-            endDate={endDate ?? new Date()}
-            placeholder="Selecciona rango (opcional)"
-            onRangeChange={(start: Date, end: Date) => {
-              setStartDate(start);
-              setEndDate(end);
-            }}
-          />
+    <main className="flex flex-col gap-10 px-4 py-6 md:py-10">
+      <section className="max-w-[1560px] mx-auto w-full">
+        <div className="mb-4 flex items-center gap-3">
+          <div className="h-10 w-10 rounded-xl bg-rose-100 text-rose-700 flex items-center justify-center ring-1 ring-black/5">
+            <span className="font-semibold">📊</span>
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+            Datos generales
+          </h2>
         </div>
-      </div>
-      <TotalsStats
-        className="mb-6"
-        startTime={startISO}
-        endTime={endISO}
-        granularity={granularity}
-        
-      />
-      <TownTotalsList
-        title="Totales por municipio"
-        className="mt-2"
-        maxHeight={420}
-        granularity={granularity}
-        startTime={startISO}
-        endTime={endISO}
-        showVisitsInstead={false}
-      />
+
+        <GeneralDataRow />
+      </section>
+      <section className="max-w-[1560px] mx-auto w-full">
+        <div className="max-w-[1560px] mx-auto">
+          <SectorsByTagSection />
+        </div>
+      </section>
+      <section className="max-w-[1560px] mx-auto w-full">
+        <div className="max-w-[1560px] mx-auto">
+          <SectorsByTownSection />
+        </div>
+      </section>
     </main>
   );
 }
