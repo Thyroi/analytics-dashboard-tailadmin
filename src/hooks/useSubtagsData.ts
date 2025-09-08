@@ -71,14 +71,14 @@ export function useSubtagsData() {
     if (!lastISO) return "";
     const last = parseISO(lastISO)!;
 
-    if (subGran === "day") {
+    if (subGran === "d") {
       if (!windowDates.length) return "";
       const start = parseISO(windowDates[0])!;
       const end = parseISO(windowDates[windowDates.length - 1])!;
       return fmtRangeUTC(start, end);
     }
 
-    if (subGran === "week") {
+    if (subGran === "w") {
       // 8 semanas: desde el lunes de la primera hasta el domingo de la última
       const lastWeekStart = startOfWeekUTC(last);
       const firstWeekStart = addDays(lastWeekStart, -7 * (8 - 1));
@@ -132,9 +132,9 @@ export function useSubtagsData() {
   const compareHeight = 300;
 
   const subtitleSuffix =
-    subGran === "day"
+    subGran === "d"
       ? "últimos 30 días"
-      : subGran === "week"
+      : subGran === "w"
       ? "últimas 8 semanas"
       : "últimos 6 meses";
 
