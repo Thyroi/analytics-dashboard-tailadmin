@@ -1,51 +1,58 @@
 "use client";
 
-import CustomersDemographicsSection from "@/features/analytics/components/CustomersDemographicsSection";
-import DevicesOsDonutSection from "@/features/analytics/components/DevicesOsDonutSection";
-import MonthlyRangeSection from "@/features/analytics/components/MonthlyRangeSection";
-import MonthlyVisitsSection from "@/features/analytics/components/MonthlyVisitsSection";
-import TopPagesSection from "@/features/analytics/components/TopPagesSection";
-import UserActivityComparisonSection from "@/features/analytics/components/UserActivityComparisonSection";
-import AnalyticsKPICards from "@features/analytics/components/AnalyticsKPISection";
-import UserAcquisitionChart from "@features/analytics/components/UserAcquisitionSection";
+import Header from "@/components/common/Header";
+import TagsDrawer from "@/components/common/TagsDrawer";
+import SectorsByTagSectionDetailed from "@/features/home/sectors/SectorsByTagSectionDetailed";
+import { useAnalytics } from "@/hooks/useAnalytics";
+import { useSearchParams } from "next/navigation";
 
 export default function AnalyticsPage() {
+  const searchParams = useSearchParams();
+
+  // Filtros desde la URL (opcionales)
+  const pueblo = searchParams.get("pueblo") || undefined;
+  const dateFrom = searchParams.get("from") || undefined; // ej: 2025-05-01
+  const dateTo = searchParams.get("to") || undefined; // ej: 2025-08-31
+
+  const scope = pueblo
+    ? { kind: "pueblo" as const, pueblo }
+    : { kind: "global" as const };
+
+  const {
+    allRows, // usamos todos los tags para el carrusel infinito
+    tagMeta,
+    defaultTagMeta,
+  } = useAnalytics({
+    scope,
+    dateFrom,
+    dateTo,
+    pageSize: 999, // la paginación no aplica al slider; queremos todo
+  });
+
   return (
-    <div className="grid grid-cols-12 gap-6">
-      {/* ROW 1 */}
-      <div className="col-span-12 lg:col-span-3 min-w-0">
-        <AnalyticsKPICards stretch />
-      </div>
+    <div className="flex flex-col gap-6">
+      <Header
+        title="Condado de Huelva"
+        subtitle="Información y estadísticas del tráfico de la web del Condado de Huelva"
+      />
 
-      <div className="col-span-12 lg:col-span-9 min-w-0">
-        <UserAcquisitionChart />
-      </div>
-
-      {/* ROW 2 */}
-      <div className="col-span-12 lg:col-span-4 min-w-0">
-        <div className="flex flex-col gap-6">
-          <DevicesOsDonutSection />
-          <MonthlyVisitsSection />
+      {/* Top Tags - Slider infinito */}
+      <section aria-labelledby="top-tags-title" className="space-y-3">
+        <div className="flex items-end justify-between">
+          <h2
+            id="top-tags-title"
+            className="text-base font-semibold text-gray-900 dark:text-white"
+          >
+            Top etiquetas {pueblo ? `en ${pueblo}` : "(global)"}
+          </h2>
+          {(dateFrom || dateTo) && (
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              Rango: {dateFrom ?? "inicio"} — {dateTo ?? "fin"}
+            </p>
+          )}
         </div>
-      </div>
-
-      <div className="col-span-12 lg:col-span-8 min-w-0">
-        <CustomersDemographicsSection />
-      </div>
-
-      {/* ROW 3 */}
-      <div className="col-span-12 min-w-0">
-        <UserActivityComparisonSection />
-      </div>
-
-      {/* ROW 4 */}
-      <div className="col-span-12 min-w-0">
-        <MonthlyRangeSection />
-      </div>
-
-      <div className="col-span-12 min-w-0">
-        <TopPagesSection start="2025-08-01" end="2025-08-31" limit={5} />
-      </div>
+        <SectorsByTagSectionDetailed />
+      </section>
     </div>
   );
 }

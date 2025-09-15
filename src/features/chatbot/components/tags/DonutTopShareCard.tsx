@@ -4,7 +4,7 @@
 import PieChart, { type PieDatum } from "@/components/charts/PieChart";
 import { TAG_COLOR_HEX_BY_LABEL } from "@/lib/mockData";
 import * as React from "react";
-import type { TagMetaEntry } from "./TagsDrawer";
+import type { TagMetaEntry } from "../../../../components/common/TagsDrawer";
 
 export default function DonutTopShareCard({
   rows,

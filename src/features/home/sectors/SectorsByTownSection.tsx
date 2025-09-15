@@ -150,34 +150,24 @@ export default function SectorsByTownSection() {
                   : "text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/5"
               }`}
             >
-              {g === "d"
-                ? "Día"
-                : g === "w"
-                ? "Semana"
-                : g === "m"
-                ? "Mes"
-                : "Año"}
+              {g === "d" ? "Día" : g === "w" ? "Semana" : g === "m" ? "Mes" : "Año"}
             </button>
           ))}
         </span>
       </h3>
 
-      {/* GRID tipo galería (auto-rows + col-span/row-span) */}
+      {/* GRID: altura mínima por fila, pero puede crecer con el contenido */}
       <div
         className="
           grid grid-flow-dense
           grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4
           gap-4
         "
-        style={{ gridAutoRows: `${ROW_H}px` }}
+        style={{ gridAutoRows: `minmax(${ROW_H}px, auto)` }} // ⬅️ clave
       >
         {townIds.map((id) => {
           const curr = sumKeyInRange(id, range.startTime, range.endTime);
-          const prev = sumKeyInRange(
-            id,
-            prevRange.startTime,
-            prevRange.endTime
-          );
+          const prev = sumKeyInRange(id, prevRange.startTime, prevRange.endTime);
           const deltaPct = Math.round(pctChange(curr, prev));
 
           const meta = PUEBLO_META[id];
@@ -187,16 +177,8 @@ export default function SectorsByTownSection() {
 
           if (expandedId === id) {
             // series del pueblo
-            const dailyCurr = buildDailyPointsForKey(
-              id,
-              range.startTime,
-              range.endTime
-            );
-            const dailyPrev = buildDailyPointsForKey(
-              id,
-              prevRange.startTime,
-              prevRange.endTime
-            );
+            const dailyCurr = buildDailyPointsForKey(id, range.startTime, range.endTime);
+            const dailyPrev = buildDailyPointsForKey(id, prevRange.startTime, prevRange.endTime);
 
             const series =
               granularity === "d"
@@ -215,11 +197,7 @@ export default function SectorsByTownSection() {
             const donutData = Object.keys(TAG_META)
               .map((tagId) => ({
                 label: TAG_META[tagId].label,
-                value: sumKeyInRange(
-                  `${id}.${tagId}`,
-                  range.startTime,
-                  range.endTime
-                ),
+                value: sumKeyInRange(`${id}.${tagId}`, range.startTime, range.endTime),
               }))
               .filter((r) => r.value > 0);
 
@@ -234,7 +212,7 @@ export default function SectorsByTownSection() {
                 {imgSrc ? (
                   <SectorExpandedCard
                     title={Title}
-                    imgSrc={imgSrc}         // PNG del escudo
+                    imgSrc={imgSrc}
                     deltaPct={deltaPct}
                     mode="granularity"
                     granularity={granularity}
@@ -252,7 +230,7 @@ export default function SectorsByTownSection() {
                 ) : (
                   <SectorExpandedCard
                     title={Title}
-                    Icon={IconSvg!}        // fallback al SVG
+                    Icon={IconSvg!}
                     deltaPct={deltaPct}
                     mode="granularity"
                     granularity={granularity}

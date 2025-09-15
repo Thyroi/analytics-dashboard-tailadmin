@@ -1,22 +1,17 @@
+import { NextResponse } from "next/server";
 import { buildUserActivityPayload } from "@/features/analytics/server/userActivity";
-import { NextRequest, NextResponse } from "next/server";
 
-export async function GET(req: NextRequest) {
+export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
-    const start = searchParams.get("start") ?? undefined;
-    const end = searchParams.get("end") ?? undefined;
+    const start  = searchParams.get("start") || undefined;
+    const end    = searchParams.get("end") || undefined;
+    const source = (searchParams.get("source") as "wpideanto" | null) || undefined;
 
-    const payload = await buildUserActivityPayload({ start, end });
-    return NextResponse.json(payload, {
-      headers: { "Cache-Control": "s-maxage=300, stale-while-revalidate=300" },
-    });
-  } catch (err) {
-    const message =
-      err instanceof Error
-        ? err.message
-        : "Error al conectar con Google Analytics";
-    console.error("GA4 activity error:", message);
-    return NextResponse.json({ error: message }, { status: 500 });
+    const payload = await buildUserActivityPayload({ start, end, source });
+    return NextResponse.json(payload, { status: 200 });
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "Unknown error";
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }

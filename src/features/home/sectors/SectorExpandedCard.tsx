@@ -36,12 +36,10 @@ type BaseProps = {
   isTown?: boolean;
 };
 
-/** Variante con SVG */
 type WithIcon = {
   Icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
   imgSrc?: never;
 };
-/** Variante con PNG/JPG (string o StaticImport con .src) */
 type WithImage = {
   imgSrc: string | { src: string };
   Icon?: never;
@@ -87,7 +85,6 @@ export default function SectorExpandedCard(props: Props) {
     };
   }, [current, previous]);
 
-  // --- Discriminated union helpers
   const hasImage = "imgSrc" in props && !!props.imgSrc;
   const imageUrl = hasImage
     ? typeof (props as WithImage).imgSrc === "string"
@@ -95,13 +92,18 @@ export default function SectorExpandedCard(props: Props) {
       : ((props as WithImage).imgSrc as { src: string }).src
     : "";
 
-  // Para corregir el error TSX: no se puede usar (<(props as WithIcon).Icon />) dentro de JSX.
-  // Mejor asignar el componente a una variable y usar <IconComp />.
   const IconComp: React.ComponentType<React.SVGProps<SVGSVGElement>> | null =
     !hasImage && "Icon" in props ? (props as WithIcon).Icon : null;
 
   return (
-    <div className="rounded-2xl border border-gray-200 dark:border-white/10 bg-[#fff7ed] dark:bg-[#0c1116] p-3 shadow-sm w-full h-full">
+    <div
+      className="
+        rounded-2xl border border-gray-200 dark:border-white/10
+        bg-[#fff7ed] dark:bg-[#0c1116]
+        p-3 shadow-sm w-full
+      "
+      // importante: permite que la card crezca si el contenido lo necesita
+    >
       {/* Header */}
       <div className="flex items-center gap-3 mb-3">
         <div
@@ -180,7 +182,7 @@ export default function SectorExpandedCard(props: Props) {
             Subcategorías
           </div>
 
-          <DonutLeader data={donutData} height={280} className="w-full" />
+          <DonutLeader data={donutData} height={280} className="w-full" padViewBox={20}/>
 
           <div
             className={`mt-3 text-center text-[28px] font-extrabold ${

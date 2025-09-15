@@ -3,9 +3,9 @@
 import LineChart from "@/components/charts/LineChart";
 import Header from "@/components/common/Header";
 import * as React from "react";
+import TagsDrawer from "../../../../components/common/TagsDrawer";
 import GranularityTabs from "../../../../components/dashboard/GranularityTabs";
 import DonutTopShareCard from "./DonutTopShareCard";
-import TagsDrawer from "./TagsDrawer";
 
 import { useTopTags } from "@/hooks/useTopTags";
 import { buildTrendForTags } from "@/lib/chatbot/tags";

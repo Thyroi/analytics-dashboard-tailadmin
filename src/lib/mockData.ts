@@ -1,13 +1,3 @@
-// src/lib/mockData.ts
-// ===============================================
-//   Mock con profundidad arbitraria:
-//   - Etiquetas visibles como tags raíz (nivel 1)
-//   - Cada pueblo también es tag raíz (nivel 1)
-//     -> dentro: todas las etiquetas visibles (nivel 2)
-//        -> dentro: subtags de cada etiqueta (nivel 3)
-//   Además se mantienen las rutas globales: p.ej. "playa.limpieza"
-// ===============================================
-
 export type SeriesDict = Record<string, Record<string, number>>;
 
 // ---------- RANGO DE FECHAS QUE GENERA MOCK ----------
@@ -31,92 +21,46 @@ import {
 } from "@heroicons/react/24/outline";
 
 // ---------- Metadata UI por tag raíz ----------
+export type Urls = {
+  /** Página interna de resumen/listado del tag o pueblo */
+  overview: string;
+  /** Ruta del mapa con filtros aplicados */
+  map?: string;
+  /** Ruta alternativa (listado, colección específica) */
+  list?: string;
+  /** Ejemplo de recurso externo (oficial) */
+  external?: string;
+};
+
 export type TagMeta = {
   label: string;
   icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
   color: string; // tailwind classes para el “chip”
+  urls?: Urls;   // <- NUEVO
 };
 
-/**
- * TAG_META: estilos e íconos por cada etiqueta visible (12).
- * Los pueblos se agregarán dinámicamente con un meta neutro.
- */
-export const TAG_META: Record<string, TagMeta> = {
-  circuitoMonteblanco: {
-    label: "Circuito Monteblanco",
-    icon: FlagIcon,
-    color:
-      "bg-indigo-50 text-indigo-600 dark:bg-white/5 dark:text-indigo-300",
-  },
-  donana: {
-    label: "Doñana",
-    icon: BugAntIcon,
-    color:
-      "bg-emerald-50 text-emerald-600 dark:bg-white/5 dark:text-emerald-300",
-  },
-  espaciosMuseisticos: {
-    label: "Espacios museísticos",
-    icon: BuildingLibraryIcon,
-    color: "bg-sky-50 text-sky-600 dark:bg-white/5 dark:text-sky-300",
-  },
-  fiestasTradiciones: {
-    label: "Fiestas y tradiciones",
-    icon: SparklesIcon,
-    color:
-      "bg-fuchsia-50 text-fuchsia-600 dark:bg-white/5 dark:text-fuchsia-300",
-  },
-  laRabida: {
-    label: "La Rábida",
-    icon: BuildingOffice2Icon,
-    color: "bg-rose-50 text-rose-600 dark:bg-white/5 dark:text-rose-300",
-  },
-  lugaresColombinos: {
-    label: "Lugares colombinos",
-    icon: MapIcon,
-    color: "bg-teal-50 text-teal-600 dark:bg-white/5 dark:text-teal-300",
-  },
-  naturaleza: {
-    label: "Naturaleza",
-    icon: MapPinIcon,
-    color:
-      "bg-orange-50 text-orange-600 dark:bg-white/5 dark:text-orange-300",
-  },
-  patrimonio: {
-    label: "Patrimonio",
-    icon: HomeModernIcon,
-    color:
-      "bg-violet-50 text-violet-600 dark:bg-white/5 dark:text-violet-300",
-  },
-  playa: {
-    label: "Playa",
-    icon: SunIcon,
-    color: "bg-blue-50 text-blue-600 dark:bg-white/5 dark:text-blue-300",
-  },
-  rutasCulturales: {
-    label: "Rutas culturales",
-    icon: MapIcon,
-    color: "bg-amber-50 text-amber-600 dark:bg-white/5 dark:text-amber-300",
-  },
-  rutasSenderismo: {
-    label: "Rutas senderismo y cicloturistas",
-    icon: MapIcon,
-    color: "bg-lime-50 text-lime-600 dark:bg-white/5 dark:text-lime-300",
-  },
-  sabor: {
-    label: "Sabor",
-    icon: ShoppingBagIcon,
-    color: "bg-pink-50 text-pink-600 dark:bg-white/5 dark:text-pink-300",
-  },
-};
+/** Helpers URL */
+const slug = (s: string) =>
+  s
+    .replace(/([A-Z])/g, "-$1")
+    .replace(/[^\p{L}\p{N}]+/gu, "-")
+    .replace(/^-+|-+$/g, "")
+    .toLowerCase();
 
-export const DEFAULT_TAG_META: TagMeta = {
-  label: "Desconocido",
-  icon: QuestionMarkCircleIcon,
-  color: "bg-gray-100 text-gray-600 dark:bg-white/5 dark:text-gray-300",
-};
+const urlForTag = (tagId: string): Urls => ({
+  overview: `/explorar/${slug(tagId)}`,
+  list: `/explorar/${slug(tagId)}/listado`,
+  map: `/mapa?tag=${encodeURIComponent(tagId)}`,
+});
+
+const urlForPueblo = (puebloId: string): Urls => ({
+  overview: `/municipio/${slug(puebloId)}`,
+  list: `/municipio/${slug(puebloId)}/experiencias`,
+  map: `/mapa?pueblo=${encodeURIComponent(puebloId)}`,
+});
 
 // ---------- Definición de etiquetas visibles y sus subtags (12) ----------
-const VISIBLE_TAG_SPECS: Array<{ id: string; subtags: string[] }> = [
+export const VISIBLE_TAG_SPECS: Array<{ id: string; subtags: string[] }> = [
   {
     id: "circuitoMonteblanco",
     subtags: ["eventos", "carreras", "escuela", "visitas", "alquilerPista"],
@@ -167,8 +111,90 @@ const VISIBLE_TAG_SPECS: Array<{ id: string; subtags: string[] }> = [
   },
 ];
 
+// ---------- TAG_META con URLs ----------
+export const TAG_META: Record<string, TagMeta> = {
+  circuitoMonteblanco: {
+    label: "Circuito Monteblanco",
+    icon: FlagIcon,
+    color: "bg-indigo-50 text-indigo-600 dark:bg-white/5 dark:text-indigo-300",
+    urls: { ...urlForTag("circuitoMonteblanco"), external: "https://www.circuitomonteblanco.com/" },
+  },
+  donana: {
+    label: "Doñana",
+    icon: BugAntIcon,
+    color: "bg-emerald-50 text-emerald-600 dark:bg-white/5 dark:text-emerald-300",
+    urls: { ...urlForTag("donana"), external: "https://www.donana.es/" },
+  },
+  espaciosMuseisticos: {
+    label: "Espacios museísticos",
+    icon: BuildingLibraryIcon,
+    color: "bg-sky-50 text-sky-600 dark:bg-white/5 dark:text-sky-300",
+    urls: urlForTag("espaciosMuseisticos"),
+  },
+  fiestasTradiciones: {
+    label: "Fiestas y tradiciones",
+    icon: SparklesIcon,
+    color: "bg-fuchsia-50 text-fuchsia-600 dark:bg-white/5 dark:text-fuchsia-300",
+    urls: urlForTag("fiestasTradiciones"),
+  },
+  laRabida: {
+    label: "La Rábida",
+    icon: BuildingOffice2Icon,
+    color: "bg-rose-50 text-rose-600 dark:bg-white/5 dark:text-rose-300",
+    urls: urlForTag("laRabida"),
+  },
+  lugaresColombinos: {
+    label: "Lugares colombinos",
+    icon: MapIcon,
+    color: "bg-teal-50 text-teal-600 dark:bg-white/5 dark:text-teal-300",
+    urls: urlForTag("lugaresColombinos"),
+  },
+  naturaleza: {
+    label: "Naturaleza",
+    icon: MapPinIcon,
+    color: "bg-orange-50 text-orange-600 dark:bg-white/5 dark:text-orange-300",
+    urls: urlForTag("naturaleza"),
+  },
+  patrimonio: {
+    label: "Patrimonio",
+    icon: HomeModernIcon,
+    color: "bg-violet-50 text-violet-600 dark:bg-white/5 dark:text-violet-300",
+    urls: urlForTag("patrimonio"),
+  },
+  playa: {
+    label: "Playa",
+    icon: SunIcon,
+    color: "bg-blue-50 text-blue-600 dark:bg-white/5 dark:text-blue-300",
+    urls: urlForTag("playa"),
+  },
+  rutasCulturales: {
+    label: "Rutas culturales",
+    icon: MapIcon,
+    color: "bg-amber-50 text-amber-600 dark:bg-white/5 dark:text-amber-300",
+    urls: urlForTag("rutasCulturales"),
+  },
+  rutasSenderismo: {
+    label: "Rutas senderismo y cicloturistas",
+    icon: MapIcon,
+    color: "bg-lime-50 text-lime-600 dark:bg-white/5 dark:text-lime-300",
+    urls: urlForTag("rutasSenderismo"),
+  },
+  sabor: {
+    label: "Sabor",
+    icon: ShoppingBagIcon,
+    color: "bg-pink-50 text-pink-600 dark:bg-white/5 dark:text-pink-300",
+    urls: urlForTag("sabor"),
+  },
+};
+
+export const DEFAULT_TAG_META: TagMeta = {
+  label: "Desconocido",
+  icon: QuestionMarkCircleIcon,
+  color: "bg-gray-100 text-gray-600 dark:bg-white/5 dark:text-gray-300",
+};
+
 // ---------- PUEBLOS (18) ----------
-const PUEBLOS = [
+export const PUEBLOS = [
   "almonte",
   "bollullos",
   "bonares",
@@ -347,6 +373,7 @@ function buildMockSeries(): SeriesDict {
 
   const rootNodes = buildRootNodes();
   const tagWeightsInTown = weightsForTagsInTown();
+  const datesArr = dateRangeDays(START, END);
 
   // 1) Etiquetas visibles como raíz (y sus subtags: nivel 1 y 2)
   for (const node of rootNodes) {
@@ -358,7 +385,7 @@ function buildMockSeries(): SeriesDict {
       ensureKey(tag);
       subtags.forEach((s) => ensureKey(`${tag}.${s}`));
 
-      dates.forEach((date, i) => {
+      datesArr.forEach((date, i) => {
         let sum = 0;
         subtags.forEach((s) => {
           const r = mulberry32(hashStr(`${tag}.${s}:${date}`))();
@@ -394,7 +421,7 @@ function buildMockSeries(): SeriesDict {
 
       const tagWeights = tagWeightsInTown;
 
-      dates.forEach((date, i) => {
+      datesArr.forEach((date, i) => {
         // Repartir total del pueblo en etiquetas visibles
         let sumTown = 0;
 
@@ -439,13 +466,57 @@ export const SERIES: SeriesDict = buildMockSeries();
 /** Helpers opcionales */
 export function getLastDate(series: SeriesDict = SERIES): string {
   let last = "";
-  for (const [key, byDate] of Object.entries(series)) {
-    // consideramos todas las claves
+  for (const [, byDate] of Object.entries(series)) {
     for (const date of Object.keys(byDate)) {
       if (date > last) last = date;
     }
   }
   return last;
+}
+
+// ---------- Totales y rangos ----------
+const allDates = dateRangeDays(START, END);
+const dateIndex: Record<string, number> = Object.fromEntries(
+  allDates.map((d, i) => [d, i])
+);
+
+export function getTotalForKey(key: string, dict: SeriesDict = SERIES): number {
+  const row = dict[key] || {};
+  let sum = 0;
+  for (const v of Object.values(row)) sum += v;
+  return sum;
+}
+
+export function getTotalForKeyInRange(
+  key: string,
+  startISO: string,
+  endISO: string,
+  dict: SeriesDict = SERIES
+): number {
+  const row = dict[key] || {};
+  let sum = 0;
+  for (const [d, v] of Object.entries(row)) {
+    if (d >= startISO && d <= endISO) sum += v;
+  }
+  return sum;
+}
+
+export function getLastNDaysSlice(n = 30): { start: string; end: string; dates: string[] } {
+  const end = allDates[allDates.length - 1];
+  const startIdx = Math.max(0, allDates.length - n);
+  const start = allDates[startIdx];
+  return { start, end, dates: allDates.slice(startIdx) };
+}
+
+export function getSeriesArrayForKeyInRange(
+  key: string,
+  startISO: string,
+  endISO: string,
+  dict: SeriesDict = SERIES
+): number[] {
+  const row = dict[key] || {};
+  const dates = dateRangeDays(startISO, endISO);
+  return dates.map((d) => row[d] ?? 0);
 }
 
 // ---------- Colores para chips/leyendas ----------
@@ -482,7 +553,7 @@ export const TAG_COLOR_HEX_BY_LABEL: Record<string, string> = Object.fromEntries
   Object.values(TAG_META).map((meta) => [meta.label, metaToHex(meta)])
 );
 
-// ---------- Meta para pueblos (dinámico, si lo necesitas en UI) ----------
+// ---------- Meta para pueblos (dinámico, + URLs) ----------
 export const PUEBLO_META: Record<string, TagMeta> = Object.fromEntries(
   PUEBLOS.map((p) => [
     p,
@@ -498,6 +569,95 @@ export const PUEBLO_META: Record<string, TagMeta> = Object.fromEntries(
               .trim(),
       icon: MapPinIcon,
       color: "bg-slate-100 text-slate-700 dark:bg-white/5 dark:text-slate-200",
+      urls: urlForPueblo(p),
     },
   ])
 );
+
+// ======================================================
+//           RESÚMENES: TAG -> PUEBLOS
+// ======================================================
+
+export type TownSubtagBreakdown = {
+  id: string;
+  label: string;
+  total: number;
+  pct: number; // porcentaje dentro del tag de ese pueblo
+};
+
+export type TownSummary = {
+  pueblo: string;
+  label: string;
+  urls: Urls;
+  /** Total del tag en el pueblo para todo el rango (START..END) */
+  total: number;
+  /** Total de los últimos N días (por defecto 30) */
+  lastNDays: number;
+  /** Serie diaria de los últimos N días (para sparklines) */
+  trend: number[];
+  /** Top subtags por contribución */
+  topSubtags: TownSubtagBreakdown[];
+};
+
+function buildTownSummaryForTag(
+  tagId: string,
+  puebloId: string,
+  nDays = 30,
+  dict: SeriesDict = SERIES
+): TownSummary {
+  const tagKeyTown = `${puebloId}.${tagId}`;
+  const total = getTotalForKey(tagKeyTown, dict);
+
+  const { start, end, dates } = getLastNDaysSlice(nDays);
+  const lastNDays = getTotalForKeyInRange(tagKeyTown, start, end, dict);
+  const trend = getSeriesArrayForKeyInRange(tagKeyTown, start, end, dict);
+
+  const subtags = VISIBLE_TAG_LOOKUP[tagId] || [];
+  const breakdown: TownSubtagBreakdown[] = subtags.map((s) => {
+    const k = `${puebloId}.${tagId}.${s}`;
+    const tot = getTotalForKeyInRange(k, START, END, dict);
+    const pct = total > 0 ? Math.round((tot * 10000) / total) / 100 : 0;
+    return { id: s, label: s, total: tot, pct };
+  });
+
+  breakdown.sort((a, b) => b.total - a.total);
+
+  const pm = PUEBLO_META[puebloId];
+
+  return {
+    pueblo: puebloId,
+    label: pm?.label ?? puebloId,
+    urls: pm?.urls ?? urlForPueblo(puebloId),
+    total,
+    lastNDays,
+    trend,
+    topSubtags: breakdown.slice(0, 5),
+  };
+}
+
+/**
+ * Mapa TAG -> Array de resúmenes por pueblo (ordenado desc por total)
+ * Este objeto es estático con base al mock generado.
+ */
+export const RESUMEN_POR_TAG: Record<string, TownSummary[]> = (() => {
+  const out: Record<string, TownSummary[]> = {};
+  for (const { id: tagId } of VISIBLE_TAG_SPECS) {
+    const rows = PUEBLOS.map((p) => buildTownSummaryForTag(tagId, p));
+    rows.sort((a, b) => b.total - a.total);
+    out[tagId] = rows;
+  }
+  return out;
+})();
+
+/** Helper para obtener (o recalcular) resúmenes por tag con opciones */
+export function getTownSummariesForTag(
+  tagId: string,
+  opts?: { days?: number; dict?: SeriesDict }
+): TownSummary[] {
+  const n = opts?.days ?? 30;
+  const d = opts?.dict ?? SERIES;
+  const rows = PUEBLOS.map((p) => buildTownSummaryForTag(tagId, p, n, d));
+  rows.sort((a, b) => b.total - a.total);
+  return rows;
+}
+

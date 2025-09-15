@@ -1,30 +1,24 @@
-import "./globals.css";
-import { SidebarProvider } from "@/context/SidebarContext";
 import AdminLayout from "@/layout/AdminLayout";
-import { ThemeProviders } from "@/components/ThemeProviders";
+import "./globals.css";
 import Providers from "./providers";
-import { WarmupUser } from "./providers";
 
 export const metadata = {
   title: "Dashboard",
   description: "Base layout con Sidebar y Header",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <html lang="en" suppressHydrationWarning>
       <body>
-        <ThemeProviders>
-          <Providers>
-            <WarmupUser />
-            <SidebarProvider>
-              <AdminLayout>{children}</AdminLayout>
-            </SidebarProvider>
-          </Providers>
-        </ThemeProviders>
+        <Providers>
+          <AdminLayout>{children}</AdminLayout>
+        </Providers>
       </body>
     </html>
   );
 }
-
-

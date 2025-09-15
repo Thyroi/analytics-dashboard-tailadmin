@@ -1,31 +1,29 @@
 "use client";
 
-import { useState } from "react";
+import { trpc } from "@/lib/trpc/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { trpc } from "@/lib/trpc/client"; // createTRPCReact<AppRouter>()
 import { httpBatchLink } from "@trpc/client";
+import { useState } from "react";
 import superjson from "superjson";
 
+import { ThemeProviders } from "@/components/ThemeProviders";
+import { SidebarProvider } from "@/context/SidebarContext";
+import { TopTagsProvider } from "@/context/TopTagsCtx";
+
 export function WarmupUser() {
-  trpc.user.me.useQuery(undefined, {
-    staleTime: 5 * 60 * 1000,
-    retry: false,
-  });
+  // precarga datos mínimos del usuario (no bloquea render)
+  trpc.user.me.useQuery(undefined, { staleTime: 5 * 60 * 1000, retry: false });
   return null;
 }
 
-
 export default function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(() => new QueryClient());
-
   const [trpcClient] = useState(() =>
     trpc.createClient({
-      // ⚠️ En v11 el transformer se pasa en el link, no aquí arriba
       links: [
         httpBatchLink({
           url: "/api/trpc",
-          transformer: superjson, // ← debe coincidir con el del server
-          // Recomendado si usas cookies/sesión:
+          transformer: superjson, // debe coincidir con el server
           fetch(url, opts) {
             return fetch(url, { ...opts, credentials: "include" });
           },
@@ -35,10 +33,17 @@ export default function Providers({ children }: { children: React.ReactNode }) {
   );
 
   return (
-    <trpc.Provider client={trpcClient} queryClient={queryClient}>
-      <QueryClientProvider client={queryClient}>
-        {children}
-      </QueryClientProvider>
-    </trpc.Provider>
+    <ThemeProviders>
+      <trpc.Provider client={trpcClient} queryClient={queryClient}>
+        <QueryClientProvider client={queryClient}>
+          <TopTagsProvider>
+            <SidebarProvider>
+              <WarmupUser />
+              {children}
+            </SidebarProvider>
+          </TopTagsProvider>
+        </QueryClientProvider>
+      </trpc.Provider>
+    </ThemeProviders>
   );
 }

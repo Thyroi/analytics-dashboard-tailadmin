@@ -1,11 +1,11 @@
 "use client";
 
-import React, { useMemo, useState, useCallback } from "react";
 import type { Granularity } from "@/lib/chatbot/tags";
 import { SERIES, TAG_META } from "@/lib/mockData";
-import { TAG_IMAGE_BY_ID } from "./tag-assets";
+import { useCallback, useMemo, useState } from "react";
 import SectorDeltaCard from "./SectorDeltaCard";
 import SectorExpandedCard from "./SectorExpandedCard";
+import { TAG_IMAGE_BY_ID } from "./tag-assets";
 
 export type SeriesPoint = { label: string; value: number };
 
@@ -154,7 +154,13 @@ export default function SectorsByTagSection() {
         previous: aggregateMonthly(dPrev),
       };
     },
-    [granularity, prevRange.endTime, prevRange.startTime, range.endTime, range.startTime]
+    [
+      granularity,
+      prevRange.endTime,
+      prevRange.startTime,
+      range.endTime,
+      range.startTime,
+    ]
   );
 
   const donutFor = useCallback(
@@ -167,6 +173,8 @@ export default function SectorsByTagSection() {
         .filter((r) => r.value > 0),
     [range.endTime, range.startTime]
   );
+
+  console.log("render SectorsByTagSection:", TAG_META);
 
   return (
     <section className="max-w-[1560px]">
@@ -186,7 +194,13 @@ export default function SectorsByTagSection() {
                   : "text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/5"
               }`}
             >
-              {g === "d" ? "Día" : g === "w" ? "Semana" : g === "m" ? "Mes" : "Año"}
+              {g === "d"
+                ? "Día"
+                : g === "w"
+                ? "Semana"
+                : g === "m"
+                ? "Mes"
+                : "Año"}
             </button>
           ))}
         </span>
@@ -198,17 +212,27 @@ export default function SectorsByTagSection() {
           grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4
           gap-4
         "
-        style={{ gridAutoRows: `${ROW_H}px` }}
+        // ✅ filas con altura mínima de ROW_H pero que pueden crecer según el contenido
+        style={{ gridAutoRows: `minmax(${ROW_H}px, auto)` }}
       >
         {ids.map((id) => {
           const curr = sumKeyInRange(id, range.startTime, range.endTime);
-          const prev = sumKeyInRange(id, prevRange.startTime, prevRange.endTime);
+          const prev = sumKeyInRange(
+            id,
+            prevRange.startTime,
+            prevRange.endTime
+          );
           const deltaPct = Math.round(pctChange(curr, prev));
           const Title = TAG_META[id].label;
           const IconSvg = TAG_META[id].icon;
 
           const rawImg = TAG_IMAGE_BY_ID[id];
-          const imgSrc = typeof rawImg === "string" ? rawImg : isStaticImageImport(rawImg) ? (rawImg as StaticImageImport).src : undefined;
+          const imgSrc =
+            typeof rawImg === "string"
+              ? rawImg
+              : isStaticImageImport(rawImg)
+              ? (rawImg as StaticImageImport).src
+              : undefined;
 
           if (expandedId === id) {
             const s = seriesFor(id);
@@ -218,8 +242,9 @@ export default function SectorsByTagSection() {
               <div
                 key={`expanded-${id}`}
                 className="
-                  col-span-1 sm:col-span-2 lg:grid-cols-3 xl:grid-cols-4
-                  row-span-2 sm:col-span-2 lg:col-span-3 xl:col-span-4
+                  col-span-1 sm:col-span-2
+                  lg:col-span-3 xl:col-span-4
+                  row-span-2
                 "
               >
                 {imgSrc ? (
