@@ -54,7 +54,7 @@ export default function TopTagsSection({
         <div className="col-span-12 lg:col-span-8 flex flex-col h-full justify-around gap-6">
           {/* Drawer no se estira, mantiene su alto natural */}
           <div className="shrink-0">
-            <TagsDrawer
+            {/* <TagsDrawer
               rows={view}
               tagMeta={tagMeta}
               defaultTagMeta={defaultTagMeta}
@@ -62,7 +62,7 @@ export default function TopTagsSection({
               pages={pages}
               onPrev={prev}
               onNext={next}
-            />
+            /> */}
           </div>
 
           {/* Chart crece para rellenar el alto disponible */}
