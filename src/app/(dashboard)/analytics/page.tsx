@@ -1,33 +1,26 @@
 "use client";
 
+import { Suspense } from "react";
 import Header from "@/components/common/Header";
-import TagsDrawer from "@/components/common/TagsDrawer";
 import SectorsByTagSectionDetailed from "@/features/home/sectors/SectorsByTagSectionDetailed";
-import { useAnalytics } from "@/hooks/useAnalytics";
 import { useSearchParams } from "next/navigation";
 
+// Wrapper que solo agrega el Suspense boundary
 export default function AnalyticsPage() {
+  return (
+    <Suspense fallback={null /* o un skeleton */}>
+      <AnalyticsPageInner />
+    </Suspense>
+  );
+}
+
+function AnalyticsPageInner() {
   const searchParams = useSearchParams();
 
-  // Filtros desde la URL (opcionales)
   const pueblo = searchParams.get("pueblo") || undefined;
   const dateFrom = searchParams.get("from") || undefined; // ej: 2025-05-01
-  const dateTo = searchParams.get("to") || undefined; // ej: 2025-08-31
+  const dateTo = searchParams.get("to") || undefined;     // ej: 2025-08-31
 
-  const scope = pueblo
-    ? { kind: "pueblo" as const, pueblo }
-    : { kind: "global" as const };
-
-  const {
-    allRows, // usamos todos los tags para el carrusel infinito
-    tagMeta,
-    defaultTagMeta,
-  } = useAnalytics({
-    scope,
-    dateFrom,
-    dateTo,
-    pageSize: 999, // la paginación no aplica al slider; queremos todo
-  });
 
   return (
     <div className="flex flex-col gap-6">
