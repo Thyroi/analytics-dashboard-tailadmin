@@ -1,34 +1,18 @@
 "use client";
 
-import { useKPIOverview } from "@/hooks/useTags"; // ajusta la ruta
-import type { Granularity } from "@/lib/chatbot/tags";
+import { useEffect, useMemo, useState } from "react";
 import { Users } from "lucide-react";
-import { useMemo, useState } from "react";
-import GeneralDataBody from "./GeneralDataBody";
-import GeneralDataHeader from "./GeneralDataHeader";
+import GeneralDataCardView from "./GeneralDataCardView";
 
-/* Helpers fecha */
-function dateToISO(d: Date): string {
-  const y = d.getUTCFullYear();
-  const m = String(d.getUTCMonth() + 1).padStart(2, "0");
-  const day = String(d.getUTCDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
-function addDays(d: Date, delta: number): Date {
-  const x = new Date(
-    Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())
-  );
-  x.setUTCDate(x.getUTCDate() + delta);
-  return x;
-}
+import { useHomeFilters } from "@/features/home/context/HomeFiltersContext";
+import { useOverviewCompare } from "@/features/home/hooks/useOverviewCompare";
 
-/* Tipos internos */
-type Mode = "granularity" | "range";
-type DateRange = { startTime: string; endTime: string } | null;
+import type { Granularity, Metric, Mode, SliceName } from "@/lib/types";
+import { parseISO, toISO } from "@/lib/utils/datetime";
 
 type Props = {
   title?: string;
-  metric?: "visits" | "interactions";
+  metric?: Metric;                // "users" | "interactions" | "visits"
   defaultGranularity?: Granularity;
   className?: string;
 };
@@ -39,77 +23,78 @@ export default function GeneralDataCard({
   defaultGranularity = "m",
   className = "",
 }: Props) {
-  // ====== Estado principal ======
+  const sliceName: SliceName = metric === "interactions" ? "interactions" : "users";
+  const {
+    users, interactions,
+    applyUsersGranularityPreset,
+    applyInteractionsGranularityPreset,
+    setUsersRange, setInteractionsRange,
+    resetUsers, resetInteractions,
+  } = useHomeFilters();
+
+  const slice = sliceName === "users" ? users : interactions;
+
+  useEffect(() => {
+    if (slice.granularity !== defaultGranularity) {
+      if (sliceName === "users") {
+        applyUsersGranularityPreset(defaultGranularity);
+      } else {
+        applyInteractionsGranularityPreset(defaultGranularity);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [defaultGranularity, sliceName]);
+
   const [mode, setMode] = useState<Mode>("granularity");
-  const [granularity, setGranularity] =
-    useState<Granularity>(defaultGranularity);
+  const { kpiSeries, currentValue, deltaPct } = useOverviewCompare(sliceName, metric!);
 
-  // Rango inicial: últimos 30 días
-  const today = useMemo(() => {
-    const now = new Date();
-    return new Date(
-      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
-    );
-  }, []);
-  const defaultStart = useMemo(() => addDays(today, -29), [today]);
-
-  const [from, setFrom] = useState<Date>(defaultStart);
-  const [to, setTo] = useState<Date>(today);
-
-  const effectiveRange: DateRange =
-    mode === "range"
-      ? { startTime: dateToISO(from), endTime: dateToISO(to) }
-      : null;
-
-  // Hook de datos
-  const { totals, series } = useKPIOverview(
-    mode === "range" ? null : granularity,
-    effectiveRange ?? undefined
-  );
-
-  // Selección de métrica para el header
-  const currentValue =
-    metric === "visits" ? totals.current.visits : totals.current.interactions;
-  const deltaPct =
-    metric === "visits" ? totals.pct.visits : totals.pct.interactions;
-
-  // Handlers
+  const startDate = useMemo(() => parseISO(slice.range.startTime), [slice.range.startTime]);
+  const endDate = useMemo(() => parseISO(slice.range.endTime), [slice.range.endTime]);
   const handleGranularityChange = (g: Granularity) => {
-    setGranularity(g);
     setMode("granularity");
+    if (sliceName === "users") {
+      applyUsersGranularityPreset(g);
+    } else {
+      applyInteractionsGranularityPreset(g);
+    }
   };
+
   const handleRangeChange = (start: Date, end: Date) => {
-    setFrom(start);
-    setTo(end);
     setMode("range");
+    const r = { startTime: toISO(start), endTime: toISO(end) };
+    if (sliceName === "users") {
+      setUsersRange(r);
+    } else {
+      setInteractionsRange(r);
+    }
   };
+
   const clearRange = () => {
-    setFrom(defaultStart);
-    setTo(today);
     setMode("granularity");
+    if (sliceName === "users") {
+      applyUsersGranularityPreset(users.granularity);
+      resetUsers();
+    } else {
+      applyInteractionsGranularityPreset(interactions.granularity);
+      resetInteractions();
+    }
   };
 
   return (
-    <div
-      className={`w-full rounded-xl bg-white dark:bg-gray-900 shadow-sm ring-1 ring-black/5 overflow-hidden ${className}`}
-    >
-      <GeneralDataHeader
-        title={title}
-        value={currentValue}
-        deltaPct={deltaPct}
-        icon={<Users className="h-5 w-5" />}
-      />
-
-      <GeneralDataBody
-        mode={mode}
-        granularity={granularity}
-        onGranularityChange={handleGranularityChange}
-        startDate={from}
-        endDate={to}
-        onRangeChange={handleRangeChange}
-        onClearRange={clearRange}
-        kpiSeries={series}
-      />
-    </div>
+    <GeneralDataCardView
+      title={title}
+      icon={<Users className="h-5 w-5" />}
+      value={currentValue}
+      deltaPct={deltaPct}
+      mode={mode}
+      granularity={slice.granularity}
+      onGranularityChange={handleGranularityChange}
+      startDate={startDate}
+      endDate={endDate}
+      onRangeChange={handleRangeChange}
+      onClearRange={clearRange}
+      kpiSeries={kpiSeries ?? { bucket: slice.granularity, current: [], previous: [] }}
+      className={className}
+    />
   );
 }

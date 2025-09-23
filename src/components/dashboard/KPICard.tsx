@@ -23,17 +23,17 @@ export default function KPICard({
 
   return (
     <div
-      className={`w-[250px] rounded-xl bg-white dark:bg-gray-900 shadow-sm ring-1 ring-black/5 overflow-hidden p-4 ${className}`}
+      className={`w-full max-h-[100px] rounded-xl bg-white dark:bg-gray-900 shadow-sm ring-1 ring-black/5 overflow-hidden p-4 ${className}`}
     >
       <div className="grid grid-cols-[64px_1fr] grid-rows-2 h-full">
-        {/* Icono (col izquierda, ocupa ambas filas) */}
+        {/* Icono */}
         <div className="row-span-2 flex items-center justify-center">
           <div className="h-10 w-10 rounded-full bg-huelva-primary text-white flex items-center justify-center">
             {icon ?? null}
           </div>
         </div>
 
-        {/* Título (fila 1) */}
+        {/* Título */}
         <div className="flex items-end justify-start px-2">
           <span
             title={title}
@@ -52,7 +52,7 @@ export default function KPICard({
           </span>
         </div>
 
-        {/* Valor (fila 2) + Delta */}
+        {/* Valor + Delta */}
         <div className="flex items-center justify-start px-2">
           <span
             title={String(value)}

@@ -2,20 +2,17 @@
 
 import LineChart from "@/components/charts/LineChart";
 import RangeControls from "@/components/dashboard/RangeControls";
-import type { KPISeries } from "@/hooks/useTags";
-import type { Granularity } from "@/lib/chatbot/tags";
 import { useMemo } from "react";
+import type { KPISeries, Granularity } from "@/lib/types"; // ⬅️ ACTUALIZADO
 
 type Props = {
   mode: "granularity" | "range";
   granularity: Granularity;
   onGranularityChange: (g: Granularity) => void;
-
   startDate: Date;
   endDate: Date;
   onRangeChange: (start: Date, end: Date) => void;
   onClearRange: () => void;
-
   kpiSeries: KPISeries; // { bucket, current, previous }
   className?: string;
 };
@@ -44,7 +41,7 @@ export default function GeneralDataBody({
       currData: currSlice.map((p) => p.value),
       prevData: prevSlice.map((p) => p.value),
     };
-  }, [kpiSeries.current, kpiSeries.previous]);
+  }, [kpiSeries]);
 
   return (
     <div
@@ -62,7 +59,6 @@ export default function GeneralDataBody({
         />
       </div>
 
-      {/* Contenedor de gráfica -> altura fija; chart ocupa 100% */}
       <div className="px-6 pb-3">
         <div className="w-full h-[300px] md:h-[340px]">
           <LineChart
@@ -72,11 +68,11 @@ export default function GeneralDataBody({
               { name: "Anterior", data: prevData },
             ]}
             type="area"
-            height="100%" // ⬅️ importante
+            height="100%"
             showLegend={false}
             smooth
             colorsByName={{ Actual: "#16A34A", Anterior: "#9CA3AF" }}
-            className="w-full h-full" // ⬅️ importante
+            className="w-full h-full"
           />
         </div>
       </div>

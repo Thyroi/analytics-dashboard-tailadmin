@@ -2,10 +2,8 @@ import { NextResponse } from "next/server";
 import { google, analyticsdata_v1beta } from "googleapis";
 import type { GoogleAuth } from "google-auth-library";
 
-type SourceKey = "wpideanto" | undefined;
+/* ====================== Tipos ====================== */
 type ForceCase = "lower" | "capitalized" | "auto";
-
-/* ====================== Tipos de salida ====================== */
 type UrlHit = { url: string; events: number; views: number };
 type Facet = { value: string; events: number; views: number };
 
@@ -13,22 +11,22 @@ type Payload = {
   range: { start: string; end: string };
   property: string;
   params: {
-    source?: SourceKey;
     limit: number;
-    eventName: string;           // "page_view" | "all" | "*"
     puebloValue?: string;
     categoriaValue?: string;
     puebloDimForce: ForceCase;
     categoriaDimForce: ForceCase;
+    samplePueblos: number;
+    sampleCategorias: number;
+    sampleUrls: number;
   };
-  summary: { eventName: string; events: number; views: number };
+  summary: { eventName: "page_view"; events: number; views: number };
   dims: {
     hasPuebloDim: boolean;
     hasCategoriaDim: boolean;
     puebloDimName?: string;
     categoriaDimName?: string;
   };
-  byEvent: Facet[];              // <- NUEVO: eventos (eventName)
   byUrl: { totalUrls: number; top: UrlHit[] };
   byPueblo: Facet[];
   byCategoria: Facet[];
@@ -37,11 +35,10 @@ type Payload = {
     categoriaCandidates: string[];
     usedPuebloDim?: string;
     usedCategoriaDim?: string;
-    appliedEventFilter: boolean;
   };
 };
 
-/* ====================== Helpers básicos ====================== */
+/* ====================== Helpers ====================== */
 function getRequiredEnv(name: string): string {
   const v = process.env[name];
   if (!v || v.trim() === "") throw new Error(`Falta la variable de entorno ${name}`);
@@ -51,14 +48,10 @@ function normalizePropertyId(id: string): string {
   const t = id.trim();
   return t.startsWith("properties/") ? t : `properties/${t}`;
 }
-function resolvePropertyId(sourceKey?: SourceKey): string {
-  if (sourceKey === "wpideanto") return getRequiredEnv("GA_PROPERTY_ID_WPIDEANTO");
-  return getRequiredEnv("GA_PROPERTY_ID");
-}
 function defaultRange(): { start: string; end: string } {
   const end = new Date();
   const start = new Date();
-  start.setDate(end.getDate() - 44);
+  start.setDate(end.getDate() - 30);
   const toISO = (d: Date) => d.toISOString().split("T")[0];
   return { start: toISO(start), end: toISO(end) };
 }
@@ -74,7 +67,6 @@ function safeUrlPathname(raw: string): string {
   try { const u = new URL(raw); return u.pathname || "/"; }
   catch { return raw.startsWith("/") ? raw : `/${raw}`; }
 }
-function sum(ns: number[]): number { return ns.reduce((a, b) => a + b, 0); }
 function isUnsetValue(raw: string): boolean {
   const s = (raw || "").trim().toLowerCase();
   return s === "" || s === "(not set)" || s === "not set" || s === "(not-set)" || s === "(notset)";
@@ -115,29 +107,32 @@ function resolveCustomEventDim(
   return { used: undefined, candidates };
 }
 
-/* ====================== API Route (RAW) ====================== */
+/* ====================== API Route (RAW SAMPLE) ====================== */
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
 
-    // Params
+    // Parámetros mínimos para pruebas
     const start = searchParams.get("start") || undefined;
     const end = searchParams.get("end") || undefined;
-    const source = (searchParams.get("source") as SourceKey | null) || undefined;
     const limitNum = Number(searchParams.get("limit") || "20000");
-    const eventNameParam = (searchParams.get("event") || "page_view").trim(); // "page_view" | "all" | "*"
 
     const puebloDimForce = (searchParams.get("puebloDimForce") as ForceCase) || "auto";
     const categoriaDimForce = (searchParams.get("categoriaDimForce") as ForceCase) || "auto";
     const puebloValue = (searchParams.get("puebloValue") || "").trim() || undefined;
     const categoriaValue = (searchParams.get("categoriaValue") || "").trim() || undefined;
 
+    // Tamaños de muestra (para que la respuesta sea corta)
+    const samplePueblos = Math.max(1, Math.min(10, Number(searchParams.get("samplePueblos") || "4")));
+    const sampleCategorias = Math.max(1, Math.min(12, Number(searchParams.get("sampleCategorias") || "6")));
+    const sampleUrls = Math.max(1, Math.min(50, Number(searchParams.get("sampleUrls") || "10")));
+
     const range = start && end ? { start, end } : defaultRange();
 
     // Auth + GA4
     const auth = getAuth();
     const analyticsData = google.analyticsdata({ version: "v1beta", auth });
-    const propertyId = resolvePropertyId(source);
+    const propertyId = getRequiredEnv("GA_PROPERTY_ID_WPIDEANTO");
 
     // Metadata -> dims personalizadas
     const dimsAvailable = await fetchDimensionApiNames(analyticsData, propertyId);
@@ -146,8 +141,7 @@ export async function GET(req: Request) {
     const puebloDimName = puebloRes.used;
     const categoriaDimName = categoriaRes.used;
 
-    // Dimensiones en este orden:
-    // 0: eventName, 1: pageLocation, 2: Pueblo (si existe), 3: Categoria (si existe)
+    // Dimensiones: 0 eventName, 1 pageLocation, 2 pueblo?, 3 categoria?
     const dimensions: analyticsdata_v1beta.Schema$Dimension[] = [
       { name: "eventName" },
       { name: "pageLocation" },
@@ -155,33 +149,21 @@ export async function GET(req: Request) {
     if (puebloDimName) dimensions.push({ name: puebloDimName });
     if (categoriaDimName) dimensions.push({ name: categoriaDimName });
 
-    // Filtros:
-    const applyEventFilter = !(eventNameParam === "all" || eventNameParam === "*");
-    const filters: analyticsdata_v1beta.Schema$FilterExpression[] = [];
-
-    if (applyEventFilter) {
-      filters.push({
-        filter: {
-          fieldName: "eventName",
-          stringFilter: { matchType: "EXACT", value: eventNameParam, caseSensitive: false },
-        },
-      });
-    }
-
+    // Filtro fijo a page_view
+    const filters: analyticsdata_v1beta.Schema$FilterExpression[] = [{
+      filter: {
+        fieldName: "eventName",
+        stringFilter: { matchType: "EXACT", value: "page_view", caseSensitive: false },
+      },
+    }];
     if (puebloValue && puebloDimName) {
       filters.push({
-        filter: {
-          fieldName: puebloDimName,
-          stringFilter: { matchType: "EXACT", value: puebloValue, caseSensitive: false },
-        },
+        filter: { fieldName: puebloDimName, stringFilter: { matchType: "EXACT", value: puebloValue, caseSensitive: false } },
       });
     }
     if (categoriaValue && categoriaDimName) {
       filters.push({
-        filter: {
-          fieldName: categoriaDimName,
-          stringFilter: { matchType: "EXACT", value: categoriaValue, caseSensitive: false },
-        },
+        filter: { fieldName: categoriaDimName, stringFilter: { matchType: "EXACT", value: categoriaValue, caseSensitive: false } },
       });
     }
 
@@ -190,9 +172,7 @@ export async function GET(req: Request) {
       metrics: [{ name: "eventCount" }, { name: "screenPageViews" }],
       dimensions,
       dimensionFilter:
-        filters.length === 0 ? undefined
-        : filters.length === 1 ? filters[0]
-        : { andGroup: { expressions: filters } },
+        filters.length === 1 ? filters[0] : { andGroup: { expressions: filters } },
       limit: String(limitNum),
       orderBys: [{ metric: { metricName: "eventCount" }, desc: true }],
       keepEmptyRows: false,
@@ -204,8 +184,6 @@ export async function GET(req: Request) {
     });
 
     const rows = resp.data.rows ?? [];
-
-    // Índices efectivos
     const IDX = {
       eventName: 0,
       pageLocation: 1,
@@ -217,7 +195,6 @@ export async function GET(req: Request) {
     let totalEvents = 0;
     let totalViews = 0;
 
-    const byEventAgg = new Map<string, { events: number; views: number }>();
     const urlEvents = new Map<string, number>();
     const urlViews = new Map<string, number>();
     const puebloAgg = new Map<string, { events: number; views: number }>();
@@ -227,18 +204,11 @@ export async function GET(req: Request) {
       const dimsVals = r.dimensionValues ?? [];
       const mets = r.metricValues ?? [];
 
-      const evName = String(dimsVals[IDX.eventName]?.value ?? "");
       const events = Number(mets[0]?.value ?? 0);
       const views = Number(mets[1]?.value ?? 0);
 
       totalEvents += events;
       totalViews += views;
-
-      // por evento
-      const evCur = byEventAgg.get(evName) ?? { events: 0, views: 0 };
-      evCur.events += events;
-      evCur.views += views;
-      byEventAgg.set(evName, evCur);
 
       // URL
       const rawLoc = String(dimsVals[IDX.pageLocation]?.value ?? "");
@@ -258,7 +228,7 @@ export async function GET(req: Request) {
         }
       }
 
-      // Categoria
+      // Categoría
       if (IDX.categoria >= 0) {
         const cvRaw = String(dimsVals[IDX.categoria]?.value ?? "");
         const cv = isUnsetValue(cvRaw) ? "" : cvRaw;
@@ -271,45 +241,41 @@ export async function GET(req: Request) {
       }
     }
 
-    const byEvent: Facet[] = Array.from(byEventAgg.entries())
-      .map(([value, v]) => ({ value, events: v.events, views: v.views }))
-      .sort((a, b) => b.events - a.events);
-
     const byUrlTop: UrlHit[] = Array.from(urlEvents.entries())
       .map(([url, events]) => ({ url, events, views: urlViews.get(url) ?? 0 }))
       .sort((a, b) => b.events - a.events)
-      .slice(0, 200);
+      .slice(0, sampleUrls);
 
     const byPueblo: Facet[] = Array.from(puebloAgg.entries())
       .map(([value, v]) => ({ value, events: v.events, views: v.views }))
-      .sort((a, b) => b.events - a.events);
+      .sort((a, b) => b.events - a.events)
+      .slice(0, samplePueblos);
 
     const byCategoria: Facet[] = Array.from(categoriaAgg.entries())
       .map(([value, v]) => ({ value, events: v.events, views: v.views }))
-      .sort((a, b) => b.events - a.events);
-
-    const effectiveEventName = applyEventFilter ? eventNameParam : "all";
+      .sort((a, b) => b.events - a.events)
+      .slice(0, sampleCategorias);
 
     const payload: Payload = {
       range,
       property: propertyId,
       params: {
-        source,
         limit: limitNum,
-        eventName: effectiveEventName,
         puebloValue,
         categoriaValue,
         puebloDimForce,
         categoriaDimForce,
+        samplePueblos,
+        sampleCategorias,
+        sampleUrls,
       },
-      summary: { eventName: effectiveEventName, events: totalEvents, views: totalViews },
+      summary: { eventName: "page_view", events: totalEvents, views: totalViews },
       dims: {
         hasPuebloDim: Boolean(puebloDimName),
         hasCategoriaDim: Boolean(categoriaDimName),
         ...(puebloDimName ? { puebloDimName } : {}),
         ...(categoriaDimName ? { categoriaDimName } : {}),
       },
-      byEvent,
       byUrl: { totalUrls: urlEvents.size, top: byUrlTop },
       byPueblo,
       byCategoria,
@@ -318,7 +284,6 @@ export async function GET(req: Request) {
         categoriaCandidates: buildCustomEventCandidates("categoria", categoriaDimForce),
         usedPuebloDim: puebloDimName,
         usedCategoriaDim: categoriaDimName,
-        appliedEventFilter: applyEventFilter,
       },
     };
 

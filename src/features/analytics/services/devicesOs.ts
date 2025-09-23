@@ -1,21 +1,18 @@
-import type { DevicesOsPayload } from "../types";
+import type { Granularity } from "@/lib/types";
+import { DevicesOsResponse, fetchJSON } from "@/lib/api/analytics";
 
-export async function fetchDevicesOs(params?: {
-  start?: string; // YYYY-MM-DD
-  end?: string; // YYYY-MM-DD
-}): Promise<DevicesOsPayload> {
-  const qs = new URLSearchParams();
-  if (params?.start) qs.set("start", params.start);
-  if (params?.end) qs.set("end", params.end);
-  const url = `/api/analytics/devices-os${
-    qs.toString() ? `?${qs.toString()}` : ""
-  }`;
+/** GET /api/analytics/v1/header/devices/os */
+export async function getDevicesOs(input?: {
+  start?: string;
+  end?: string;
+  granularity?: Granularity;
+  signal?: AbortSignal;
+}): Promise<DevicesOsResponse> {
+  const sp = new URLSearchParams();
+  if (input?.start) sp.set("start", input.start);
+  if (input?.end) sp.set("end", input.end);
+  if (input?.granularity) sp.set("granularity", input.granularity);
 
-  const res = await fetch(url, { cache: "no-store" });
-  if (!res.ok) throw new Error(`GET ${url} -> ${res.status} ${res.statusText}`);
-
-  const json = (await res.json()) as unknown;
-  if (!json || typeof json !== "object")
-    throw new Error("Formato de respuesta inválido");
-  return json as DevicesOsPayload;
+  const url = `/api/analytics/v1/header/devices/os${sp.toString() ? `?${sp.toString()}` : ""}`;
+  return fetchJSON<DevicesOsResponse>(url, { method: "GET", signal: input?.signal });
 }

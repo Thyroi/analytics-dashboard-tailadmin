@@ -1,0 +1,38 @@
+"use client";
+
+import React from "react";
+import DonutLeader from "@/components/charts/DonutLeader";
+import type { DonutDatum } from "@/lib/types";
+import { formatPct } from "@/features/home/sectors/SectorExpandedCard/utils"; // reutiliza tu helper
+
+type DonutSectionProps = {
+  donutData: DonutDatum[];
+  deltaPct: number;
+  onSliceClick?: (label: string) => void;
+};
+
+export default function DonutSection({ donutData, deltaPct, onSliceClick }: DonutSectionProps) {
+  const isUp = deltaPct >= 0;
+
+  return (
+    <div className="rounded-xl border border-gray-200 dark:border-white/10 bg-white/70 dark:bg-[#0b0f14]/70 p-3">
+      <div className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+        Subcategorías
+      </div>
+      <DonutLeader
+        data={donutData}
+        height={280}
+        className="w-full"
+        padViewBox={20}
+        onSliceClick={(d) => onSliceClick?.(d.label)}
+      />
+      <div
+        className={`mt-3 text-center text-[28px] font-extrabold ${
+          isUp ? "text-[#35C759]" : "text-[#E64C3C]"
+        }`}
+      >
+        {formatPct(deltaPct)}
+      </div>
+    </div>
+  );
+}

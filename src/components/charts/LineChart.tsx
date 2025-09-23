@@ -22,7 +22,7 @@ type Props = {
   categories: string[];
   series: LineSeries[];
   type?: "line" | "area";
-  height?: number | string; // usa "100%" para llenar contenedor
+  height?: number | string;
   palette?: readonly string[];
   colorsByName?: Record<string, string>;
   showLegend?: boolean;
@@ -53,6 +53,16 @@ export default function LineChart({
     return series.map((s, i) => colorsByName?.[s.name] ?? byIndex(i));
   }, [series, colorsByName, palette]);
 
+  // 🔹 Línea punteada para "Total" (y ancho un poco mayor si quieres)
+  const dashArray = useMemo(
+    () => series.map((s) => (s.name === "Total" ? 6 : 0)), // 6 = patrón de guiones; 0 = línea sólida
+    [series]
+  );
+  const strokeWidths = useMemo(
+    () => series.map((s) => (s.name === "Total" ? 3 : 2)),
+    [series]
+  );
+
   const axisLabelColor = isDark ? "#9CA3AF" : "#6B7280";
   const gridColor = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)";
   const foreColor = isDark ? "#E5E7EB" : "#374151";
@@ -69,7 +79,11 @@ export default function LineChart({
         parentHeightOffset: 0,
         foreColor,
       },
-      stroke: { curve: smooth ? "smooth" : "straight", width: 2 },
+      stroke: {
+        curve: smooth ? "smooth" : "straight",
+        width: strokeWidths,      // ⬅️ un ancho por serie
+        dashArray,                // ⬅️ punteado por serie (Total = 6)
+      },
       markers: { size: 0, hover: { sizeOffset: 3 } },
       fill:
         type === "area"
@@ -79,13 +93,11 @@ export default function LineChart({
         borderColor: gridColor,
         yaxis: { lines: { show: true } },
         xaxis: { lines: { show: false } },
-        // ⬇️ Elimina márgenes a los lados del plot
         padding: { left: 0, right: 0, top: 0, bottom: 0 },
       },
       dataLabels: { enabled: false },
       xaxis: {
         categories,
-        // ⬇️ Clave: coloca los ticks SOBRE las categorías (sin margen extra)
         tickPlacement: "on",
         labels: {
           style: { fontSize: "12px", colors: axisLabelColor },
@@ -109,12 +121,14 @@ export default function LineChart({
     axisLabelColor,
     categories,
     colors,
+    dashArray,
     foreColor,
     gridColor,
     isDark,
     legendPosition,
     optionsExtra,
     smooth,
+    strokeWidths,
     type,
     showLegend,
   ]);
@@ -128,7 +142,7 @@ export default function LineChart({
   );
 
   return (
-    <div className={`w-full h-full overflow-hidden ${className}`}>
+    <div className={`w-full h-full overflow-hidden ${className}`} style={{ height }}>
       <ReactApexChart
         key={key}
         options={options}

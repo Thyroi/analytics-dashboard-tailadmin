@@ -1,20 +1,56 @@
-import type { AcquisitionRangePayload } from "../types";
+// src/features/analytics/services/userAcquisitionRange.ts
+import type { AcquisitionRangePayload } from "@/lib/api/analytics";
+import type { Granularity } from "@/lib/types";
 
-export async function fetchUserAcquisitionRange(params: {
-  start: string; // YYYY-MM-DD
-  end: string;   // YYYY-MM-DD
-}): Promise<AcquisitionRangePayload> {
-  const url = `/api/analytics/user-acquisition-range?start=${encodeURIComponent(
-    params.start,
-  )}&end=${encodeURIComponent(params.end)}`;
+type Params = {
+  start?: string;
+  end?: string;
+  granularity?: Granularity; // opcional, por si dejas default en el endpoint
+  includeTotal?: boolean; // default true
+  signal?: AbortSignal;
+};
 
-  const res = await fetch(url, { cache: "no-store" });
-  if (!res.ok) throw new Error(`GET ${url} -> ${res.status} ${res.statusText}`);
+export async function fetchUserAcquisitionRange({
+  start,
+  end,
+  granularity,
+  includeTotal = true,
+  signal,
+}: Params): Promise<AcquisitionRangePayload> {
+  const sp = new URLSearchParams();
+  if (start) sp.set("start", start);
+  if (end) sp.set("end", end);
+  if (granularity) sp.set("granularity", granularity);
+  if (!includeTotal) sp.set("includeTotal", "0");
 
-  const json = (await res.json()) as unknown;
-  if (!json || typeof json !== "object") {
-    throw new Error("Formato de respuesta inválido");
+  const url = `/api/analytics/v1/header/user-acquisition-range?${sp.toString()}`;
+
+  const resp = await fetch(url, {
+    method: "GET",
+    signal,
+    headers: { "content-type": "application/json" },
+    cache: "no-store",
+  });
+
+  const ctype = resp.headers.get("content-type") || "";
+  if (!resp.ok) {
+    const body = await resp.text().catch(() => "");
+    if (ctype.includes("text/html")) {
+      throw new Error(
+        `404 en ${url}. ¿Existe src/app/api/analytics/v1/header/user-acquisition-range/route.ts?`
+      );
+    }
+    throw new Error(body || `HTTP ${resp.status} en ${url}`);
   }
-  // Confiamos en el backend (shape estable); si quieres, aquí puedes validar campos.
-  return json as AcquisitionRangePayload;
+  if (!ctype.includes("application/json")) {
+    const body = await resp.text().catch(() => "");
+    throw new Error(
+      `Respuesta no JSON desde ${url}. content-type=${ctype}. Body=${body.slice(
+        0,
+        200
+      )}…`
+    );
+  }
+
+  return resp.json() as Promise<AcquisitionRangePayload>;
 }
