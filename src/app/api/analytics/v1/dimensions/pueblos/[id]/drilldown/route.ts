@@ -1,7 +1,6 @@
 // src/app/api/analytics/v1/dimensions/pueblos/[id]/drilldown/route.ts
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import { google, analyticsdata_v1beta } from "googleapis";
-import type { GoogleAuth } from "google-auth-library";
 import type { Granularity, DonutDatum } from "@/lib/types";
 
 import {
@@ -48,14 +47,14 @@ function normToken(s: string): string {
     .replace(/^-+|-+$/g, "");
 }
 
-/** Construye mapa slug-normalizado → CategoryId usando tus sinónimos oficiales */
+/** Construye mapa slug-normalizado → CategoryId usando sinónimos oficiales */
 function buildSlugToCategory(): Record<string, CategoryId> {
   const map: Record<string, CategoryId> = {};
   for (const cid of CATEGORY_ID_ORDER) {
     const base: string[] = [
-      cid,                               // id
-      CATEGORY_META[cid].label,          // label mostrado
-      ...(CATEGORY_SYNONYMS[cid] ?? []), // sinónimos desde taxonomy ✅
+      cid,
+      CATEGORY_META[cid].label,
+      ...(CATEGORY_SYNONYMS[cid] ?? []),
     ].filter(Boolean) as string[];
 
     for (const v of base) map[normToken(v)] = cid;
@@ -89,15 +88,15 @@ function parseTownCatSub(path: string): { townId?: TownId; categoryId?: Category
 
 /* ---------------- handler ---------------- */
 
-export async function GET(
-  req: Request,
-  { params }: { params: { id: string } }
-) {
+export async function GET(req: NextRequest, ctx: unknown) {
   try {
-    const townId = params.id as TownId;
-    if (!TOWN_ID_ORDER.includes(townId)) {
-      return NextResponse.json({ error: `Invalid townId '${townId}'` }, { status: 400 });
+    // Firma strict de Next: obtenemos params con cast seguro
+    const { id } = (ctx as { params: { id: string } }).params;
+
+    if (!(TOWN_ID_ORDER as readonly string[]).includes(id)) {
+      return NextResponse.json({ error: `Invalid townId '${id}'` }, { status: 400 });
     }
+    const townId = id as TownId;
 
     const { searchParams } = new URL(req.url);
     const g = (searchParams.get("g") || "d") as Granularity;
@@ -118,7 +117,7 @@ export async function GET(
     };
 
     // GA
-    const auth: GoogleAuth = getAuth();
+    const auth = getAuth();
     const analyticsData = google.analyticsdata({ version: "v1beta", auth });
     const property = normalizePropertyId(resolvePropertyId());
 
