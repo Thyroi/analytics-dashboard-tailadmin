@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import { google, analyticsdata_v1beta } from "googleapis";
 import type { Granularity, SeriesPoint, DonutDatum } from "@/lib/types";
 import {
@@ -135,24 +135,27 @@ function donutByTowns(
 
 /* ====================== handler ====================== */
 export async function GET(
-  req: Request,
-  { params }: { params: { id: CategoryId } }
+  req: NextRequest,
+  ctx: { params: { id: string } }
 ) {
   try {
     const url = new URL(req.url);
     const g = (url.searchParams.get("g") || "d") as Granularity;
     const endISO = url.searchParams.get("end") || undefined;
 
-    const id = params.id;
+    // 👉 El tipo del parámetro del handler es string; dentro lo casteamos y validamos
+    const id = ctx.params.id as CategoryId;
     if (!CATEGORY_ID_ORDER.includes(id)) {
-      return NextResponse.json({ error: "CategoryId inválido" }, { status: 400 });
+      return NextResponse.json(
+        { error: `CategoryId inválido: ${ctx.params.id}` },
+        { status: 400 }
+      );
     }
 
-    // Rango actual + comparable usando datetime utils
+    // Rango actual + comparable
     const now = endISO ? parseISO(endISO) : todayUTC();
-    const currPreset = deriveAutoRangeForGranularity(g, now); // {startTime,endTime}
+    const currPreset = deriveAutoRangeForGranularity(g, now);
     const prevPreset = prevComparable(currPreset);
-
     const ranges = {
       current: { start: currPreset.startTime, end: currPreset.endTime },
       previous: { start: prevPreset.startTime, end: prevPreset.endTime },
@@ -163,7 +166,7 @@ export async function GET(
     const analytics = google.analyticsdata({ version: "v1beta", auth });
     const property = normalizePropertyId(resolvePropertyId());
 
-    // Unir current+previous en un solo request; filtramos por page_view + regex de la categoría
+    // Unimos current+previous; filtramos por page_view + regex de la categoría
     const request: analyticsdata_v1beta.Schema$RunReportRequest = {
       dateRanges: [{ startDate: ranges.previous.start, endDate: ranges.current.end }],
       metrics: [{ name: "screenPageViews" }],
@@ -206,16 +209,15 @@ export async function GET(
 
     const rows = resp.data.rows ?? [];
 
-    // Series (daily) separadas por rango
+    // Series por rango
     const currDict = accumulateDaily(rows, ranges.current);
     const prevDict = accumulateDaily(rows, ranges.previous);
-
     const series: { current: SeriesPoint[]; previous: SeriesPoint[] } = {
       current: dictToSeriesPoints(currDict),
       previous: dictToSeriesPoints(prevDict),
     };
 
-    // Donut por pueblos dentro del rango actual
+    // Donut por pueblos (rango actual)
     const donutData: DonutDatum[] = donutByTowns(rows, ranges.current);
 
     return NextResponse.json(
