@@ -5,7 +5,6 @@ import type { Granularity, DonutDatum } from "@/lib/types";
 
 import {
   TOWN_ID_ORDER,
-  TOWN_META,
   type TownId,
 } from "@/lib/taxonomy/towns";
 
