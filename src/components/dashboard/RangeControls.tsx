@@ -1,9 +1,9 @@
 "use client";
 
 import React from "react";
-import type { Granularity } from "@/lib/chatbot/tags";
 import GranularityTabs from "./GranularityTabs";
 import DateRangePicker from "@/components/common/DateRangePicker";
+import { Granularity } from "@/lib/types";
 
 type Props = {
   mode: "granularity" | "range";

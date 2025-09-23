@@ -2,7 +2,7 @@
 
 import React from "react";
 import { HomeFiltersProvider } from "@/features/home/context/HomeFiltersContext";
-import { Granularity } from "@/lib/types";
+import type { Granularity } from "@/lib/types";
 
 type Props = {
   children: React.ReactNode;

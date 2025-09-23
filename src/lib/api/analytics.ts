@@ -178,20 +178,24 @@ export type AcquisitionRangePayload = {
 
 /* ======================= Payload: Top Pages (range) ============== */
 
-export type TopPagesRow = {
-  path: string; // p.ej. "/playas/matalascanas"
-  title?: string; // opcional
-  views: number; // screenPageViews en el rango
-  pct: number; // 0..100
-  users?: number; // opcional
-  avgEngagementTime?: number; // opcional (segundos)
+export type TopPagesRangeSeries = {
+  /** Nombre en leyenda (título o path) */
+  name: string;
+  /** Valores alineados con xLabels (rango current) */
+  data: number[];
+  /** Path absoluto, útil para navegar (opcional) */
+  path?: string;
 };
 
+/** Payload del endpoint /api/analytics/v1/header/top-pages-range */
 export type TopPagesRangePayload = {
+  granularity: Granularity;
   range: { start: string; end: string };
-  property: string;
-  total: number; // total de views (screenPageViews)
-  rows: TopPagesRow[]; // ordenadas desc por views
+  xLabels: string[];
+  /** Colección de series (incluido “Total” si includeTotal=true) */
+  series: TopPagesRangeSeries[];
+  /** Eco del flag de entrada; opcional para compatibilidad */
+  includeTotal?: boolean;
 };
 
 // ...resto del archivo

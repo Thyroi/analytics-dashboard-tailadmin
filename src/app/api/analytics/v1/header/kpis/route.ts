@@ -3,7 +3,8 @@ import { google, analyticsdata_v1beta } from "googleapis";
 import { getAuth, normalizePropertyId, resolvePropertyId } from "@/lib/utils/ga";
 import { parseISO, toISO, deriveAutoRangeForGranularity } from "@/lib/utils/datetime";
 import type { Granularity } from "@/lib/types";
-import type { KpiPayload, KpiMetricSet, KpiDeltaSet } from "@/lib/utils/analytics";
+import { KpiDeltaSet, KpiMetricSet, KpiPayload } from "@/lib/api/analytics";
+
 
 export const dynamic = "force-dynamic";
 

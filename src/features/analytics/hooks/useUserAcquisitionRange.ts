@@ -3,8 +3,9 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Granularity } from "@/lib/types";
-import type { AcquisitionRangePayload } from "@/features/analytics/types";
+
 import { fetchUserAcquisitionRange } from "@/features/analytics/services/userAcquisitionRange";
+import { AcquisitionRangePayload } from "@/lib/api/analytics";
 
 export type UseUserAcquisitionRangeParams = {
   start?: string;

@@ -32,6 +32,11 @@ export default function TopPagesRangeSection() {
 
   if (isLoading) return <AreaChartSkeleton height={CHART_HEIGHT} />;
 
+  // Fallback por compatibilidad si en algún build viejo llega categoriesLabels
+  const categories =
+    (data?.xLabels as string[] | undefined) ??
+    ((data as unknown as { categoriesLabels?: string[] })?.categoriesLabels ?? []);
+
   return (
     <div className="card">
       <div className="card-header">
@@ -61,11 +66,11 @@ export default function TopPagesRangeSection() {
           </div>
         ) : hasData && data ? (
           <LineChart
-            categories={data.categoriesLabels}
+            categories={categories}
             series={data.series}
             type="line"
             height="100%"
-            colorsByName={NAME_COLORS} // colorea "Total"; el resto usa palette por índice
+            colorsByName={NAME_COLORS}
             showLegend
             legendPosition="bottom"
           />

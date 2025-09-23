@@ -1,7 +1,8 @@
 "use client";
 
+import { Granularity } from "@/lib/types";
 import * as React from "react";
-import type { Granularity } from "@/lib/chatbot/tags";
+
 
 export default function GranularityTabs({
   value, onChange, className = "",

@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Granularity } from "@/lib/types";
-import type { TopPagesRangePayload } from "@/lib/utils/analytics";
+
 import { fetchTopPagesRange } from "@/features/analytics/services/topPagesRange";
+import { TopPagesRangePayload } from "@/lib/api/analytics";
 
 export type UseTopPagesRangeParams = {
   start?: string;

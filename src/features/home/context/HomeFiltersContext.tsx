@@ -15,7 +15,6 @@ type Ctx = {
   users: SliceState;
   interactions: SliceState;
 
-  // setters “simples”
   setUsersGranularity: (g: Granularity) => void;
   setUsersRange: (r: Range) => void;
   resetUsers: () => void;
@@ -24,7 +23,6 @@ type Ctx = {
   setInteractionsRange: (r: Range) => void;
   resetInteractions: () => void;
 
-  // ✅ aplicar preset auto-rango al cambiar granularidad
   applyUsersGranularityPreset: (g: Granularity) => void;
   applyInteractionsGranularityPreset: (g: Granularity) => void;
   applyGranularityPreset: (slice: SliceName, g: Granularity) => void;
@@ -32,48 +30,63 @@ type Ctx = {
 
 const HomeFiltersContext = createContext<Ctx | null>(null);
 
-const DEFAULT_GRANULARITY: Granularity = "m";
-const DEFAULT_USERS: SliceState = {
-  granularity: DEFAULT_GRANULARITY,
-  range: deriveAutoRangeForGranularity(DEFAULT_GRANULARITY),
-};
-const DEFAULT_INTERACTIONS: SliceState = {
-  granularity: DEFAULT_GRANULARITY,
-  range: deriveAutoRangeForGranularity(DEFAULT_GRANULARITY),
+type ProviderProps = {
+  children: React.ReactNode;
+  initialGranularity?: Granularity;
+  initialDateFrom?: string;
+  initialDateTo?: string;
 };
 
-export function HomeFiltersProvider({ children }: { children: React.ReactNode }) {
-  const [users, setUsers] = useState<SliceState>(DEFAULT_USERS);
-  const [interactions, setInteractions] = useState<SliceState>(DEFAULT_INTERACTIONS);
+export function HomeFiltersProvider({
+  children,
+  initialGranularity = "m",
+  initialDateFrom,
+  initialDateTo,
+}: ProviderProps) {
+  // rango inicial (si pasan fechas, respétalas; si no, usa preset por granularidad)
+  const initialRange: Range =
+    initialDateFrom && initialDateTo
+      ? { startTime: initialDateFrom, endTime: initialDateTo }
+      : deriveAutoRangeForGranularity(initialGranularity);
+
+  const [users, setUsers] = useState<SliceState>({
+    granularity: initialGranularity,
+    range: initialRange,
+  });
+
+  const [interactions, setInteractions] = useState<SliceState>({
+    granularity: initialGranularity,
+    range: initialRange,
+  });
 
   // setters simples
   const setUsersGranularity = useCallback((g: Granularity) => {
     setUsers((s) => ({ ...s, granularity: g }));
   }, []);
+
   const setUsersRange = useCallback((r: Range) => {
     setUsers((s) => ({ ...s, range: r }));
   }, []);
+
   const resetUsers = useCallback(() => {
-    setUsers({
-      granularity: DEFAULT_GRANULARITY,
-      range: deriveAutoRangeForGranularity(DEFAULT_GRANULARITY),
-    });
-  }, []);
+    const range = deriveAutoRangeForGranularity(initialGranularity);
+    setUsers({ granularity: initialGranularity, range });
+  }, [initialGranularity]);
 
   const setInteractionsGranularity = useCallback((g: Granularity) => {
     setInteractions((s) => ({ ...s, granularity: g }));
   }, []);
+
   const setInteractionsRange = useCallback((r: Range) => {
     setInteractions((s) => ({ ...s, range: r }));
   }, []);
-  const resetInteractions = useCallback(() => {
-    setInteractions({
-      granularity: DEFAULT_GRANULARITY,
-      range: deriveAutoRangeForGranularity(DEFAULT_GRANULARITY),
-    });
-  }, []);
 
-  // ✅ aplicar preset (granularidad + rango auto) en una sola operación
+  const resetInteractions = useCallback(() => {
+    const range = deriveAutoRangeForGranularity(initialGranularity);
+    setInteractions({ granularity: initialGranularity, range });
+  }, [initialGranularity]);
+
+  // aplicar preset (granularidad + rango auto)
   const applyUsersGranularityPreset = useCallback((g: Granularity) => {
     const range = deriveAutoRangeForGranularity(g);
     setUsers({ granularity: g, range });
@@ -85,11 +98,10 @@ export function HomeFiltersProvider({ children }: { children: React.ReactNode })
   }, []);
 
   const applyGranularityPreset = useCallback((slice: SliceName, g: Granularity) => {
+    const range = deriveAutoRangeForGranularity(g);
     if (slice === "users") {
-      const range = deriveAutoRangeForGranularity(g);
       setUsers({ granularity: g, range });
     } else {
-      const range = deriveAutoRangeForGranularity(g);
       setInteractions({ granularity: g, range });
     }
   }, []);
