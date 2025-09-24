@@ -46,6 +46,58 @@ function ratioSeries(
   };
 }
 
+type Totals = {
+  activeUsers: number;
+  userEngagementDuration: number; // seconds
+  newUsers: number;
+  eventCount: number;
+  sessions: number;
+  averageSessionDuration: number; // seconds
+};
+
+function num(v?: string | null) {
+  return Number(v ?? 0);
+}
+
+async function fetchUrlTotals(
+  analyticsData: analyticsdata_v1beta.Analyticsdata,
+  property: string,
+  range: DateRange,
+  targetPath: string
+): Promise<Totals> {
+  const req: analyticsdata_v1beta.Schema$RunReportRequest = {
+    dateRanges: [{ startDate: range.start, endDate: range.end }],
+    metrics: [
+      { name: "activeUsers" },
+      { name: "userEngagementDuration" },
+      { name: "newUsers" },
+      { name: "eventCount" },
+      { name: "sessions" },
+      { name: "averageSessionDuration" },
+    ],
+    // Filtrado por pageLocation (URL exacta). No hace falta incluir la dimensión.
+    dimensionFilter: {
+      filter: {
+        fieldName: "pageLocation",
+        stringFilter: { matchType: "EXACT", value: targetPath, caseSensitive: false },
+      },
+    },
+    keepEmptyRows: false,
+    limit: "1",
+  };
+
+  const resp = await analyticsData.properties.runReport({ property, requestBody: req });
+  const m = resp.data.rows?.[0]?.metricValues ?? [];
+  return {
+    activeUsers: num(m[0]?.value),
+    userEngagementDuration: num(m[1]?.value),
+    newUsers: num(m[2]?.value),
+    eventCount: num(m[3]?.value),
+    sessions: num(m[4]?.value),
+    averageSessionDuration: num(m[5]?.value),
+  };
+}
+
 /* ---------- handler ---------- */
 export async function GET(req: Request) {
   try {
@@ -139,11 +191,49 @@ export async function GET(req: Request) {
     const seriesAvg = ratioSeries(seriesEng, seriesVws); // segundos promedio por bucket
     const deltaPct = pctDelta(totals.current, totals.previous); // delta de VIEWS (referencia)
 
-    /* -------- 2) Donut devices (deviceCategory) — sólo rango current -------- */
-    const reqDevices: analyticsdata_v1beta.Schema$RunReportRequest = {
+    /* -------- 1.b) KPIs totales por URL (current / previous) -------- */
+    const [totCurr, totPrev] = await Promise.all([
+      fetchUrlTotals(analyticsData, property, ranges.current, targetPath),
+      fetchUrlTotals(analyticsData, property, ranges.previous, targetPath),
+    ]);
+
+    const safeDiv = (a: number, b: number) => (b > 0 ? a / b : 0);
+
+    const kpisCurrent = {
+      ...totCurr,
+      avgEngagementPerUser: safeDiv(totCurr.userEngagementDuration, totCurr.activeUsers),
+      eventsPerSession: safeDiv(totCurr.eventCount, totCurr.sessions),
+    };
+    const kpisPrevious = {
+      ...totPrev,
+      avgEngagementPerUser: safeDiv(totPrev.userEngagementDuration, totPrev.activeUsers),
+      eventsPerSession: safeDiv(totPrev.eventCount, totPrev.sessions),
+    };
+
+    const kpisDeltaPct = {
+      activeUsers: pctDelta(totCurr.activeUsers, totPrev.activeUsers),
+      newUsers: pctDelta(totCurr.newUsers, totPrev.newUsers),
+      eventCount: pctDelta(totCurr.eventCount, totPrev.eventCount),
+      sessions: pctDelta(totCurr.sessions, totPrev.sessions),
+      averageSessionDuration: pctDelta(
+        totCurr.averageSessionDuration,
+        totPrev.averageSessionDuration
+      ),
+      avgEngagementPerUser: pctDelta(
+        kpisCurrent.avgEngagementPerUser,
+        kpisPrevious.avgEngagementPerUser
+      ),
+      eventsPerSession: pctDelta(
+        kpisCurrent.eventsPerSession,
+        kpisPrevious.eventsPerSession
+      ),
+    };
+
+    /* -------- 2) Donut operating systems (operatingSystem) — sólo rango current -------- */
+    const reqOS: analyticsdata_v1beta.Schema$RunReportRequest = {
       dateRanges: [{ startDate: ranges.current.start, endDate: ranges.current.end }],
       metrics: [{ name: "screenPageViews" }],
-      dimensions: [{ name: "deviceCategory" }, { name: "pageLocation" }, { name: "eventName" }],
+      dimensions: [{ name: "operatingSystem" }, { name: "pageLocation" }, { name: "eventName" }],
       dimensionFilter: {
         andGroup: {
           expressions: [
@@ -160,20 +250,21 @@ export async function GET(req: Request) {
       limit: "100000",
     };
 
-    const devResp = await analyticsData.properties.runReport({ property, requestBody: reqDevices });
-    const devRows = devResp.data.rows ?? [];
-    const devMap = new Map<string, number>();
-    for (const r of devRows) {
+    const osResp = await analyticsData.properties.runReport({ property, requestBody: reqOS });
+    const osRows = osResp.data.rows ?? [];
+    const osMap = new Map<string, number>();
+    for (const r of osRows) {
       const dims = r.dimensionValues ?? [];
       const mets = r.metricValues ?? [];
       const loc = String(dims[1]?.value ?? "");
       const onlyPath = stripLangPrefix(normalizePath(loc)).path;
       if (!eqPath(onlyPath, targetPath)) continue;
-      const cat = String(dims[0]?.value ?? "unknown").toLowerCase();
+      const raw = String(dims[0]?.value ?? "Unknown");
+      const os = raw.trim().length > 0 ? raw : "Unknown";
       const val = Number(mets[0]?.value ?? 0);
-      devMap.set(cat, (devMap.get(cat) ?? 0) + val);
+      osMap.set(os, (osMap.get(os) ?? 0) + val);
     }
-    const devices: DonutDatum[] = Array.from(devMap.entries())
+    const operatingSystems: DonutDatum[] = Array.from(osMap.entries())
       .map(([label, value]) => ({ label, value }))
       .sort((a, b) => b.value - a.value);
 
@@ -200,6 +291,7 @@ export async function GET(req: Request) {
 
     const genResp = await analyticsData.properties.runReport({ property, requestBody: reqGender });
     const genRows = genResp.data.rows ?? [];
+    thead: ;
     const genMap = new Map<string, number>();
     for (const r of genRows) {
       const dims = r.dimensionValues ?? [];
@@ -259,7 +351,12 @@ export async function GET(req: Request) {
         range: ranges,
         context: { path: targetPath },
         seriesAvgEngagement: seriesAvg, // segundos
-        devices,
+        kpis: {
+          current: kpisCurrent,
+          previous: kpisPrevious,
+          deltaPct: kpisDeltaPct,
+        },
+        operatingSystems,
         genders,
         countries,
         deltaPct, // respecto a vistas (referencia)

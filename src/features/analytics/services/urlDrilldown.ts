@@ -5,7 +5,38 @@ export type UrlDrilldownResponse = {
   range: { current: { start: string; end: string }; previous: { start: string; end: string } };
   context: { path: string };
   seriesAvgEngagement: { current: SeriesPoint[]; previous: SeriesPoint[] }; // segundos
-  devices: DonutDatum[];
+  kpis: {
+    current: {
+      activeUsers: number;
+      userEngagementDuration: number;
+      newUsers: number;
+      eventCount: number;
+      sessions: number;
+      averageSessionDuration: number;
+      avgEngagementPerUser: number; // seconds/user
+      eventsPerSession: number;
+    };
+    previous: {
+      activeUsers: number;
+      userEngagementDuration: number;
+      newUsers: number;
+      eventCount: number;
+      sessions: number;
+      averageSessionDuration: number;
+      avgEngagementPerUser: number;
+      eventsPerSession: number;
+    };
+    deltaPct: {
+      activeUsers: number;
+      newUsers: number;
+      eventCount: number;
+      sessions: number;
+      averageSessionDuration: number;
+      avgEngagementPerUser: number;
+      eventsPerSession: number;
+    };
+  };
+  operatingSystems: DonutDatum[];
   genders: DonutDatum[];
   countries: DonutDatum[];
   deltaPct: number;
@@ -29,7 +60,7 @@ export async function getUrlDrilldown(args: {
 
   if (!res.ok) {
     const raw = await res.json().catch(() => ({}));
-    const message = typeof raw?.error === "string" ? raw.error : `HTTP ${res.status}`;
+    const message = typeof (raw as { error?: string })?.error === "string" ? (raw as { error?: string }).error : `HTTP ${res.status}`;
     throw new Error(message);
   }
   return (await res.json()) as UrlDrilldownResponse;

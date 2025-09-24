@@ -9,6 +9,10 @@ import React, { useEffect, useMemo, useState } from "react";
 import Breadcrumb from "./Breadcrumb";
 
 import { useTownCategoryDrilldown } from "@/features/analytics/hooks/useTownCategoryDrilldown";
+import { useUrlDrilldown } from "@/features/analytics/hooks/useUrlDrilldown";
+import type { UrlSeries } from "@/features/analytics/services/drilldown";
+
+import UrlDetailsPanel from "@/features/analytics/sectors/expanded/SectorExpandedCardDetailed/UrlDetailsPanel";
 
 import {
   CATEGORY_ID_ORDER,
@@ -27,6 +31,39 @@ function resolveCategoryIdFromLabel(labelOrId: string): CategoryId | null {
     if (CATEGORY_META[id].label.toLowerCase() === x) return id;
   }
   return null;
+}
+
+/** Mapea una sub-actividad seleccionada al path candidato dentro de las series por URL */
+function pickPathForSubActivity(
+  subLabel: string,
+  seriesByUrl: UrlSeries[]
+): string | null {
+  const norm = (s: string) =>
+    s
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .trim();
+
+  const sub = norm(subLabel);
+
+  // 1) match directo por nombre de serie
+  const byName = seriesByUrl.find((s) => norm(s.name).includes(sub));
+  if (byName) return byName.path;
+
+  // 2) match por path
+  const byPath = seriesByUrl.find(
+    (s) => norm(s.path).includes(`/${sub}`) || norm(s.path).endsWith(`/${sub}`)
+  );
+  if (byPath) return byPath.path;
+
+  // 3) fallback: tomar la de mayor total
+  const withTotals = seriesByUrl.map((s) => ({
+    path: s.path,
+    total: s.data.reduce((a, b) => a + (Number.isFinite(b) ? b : 0), 0),
+  }));
+  withTotals.sort((a, b) => b.total - a.total);
+  return withTotals.length > 0 ? withTotals[0].path : null;
 }
 
 /* props */
@@ -118,6 +155,9 @@ export default function SectorExpandedCardDetailed(props: Props) {
   const [selectedCategoryId, setSelectedCategoryId] =
     useState<CategoryId | null>(null);
 
+  // estado para URL seleccionada (nivel 3)
+  const [selectedPath, setSelectedPath] = useState<string | null>(null);
+
   // si cambia el pueblo (nativo) reseteamos; en modo “forzado” lo controla el padre
   useEffect(() => {
     if (forceDrillTownId) return;
@@ -128,6 +168,11 @@ export default function SectorExpandedCardDetailed(props: Props) {
   useEffect(() => {
     if (fixedCategoryId) setSelectedCategoryId(fixedCategoryId);
   }, [fixedCategoryId]);
+
+  // limpiar URL seleccionada cuando cambie el contexto town+cat
+  useEffect(() => {
+    setSelectedPath(null);
+  }, [drillTownId, selectedCategoryId, fixedCategoryId]);
 
   const {
     loading: ddLoading,
@@ -146,9 +191,20 @@ export default function SectorExpandedCardDetailed(props: Props) {
       : null
   );
 
+  // Hook del nivel 3 (URL details)
+  const {
+    loading: urlLoading,
+    seriesAvgEngagement,
+    kpis,
+    operatingSystems,
+    genders,
+    countries,
+    deltaPct: urlDeltaPct,
+    selectedPath: confirmedPath,
+  } = useUrlDrilldown({ path: selectedPath, granularity });
+
   const handleDonutTopClick = (label: string) => {
     // MODO MUNICIPIO (isTown=true): el donut superior muestra CATEGORÍAS
-    // - Si hay municipio para consultar, resolvemos categoría y actualizamos el drill interno.
     if (isTown && drillTownId) {
       const cid = resolveCategoryIdFromLabel(label);
       if (cid) setSelectedCategoryId(cid);
@@ -156,8 +212,6 @@ export default function SectorExpandedCardDetailed(props: Props) {
     }
 
     // MODO CATEGORÍA (isTown=false): el donut superior muestra PUEBLOS
-    // - Incluso si existe fixedCategoryId, DEBEMOS reenviar el click al padre
-    //   para que actualice forceDrillTownId (pueblo activo).
     if (onSliceClick) onSliceClick(label);
   };
 
@@ -220,22 +274,42 @@ export default function SectorExpandedCardDetailed(props: Props) {
           )}
 
           {(fixedCategoryId ?? selectedCategoryId) && (
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-              <DrilldownMultiLineSection
-                xLabels={ddXLabels}
-                seriesBySub={ddSeriesByUrl}
-                loading={ddLoading}
-              />
-              <DonutSection
-                donutData={ddDonut}
-                deltaPct={ddDeltaPct}
-                onSliceClick={(sub) => {
-                  // siguiente nivel (URL) – trazado
+            <>
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                <DrilldownMultiLineSection
+                  xLabels={ddXLabels}
+                  seriesBySub={ddSeriesByUrl}
+                  loading={ddLoading}
+                />
+                <DonutSection
+                  donutData={ddDonut}
+                  deltaPct={ddDeltaPct}
+                  onSliceClick={(subLabel) => {
+                    const candidate = pickPathForSubActivity(
+                      subLabel,
+                      ddSeriesByUrl
+                    );
+                    if (candidate) setSelectedPath(candidate);
+                  }}
+                />
+              </div>
 
-                  console.log("Sub-actividad seleccionada:", sub);
-                }}
-              />
-            </div>
+              {/* Sección 3: URL details (nuevo layout) */}
+              {selectedPath && (
+                <UrlDetailsPanel
+                  path={confirmedPath ?? selectedPath}
+                  loading={urlLoading}
+                  seriesAvgEngagement={seriesAvgEngagement}
+                  kpis={kpis}
+                  operatingSystems={operatingSystems}
+                  genders={genders}
+                  countries={countries}
+                  deltaPct={urlDeltaPct}
+                  granularity={granularity}
+                  onClose={() => setSelectedPath(null)}
+                />
+              )}
+            </>
           )}
         </div>
       )}

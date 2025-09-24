@@ -97,7 +97,10 @@ export default function AnalyticsByTagSection() {
         getDonutFor={(id) => getDonutFor(id)}
         expandedId={expandedId}
         onOpen={handleOpen}
-        onClose={() => { setExpandedId(null); setDrill(null); }}
+        onClose={() => {
+          setExpandedId(null);
+          setDrill(null);
+        }}
         onSliceClick={handleSliceClick}
         /**
          * ⚙️ Pasamos el “forzado” solo cuando hay drill town+cat.

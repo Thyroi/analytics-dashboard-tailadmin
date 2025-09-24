@@ -4,19 +4,19 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { DonutDatum, Granularity, SeriesPoint } from "@/lib/types";
 import { getUrlDrilldown, type UrlDrilldownResponse } from "@/features/analytics/services/urlDrilldown";
 
+type ReadyData = {
+  seriesAvgEngagement: { current: SeriesPoint[]; previous: SeriesPoint[] };
+  kpis: UrlDrilldownResponse["kpis"];
+  operatingSystems: DonutDatum[];
+  genders: DonutDatum[];
+  countries: DonutDatum[];
+  deltaPct: number;
+  path: string;
+};
+
 type State =
   | { status: "idle" | "loading" }
-  | {
-      status: "ready";
-      data: {
-        seriesAvgEngagement: { current: SeriesPoint[]; previous: SeriesPoint[] };
-        devices: DonutDatum[];
-        genders: DonutDatum[];
-        countries: DonutDatum[];
-        deltaPct: number;
-        path: string;
-      };
-    }
+  | { status: "ready"; data: ReadyData }
   | { status: "error"; message: string };
 
 export function useUrlDrilldown(args: {
@@ -50,7 +50,8 @@ export function useUrlDrilldown(args: {
         status: "ready",
         data: {
           seriesAvgEngagement: resp.seriesAvgEngagement,
-          devices: resp.devices,
+          kpis: resp.kpis,
+          operatingSystems: resp.operatingSystems,
           genders: resp.genders,
           countries: resp.countries,
           deltaPct: resp.deltaPct,
@@ -72,11 +73,23 @@ export function useUrlDrilldown(args: {
   const loading = state.status === "loading";
   const seriesAvgEngagement =
     state.status === "ready" ? state.data.seriesAvgEngagement : { current: [], previous: [] };
-  const devices = state.status === "ready" ? state.data.devices : [];
+  const kpis = state.status === "ready" ? state.data.kpis : null;
+  const operatingSystems = state.status === "ready" ? state.data.operatingSystems : [];
   const genders = state.status === "ready" ? state.data.genders : [];
   const countries = state.status === "ready" ? state.data.countries : [];
   const deltaPct = state.status === "ready" ? state.data.deltaPct : 0;
   const selectedPath = state.status === "ready" ? state.data.path : null;
 
-  return { state, loading, seriesAvgEngagement, devices, genders, countries, deltaPct, selectedPath, refetch: load };
+  return {
+    state,
+    loading,
+    seriesAvgEngagement,
+    kpis,
+    operatingSystems,
+    genders,
+    countries,
+    deltaPct,
+    selectedPath,
+    refetch: load,
+  };
 }
