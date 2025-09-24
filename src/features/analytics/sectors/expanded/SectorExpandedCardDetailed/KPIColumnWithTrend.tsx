@@ -1,14 +1,12 @@
 "use client";
 
 import React, { useMemo } from "react";
-import type { Granularity, SeriesPoint } from "@/lib/types";
+import type { SeriesPoint } from "@/lib/types";
 import KPIList, { type KPIItem } from "@/components/charts/KPIList";
 import KPIListSkeleton from "@/components/skeletons/KPIListSkeleton";
 import ChartSection from "@/features/home/sectors/SectorExpandedCard/ChartSection";
-import { useKpisEnhanced } from "@/features/analytics/hooks/useKpisEnhanced";
 import { Clock, UserPlus, MousePointer2, Timer } from "lucide-react";
 
-const nf = new Intl.NumberFormat("es-ES", { maximumFractionDigits: 0 });
 const pf = new Intl.NumberFormat("es-ES", { style: "percent", maximumFractionDigits: 1 });
 const df = new Intl.NumberFormat("es-ES", { maximumFractionDigits: 2 });
 
@@ -22,33 +20,52 @@ function formatDuration(seconds: number): string {
   return h > 0 ? `${h}:${mm}:${ss}` : `${m}:${ss}`;
 }
 
+type KPIsForUrl = {
+  current: {
+    newUsers: number;
+    eventsPerSession: number;
+    avgEngagementPerUser: number;      // seconds/user
+    averageSessionDuration: number;    // seconds
+  };
+  deltaPct: {
+    newUsers: number;
+    eventsPerSession: number;
+    avgEngagementPerUser: number;
+    averageSessionDuration: number;
+  };
+};
+
 type Props = {
-  granularity: Granularity;
-  endISO?: string;
-  // Datos del gráfico (ya los tienes en el panel que integra este componente)
+  /** Serie a graficar (líneas) */
   series: { current: SeriesPoint[]; previous: SeriesPoint[] };
+  /** KPIs ya calculados (por URL) */
+  kpis: KPIsForUrl | null;
+  /** Cargando (para skeleton) */
+  loading?: boolean;
+  /** Error opcional (para mostrar mensaje sencillo) */
+  error?: string | null;
+  /** Título encima del gráfico */
   title?: string;
   className?: string;
 };
 
-/** Columna de KPIs a la izquierda + gráfico de líneas a la derecha */
+/** KPIs en columna a la izquierda + line chart a la derecha (sin hooks) */
 export default function KPIColumnWithTrend({
-  granularity,
-  endISO,
   series,
+  kpis,
+  loading = false,
+  error = null,
   title = "Tendencia",
   className = "",
 }: Props) {
-  const { data, isLoading, error } = useKpisEnhanced({ granularity, endISO });
-
   const items: KPIItem[] | null = useMemo(() => {
-    if (!data) return null;
-    const c = data.current;
-    const d = data.deltaPct;
+    if (!kpis) return null;
+    const c = kpis.current;
+    const d = kpis.deltaPct;
     return [
       {
         title: "Usuarios nuevos",
-        value: nf.format(c.newUsers),
+        value: String(c.newUsers),
         delta: pf.format(d.newUsers),
         deltaVariant: d.newUsers < 0 ? "down" : "up",
         icon: <UserPlus className="h-4 w-4" />,
@@ -75,7 +92,7 @@ export default function KPIColumnWithTrend({
         icon: <Clock className="h-4 w-4" />,
       },
     ];
-  }, [data]);
+  }, [kpis]);
 
   const { categories, currData, prevData } = useMemo(() => {
     const n = Math.min(series.current.length, series.previous.length);
@@ -95,7 +112,7 @@ export default function KPIColumnWithTrend({
     >
       {/* Columna izquierda: KPIs en vertical */}
       <div>
-        {isLoading || !items ? (
+        {loading || !items ? (
           <KPIListSkeleton stretch />
         ) : error ? (
           <div className="text-sm text-red-500">Error cargando KPIs: {error}</div>
@@ -109,11 +126,7 @@ export default function KPIColumnWithTrend({
         <div className="mb-2 text-sm font-medium text-gray-800 dark:text-gray-200">
           {title}
         </div>
-        <ChartSection
-          categories={categories}
-          currData={currData}
-          prevData={prevData}
-        />
+        <ChartSection categories={categories} currData={currData} prevData={prevData} />
       </div>
     </div>
   );
