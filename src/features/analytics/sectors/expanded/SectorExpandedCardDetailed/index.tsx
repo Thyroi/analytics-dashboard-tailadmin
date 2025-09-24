@@ -1,23 +1,23 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
 import RangeControls from "@/components/dashboard/RangeControls";
-import Header from "@/features/home/sectors/SectorExpandedCard/Header";
-import ChartSection from "@/features/home/sectors/SectorExpandedCard/ChartSection";
 import DonutSection from "@/features/analytics/sectors/expanded/SectorExpandedCardDetailed/DonutSection";
 import DrilldownMultiLineSection from "@/features/analytics/sectors/expanded/SectorExpandedCardDetailed/DrilldownMultiLineSection";
+import ChartSection from "@/features/home/sectors/SectorExpandedCard/ChartSection";
+import Header from "@/features/home/sectors/SectorExpandedCard/Header";
+import React, { useEffect, useMemo, useState } from "react";
 import Breadcrumb from "./Breadcrumb";
 
 import { useTownCategoryDrilldown } from "@/features/analytics/hooks/useTownCategoryDrilldown";
 
-import type { DonutDatum, Granularity, SeriesPoint } from "@/lib/types";
-import type { TownId } from "@/lib/taxonomy/towns";
-import { TOWN_META } from "@/lib/taxonomy/towns";
 import {
-  CATEGORY_META,
   CATEGORY_ID_ORDER,
+  CATEGORY_META,
   type CategoryId,
 } from "@/lib/taxonomy/categories";
+import type { TownId } from "@/lib/taxonomy/towns";
+import { TOWN_META } from "@/lib/taxonomy/towns";
+import type { DonutDatum, Granularity, SeriesPoint } from "@/lib/types";
 
 /* helpers */
 function resolveCategoryIdFromLabel(labelOrId: string): CategoryId | null {
@@ -59,18 +59,33 @@ type BaseProps = {
   /** 🔧 Fijar la categoría del drilldown (p.ej., la categoría del card en Analytics-by-Tag) */
   fixedCategoryId?: CategoryId;
 };
-type WithIcon = { Icon: React.ComponentType<React.SVGProps<SVGSVGElement>>; imgSrc?: never };
+type WithIcon = {
+  Icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
+  imgSrc?: never;
+};
 type WithImage = { imgSrc: string | { src: string }; Icon?: never };
 type Props = BaseProps & (WithIcon | WithImage);
 
 /* component */
 export default function SectorExpandedCardDetailed(props: Props) {
   const {
-    title, deltaPct, granularity, onGranularityChange,
-    startDate, endDate, onRangeChange, onClearRange,
-    current, previous, donutData, onClose,
-    isTown = false, townId, onSliceClick,
-    forceDrillTownId, fixedCategoryId,
+    title,
+    deltaPct,
+    granularity,
+    onGranularityChange,
+    startDate,
+    endDate,
+    onRangeChange,
+    onClearRange,
+    current,
+    previous,
+    donutData,
+    onClose,
+    isTown = false,
+    townId,
+    onSliceClick,
+    forceDrillTownId,
+    fixedCategoryId,
   } = props;
 
   const { categories, currData, prevData } = useMemo(() => {
@@ -96,10 +111,12 @@ export default function SectorExpandedCardDetailed(props: Props) {
    * - Si viene forceDrillTownId, úsalo siempre (modo Analytics-by-Tag)
    * - Si no, usa townId solo cuando isTown=true (modo municipios)
    */
-  const drillTownId: TownId | null = forceDrillTownId ?? (isTown ? townId ?? null : null);
+  const drillTownId: TownId | null =
+    forceDrillTownId ?? (isTown ? townId ?? null : null);
 
   // estado drilldown (solo se usa cuando NO viene fixedCategoryId)
-  const [selectedCategoryId, setSelectedCategoryId] = useState<CategoryId | null>(null);
+  const [selectedCategoryId, setSelectedCategoryId] =
+    useState<CategoryId | null>(null);
 
   // si cambia el pueblo (nativo) reseteamos; en modo “forzado” lo controla el padre
   useEffect(() => {
@@ -123,23 +140,24 @@ export default function SectorExpandedCardDetailed(props: Props) {
     drillTownId
       ? {
           townId: drillTownId,
-          categoryId: (fixedCategoryId ?? selectedCategoryId) ?? null,
+          categoryId: fixedCategoryId ?? selectedCategoryId ?? null,
           granularity,
         }
       : null
   );
 
   const handleDonutTopClick = (label: string) => {
-    // si el padre fijó categoría, ignoramos clicks del donut superior
-    if (fixedCategoryId) return;
-
-    // modo municipio: el donut superior muestra categorías → resolvemos categoría
+    // MODO MUNICIPIO (isTown=true): el donut superior muestra CATEGORÍAS
+    // - Si hay municipio para consultar, resolvemos categoría y actualizamos el drill interno.
     if (isTown && drillTownId) {
       const cid = resolveCategoryIdFromLabel(label);
       if (cid) setSelectedCategoryId(cid);
       return;
     }
-    // modo categoría: deja pasar el click al padre (abre pueblo)
+
+    // MODO CATEGORÍA (isTown=false): el donut superior muestra PUEBLOS
+    // - Incluso si existe fixedCategoryId, DEBEMOS reenviar el click al padre
+    //   para que actualice forceDrillTownId (pueblo activo).
     if (onSliceClick) onSliceClick(label);
   };
 
@@ -156,7 +174,13 @@ export default function SectorExpandedCardDetailed(props: Props) {
 
   return (
     <div className="rounded-2xl border border-gray-200 dark:border-white/10 bg-[#fff7ed] dark:bg-[#0c1116] p-3 shadow-sm w-full">
-      <Header title={title} isTown={isTown} imgSrc={imgSrc} Icon={Icon} onClose={onClose} />
+      <Header
+        title={title}
+        isTown={isTown}
+        imgSrc={imgSrc}
+        Icon={Icon}
+        onClose={onClose}
+      />
 
       <RangeControls
         mode="granularity"
@@ -171,8 +195,16 @@ export default function SectorExpandedCardDetailed(props: Props) {
 
       {/* Resumen superior (siempre el que llega por props) */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-        <ChartSection categories={categories} currData={currData} prevData={prevData} />
-        <DonutSection donutData={donutData} deltaPct={deltaPct} onSliceClick={handleDonutTopClick} />
+        <ChartSection
+          categories={categories}
+          currData={currData}
+          prevData={prevData}
+        />
+        <DonutSection
+          donutData={donutData}
+          deltaPct={deltaPct}
+          onSliceClick={handleDonutTopClick}
+        />
       </div>
 
       {/* Panel de drilldown persistente si hay pueblo para consultar (nativo o forzado) */}
@@ -182,7 +214,8 @@ export default function SectorExpandedCardDetailed(props: Props) {
 
           {!(fixedCategoryId ?? selectedCategoryId) && (
             <div className="rounded-xl border border-dashed border-gray-300 dark:border-white/10 p-3 text-sm">
-              Haz click en un sector del donut de arriba para desglosar <b>categorías</b> dentro de {TOWN_META[drillTownId].label}.
+              Haz click en un sector del donut de arriba para desglosar{" "}
+              <b>categorías</b> dentro de {TOWN_META[drillTownId].label}.
             </div>
           )}
 
@@ -198,7 +231,7 @@ export default function SectorExpandedCardDetailed(props: Props) {
                 deltaPct={ddDeltaPct}
                 onSliceClick={(sub) => {
                   // siguiente nivel (URL) – trazado
-                  // eslint-disable-next-line no-console
+
                   console.log("Sub-actividad seleccionada:", sub);
                 }}
               />
