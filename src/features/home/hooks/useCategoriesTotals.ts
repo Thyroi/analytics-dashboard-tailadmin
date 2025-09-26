@@ -3,62 +3,34 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Granularity } from "@/lib/types";
 import type { CategoryId } from "@/lib/taxonomy/categories";
-import { getCategoriesTotals } from "@/features/home/services/categoriesTotals";
-import { CategoriesTotalsResponse, CategoryTotals } from "@/lib/api/analytics";
+import {
+  getCategoriesTotals,
+  type CategoriesTotalsResponse,
+  type CategoryTotalsItem,
+} from "@/features/home/services/categoriesTotals";
 
-/* ---------- Tipos de entrada ---------- */
-type Args = {
-  granularity: Granularity;   // "d" | "w" | "m" | "y"
-  endISO?: string;            // YYYY-MM-DD (opcional)
-  auto?: boolean;             // carga automática al montar (default: true)
-};
-
-/* ---------- API público del hook ---------- */
-export type CategoryTotalsItem = {
-  name: string;
-  currentTotal: number;
-  previousTotal: number;
-  deltaPct: number;
-};
-
-type LoadingState = { status: "loading" };
-type ErrorState = { status: "error"; error: Error };
-type ReadyState = { status: "ready"; data: CategoriesTotalsResponse };
-type State = LoadingState | ErrorState | ReadyState;
-
-type ReturnShape = {
-  // Nuevo API “rico”
-  data: CategoriesTotalsResponse | null;
-  isLoading: boolean;
-  error: Error | null;
-  refetch: () => void;
-  items: CategoryTotalsItem[];
-  itemsSorted: CategoryTotalsItem[];
-  range: CategoriesTotalsResponse["range"] | undefined;
-  property: string | undefined;
-
-  // API legacy (compat con el componente existente)
-  state: State;
+type ReadyState = {
+  status: "ready";
+  data: CategoriesTotalsResponse;
   ids: CategoryId[];
-  itemsById: Record<CategoryId, CategoryTotals>;
+  itemsById: Record<
+    CategoryId,
+    {
+      title: string;
+      total: number;
+      deltaPct: number;
+    }
+  >;
 };
+type LoadingState = { status: "idle" | "loading" };
+type ErrorState = { status: "error"; error: Error };
+type State = ReadyState | LoadingState | ErrorState;
 
-/* ---------- Overloads para aceptar string u objeto ---------- */
-export function useCategoriesTotals(granularity: Granularity): ReturnShape;
-export function useCategoriesTotals(args: Args): ReturnShape;
-
-/* ---------- Implementación ---------- */
-export function useCategoriesTotals(arg: Granularity | Args): ReturnShape {
-  const granularity: Granularity = typeof arg === "string" ? arg : arg.granularity;
-  const endISO: string | undefined = typeof arg === "string" ? undefined : arg.endISO;
-  const auto: boolean = typeof arg === "string" ? true : arg.auto ?? true;
-
-  const [data, setData] = useState<CategoriesTotalsResponse | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(Boolean(auto));
-  const [error, setError] = useState<Error | null>(null);
-
+export function useCategoriesTotals(granularity: Granularity, endISO?: string) {
+  const [state, setState] = useState<State>({ status: "idle" });
   const abortRef = useRef<AbortController | null>(null);
 
+  // clave incluye endISO para refetch al cambiar rango
   const key = useMemo(() => `${granularity}|${endISO ?? ""}`, [granularity, endISO]);
 
   const load = useCallback(async () => {
@@ -66,70 +38,49 @@ export function useCategoriesTotals(arg: Granularity | Args): ReturnShape {
     const ac = new AbortController();
     abortRef.current = ac;
 
-    setIsLoading(true);
-    setError(null);
+    setState({ status: "loading" });
 
     try {
-      const resp = await getCategoriesTotals({ granularity, endISO, signal: ac.signal });
-      if (!ac.signal.aborted) setData(resp);
+      const data = await getCategoriesTotals(granularity, endISO);
+      if (ac.signal.aborted) return;
+
+      const ids: CategoryId[] = data.items.map((it: CategoryTotalsItem) => it.id);
+
+      const itemsById = data.items.reduce<ReadyState["itemsById"]>((acc, it) => {
+        acc[it.id] = {
+          title: it.title,
+          total: Number.isFinite(it.total) ? it.total : 0,
+          deltaPct: Number.isFinite(it.deltaPct) ? it.deltaPct : 0,
+        };
+        return acc;
+      }, {} as ReadyState["itemsById"]);
+
+      setState({ status: "ready", data, ids, itemsById });
     } catch (e) {
-      if (!ac.signal.aborted) setError(e instanceof Error ? e : new Error(String(e)));
-    } finally {
-      if (!ac.signal.aborted) setIsLoading(false);
+      if (ac.signal.aborted) return;
+      const err = e instanceof Error ? e : new Error(String(e));
+      setState({ status: "error", error: err });
     }
   }, [granularity, endISO]);
 
   useEffect(() => {
-    if (!auto) return;
     void load();
     return () => abortRef.current?.abort();
-  }, [auto, key, load]);
+  }, [key, load]);
 
-  const items = useMemo<CategoryTotalsItem[]>(() => {
-    if (!data) return [];
-    return data.categories.map((name) => {
-      const rec = data.perCategory[name];
-      return {
-        name,
-        currentTotal: rec?.currentTotal ?? 0,
-        previousTotal: rec?.previousTotal ?? 0,
-        deltaPct: rec?.deltaPct ?? 0,
-      };
-    });
-  }, [data]);
+  const isLoading = state.status === "loading";
+  const error = state.status === "error" ? state.error : null;
 
-  const itemsSorted = useMemo(
-    () => [...items].sort((a, b) => b.currentTotal - a.currentTotal),
-    [items]
-  );
-
-  // ---- Compatibilidad con tu componente existente ----
-  const state: State = isLoading
-    ? { status: "loading" }
-    : error
-    ? { status: "error", error }
-    : data
-    ? { status: "ready", data }
-    : { status: "loading" };
-
-  const ids: CategoryId[] = data?.categories ?? [];
-  const itemsById: Record<CategoryId, CategoryTotals> = data?.perCategory ?? ({} as Record<CategoryId, CategoryTotals>);
+  const ids = state.status === "ready" ? state.ids : [];
+  const itemsById =
+    state.status === "ready" ? state.itemsById : ({} as ReadyState["itemsById"]);
 
   return {
-    // nuevo api
-    data,
-    isLoading,
-    error,
-    refetch: load,
-    items,
-    itemsSorted,
-    range: data?.range,
-    property: data?.property,
-    // legacy api
     state,
     ids,
     itemsById,
+    isLoading,
+    error,
+    refetch: load,
   };
 }
-
-export default useCategoriesTotals;

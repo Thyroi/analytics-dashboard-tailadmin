@@ -4,6 +4,7 @@ import type { ApexOptions } from "apexcharts";
 import dynamic from "next/dynamic";
 import { useTheme } from "next-themes";
 import { useMemo } from "react";
+import { generateBrandGradient, BRAND_STOPS } from "@/lib/utils/colors";
 
 const ReactApexChart = dynamic(() => import("react-apexcharts"), { ssr: false });
 
@@ -16,48 +17,42 @@ type Props = {
   data: PieDatum[];
   type?: "pie" | "donut";
   height?: number;
+
+  /** Si la pasas, se usa tal cual. Si no, se genera gradiente con generateBrandGradient */
   palette?: string[];
+  /** Colores fijos por etiqueta (sobrescriben la paleta/gradiente si coincide el label). */
   colorsByLabel?: Record<string, string>;
 
   showLegend?: boolean;
   legendPosition?: "bottom" | "top" | "right" | "left";
 
-  /** Texto que se renderiza junto al valor de cada sector. */
   dataLabels?: DataLabelMode;
-
-  /** Posición de la etiqueta respecto al anillo. */
   labelPosition?: LabelPosition;
 
-  /** Texto del centro (modo donut). */
+  /** (Nativo Apex, usualmente desactivado si usamos overlay) */
   donutTotalLabel?: string;
   donutTotalFormatter?: (total: number) => string;
 
-  /** Mezcla final con opciones de Apex, por si necesitas afinar algo. */
+  /** Mezcla final de opciones Apex (eventos, responsive, etc.) */
   optionsExtra?: ApexOptions;
 
   className?: string;
 
-  /** Donut minimalista (centro dinámico con % del segmento). */
+  /** Centrado compacto con % del slice activo (usa labels nativos de Apex) */
   compactHover?: boolean;
+
+  /** Overlay centrado propio (no bloquea eventos del gráfico) */
+  centerTop?: string;
+  centerBottom?: string;
 };
 
 const DEFAULT_HEIGHT = 300;
-const DEFAULT_PALETTE = [
-  "#3B82F6", // azul
-  "#22C55E", // verde
-  "#F59E0B", // ámbar
-  "#A855F7", // violeta
-  "#EF4444", // rojo
-  "#10B981", // esmeralda
-  "#60A5FA",
-  "#F472B6",
-];
 
 export default function PieChart({
   data,
   type = "donut",
   height = DEFAULT_HEIGHT,
-  palette = DEFAULT_PALETTE,
+  palette,
   colorsByLabel,
   showLegend = true,
   legendPosition = "bottom",
@@ -68,27 +63,37 @@ export default function PieChart({
   optionsExtra,
   className = "",
   compactHover = false,
+  centerTop,
+  centerBottom,
 }: Props) {
   const { theme } = useTheme();
   const isDark = theme === "dark";
   const bg = isDark ? "#0b0f14" : "#ffffff";
 
-  // Normalizamos entrada
+  // Datos normalizados
   const labels = useMemo(() => data.map((d) => d.label), [data]);
   const series = useMemo(() => data.map((d) => d.value ?? 0), [data]);
   const total = useMemo(() => series.reduce((a, b) => a + b, 0), [series]);
 
-  // Colores
-  const colors = useMemo(() => {
-    const byIndex = (i: number) => palette[i % palette.length];
-    return data.map((d, i) => colorsByLabel?.[d.label] ?? byIndex(i));
-  }, [data, colorsByLabel, palette]);
+  // Paleta base: si no llega `palette`, generamos N colores entre los BRAND_STOPS
+  const basePalette = useMemo(
+    () => palette ?? generateBrandGradient(data.length, BRAND_STOPS),
+    [palette, data.length]
+  );
 
-  // ¿Etiquetas visibles?
+  // Colores finales por punto: prioriza colorsByLabel -> basePalette
+  const colors = useMemo(
+    () =>
+      data.map((d, i) => {
+        const fixed = colorsByLabel?.[d.label];
+        return fixed ?? basePalette[i % basePalette.length];
+      }),
+    [data, colorsByLabel, basePalette]
+  );
+
   const dlEnabled = compactHover ? false : dataLabels !== "none";
 
   const options: ApexOptions = useMemo(() => {
-    // Donut: centro
     const compactDonutLabels:
       NonNullable<NonNullable<ApexOptions["plotOptions"]>["pie"]>["donut"] = {
         size: "72%",
@@ -122,21 +127,18 @@ export default function PieChart({
 
     const defaultDonutLabels:
       NonNullable<NonNullable<ApexOptions["plotOptions"]>["pie"]>["donut"] = {
-        size: "68%",
+        size: "58%", // agujero interno (ajústalo si quieres más/menos grosor)
         labels: {
           show: true,
           name: { show: false },
           value: { show: false },
           total: {
-            show: true,
-            showAlways: true,
-            label: donutTotalLabel,
-            color: isDark ? "#94a3b8" : "#6b7280",
-            formatter: () =>
-              donutTotalFormatter
-                ? donutTotalFormatter(total)
-                : Intl.NumberFormat().format(total),
-            fontSize: "22px", // tamaño del total en el centro
+            show: false,
+            // Si quisieras usar el centro nativo:
+            // show: true,
+            // showAlways: true,
+            // label: donutTotalLabel,
+            // formatter: () => donutTotalFormatter ? donutTotalFormatter(total) : Intl.NumberFormat().format(total),
           },
         },
       };
@@ -145,11 +147,11 @@ export default function PieChart({
       pie: {
         expandOnClick: false,
         donut: type === "donut" ? (compactHover ? compactDonutLabels : defaultDonutLabels) : undefined,
-        // Etiquetas dentro/fuera y umbral para evitar solapes
         dataLabels: {
           offset: labelPosition === "outside" ? 22 : 0,
           minAngleToShowLabel: 8,
         },
+        offsetY: 10,
       },
     };
 
@@ -160,7 +162,8 @@ export default function PieChart({
         parentHeightOffset: 0,
         toolbar: { show: false },
         foreColor: isDark ? "#e5e7eb" : "#111827",
-        fontFamily: "Outfit, sans-serif",
+        fontFamily:
+          "Outfit, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, sans-serif",
       },
       labels,
       legend: {
@@ -177,7 +180,6 @@ export default function PieChart({
           title: { formatter: (seriesName: string) => seriesName },
         },
       },
-      // Porcentajes/valores en los sectores
       dataLabels: {
         enabled: dlEnabled,
         formatter:
@@ -189,16 +191,13 @@ export default function PieChart({
         dropShadow: { enabled: false },
         style: { fontSize: "12px", fontWeight: 700 },
       },
-      // Separadores entre sectores
       stroke: { width: 3, colors: [bg] },
-      // Colores finales
       colors,
       plotOptions,
       states: {
         hover: { filter: { type: "none" } },
         active: { filter: { type: "none" } },
       },
-      // Un poco de aire para que quepan líneas guía
       grid: { padding: { top: 0, bottom: 8, left: 8, right: 8 } },
     };
 
@@ -207,8 +206,6 @@ export default function PieChart({
     bg,
     compactHover,
     dataLabels,
-    donutTotalFormatter,
-    donutTotalLabel,
     height,
     isDark,
     labelPosition,
@@ -241,8 +238,22 @@ export default function PieChart({
   }
 
   return (
-    <div className={`w-full overflow-hidden ${className}`}>
+    <div className={`relative w-full overflow-hidden ${className}`}>
       <ReactApexChart key={key} options={options} series={series} type={type} height={height} />
+      {(centerTop || centerBottom) && (
+        <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center leading-tight">
+          {centerTop && (
+            <span className="text-xl font-bold text-gray-900 dark:text-gray-100">
+              {centerTop}
+            </span>
+          )}
+          {centerBottom && (
+            <span className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+              {centerBottom}
+            </span>
+          )}
+        </div>
+      )}
     </div>
   );
 }

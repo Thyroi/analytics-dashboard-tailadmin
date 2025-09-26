@@ -66,19 +66,6 @@ function AnalyticsPageInner() {
 
         {/* Top Tags - Slider infinito */}
         <section aria-labelledby="top-tags-title" className="space-y-3">
-          <div className="flex items-end justify-between">
-            <h2
-              id="top-tags-title"
-              className="text-base font-semibold text-gray-900 dark:text-white"
-            >
-              Top etiquetas {pueblo ? `en ${pueblo}` : "(global)"}
-            </h2>
-            {(dateFrom || dateTo) && (
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                Rango: {dateFrom ?? "inicio"} — {dateTo ?? "fin"}
-              </p>
-            )}
-          </div>
           <AnalyticsByTagSection />
           <AnalyticsByTownSection />
         </section>

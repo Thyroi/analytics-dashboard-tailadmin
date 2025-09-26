@@ -130,7 +130,6 @@ export default function SectorsGridDetailed({
                 donutData={donutData}
                 onClose={handleClose}
                 isTown={isTown}
-                /** ⬇️ ⬇️ CLAVE PARA QUE APAREZCA EL DRILLDOWN EN TOWN */
                 townId={isTown ? (id as TownId) : undefined}
                 onSliceClick={onSliceClick}
                 /** props para modo "tag" con drilldown forzado */

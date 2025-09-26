@@ -1,26 +1,43 @@
 "use client";
 
-import { useState } from "react";
-import type { Granularity } from "@/lib/types";
+import Header from "@/components/common/Header";
+import RangeControls from "@/components/dashboard/RangeControls";
+import {
+  TownTimeProvider,
+  useTownTimeframe,
+} from "@/features/analytics/context/TownTimeContext";
+import { useTownCategoryDrilldown } from "@/features/analytics/hooks/useTownCategoryDrilldown"; // 2º nivel
 import SectorsGridDetailed from "@/features/analytics/sectors/SectorsGridDetailed";
 import { useTownDetails } from "@/features/home/hooks/useTownDetails"; // 1er nivel
 import { useTownsTotals } from "@/features/home/hooks/useTownsTotals"; // reusamos
 import type { CategoryId } from "@/lib/taxonomy/categories";
 import { CATEGORY_ID_ORDER, CATEGORY_META } from "@/lib/taxonomy/categories";
 import type { TownId } from "@/lib/taxonomy/towns";
-import { useTownCategoryDrilldown } from "@/features/analytics/hooks/useTownCategoryDrilldown"; // 2º nivel
-
-const GRANULARITIES: Granularity[] = ["d", "w", "m", "y"];
+import { BarChart3 } from "lucide-react";
+import { useState } from "react";
+import StickyHeaderSection from "../sectors/expanded/SectorExpandedCardDetailed/StickyHeaderSection";
 
 const LABEL_TO_CAT: Record<string, CategoryId> = Object.fromEntries(
   CATEGORY_ID_ORDER.map((id) => [CATEGORY_META[id].label, id])
 ) as Record<string, CategoryId>;
 
-export default function AnalyticsByTownSection() {
-  const [granularity, setGranularity] = useState<Granularity>("m");
+function AnalyticsByTownSectionInner() {
+  // ← Consumimos el contexto (paridad con TagSection)
+  const {
+    mode,
+    granularity,
+    setGranularity,
+    startDate,
+    endDate,
+    setRange,
+    clearRange,
+    endISO,
+  } = useTownTimeframe();
+
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  const { state, ids, itemsById } = useTownsTotals(granularity);
+  // Totales por municipio — ahora recibe granularity + endISO (igual que Tag)
+  const { state, ids, itemsById } = useTownsTotals(granularity, endISO);
 
   type Drill =
     | { kind: "town"; townId: TownId }
@@ -30,11 +47,13 @@ export default function AnalyticsByTownSection() {
 
   const townId = expandedId as TownId | null;
 
+  // Detalle de municipio (mantenemos sin rango explícito por paridad con TagSection)
   const { series: seriesTown, donutData: donutTown } = useTownDetails(
     (drill?.kind === "town" ? drill.townId : townId) ?? ("almonte" as TownId),
     granularity
   );
 
+  // Drilldown municipio + categoría
   const townCat = drill?.kind === "town+cat" ? drill : null;
   const { series: ddSeries, donut: ddDonut } = useTownCategoryDrilldown(
     townCat
@@ -73,34 +92,17 @@ export default function AnalyticsByTownSection() {
 
   return (
     <section className="max-w-[1560px]">
-      <h3 className="mb-3 flex items-center gap-2 text-xl font-semibold text-gray-900 dark:text-gray-100">
-        <span className="inline-grid h-7 w-7 place-items-center rounded-lg bg-sky-100 text-sky-700 ring-1 ring-black/5">
-          <span className="text-sm">🗺️</span>
-        </span>
-        Analytics · Municipios
-        <span className="ml-auto inline-flex gap-2 rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-[#0c1116] p-1">
-          {GRANULARITIES.map((g) => (
-            <button
-              key={g}
-              onClick={() => setGranularity(g)}
-              className={`px-3 py-1.5 text-sm rounded-lg ${
-                granularity === g
-                  ? "bg-gray-900 text-white dark:bg-white dark:text-gray-900"
-                  : "text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/5"
-              }`}
-            >
-              {g === "d"
-                ? "Día"
-                : g === "w"
-                ? "Semana"
-                : g === "m"
-                ? "Mes"
-                : "Año"}
-            </button>
-          ))}
-        </span>
-      </h3>
-
+      <StickyHeaderSection
+        title="Analíticas por municipio"
+        subtitle="Vista general del rendimiento y métricas"
+        mode={mode}
+        granularity={granularity}
+        onGranularityChange={setGranularity}
+        startDate={startDate}
+        endDate={endDate}
+        onRangeChange={setRange}
+        onClearRange={clearRange}
+      />
       <SectorsGridDetailed
         mode="town"
         ids={ids as string[]}
@@ -118,5 +120,13 @@ export default function AnalyticsByTownSection() {
         onSliceClick={handleSliceClick}
       />
     </section>
+  );
+}
+
+export default function AnalyticsByTownSection() {
+  return (
+    <TownTimeProvider>
+      <AnalyticsByTownSectionInner />
+    </TownTimeProvider>
   );
 }

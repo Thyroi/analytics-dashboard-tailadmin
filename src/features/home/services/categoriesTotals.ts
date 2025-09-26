@@ -1,14 +1,79 @@
-import type { Granularity } from "@/lib/types";
-import { CategoriesTotalsResponse, fetchJSON } from "@/lib/api/analytics";
+"use client";
 
-/** GET /api/analytics/v1/dimensions/categorias/totals */
-export async function getCategoriesTotals(input: {
-  granularity: Granularity;  // "d" | "w" | "m" | "y"
-  endISO?: string;
-  signal?: AbortSignal;
-}): Promise<CategoriesTotalsResponse> {
-  const sp = new URLSearchParams({ g: input.granularity });
-  if (input.endISO) sp.set("end", input.endISO);
-  const url = `/api/analytics/v1/dimensions/categorias/totals?${sp.toString()}`;
-  return fetchJSON<CategoriesTotalsResponse>(url, { method: "GET", signal: input.signal });
+import type { Granularity } from "@/lib/types";
+import { CATEGORY_META, type CategoryId } from "@/lib/taxonomy/categories";
+
+/** Item normalizado para UI */
+export type CategoryTotalsItem = {
+  id: CategoryId;
+  title: string;
+  total: number;
+  deltaPct: number;
+};
+
+/** Respuesta normalizada para UI */
+export type CategoriesTotalsResponse = {
+  granularity: Granularity;
+  range: {
+    current: { start: string; end: string };
+    previous: { start: string; end: string };
+  };
+  items: CategoryTotalsItem[];
+};
+
+/** Shape crudo del endpoint (el route.ts que me pasaste) */
+type RawTotals = {
+  currentTotal: number;
+  previousTotal: number;
+  deltaPct: number;
+};
+type RawResponse = {
+  granularity: Granularity;
+  range: {
+    current: { start: string; end: string };
+    previous: { start: string; end: string };
+  };
+  property: string;
+  categories: string[]; // ids
+  perCategory: Record<string, RawTotals>;
+};
+
+export async function getCategoriesTotals(
+  granularity: Granularity,
+  endISO?: string
+): Promise<CategoriesTotalsResponse> {
+  const qs = new URLSearchParams({ g: granularity });
+  if (endISO) qs.set("end", endISO);
+
+  const url = `/api/analytics/v1/dimensions/categorias/totals?${qs.toString()}`;
+
+  const resp = await fetch(url, {
+    method: "GET",
+    headers: { "cache-control": "no-cache" },
+  });
+
+  if (!resp.ok) {
+    const text = await resp.text().catch(() => "");
+    throw new Error(text || `HTTP ${resp.status}`);
+  }
+
+  const raw = (await resp.json()) as RawResponse;
+
+  // Mapeo: perCategory (diccionario) → items[]
+  const items: CategoryTotalsItem[] = Object.keys(raw.perCategory)
+    // Filtrar a ids válidos de la taxonomía para no romper tipos/linters
+    .filter((id): id is CategoryId => Object.prototype.hasOwnProperty.call(CATEGORY_META, id))
+    .map((id) => {
+      const k = raw.perCategory[id];
+      const total = Number.isFinite(k.currentTotal) ? k.currentTotal : 0;
+      const deltaPct = Number.isFinite(k.deltaPct) ? k.deltaPct : 0;
+      const title = CATEGORY_META[id].label ?? id;
+      return { id, title, total, deltaPct };
+    });
+
+  return {
+    granularity: raw.granularity,
+    range: raw.range,
+    items,
+  };
 }

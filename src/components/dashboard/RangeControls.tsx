@@ -18,7 +18,7 @@ type Props = {
   className?: string;
 };
 
-export default function RangeControls({
+export default function   RangeControls({
   mode,
   granularity,
   onGranularityChange,
