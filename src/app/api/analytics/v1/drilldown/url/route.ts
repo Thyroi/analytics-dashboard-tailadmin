@@ -52,14 +52,18 @@ type Totals = {
   newUsers: number;
   eventCount: number;
   sessions: number;
-  averageSessionDuration: number; // seconds
+  averageSessionDuration: number; // seconds (ponderado)
 };
 
 function num(v?: string | null) {
   return Number(v ?? 0);
 }
 
-async function fetchUrlTotals(
+/**
+ * Agrega totales filtrando por pageLocation a nivel de código
+ * usando eqPath(targetPath). Calcula averageSessionDuration ponderado por sesiones.
+ */
+async function fetchUrlTotalsAggregated(
   analyticsData: analyticsdata_v1beta.Analyticsdata,
   property: string,
   range: DateRange,
@@ -75,27 +79,63 @@ async function fetchUrlTotals(
       { name: "sessions" },
       { name: "averageSessionDuration" },
     ],
-    // Filtrado por pageLocation (URL exacta). No hace falta incluir la dimensión.
+    dimensions: [{ name: "pageLocation" }, { name: "eventName" }],
     dimensionFilter: {
+      // solo page_view (no filtramos pageLocation aquí)
       filter: {
-        fieldName: "pageLocation",
-        stringFilter: { matchType: "EXACT", value: targetPath, caseSensitive: false },
+        fieldName: "eventName",
+        stringFilter: { matchType: "EXACT", value: "page_view", caseSensitive: false },
       },
     },
     keepEmptyRows: false,
-    limit: "1",
+    limit: "100000",
   };
 
   const resp = await analyticsData.properties.runReport({ property, requestBody: req });
-  const m = resp.data.rows?.[0]?.metricValues ?? [];
-  return {
-    activeUsers: num(m[0]?.value),
-    userEngagementDuration: num(m[1]?.value),
-    newUsers: num(m[2]?.value),
-    eventCount: num(m[3]?.value),
-    sessions: num(m[4]?.value),
-    averageSessionDuration: num(m[5]?.value),
+  const rows = resp.data.rows ?? [];
+
+  const acc: Totals = {
+    activeUsers: 0,
+    userEngagementDuration: 0,
+    newUsers: 0,
+    eventCount: 0,
+    sessions: 0,
+    averageSessionDuration: 0,
   };
+
+  // Para media ponderada de averageSessionDuration
+  let weightedSumAvgSess = 0; // sum( avgSessRow * sessionsRow )
+  let sumSessions = 0;
+
+  for (const r of rows) {
+    const dims = r.dimensionValues ?? [];
+    const mets = r.metricValues ?? [];
+    const loc = String(dims[0]?.value ?? "");
+    const onlyPath = stripLangPrefix(normalizePath(loc)).path;
+
+    if (!eqPath(onlyPath, targetPath)) continue;
+
+    const activeUsers = num(mets[0]?.value);
+    const userEngagementDuration = num(mets[1]?.value);
+    const newUsers = num(mets[2]?.value);
+    const eventCount = num(mets[3]?.value);
+    const sessions = num(mets[4]?.value);
+    const averageSessionDuration = num(mets[5]?.value);
+
+    acc.activeUsers += activeUsers;
+    acc.userEngagementDuration += userEngagementDuration;
+    acc.newUsers += newUsers;
+    acc.eventCount += eventCount;
+    acc.sessions += sessions;
+
+    // media ponderada
+    weightedSumAvgSess += averageSessionDuration * sessions;
+    sumSessions += sessions;
+  }
+
+  acc.averageSessionDuration = sumSessions > 0 ? weightedSumAvgSess / sumSessions : 0;
+
+  return acc;
 }
 
 /* ---------- handler ---------- */
@@ -110,7 +150,7 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: "Missing 'path' query param" }, { status: 400 });
     }
 
-    // normaliza el objetivo
+    // normaliza el objetivo (path seguro)
     const targetPath = safePathname(rawPath);
 
     // rangos
@@ -121,6 +161,10 @@ export async function GET(req: Request) {
       current: { start: currPreset.startTime, end: currPreset.endTime },
       previous: { start: prevPreset.startTime, end: prevPreset.endTime },
     };
+
+    // Logs de contexto
+    console.log("[url-drilldown] targetPath =", targetPath);
+    console.log("[url-drilldown] ranges =", JSON.stringify(ranges));
 
     // GA
     const auth: GoogleAuth = getAuth();
@@ -148,6 +192,7 @@ export async function GET(req: Request) {
     });
 
     const rows = seriesResp.data.rows ?? [];
+    console.log("[url-drilldown] series rows =", rows.length);
 
     // Acumuladores diarios para la URL seleccionada
     const currEng = new Map<string, number>();
@@ -191,11 +236,18 @@ export async function GET(req: Request) {
     const seriesAvg = ratioSeries(seriesEng, seriesVws); // segundos promedio por bucket
     const deltaPct = pctDelta(totals.current, totals.previous); // delta de VIEWS (referencia)
 
+    console.log("[url-drilldown] seriesAvgEngagement current buckets =", seriesAvg.current.length);
+    console.log("[url-drilldown] seriesAvgEngagement previous buckets =", seriesAvg.previous.length);
+    console.log("[url-drilldown] deltaPct views =", deltaPct.toFixed(2));
+
     /* -------- 1.b) KPIs totales por URL (current / previous) -------- */
     const [totCurr, totPrev] = await Promise.all([
-      fetchUrlTotals(analyticsData, property, ranges.current, targetPath),
-      fetchUrlTotals(analyticsData, property, ranges.previous, targetPath),
+      fetchUrlTotalsAggregated(analyticsData, property, ranges.current, targetPath),
+      fetchUrlTotalsAggregated(analyticsData, property, ranges.previous, targetPath),
     ]);
+
+    console.log("[url-drilldown] totals current =", totCurr);
+    console.log("[url-drilldown] totals previous =", totPrev);
 
     const safeDiv = (a: number, b: number) => (b > 0 ? a / b : 0);
 
@@ -235,15 +287,9 @@ export async function GET(req: Request) {
       metrics: [{ name: "screenPageViews" }],
       dimensions: [{ name: "operatingSystem" }, { name: "pageLocation" }, { name: "eventName" }],
       dimensionFilter: {
-        andGroup: {
-          expressions: [
-            {
-              filter: {
-                fieldName: "eventName",
-                stringFilter: { matchType: "EXACT", value: "page_view", caseSensitive: false },
-              },
-            },
-          ],
+        filter: {
+          fieldName: "eventName",
+          stringFilter: { matchType: "EXACT", value: "page_view", caseSensitive: false },
         },
       },
       keepEmptyRows: false,
@@ -274,15 +320,9 @@ export async function GET(req: Request) {
       metrics: [{ name: "activeUsers" }],
       dimensions: [{ name: "userGender" }, { name: "pageLocation" }, { name: "eventName" }],
       dimensionFilter: {
-        andGroup: {
-          expressions: [
-            {
-              filter: {
-                fieldName: "eventName",
-                stringFilter: { matchType: "EXACT", value: "page_view", caseSensitive: false },
-              },
-            },
-          ],
+        filter: {
+          fieldName: "eventName",
+          stringFilter: { matchType: "EXACT", value: "page_view", caseSensitive: false },
         },
       },
       keepEmptyRows: false,
@@ -291,7 +331,6 @@ export async function GET(req: Request) {
 
     const genResp = await analyticsData.properties.runReport({ property, requestBody: reqGender });
     const genRows = genResp.data.rows ?? [];
-    thead: ;
     const genMap = new Map<string, number>();
     for (const r of genRows) {
       const dims = r.dimensionValues ?? [];
@@ -313,15 +352,9 @@ export async function GET(req: Request) {
       metrics: [{ name: "activeUsers" }],
       dimensions: [{ name: "country" }, { name: "pageLocation" }, { name: "eventName" }],
       dimensionFilter: {
-        andGroup: {
-          expressions: [
-            {
-              filter: {
-                fieldName: "eventName",
-                stringFilter: { matchType: "EXACT", value: "page_view", caseSensitive: false },
-              },
-            },
-          ],
+        filter: {
+          fieldName: "eventName",
+          stringFilter: { matchType: "EXACT", value: "page_view", caseSensitive: false },
         },
       },
       keepEmptyRows: false,
@@ -345,6 +378,10 @@ export async function GET(req: Request) {
       .map(([label, value]) => ({ label, value }))
       .sort((a, b) => b.value - a.value);
 
+    console.log("[url-drilldown] OS count =", operatingSystems.length);
+    console.log("[url-drilldown] genders count =", genders.length);
+    console.log("[url-drilldown] countries count =", countries.length);
+
     return NextResponse.json(
       {
         granularity: g,
@@ -365,6 +402,7 @@ export async function GET(req: Request) {
     );
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : "Unknown error";
+    console.error("[url-drilldown] ERROR =", msg);
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }

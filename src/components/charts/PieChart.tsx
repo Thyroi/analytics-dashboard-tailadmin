@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import { useTheme } from "next-themes";
 import { useMemo } from "react";
 import { generateBrandGradient, BRAND_STOPS } from "@/lib/utils/colors";
+import { RouteOff as NoDataIcon } from "lucide-react"; // ⬅️ icono por defecto
 
 const ReactApexChart = dynamic(() => import("react-apexcharts"), { ssr: false });
 
@@ -18,9 +19,7 @@ type Props = {
   type?: "pie" | "donut";
   height?: number;
 
-  /** Si la pasas, se usa tal cual. Si no, se genera gradiente con generateBrandGradient */
   palette?: string[];
-  /** Colores fijos por etiqueta (sobrescriben la paleta/gradiente si coincide el label). */
   colorsByLabel?: Record<string, string>;
 
   showLegend?: boolean;
@@ -29,21 +28,21 @@ type Props = {
   dataLabels?: DataLabelMode;
   labelPosition?: LabelPosition;
 
-  /** (Nativo Apex, usualmente desactivado si usamos overlay) */
   donutTotalLabel?: string;
   donutTotalFormatter?: (total: number) => string;
 
-  /** Mezcla final de opciones Apex (eventos, responsive, etc.) */
   optionsExtra?: ApexOptions;
-
   className?: string;
 
-  /** Centrado compacto con % del slice activo (usa labels nativos de Apex) */
   compactHover?: boolean;
 
-  /** Overlay centrado propio (no bloquea eventos del gráfico) */
+  /** Overlay centrado propio */
   centerTop?: string;
   centerBottom?: string;
+
+  /** NUEVO: estado vacío con icono y texto */
+  emptyIcon?: React.ReactNode;
+  emptyText?: string;
 };
 
 const DEFAULT_HEIGHT = 300;
@@ -65,28 +64,27 @@ export default function PieChart({
   compactHover = false,
   centerTop,
   centerBottom,
+  emptyIcon,
+  emptyText = "Sin datos para mostrar.",
 }: Props) {
   const { theme } = useTheme();
   const isDark = theme === "dark";
   const bg = isDark ? "#0b0f14" : "#ffffff";
 
-  // Datos normalizados
   const labels = useMemo(() => data.map((d) => d.label), [data]);
   const series = useMemo(() => data.map((d) => d.value ?? 0), [data]);
   const total = useMemo(() => series.reduce((a, b) => a + b, 0), [series]);
 
-  // Paleta base: si no llega `palette`, generamos N colores entre los BRAND_STOPS
   const basePalette = useMemo(
     () => palette ?? generateBrandGradient(data.length, BRAND_STOPS),
     [palette, data.length]
   );
 
-  // Colores finales por punto: prioriza colorsByLabel -> basePalette
   const colors = useMemo(
     () =>
       data.map((d, i) => {
         const fixed = colorsByLabel?.[d.label];
-        return fixed ?? basePalette[i % basePalette.length];
+        return fixed ?? basePalette[i % Math.max(1, basePalette.length)];
       }),
     [data, colorsByLabel, basePalette]
   );
@@ -127,7 +125,7 @@ export default function PieChart({
 
     const defaultDonutLabels:
       NonNullable<NonNullable<ApexOptions["plotOptions"]>["pie"]>["donut"] = {
-        size: "58%", // agujero interno (ajústalo si quieres más/menos grosor)
+        size: "58%",
         labels: {
           show: true,
           name: { show: false },
@@ -224,14 +222,14 @@ export default function PieChart({
     `${isDark ? "dark" : "light"}-` +
     `${labels.join("|")}__${series.join(",")}`;
 
+  // ------- Estado vacío con icono centrado -------
   if (!series.length || height <= 0) {
     return (
-      <div className={`w-full overflow-hidden ${className}`}>
-        <div
-          className="rounded-lg border border-dashed border-gray-200 dark:border-white/10 p-6 text-sm text-gray-500 dark:text-gray-400"
-          style={{ height: Math.max(120, height) }}
-        >
-          Sin datos para mostrar.
+      <div className={`relative w-full overflow-hidden ${className}`} style={{ height }}>
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-gray-400">
+          {/* icono configurable, por defecto uno de lucide */}
+          {emptyIcon ?? <NoDataIcon className="h-14 w-14" />}
+          <span className="text-xs">{emptyText}</span>
         </div>
       </div>
     );
@@ -248,7 +246,7 @@ export default function PieChart({
             </span>
           )}
           {centerBottom && (
-            <span className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+            <span className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
               {centerBottom}
             </span>
           )}

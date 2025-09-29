@@ -25,7 +25,7 @@ export default function DrilldownTitle({
         {/* Círculo de color dinámico */}
         <div className={`w-3 h-3 rounded-full ${colorClass}`} />
         {/* Texto dinámico */}
-        <h3 className="text-lg font-medium">Análisis de {name}</h3>
+        <h3 className="text-lg font-bold">Análisis de {name}</h3>
         {/* Pill opcional */}
         {typeof headlinePercent === "number" && (
           <span className="text-sm bg-red-100 text-red-700 px-2 py-1 rounded-full">

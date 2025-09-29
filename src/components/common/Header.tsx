@@ -7,6 +7,8 @@ type HeaderProps = {
   className?: string;
   Icon?: LucideIcon;
   iconColor?: string;
+  subtitleColor?: string;
+  titleSize?: "sm" | "md" | "lg";
 };
 
 const Header: React.FC<HeaderProps> = ({
@@ -15,19 +17,26 @@ const Header: React.FC<HeaderProps> = ({
   className = "",
   Icon,
   iconColor = "text-red-600",
+  subtitleColor = "text-gray-600 dark:text-gray-400",
+  titleSize = "lg", // Valor por defecto
 }) => {
+  const titleSizeClass = {
+    sm: "text-lg",
+    md: "text-xl",
+    lg: "text-2xl",
+  }[titleSize];
+
   return (
-    <header
-      // ❗️Quito mb-8 y justify-between; dejo un contenedor plano y centrado
-      className={`m-0 p-0 flex items-center gap-3 ${className}`}
-    >
+    <header className={`m-0 p-0 flex items-center gap-3 ${className}`}>
       {Icon && <Icon className={`w-7 h-7 ${iconColor}`} />}
       <div className="leading-none">
-        <h1 className="text-2xl font-medium text-gray-900 dark:text-white leading-tight">
+        <h1
+          className={`${titleSizeClass} font-medium text-gray-900 dark:text-white leading-tight`}
+        >
           {title}
         </h1>
         {subtitle && (
-          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 leading-snug">
+          <p className={`text-sm mt-1 leading-snug ${subtitleColor}`}>
             {subtitle}
           </p>
         )}

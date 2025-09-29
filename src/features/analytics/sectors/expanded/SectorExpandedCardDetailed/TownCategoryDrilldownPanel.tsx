@@ -1,10 +1,8 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import Panel from "@/features/analytics/layout/Panel";
 import ChartPair from "./ChartPair";
 import UrlDetailsPanel from "./UrlDetailsPanel";
-
 
 import { useTownCategoryDrilldown } from "@/features/analytics/hooks/useTownCategoryDrilldown";
 import { useUrlDrilldown } from "@/features/analytics/hooks/useUrlDrilldown";
@@ -48,14 +46,24 @@ export default function TownCategoryDrilldownPanel({
   // Nombre a mostrar en el encabezado según el primer nivel seleccionado
   const name = useMemo(() => {
     return headline === "town"
-      ? (TOWN_META[townId]?.label ?? "Pueblo")
-      : (CATEGORY_META[categoryId]?.label ?? "Categoría");
+      ? TOWN_META[townId]?.label ?? "Pueblo"
+      : CATEGORY_META[categoryId]?.label ?? "Categoría";
   }, [headline, townId, categoryId]);
 
   return (
-    <Panel>
-      <div className="space-y-4">
-        <DrilldownTitle name={name} headlinePercent={headlinePercent} color={color} />
+    <div className="overflow-hidden mt-8">
+      <div
+        className="
+          rounded-xl p-6 space-y-4 shadow-sm border-l-4
+          bg-gradient-to-r from-white via-[#fef2f2] to-[#fff7ed]
+        "
+        style={{ borderLeftColor: "var(--color-huelva-primary, #E55338)" }}
+      >
+        <DrilldownTitle
+          name={name}
+          headlinePercent={headlinePercent}
+          color={color}
+        />
 
         {/* Nivel 2: Sub-actividades */}
         <ChartPair
@@ -66,7 +74,10 @@ export default function TownCategoryDrilldownPanel({
           donutData={dd.donut}
           deltaPct={dd.deltaPct}
           onDonutSlice={(sub) => {
-            const candidate = pickPathForSubActivity(sub, dd.seriesByUrl as UrlSeries[]);
+            const candidate = pickPathForSubActivity(
+              sub,
+              dd.seriesByUrl as UrlSeries[]
+            );
             if (candidate) setSelectedPath(candidate);
           }}
           donutCenterLabel="Actividades"
@@ -89,6 +100,6 @@ export default function TownCategoryDrilldownPanel({
           />
         )}
       </div>
-    </Panel>
+    </div>
   );
 }

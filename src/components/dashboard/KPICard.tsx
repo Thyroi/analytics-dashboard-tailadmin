@@ -7,7 +7,7 @@ type Props = {
   value: string | number;
   icon?: React.ReactNode;
   className?: string;
-  delta?: string;
+  delta?: string | number;
   deltaVariant?: "up" | "down";
 };
 
@@ -20,6 +20,19 @@ export default function KPICard({
   deltaVariant = "up",
 }: Props) {
   const isDown = deltaVariant === "down";
+
+  const formattedDelta = React.useMemo(() => {
+  if (delta === undefined || delta === null || delta === "") return null;
+
+  const num = typeof delta === "number" ? delta : parseFloat(delta);
+  if (Number.isNaN(num)) return null;
+
+  // 🔹 Redondear a máximo 2 decimales
+  const clean = num % 1 === 0 ? String(num) : num.toFixed(2);
+
+  // 🔹 Si el valor es menor o igual a 1 → se asume que es un porcentaje
+  return num <= 1 && num >= -1 ? `${clean}%` : clean;
+}, [delta]);
 
   return (
     <div
@@ -65,16 +78,16 @@ export default function KPICard({
             {value}
           </span>
 
-          {delta ? (
+          {formattedDelta && (
             <span
               className={`ml-auto inline-flex items-center justify-center rounded-full px-2 py-[2px] text-[11px] font-medium leading-none ${
                 isDown ? "bg-red-500 text-white" : "bg-green-500 text-white"
               }`}
-              title={delta}
+              title={formattedDelta}
             >
-              {delta}
+              {formattedDelta}
             </span>
-          ) : null}
+          )}
         </div>
       </div>
     </div>
