@@ -1,23 +1,20 @@
+
 "use client";
 
 import { motion } from "motion/react";
 import * as React from "react";
 
-type Item = {
+export type LegendItem = {
   label: string;
-  value: number; // porcentaje (0–100) o valor bruto si pasas `total`
+  value: number;
   color: string;
 };
 
-type Props = {
-  items: Item[];
-  /** Si pasas `total`, el % = value/total*100. Si no, suma de values. */
+type LegendListProps = {
+  items: LegendItem[];
   total?: number;
-  /** Elemento seleccionado (solo modo interactivo). */
   selectedLabel?: string | null;
-  /** Si está presente => modo interactivo (botones). */
   onSelect?: (label: string) => void;
-  /** Columnas del grid (1 o 2). */
   columns?: 1 | 2;
   className?: string;
 };
@@ -26,28 +23,24 @@ function formatPct(n: number): string {
   return `${Math.round(n)}%`;
 }
 
-export default function DonutLegendList({
+export default function LegendList({
   items,
   total,
   selectedLabel = null,
   onSelect,
   columns = 2,
   className = "",
-}: Props) {
-  const sum = React.useMemo(
-    () =>
-      typeof total === "number"
-        ? total
-        : items.reduce(
-            (a, b) => a + (Number.isFinite(b.value) ? b.value : 0),
-            0
-          ),
-    [items, total]
-  );
+}: LegendListProps) {
+  const sum = React.useMemo(() => {
+    if (typeof total === "number") return total;
+    return items.reduce(
+      (acc, it) => acc + (Number.isFinite(it.value) ? it.value : 0),
+      0
+    );
+  }, [items, total]);
 
   const interactive = typeof onSelect === "function";
 
-  // ------ MODO INTERACTIVO (botones con hover/selección)
   if (interactive) {
     return (
       <div
@@ -94,12 +87,10 @@ export default function DonutLegendList({
     );
   }
 
-  // ------ MODO ESTÁTICO (lista limpia como en el diseño)
   return (
     <div
       className={[
         "mt-4 grid gap-2",
-        // En estático suele verse mejor a 1 columna; respeta `columns` si lo pasas.
         columns === 1 ? "grid-cols-1" : "grid-cols-2",
         className,
       ].join(" ")}

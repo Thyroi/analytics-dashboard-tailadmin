@@ -37,17 +37,25 @@ function rgbToHex({ r, g, b }: RGB): string {
 }
 
 function rgbToHsl({ r, g, b }: RGB): HSL {
-  const rn = r / 255, gn = g / 255, bn = b / 255;
-  const max = Math.max(rn, gn, bn), min = Math.min(rn, gn, bn);
+  const rn = r / 255,
+    gn = g / 255,
+    bn = b / 255;
+  const max = Math.max(rn, gn, bn),
+    min = Math.min(rn, gn, bn);
   const l = (max + min) / 2;
   const d = max - min;
   if (d === 0) return { h: 0, s: 0, l };
 
   let h = 0;
   switch (max) {
-    case rn: h = ((gn - bn) / d + (gn < bn ? 6 : 0)) * 60; break;
-    case gn: h = ((bn - rn) / d + 2) * 60; break;
-    default: h = ((rn - gn) / d + 4) * 60;
+    case rn:
+      h = ((gn - bn) / d + (gn < bn ? 6 : 0)) * 60;
+      break;
+    case gn:
+      h = ((bn - rn) / d + 2) * 60;
+      break;
+    default:
+      h = ((rn - gn) / d + 4) * 60;
   }
 
   const s = d / (1 - Math.abs(2 * l - 1));
@@ -58,7 +66,9 @@ function hslToRgb({ h, s, l }: HSL): RGB {
   const C = (1 - Math.abs(2 * l - 1)) * s;
   const X = C * (1 - Math.abs(((h / 60) % 2) - 1));
   const m = l - C / 2;
-  let r = 0, g = 0, b = 0;
+  let r = 0,
+    g = 0,
+    b = 0;
 
   if (h < 60) [r, g, b] = [C, X, 0];
   else if (h < 120) [r, g, b] = [X, C, 0];
@@ -85,7 +95,10 @@ function interpolateHsl(c1: HSL, c2: HSL, t: number): HSL {
 /**
  * Genera una paleta degradada de N colores interpolando entre los stops definidos.
  */
-export function generateBrandGradient(n: number, stops: readonly string[] = BRAND_STOPS): string[] {
+export function generateBrandGradient(
+  n: number,
+  stops: readonly string[] = BRAND_STOPS
+): string[] {
   const count = Math.max(1, n);
   const hsls = stops.map((hex) => rgbToHsl(hexToRgb(hex)));
   if (count === 1) return [rgbToHex(hslToRgb(hsls[1]))]; // color medio si solo hay uno
@@ -102,4 +115,41 @@ export function generateBrandGradient(n: number, stops: readonly string[] = BRAN
     out.push(rgbToHex(hslToRgb(color)));
   }
   return out;
+}
+
+export function buildSeriesColorMap(
+  seriesNames: readonly string[],
+  fixedByName: Readonly<Record<string, string>>,
+  stops: readonly string[] = BRAND_STOPS
+): Record<string, string> {
+  const map: Record<string, string> = {};
+  // Asignar primero los fijos (p. ej., "Total")
+  for (const name of seriesNames) {
+    if (Object.prototype.hasOwnProperty.call(fixedByName, name)) {
+      map[name] = fixedByName[name];
+    }
+  }
+  // Nombres restantes (en el mismo orden que llegan)
+  const remaining = seriesNames.filter((n) => map[n] === undefined);
+  if (remaining.length > 0) {
+    const palette = generateBrandGradient(remaining.length, stops);
+    remaining.forEach((name, i) => {
+      map[name] = palette[i];
+    });
+  }
+  return map;
+}
+
+/**
+ * Rellena de área "brand" para gráficos tipo área.
+ * Uso: en LineChart cuando `type === "area"` y se active la prop correspondiente.
+ */
+export function brandAreaFill(): {
+  type: "gradient";
+  gradient: { opacityFrom: number; opacityTo: number };
+} {
+  return {
+    type: "gradient",
+    gradient: { opacityFrom: 0.55, opacityTo: 0 },
+  };
 }

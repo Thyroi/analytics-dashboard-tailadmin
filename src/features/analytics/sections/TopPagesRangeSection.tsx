@@ -1,65 +1,66 @@
 "use client";
 
 import LineChart from "@/components/charts/LineChart";
-import DateRangePicker from "@/components/common/DateRangePicker";
-import { AreaChartSkeleton } from "@/components/skeletons";
+import Header from "@/components/common/Header";
 import { useTopPagesRange } from "@/features/analytics/hooks/useTopPagesRange";
-import { useState } from "react";
+import { buildSeriesColorMap } from "@/lib/utils/colors";
+import { BarChart3 } from "lucide-react";
+import { useHeaderAnalyticsTimeframe } from "../context/HeaderAnalyticsTimeContext";
 
 const CHART_HEIGHT = 310;
-const toISO = (d: Date) => d.toISOString().split("T")[0];
+const FIXED_TOTAL_COLOR = "#FF6B35";
 
-// Colores opcionales por nombre (Total + fallback por índice en tu LineChart)
-const NAME_COLORS: Record<string, string> = {
-  Total: "#93C5FD",
-};
+type LegacyPayload = { categoriesLabels?: string[] };
 
 export default function TopPagesRangeSection() {
-  const today = new Date();
-  const monthAgo = new Date();
-  monthAgo.setMonth(today.getMonth() - 1);
+  const { mode, granularity, startISO, endISO } = useHeaderAnalyticsTimeframe();
 
-  const [startDate, setStartDate] = useState<Date>(monthAgo);
-  const [endDate, setEndDate] = useState<Date>(today);
-
+  const useExplicit = mode === "range";
   const { data, isLoading, error, hasData } = useTopPagesRange({
-    start: toISO(startDate),
-    end: toISO(endDate),
-    granularity: "d",
+    start: useExplicit ? startISO : undefined,
+    end: useExplicit ? endISO : undefined,
+    granularity,
     top: 5,
     includeTotal: true,
   });
 
-  if (isLoading) return <AreaChartSkeleton height={CHART_HEIGHT} />;
+  if (isLoading) {
+    return (
+      <div
+        className="card bg-gradient-to-b from-[#FFF7ED] to-white"
+        style={{ height: CHART_HEIGHT }}
+      />
+    );
+  }
 
-  // Fallback por compatibilidad si en algún build viejo llega categoriesLabels
-  const categories =
-    (data?.xLabels as string[] | undefined) ??
-    ((data as unknown as { categoriesLabels?: string[] })?.categoriesLabels ?? []);
+  const categories: string[] =
+    data?.xLabels ??
+    (data as unknown as LegacyPayload | null)?.categoriesLabels ??
+    [];
+
+  const series = data?.series ?? [];
+  const seriesNames = series.map((s) => s.name);
+  const colorsByName = buildSeriesColorMap(seriesNames, {
+    Total: FIXED_TOTAL_COLOR,
+  });
 
   return (
-    <div className="card">
+    <div className="card bg-analytics-gradient">
       <div className="card-header">
-        <div>
-          <h3 className="card-title">Top 5 páginas más visitadas</h3>
-          <p className="card-subtitle">
-            Vistas (screenPageViews) por día y título de página
-          </p>
-        </div>
-        <DateRangePicker
-          startDate={startDate}
-          endDate={endDate}
-          onRangeChange={(s, e) => {
-            setStartDate(s);
-            setEndDate(e);
-          }}
+        <Header
+          className="flex items-center h-full"
+          title="Top 5 páginas más visitadas"
+          Icon={BarChart3}
+          iconColor="text-huelva-primary"
+          titleSize="xxs"
+          titleClassName="font-bold"
         />
       </div>
 
       <div className="card-body h-[400px]">
         {error ? (
           <div
-            className="h-[ text-sm text-red-500 flex items-center justify-center"
+            className="text-sm text-red-500 flex items-center justify-center"
             style={{ height: CHART_HEIGHT }}
           >
             {error.message}
@@ -67,12 +68,27 @@ export default function TopPagesRangeSection() {
         ) : hasData && data ? (
           <LineChart
             categories={categories}
-            series={data.series}
-            type="line"
+            series={series}
+            type="area"
             height="100%"
-            colorsByName={NAME_COLORS}
+            colorsByName={colorsByName}
+            brandAreaGradient
             showLegend
             legendPosition="bottom"
+            smooth
+            optionsExtra={{
+              xaxis: {
+                labels: { style: { colors: "#FB923C" } }, // texto eje X
+                axisBorder: { color: "#FB923C" }, // línea base eje X
+                axisTicks: { color: "#FB923C" }, // ticks eje X
+              },
+              yaxis: {
+                labels: { style: { colors: "#FB923C" } }, // texto eje Y
+              },
+              grid: {
+                borderColor: "#ffc18e", // líneas de la grid
+              },
+            }}
           />
         ) : (
           <div

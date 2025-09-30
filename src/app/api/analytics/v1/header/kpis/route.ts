@@ -3,8 +3,7 @@ import { google, analyticsdata_v1beta } from "googleapis";
 import { getAuth, normalizePropertyId, resolvePropertyId } from "@/lib/utils/ga";
 import { parseISO, toISO, deriveAutoRangeForGranularity } from "@/lib/utils/datetime";
 import type { Granularity } from "@/lib/types";
-import { KpiDeltaSet, KpiMetricSet, KpiPayload } from "@/lib/api/analytics";
-
+import type { KpiPayload } from "@/lib/api/analytics";
 
 export const dynamic = "force-dynamic";
 
@@ -16,8 +15,9 @@ function addDaysUTC(d: Date, days: number) {
 function daysInclusive(startISO: string, endISO: string): number {
   const s = parseISO(startISO);
   const e = parseISO(endISO);
-  const ms = Date.UTC(e.getUTCFullYear(), e.getUTCMonth(), e.getUTCDate()) -
-             Date.UTC(s.getUTCFullYear(), s.getUTCMonth(), s.getUTCDate());
+  const ms =
+    Date.UTC(e.getUTCFullYear(), e.getUTCMonth(), e.getUTCDate()) -
+    Date.UTC(s.getUTCFullYear(), s.getUTCMonth(), s.getUTCDate());
   return Math.max(1, Math.round(ms / 86400000) + 1);
 }
 
@@ -26,7 +26,7 @@ async function queryTotals(
   property: string,
   start: string,
   end: string
-): Promise<KpiMetricSet> {
+) {
   const request: analyticsdata_v1beta.Schema$RunReportRequest = {
     dateRanges: [{ startDate: start, endDate: end }],
     metrics: [
@@ -50,24 +50,26 @@ async function queryTotals(
     engagedSessions: n(1),
     eventCount: n(2),
     screenPageViews: n(3),
-    averageSessionDuration: n(4), // segundos
+    averageSessionDuration: n(4), // segundos (GA4)
   };
 }
 
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
-    const start = searchParams.get("start") || undefined;
-    const end = searchParams.get("end") || undefined;
-    const g = (searchParams.get("granularity") || "d") as Granularity;
+    const startQ = searchParams.get("start") || undefined;
+    const endQ = searchParams.get("end") || undefined;
+    const granularity = (searchParams.get("granularity") || "d") as Granularity;
 
-    const range = start && end
-      ? { start, end }
+    // Rango actual: si llega start/end se usan; si no, se deriva según granularidad
+    const range = startQ && endQ
+      ? { start: startQ, end: endQ }
       : (() => {
-          const r = deriveAutoRangeForGranularity(g);
+          const r = deriveAutoRangeForGranularity(granularity);
           return { start: r.startTime, end: r.endTime };
         })();
 
+    // Rango anterior de igual longitud (comparación)
     const len = daysInclusive(range.start, range.end);
     const curStart = parseISO(range.start);
     const prevEnd = addDaysUTC(curStart, -1);
@@ -83,7 +85,8 @@ export async function GET(req: Request) {
       queryTotals(analytics, property, compareRange.start, compareRange.end),
     ]);
 
-    const delta: KpiMetricSet = {
+    // Deltas absolutos
+    const delta = {
       activeUsers: current.activeUsers - previous.activeUsers,
       engagedSessions: current.engagedSessions - previous.engagedSessions,
       eventCount: current.eventCount - previous.eventCount,
@@ -92,10 +95,11 @@ export async function GET(req: Request) {
         current.averageSessionDuration - previous.averageSessionDuration,
     };
 
+    // Deltas porcentuales (GA4 suele requerir cuidado con 0)
     const pct = (c: number, p: number): number | null =>
       p <= 0 ? (c > 0 ? 1 : null) : c / p - 1;
 
-    const deltaPct: KpiDeltaSet = {
+    const deltaPct = {
       activeUsers: pct(current.activeUsers, previous.activeUsers),
       engagedSessions: pct(current.engagedSessions, previous.engagedSessions),
       eventCount: pct(current.eventCount, previous.eventCount),

@@ -1,62 +1,61 @@
 "use client";
 
-import { useState } from "react";
 import LineChart from "@/components/charts/LineChart";
-import DateRangePicker from "@/components/common/DateRangePicker";
+import Header from "@/components/common/Header";
 import { AreaChartSkeleton } from "@/components/skeletons";
 import { useUserAcquisitionRange } from "@/features/analytics/hooks/useUserAcquisitionRange";
+import { buildSeriesColorMap } from "@/lib/utils/colors";
+import { UserPlus } from "lucide-react";
+import { useHeaderAnalyticsTimeframe } from "../context/HeaderAnalyticsTimeContext";
 
 const CHART_HEIGHT = 310;
-const toISO = (d: Date) => d.toISOString().split("T")[0];
+const FIXED_TOTAL_COLOR = "#FF6B35";
 
-/** Si quieres colores fijos por nombre (opcional). Si no existe el nombre, usa palette por índice. */
-const CHANNEL_COLORS: Record<string, string> = {
-  Total: "#93C5FD",
-  Direct: "#465FFF",
-  Referral: "#22C55E",
-  "Organic Search": "#F59E0B",
-  "Organic Social": "#F163AA",
-  "Paid Search": "#EF4444",
-  Email: "#10B981",
-  Display: "#A78BFA",
-  "Organic Video": "#14B8A6",
-  Unassigned: "#9CA3AF",
-  Other: "#6B7280",
-};
+type LegacyPayload = { categoriesLabels?: string[] };
 
 export default function UserAcquisitionSection() {
-  const today = new Date();
-  const lastMonth = new Date();
-  lastMonth.setMonth(today.getMonth() - 1);
+  const { mode, granularity, startISO, endISO } = useHeaderAnalyticsTimeframe();
 
-  const [startDate, setStartDate] = useState<Date>(lastMonth);
-  const [endDate, setEndDate] = useState<Date>(today);
-
+  const useExplicit = mode === "range";
   const { data, isLoading, error, hasData } = useUserAcquisitionRange({
-    start: toISO(startDate),
-    end: toISO(endDate),
-    granularity: "d",
+    start: useExplicit ? startISO : undefined,
+    end: useExplicit ? endISO : undefined,
+    granularity,
     includeTotal: true,
   });
 
-  if (isLoading) return <AreaChartSkeleton height={CHART_HEIGHT} />;
+  if (isLoading) {
+    return (
+      <div
+        className="card bg-analytics-pastel-diag"
+        style={{ height: CHART_HEIGHT }}
+      >
+        <AreaChartSkeleton height={CHART_HEIGHT} />
+      </div>
+    );
+  }
+
+  const categories: string[] =
+    (data?.categoriesLabels as string[] | undefined) ??
+    (data as unknown as LegacyPayload | null)?.categoriesLabels ??
+    [];
+
+  const series = data?.series ?? [];
+  const seriesNames = series.map((s) => s.name);
+  const colorsByName = buildSeriesColorMap(seriesNames, {
+    Total: FIXED_TOTAL_COLOR,
+  });
 
   return (
-    <div className="card">
+    <div className="card bg-analytics-gradient">
       <div className="card-header">
-        <div>
-          <h3 className="card-title">User Acquisition por canal</h3>
-          <p className="card-subtitle">
-            Usuarios (activeUsers) por día y canal (firstUserDefaultChannelGroup)
-          </p>
-        </div>
-        <DateRangePicker
-          startDate={startDate}
-          endDate={endDate}
-          onRangeChange={(s, e) => {
-            setStartDate(s);
-            setEndDate(e);
-          }}
+        <Header
+          className="flex items-center h-full"
+          title="Adquisición de usuarios por canal"
+          Icon={UserPlus}
+          iconColor="text-huelva-primary"
+          titleSize="xxs"
+          titleClassName="font-bold"
         />
       </div>
 
@@ -70,13 +69,29 @@ export default function UserAcquisitionSection() {
           </div>
         ) : hasData && data ? (
           <LineChart
-            categories={data.categoriesLabels}
-            series={data.series}
-            type="line" // o "area" si lo prefieres
+            categories={categories}
+            series={series}
+            type="area"
             height={CHART_HEIGHT}
-            colorsByName={CHANNEL_COLORS}
+            colorsByName={colorsByName}
+            brandAreaGradient
             showLegend
             legendPosition="bottom"
+            smooth
+            optionsExtra={{
+              xaxis: {
+                labels: { style: { colors: "#FB923C" } },
+                axisBorder: { color: "#FB923C" },
+                axisTicks: { color: "#FB923C" },
+              },
+              yaxis: {
+                labels: { style: { colors: "#FB923C" } },
+              },
+              grid: {
+                borderColor: "rgba(251, 146, 60, 0.3)",
+              },
+              legend: { show: false },
+            }}
           />
         ) : (
           <div

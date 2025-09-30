@@ -15,7 +15,6 @@ type DonutSectionProps = {
   centerValueOverride?: number;
   actionButtonTarget?: string;
   title?: string;
-  /** Puede ser clase Tailwind (“text-red-600”) o un hex (“#c10007”) */
   titleColor?: string;
 };
 

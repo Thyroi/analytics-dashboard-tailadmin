@@ -37,7 +37,7 @@ function toISODate(d: Date): string {
 export function TownTimeProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<TimeframeState>({
     mode: "granularity",
-    granularity: "m",
+    granularity: "d",
     startDate: monthAgo(new Date()),
     endDate: new Date(),
   });

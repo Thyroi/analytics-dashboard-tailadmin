@@ -1,5 +1,5 @@
-import * as React from "react";
 import type { LucideIcon } from "lucide-react";
+import * as React from "react";
 
 type HeaderProps = {
   title: string;
@@ -8,7 +8,8 @@ type HeaderProps = {
   Icon?: LucideIcon;
   iconColor?: string;
   subtitleColor?: string;
-  titleSize?: "sm" | "md" | "lg";
+  titleSize?: "xxs" | "xs" | "s" | "sm" | "md" | "lg";
+  titleClassName?: string;
 };
 
 const Header: React.FC<HeaderProps> = ({
@@ -18,20 +19,24 @@ const Header: React.FC<HeaderProps> = ({
   Icon,
   iconColor = "text-red-600",
   subtitleColor = "text-gray-600 dark:text-gray-400",
-  titleSize = "lg", // Valor por defecto
+  titleSize = "lg",
+  titleClassName = "",
 }) => {
   const titleSizeClass = {
+    xxs: "text-xs",
+    xs: "text-sm",
+    s: "text-base",
     sm: "text-lg",
     md: "text-xl",
     lg: "text-2xl",
-  }[titleSize];
-
+  }[titleSize ?? "lg"];
+  
   return (
     <header className={`m-0 p-0 flex items-center gap-3 ${className}`}>
       {Icon && <Icon className={`w-7 h-7 ${iconColor}`} />}
       <div className="leading-none">
         <h1
-          className={`${titleSizeClass} font-medium text-gray-900 dark:text-white leading-tight`}
+          className={`${titleSizeClass} ${titleClassName} text-gray-900 dark:text-white leading-tight`}
         >
           {title}
         </h1>

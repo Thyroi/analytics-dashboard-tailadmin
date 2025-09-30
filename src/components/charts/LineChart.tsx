@@ -1,5 +1,6 @@
 "use client";
 
+import { brandAreaFill } from "@/lib/utils/colors"; // ⬅️ NUEVO
 import type { ApexOptions } from "apexcharts";
 import { useTheme } from "next-themes";
 import dynamic from "next/dynamic";
@@ -7,7 +8,9 @@ import { useMemo } from "react";
 
 export type LineSeries = { name: string; data: number[] };
 
-const ReactApexChart = dynamic(() => import("react-apexcharts"), { ssr: false });
+const ReactApexChart = dynamic(() => import("react-apexcharts"), {
+  ssr: false,
+});
 
 const DEFAULT_PALETTE = [
   "#465FFF",
@@ -30,6 +33,8 @@ type Props = {
   smooth?: boolean;
   optionsExtra?: ApexOptions;
   className?: string;
+  /** Activa el relleno degradado de marca para gráficos de área */
+  brandAreaGradient?: boolean; // ⬅️ NUEVO
 };
 
 export default function LineChart({
@@ -44,6 +49,7 @@ export default function LineChart({
   smooth = false,
   optionsExtra,
   className = "",
+  brandAreaGradient = false, // ⬅️ NUEVO
 }: Props) {
   const { theme } = useTheme();
   const isDark = theme === "dark";
@@ -53,9 +59,8 @@ export default function LineChart({
     return series.map((s, i) => colorsByName?.[s.name] ?? byIndex(i));
   }, [series, colorsByName, palette]);
 
-  // 🔹 Línea punteada para "Total" (y ancho un poco mayor si quieres)
   const dashArray = useMemo(
-    () => series.map((s) => (s.name === "Total" ? 6 : 0)), // 6 = patrón de guiones; 0 = línea sólida
+    () => series.map((s) => (s.name === "Total" ? 6 : 0)),
     [series]
   );
   const strokeWidths = useMemo(
@@ -66,6 +71,16 @@ export default function LineChart({
   const axisLabelColor = isDark ? "#9CA3AF" : "#6B7280";
   const gridColor = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)";
   const foreColor = isDark ? "#E5E7EB" : "#374151";
+
+  const fill = useMemo(() => {
+    if (type !== "area") return { opacity: 1 as const };
+    return brandAreaGradient
+      ? brandAreaFill()
+      : {
+          type: "gradient" as const,
+          gradient: { opacityFrom: 0.55, opacityTo: 0 },
+        };
+  }, [type, brandAreaGradient]);
 
   const options: ApexOptions = useMemo(() => {
     const base: ApexOptions = {
@@ -81,14 +96,11 @@ export default function LineChart({
       },
       stroke: {
         curve: smooth ? "smooth" : "straight",
-        width: strokeWidths,      // ⬅️ un ancho por serie
-        dashArray,                // ⬅️ punteado por serie (Total = 6)
+        width: strokeWidths,
+        dashArray,
       },
       markers: { size: 0, hover: { sizeOffset: 3 } },
-      fill:
-        type === "area"
-          ? { type: "gradient", gradient: { opacityFrom: 0.55, opacityTo: 0 } }
-          : { opacity: 1 },
+      fill, // ⬅️ usa el fill calculado
       grid: {
         borderColor: gridColor,
         yaxis: { lines: { show: true } },
@@ -112,8 +124,16 @@ export default function LineChart({
         labels: { style: { fontSize: "12px", colors: axisLabelColor } },
         decimalsInFloat: 0,
       },
-      tooltip: { enabled: true, shared: true, theme: isDark ? "dark" : "light" },
-      legend: { show: showLegend, position: legendPosition, labels: { colors: foreColor } },
+      tooltip: {
+        enabled: true,
+        shared: true,
+        theme: isDark ? "dark" : "light",
+      },
+      legend: {
+        show: showLegend,
+        position: legendPosition,
+        labels: { colors: foreColor },
+      },
       colors,
     };
     return { ...base, ...(optionsExtra ?? {}) };
@@ -131,18 +151,22 @@ export default function LineChart({
     strokeWidths,
     type,
     showLegend,
+    fill,
   ]);
 
   const key = useMemo(
     () =>
-      `${type}-${smooth ? "smooth" : "straight"}-${isDark ? "dark" : "light"}|${categories.length}|${series
-        .map((s) => s.name)
-        .join(",")}`,
+      `${type}-${smooth ? "smooth" : "straight"}-${isDark ? "dark" : "light"}|${
+        categories.length
+      }|${series.map((s) => s.name).join(",")}`,
     [type, smooth, isDark, categories.length, series]
   );
 
   return (
-    <div className={`w-full h-full overflow-hidden ${className}`} style={{ height }}>
+    <div
+      className={`w-full h-full overflow-hidden ${className}`}
+      style={{ height }}
+    >
       <ReactApexChart
         key={key}
         options={options}

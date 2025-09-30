@@ -32,7 +32,13 @@
   --text-title-md--line-height: 44px;
   --text-title-sm: 30px;
   --text-title-sm--line-height: 38px;
-
+  --text-title-s: 24px;
+  --text-title-s--line-height: 30px;
+  --text-title-xs: 20px;
+  --text-title-xs--line-height: 26px;
+  --text-title-xxs: 16px;
+  --text-title-xxs--line-height: 22px;
+  
   /* Theme text */
   --text-theme-xl: 20px;
   --text-theme-xl--line-height: 30px;
@@ -44,12 +50,16 @@
   /* =========================
      HUELVA COLORS (NEW)
   ========================== */
-  --color-huelva-primary: #E55338; /* Naranja principal, botones */
-  --color-huelva-secondary: #F5AA35; /* Naranja claro, inicio degradado */
+  --color-huelva-primary: #e55338; /* Naranja principal, botones */
+  --color-huelva-secondary: #f5aa35; /* Naranja claro, inicio degradado */
   --color-huelva-dark: #902919; /* Rojo oscuro, acentos y contrastes */
 
   /* Gradient */
-  --gradient-huelva: linear-gradient(90deg, var(--color-huelva-primary), var(--color-huelva-secondary));
+  --gradient-huelva: linear-gradient(
+    90deg,
+    var(--color-huelva-primary),
+    var(--color-huelva-secondary)
+  );
 
   /* =========================
      ORIGINAL BRAND PALETTE
@@ -97,7 +107,6 @@
     0 8px 8px -4px rgba(16, 24, 40, 0.03);
 }
 
-
 /* =========================
    BASE
 ========================= */
@@ -114,6 +123,9 @@
   }
 }
 
+.bg-analytics-gradient {
+  background: linear-gradient(135deg, #fff7f2 10%, #ffe6d1 80%, #ffd7b3 100%);
+}
 /* =========================
    UTILITIES (sidebar + scroll)
 ========================= */
@@ -445,7 +457,7 @@ html:not(.dark) .apexcharts-tooltip {
 .dark .flatpickr-calendar {
   background: var(--fp-dark-bg) !important;
   color: var(--fp-dark-text) !important;
-  border: 1px solid var(--fp-dark-border) !important;  /* ← borde igual al del input */
+  border: 1px solid var(--fp-dark-border) !important; /* ← borde igual al del input */
   border-radius: 12px !important;
 }
 

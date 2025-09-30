@@ -58,7 +58,6 @@ export default function ChartPair(props: Props) {
 
       <DonutSection
         donutData={props.donutData}
-        deltaPct={props.deltaPct}
         onSliceClick={props.onDonutSlice}
         centerLabel={props.donutCenterLabel}
         actionButtonTarget={props.actionButtonTarget}

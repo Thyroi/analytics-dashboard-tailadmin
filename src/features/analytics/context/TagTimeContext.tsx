@@ -39,7 +39,7 @@ export function TagTimeProvider({ children }: { children: React.ReactNode }) {
   // Defaults seguros: granularidad por defecto "m", rango último mes (sin activarlo)
   const [state, setState] = useState<TimeframeState>({
     mode: "granularity",
-    granularity: "m",
+    granularity: "d",
     startDate: monthAgo(new Date()),
     endDate: new Date(),
   });

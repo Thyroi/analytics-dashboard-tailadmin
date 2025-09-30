@@ -1,14 +1,15 @@
+// features/analytics/hooks/useKpis.ts
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { Granularity } from "@/lib/types";
 import { fetchKpis } from "@/features/analytics/services/kpis";
-import { KpiPayload } from "@/lib/api/analytics";
+import type { KpiPayload } from "@/lib/api/analytics";
 
 export type UseKpisParams = {
   start?: string;
   end?: string;
-  granularity?: Granularity; // por si quieres auto-range en el endpoint
+  granularity?: Granularity;
 };
 
 export function useKpis({ start, end, granularity = "d" }: UseKpisParams) {
@@ -17,14 +18,26 @@ export function useKpis({ start, end, granularity = "d" }: UseKpisParams) {
   const [error, setError] = useState<Error | null>(null);
   const lastKey = useRef("");
 
+  const key = useMemo(
+    () => `${start ?? "auto"}|${end ?? "auto"}|${granularity}`,
+    [start, end, granularity]
+  );
+
   useEffect(() => {
-    const key = `${start ?? "auto"}_${end ?? "auto"}_${granularity}`;
     if (lastKey.current === key) return;
     lastKey.current = key;
 
     const controller = new AbortController();
     setIsLoading(true);
     setError(null);
+
+    // DEBUG: log de la request
+    const sp = new URLSearchParams();
+    if (start) sp.set("start", start);
+    if (end) sp.set("end", end);
+    if (granularity) sp.set("granularity", granularity);
+    // 👇 este log debe cambiar al cambiar granularity si NO se envían start/end
+    console.log("[useKpis] GET /api/analytics/v1/header/kpis?" + sp.toString());
 
     (async () => {
       try {
@@ -41,7 +54,7 @@ export function useKpis({ start, end, granularity = "d" }: UseKpisParams) {
     })();
 
     return () => controller.abort();
-  }, [start, end, granularity]);
+  }, [key, start, end, granularity]);
 
   return { data, isLoading, error };
 }
