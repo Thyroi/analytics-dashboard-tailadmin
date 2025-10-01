@@ -1,4 +1,3 @@
-// app/api/analytics/v1/dimensions/countries/route.ts
 import { NextResponse } from "next/server";
 import { google, analyticsdata_v1beta } from "googleapis";
 import { getAuth, normalizePropertyId, resolvePropertyId } from "@/lib/utils/ga";
@@ -26,8 +25,7 @@ export async function GET(req: Request) {
 
     const start = searchParams.get("start") || undefined;
     const end = searchParams.get("end") || undefined;
-    const granularity = (searchParams.get("granularity") || "d") as
-      | "d" | "w" | "m" | "y";
+    const granularity = (searchParams.get("granularity") || "d") as "d" | "w" | "m" | "y";
     const limitParam = Number(searchParams.get("limit") || "100");
 
     const range = start && end
@@ -42,7 +40,7 @@ export async function GET(req: Request) {
     const analytics = google.analyticsdata({ version: "v1beta", auth });
     const property = normalizePropertyId(resolvePropertyId());
 
-    // Pedimos country (nombre) + countryId (código ISO-2)
+    // country (nombre) + countryId (código ISO-2)
     const request: analyticsdata_v1beta.Schema$RunReportRequest = {
       dateRanges: [{ startDate: range.start, endDate: range.end }],
       metrics: [{ name: "activeUsers" }],

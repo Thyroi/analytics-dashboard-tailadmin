@@ -1,4 +1,3 @@
-// components/dashboard/DonutCard.tsx
 "use client";
 
 import PieChart from "@/components/charts/PieChart";
