@@ -1,5 +1,8 @@
 "use client";
 
+import Header from "@/components/common/Header";
+import CityListSkeleton from "@/components/skeletons/CityListSkeleton";
+import { MapPinned } from "lucide-react";
 import { Fragment } from "react";
 import CityRow from "./CityRow";
 import CountryRow from "./CountryRow";
@@ -9,7 +12,6 @@ import type { CustomersDemographicsProps } from "./types";
 
 export default function CustomersDemographics({
   title = "Demografía de clientes",
-  subtitle = "Número de usuarios por país",
   markers,
   countries,
   mapHeight = 260,
@@ -20,12 +22,8 @@ export default function CustomersDemographics({
   return (
     <div className={className}>
       <div className="card-header">
-        <div>
-          <h3 className="card-title">{title}</h3>
-          <p className="card-subtitle">{subtitle}</p>
-        </div>
+        <Header title={title} Icon={MapPinned} titleSize="xs" />
       </div>
-
       <div className="card-body">
         <MapPanel markers={markers} height={mapHeight} />
 
@@ -45,9 +43,7 @@ export default function CustomersDemographics({
               {country.isOpen && (
                 <div id={`regions-${country.code}`} className="ml-6 mr-2 mb-2">
                   {country.regionsLoading ? (
-                    <div className="text-xs text-gray-500 dark:text-gray-400 py-2">
-                      Cargando regiones…
-                    </div>
+                    <CityListSkeleton rows={4} className="py-1" />
                   ) : country.regionsError ? (
                     <div className="text-xs text-red-500 py-2">
                       {country.regionsError}
@@ -77,9 +73,7 @@ export default function CustomersDemographics({
                               className="ml-6 mr-2 mb-2"
                             >
                               {r.citiesLoading ? (
-                                <div className="text-[11px] text-gray-500 dark:text-gray-400 py-1">
-                                  Cargando ciudades…
-                                </div>
+                                <CityListSkeleton rows={4} className="py-1" />
                               ) : r.citiesError ? (
                                 <div className="text-[11px] text-red-500 py-1">
                                   {r.citiesError}
