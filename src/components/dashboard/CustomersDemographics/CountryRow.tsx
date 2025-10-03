@@ -6,10 +6,11 @@ type Props = {
   code: string;
   name: string;
   users: number;
-  pctNum: number; // 0..100
+  pctNum: number;   // 0..100
   pctLabel: string; // "xx.x"
   isOpen: boolean;
   onToggle: () => void;
+  disabled?: boolean; // ← NUEVO
 };
 
 export default function CountryRow({
@@ -20,20 +21,26 @@ export default function CountryRow({
   pctLabel,
   isOpen,
   onToggle,
+  disabled = false,
 }: Props) {
+  const handleClick = () => {
+    if (!disabled) onToggle();
+  };
+
   return (
     <button
       type="button"
-      onClick={onToggle}
-      className="
-        w-full flex items-center gap-3
-        rounded-2xl border border-gray-200 dark:border-white/10
-        bg-white dark:bg-white/[0.06]
-        shadow-sm px-3 py-2
-        focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-400/40
-      "
+      onClick={handleClick}
+      className={[
+        "w-full flex items-center gap-3",
+        "rounded-2xl border border-gray-200 dark:border-white/10",
+        "bg-white dark:bg-white/[0.06] shadow-sm px-3 py-2",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-400/40",
+        disabled ? "cursor-default" : "cursor-pointer",
+      ].join(" ")}
       aria-expanded={isOpen}
       aria-controls={`regions-${code}`}
+      aria-disabled={disabled}
     >
       <div className="flex min-w-0 flex-1 items-center gap-3">
         <ReactCountryFlag

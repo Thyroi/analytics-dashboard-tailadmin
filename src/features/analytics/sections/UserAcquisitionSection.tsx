@@ -8,7 +8,7 @@ import { buildSeriesColorMap } from "@/lib/utils/colors";
 import { UserPlus } from "lucide-react";
 import { useHeaderAnalyticsTimeframe } from "../context/HeaderAnalyticsTimeContext";
 
-const CHART_HEIGHT = 310;
+const SKELETON_HEIGHT = 340;
 const FIXED_TOTAL_COLOR = "#FF6B35";
 
 type LegacyPayload = { categoriesLabels?: string[] };
@@ -26,11 +26,8 @@ export default function UserAcquisitionSection() {
 
   if (isLoading) {
     return (
-      <div
-        className="card bg-analytics-pastel-diag"
-        style={{ height: CHART_HEIGHT }}
-      >
-        <AreaChartSkeleton height={CHART_HEIGHT} />
+      <div className="card bg-analytics-pastel-diag" style={{ height: SKELETON_HEIGHT }}>
+        <AreaChartSkeleton height={SKELETON_HEIGHT} />
       </div>
     );
   }
@@ -59,48 +56,39 @@ export default function UserAcquisitionSection() {
         />
       </div>
 
-      <div className="card-body">
-        {error ? (
-          <div
-            className="text-sm text-red-500 flex items-center justify-center"
-            style={{ height: CHART_HEIGHT }}
-          >
-            {error.message}
-          </div>
-        ) : hasData && data ? (
-          <LineChart
-            categories={categories}
-            series={series}
-            type="area"
-            height={CHART_HEIGHT}
-            colorsByName={colorsByName}
-            brandAreaGradient
-            showLegend
-            legendPosition="bottom"
-            smooth
-            optionsExtra={{
-              xaxis: {
-                labels: { style: { colors: "#FB923C" } },
-                axisBorder: { color: "#FB923C" },
-                axisTicks: { color: "#FB923C" },
-              },
-              yaxis: {
-                labels: { style: { colors: "#FB923C" } },
-              },
-              grid: {
-                borderColor: "rgba(251, 146, 60, 0.3)",
-              },
-              legend: { show: false },
-            }}
-          />
-        ) : (
-          <div
-            className="text-sm text-gray-400 flex items-center justify-center"
-            style={{ height: CHART_HEIGHT }}
-          >
-            Sin datos en el rango
-          </div>
-        )}
+      {/* El contenedor define el alto; el chart ocupa 100% */}
+      <div className="card-body h-[340px] md:h-[380px] lg:h-[420px]">
+        <div className="h-full min-h-0">
+          {error ? (
+            <div className="text-sm text-red-500 flex items-center justify-center h-full">
+              {error.message}
+            </div>
+          ) : hasData && data ? (
+            <LineChart
+              categories={categories}
+              series={series}
+              type="area"
+              height="100%"
+              colorsByName={colorsByName}
+              brandAreaGradient
+              showLegend={false}
+              smooth
+              optionsExtra={{
+                xaxis: {
+                  labels: { style: { colors: "#FB923C" } },
+                  axisBorder: { color: "#FB923C" },
+                  axisTicks: { color: "#FB923C" },
+                },
+                yaxis: { labels: { style: { colors: "#FB923C" } } },
+                grid: { borderColor: "rgba(251,146,60,0.3)" },
+              }}
+            />
+          ) : (
+            <div className="text-sm text-gray-400 flex items-center justify-center h-full">
+              Sin datos en el rango
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

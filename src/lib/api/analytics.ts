@@ -164,6 +164,10 @@ export type KpiPayload = {
   previous: KpiMetricSet;
   delta: KpiMetricSet;
   deltaPct: KpiDeltaSet;
+  metadata?: {
+    subjectToThresholding: boolean;
+    timeZone?: string | null;
+  };
 };
 
 /* ===================== Payload: User Acquisition ================= */

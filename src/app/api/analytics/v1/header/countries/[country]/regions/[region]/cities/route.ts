@@ -1,4 +1,5 @@
-import { deriveAutoRangeForGranularity } from "@/lib/utils/datetime";
+import type { Granularity } from "@/lib/types";
+import { deriveRangeEndingYesterday } from "@/lib/utils/datetime";
 import {
   getAuth,
   normalizePropertyId,
@@ -6,6 +7,8 @@ import {
 } from "@/lib/utils/ga";
 import { analyticsdata_v1beta, google } from "googleapis";
 import { NextResponse } from "next/server";
+
+export const dynamic = "force-dynamic";
 
 export type CityRow = {
   city: string;
@@ -39,18 +42,15 @@ export async function GET(
     const { searchParams } = new URL(req.url);
     const start = searchParams.get("start") || undefined;
     const end = searchParams.get("end") || undefined;
-    const granularity = (searchParams.get("granularity") || "d") as
-      | "d"
-      | "w"
-      | "m"
-      | "y";
+    const granularity = (searchParams.get("granularity") || "d") as Granularity;
     const limitParam = Number(searchParams.get("limit") || "100");
 
+    // ⬇️ ventana terminando AYER
     const range =
       start && end
         ? { start, end }
         : (() => {
-            const r = deriveAutoRangeForGranularity(granularity);
+            const r = deriveRangeEndingYesterday(granularity);
             return { start: r.startTime, end: r.endTime };
           })();
 

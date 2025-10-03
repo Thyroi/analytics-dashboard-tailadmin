@@ -53,27 +53,22 @@ function PageBody() {
         onRangeChange={setRange}
         onClearRange={clearRange}
       />
-
       {/* KPIs con wrap min 221px */}
       <section>
         <AnalyticsKPISection className="grid gap-6 [grid-template-columns:repeat(auto-fit,minmax(221px,1fr))]" />
       </section>
-
-      {/* Resto del dashboard */}
+      {/* Resto del dashboard
       <section>
         <TopPagesRangeSection />
-      </section>
-
+      </section> */}
       <section className="grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch">
         <UserAcquisitionSection />
         <DevicesOsSection />
         <GenderDonutSection />
       </section>
-
       <section>
         <CustomersDemographicsSection />
       </section>
-
       <section className="space-y-3">
         <AnalyticsByTagSection />
         <AnalyticsByTownSection />

@@ -1,6 +1,6 @@
 "use client";
 
-import { brandAreaFill } from "@/lib/utils/colors"; // ⬅️ NUEVO
+import { brandAreaFill } from "@/lib/utils/colors";
 import type { ApexOptions } from "apexcharts";
 import { useTheme } from "next-themes";
 import dynamic from "next/dynamic";
@@ -33,8 +33,8 @@ type Props = {
   smooth?: boolean;
   optionsExtra?: ApexOptions;
   className?: string;
-  /** Activa el relleno degradado de marca para gráficos de área */
-  brandAreaGradient?: boolean; // ⬅️ NUEVO
+  /** Relleno degradado de marca para gráficos de área */
+  brandAreaGradient?: boolean;
 };
 
 export default function LineChart({
@@ -49,7 +49,7 @@ export default function LineChart({
   smooth = false,
   optionsExtra,
   className = "",
-  brandAreaGradient = false, // ⬅️ NUEVO
+  brandAreaGradient = false,
 }: Props) {
   const { theme } = useTheme();
   const isDark = theme === "dark";
@@ -82,6 +82,11 @@ export default function LineChart({
         };
   }, [type, brandAreaGradient]);
 
+  // Config de leyenda: si está desactivada, no se reserva alto
+  const legendOpts: ApexOptions["legend"] = showLegend
+    ? { show: true, position: legendPosition, labels: { colors: foreColor } }
+    : { show: false, height: 0, offsetY: 0 };
+
   const options: ApexOptions = useMemo(() => {
     const base: ApexOptions = {
       chart: {
@@ -91,7 +96,7 @@ export default function LineChart({
         background: "transparent",
         toolbar: { show: false },
         redrawOnParentResize: true,
-        parentHeightOffset: 0,
+        parentHeightOffset: 0, // no restar header/padding del padre
         foreColor,
       },
       stroke: {
@@ -100,7 +105,7 @@ export default function LineChart({
         dashArray,
       },
       markers: { size: 0, hover: { sizeOffset: 3 } },
-      fill, // ⬅️ usa el fill calculado
+      fill,
       grid: {
         borderColor: gridColor,
         yaxis: { lines: { show: true } },
@@ -129,14 +134,17 @@ export default function LineChart({
         shared: true,
         theme: isDark ? "dark" : "light",
       },
-      legend: {
-        show: showLegend,
-        position: legendPosition,
-        labels: { colors: foreColor },
-      },
+      legend: legendOpts,
       colors,
     };
-    return { ...base, ...(optionsExtra ?? {}) };
+
+    // Merge opcional del consumidor…
+    const merged = { ...base, ...(optionsExtra ?? {}) };
+
+    // …pero si la leyenda está desactivada, aseguramos que no se reserve espacio.
+    if (!showLegend) merged.legend = legendOpts;
+
+    return merged;
   }, [
     axisLabelColor,
     categories,
@@ -145,12 +153,12 @@ export default function LineChart({
     foreColor,
     gridColor,
     isDark,
-    legendPosition,
+    legendOpts,
     optionsExtra,
+    showLegend,
     smooth,
     strokeWidths,
     type,
-    showLegend,
     fill,
   ]);
 
