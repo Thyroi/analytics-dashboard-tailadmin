@@ -1,3 +1,4 @@
+// src/app/api/analytics/v1/header/kpis/route.ts
 import type { KpiPayload } from "@/lib/api/analytics";
 import type { Granularity } from "@/lib/types";
 import {
@@ -11,10 +12,12 @@ import {
   resolvePropertyId,
 } from "@/lib/utils/ga";
 import { analyticsdata_v1beta, google } from "googleapis";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 
+/* ======================= utils fecha ======================= */
 function addDaysUTC(d: Date, days: number) {
   const n = new Date(
     Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())
@@ -32,6 +35,7 @@ function daysInclusive(startISO: string, endISO: string): number {
   return Math.max(1, Math.round(ms / 86400000) + 1);
 }
 
+/* ======================= tipos internos ======================= */
 type Totals = {
   activeUsers: number;
   engagedSessions: number;
@@ -40,20 +44,12 @@ type Totals = {
   averageSessionDuration: number; // segundos
 };
 
-type TotalsWithMeta = {
-  totals: Totals;
-  meta: {
-    subjectToThresholding: boolean;
-    timeZone?: string | null;
-  };
-};
-
 async function queryTotals(
   analytics: analyticsdata_v1beta.Analyticsdata,
   property: string,
   start: string,
   end: string
-): Promise<TotalsWithMeta> {
+): Promise<Totals> {
   const request: analyticsdata_v1beta.Schema$RunReportRequest = {
     dateRanges: [{ startDate: start, endDate: end }],
     metrics: [
@@ -71,36 +67,29 @@ async function queryTotals(
     property,
     requestBody: request,
   });
-  const data = resp.data; // Schema$RunReportResponse
 
-  const row = data.rows?.[0];
+  const row = resp.data.rows?.[0];
   const m = row?.metricValues ?? [];
   const n = (i: number) => Number(m[i]?.value ?? 0);
 
-  const totals: Totals = {
+  return {
     activeUsers: n(0),
     engagedSessions: n(1),
     eventCount: n(2),
     screenPageViews: n(3),
     averageSessionDuration: n(4),
   };
-
-  const meta = {
-    subjectToThresholding: data.metadata?.subjectToThresholding === true,
-    timeZone: data.metadata?.timeZone ?? null,
-  };
-
-  return { totals, meta };
 }
 
-export async function GET(req: Request) {
+/* ======================= handler ======================= */
+export async function GET(req: NextRequest) {
   try {
-    const { searchParams } = new URL(req.url);
-    const startQ = searchParams.get("start") || undefined;
-    const endQ = searchParams.get("end") || undefined;
-    const granularity = (searchParams.get("granularity") || "d") as Granularity;
+    const sp = req.nextUrl.searchParams;
+    const startQ = sp.get("start") || undefined;
+    const endQ = sp.get("end") || undefined;
+    const granularity = (sp.get("granularity") || "d") as Granularity;
 
-    // Rango actual: si llega start/end se usan; si no, preset acabando en AYER
+    // Rango actual: explícito o derivado (terminando AYER)
     const range =
       startQ && endQ
         ? { start: startQ, end: endQ }
@@ -109,24 +98,22 @@ export async function GET(req: Request) {
             return { start: r.startTime, end: r.endTime };
           })();
 
-    // Rango anterior (misma longitud) inmediatamente antes del actual
+    // Rango anterior (misma longitud, inmediatamente anterior)
     const len = daysInclusive(range.start, range.end);
     const curStart = parseISO(range.start);
     const prevEnd = addDaysUTC(curStart, -1);
     const prevStart = addDaysUTC(prevEnd, -(len - 1));
     const compareRange = { start: toISO(prevStart), end: toISO(prevEnd) };
 
+    // Auth + GA4
     const auth = getAuth();
     const analytics = google.analyticsdata({ version: "v1beta", auth });
     const property = normalizePropertyId(resolvePropertyId());
 
-    const [cur, prev] = await Promise.all([
+    const [current, previous] = await Promise.all([
       queryTotals(analytics, property, range.start, range.end),
       queryTotals(analytics, property, compareRange.start, compareRange.end),
     ]);
-
-    const current = cur.totals;
-    const previous = prev.totals;
 
     // Deltas absolutos
     const delta = {
@@ -138,7 +125,7 @@ export async function GET(req: Request) {
         current.averageSessionDuration - previous.averageSessionDuration,
     };
 
-    // Deltas porcentuales
+    // Deltas %
     const pct = (c: number, p: number): number | null =>
       p <= 0 ? (c > 0 ? 1 : null) : c / p - 1;
 
@@ -161,11 +148,6 @@ export async function GET(req: Request) {
       previous,
       delta,
       deltaPct,
-      metadata: {
-        subjectToThresholding:
-          cur.meta.subjectToThresholding || prev.meta.subjectToThresholding,
-        timeZone: cur.meta.timeZone ?? prev.meta.timeZone ?? null,
-      },
     };
 
     return NextResponse.json(payload, { status: 200 });

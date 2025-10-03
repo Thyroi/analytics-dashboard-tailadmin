@@ -1,7 +1,6 @@
-import type { Granularity, DateRange } from "@/lib/types";
 import type { OverviewResponse } from "@/lib/api/analytics";
 import { buildQS, fetchJSON } from "@/lib/api/analytics";
-import { deriveAutoRangeForGranularity, todayUTC } from "@/lib/utils/datetime";
+import type { DateRange, Granularity } from "@/lib/types";
 
 /* ----- tipos mínimos del payload server para normalizar ----- */
 type MetaRangeStartEnd = { start: string; end: string };
@@ -27,11 +26,12 @@ function hasStartEnd(
   return "start" in r && "end" in r;
 }
 
-function normalizeOverviewResponse(input: OverviewResponseServer): OverviewResponse {
-  const range =
-    hasStartEnd(input.meta.range)
-      ? { startTime: input.meta.range.start, endTime: input.meta.range.end }
-      : input.meta.range;
+function normalizeOverviewResponse(
+  input: OverviewResponseServer
+): OverviewResponse {
+  const range = hasStartEnd(input.meta.range)
+    ? { startTime: input.meta.range.start, endTime: input.meta.range.end }
+    : input.meta.range;
 
   return {
     meta: {
@@ -48,22 +48,25 @@ function normalizeOverviewResponse(input: OverviewResponseServer): OverviewRespo
 
 /** GET /api/analytics/v1/overview */
 export async function getOverview(input: {
-  range?: DateRange;        // si no viene => últimos 7 días (rolling)
-  granularity: Granularity; // "d" | "w" | "m" | "y"
+  range?: DateRange; // si no viene => el server deriva (terminando AYER)
+  granularity: Granularity; // "d" | "w" | "m" | "y" (y -> m)
   signal?: AbortSignal;
 }): Promise<OverviewResponse> {
-  // fallback con tus helpers (preserva rolling y presets)
-  const auto = deriveAutoRangeForGranularity("d", todayUTC(), { mode: "rolling" });
-
-  const resolved = input.range?.startTime && input.range?.endTime
-    ? { start: input.range.startTime, end: input.range.endTime }
-    : { start: auto.startTime, end: auto.endTime };
-
-  // Si tu backend aún no soporta 'y', mapeamos a 'm'. Mantén esto si aplica.
+  // El server solo soporta d/w/m; mapeamos 'y' a 'm'
   const g = input.granularity === "y" ? "m" : input.granularity;
 
-  const qs = buildQS({ start: resolved.start, end: resolved.end, granularity: g });
+  // Si NO nos pasan range, NO enviamos start/end => que el server aplique deriveRangeEndingYesterday
+  const qs = buildQS({
+    ...(input.range?.startTime && input.range?.endTime
+      ? { start: input.range.startTime, end: input.range.endTime }
+      : {}),
+    granularity: g,
+  });
+
   const url = `/api/analytics/v1/overview?${qs}`;
-  const raw = await fetchJSON<OverviewResponseServer>(url, { method: "GET", signal: input.signal });
+  const raw = await fetchJSON<OverviewResponseServer>(url, {
+    method: "GET",
+    signal: input.signal,
+  });
   return normalizeOverviewResponse(raw);
 }

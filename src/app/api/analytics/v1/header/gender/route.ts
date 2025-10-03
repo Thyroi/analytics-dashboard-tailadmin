@@ -1,8 +1,20 @@
-import { NextResponse } from "next/server";
-import { google, analyticsdata_v1beta } from "googleapis";
+// src/app/api/analytics/v1/header/gender/route.ts
 import type { DonutDatum, Granularity } from "@/lib/types";
-import { getAuth, normalizePropertyId, resolvePropertyId } from "@/lib/utils/ga";
-import { deriveAutoRangeForGranularity, parseISO, toISO } from "@/lib/utils/datetime";
+import {
+  deriveRangeEndingYesterday,
+  parseISO,
+  toISO,
+} from "@/lib/utils/datetime";
+import {
+  getAuth,
+  normalizePropertyId,
+  resolvePropertyId,
+} from "@/lib/utils/ga";
+import { analyticsdata_v1beta, google } from "googleapis";
+import { NextRequest, NextResponse } from "next/server";
+
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 
 type GenderPayload = {
   range: { start: string; end: string };
@@ -15,57 +27,54 @@ function toSpanishGenderLabel(v: string): string {
   if (k === "male") return "Hombre";
   if (k === "female") return "Mujer";
   if (k === "unknown") return "Desconocido";
-  // fallback si Google añadiera categorías nuevas
   return v;
 }
 
-export async function GET(req: Request) {
+export async function GET(req: NextRequest) {
   try {
-    const { searchParams } = new URL(req.url);
+    const sp = req.nextUrl.searchParams;
 
-    const start = searchParams.get("start") || undefined;
-    const end = searchParams.get("end") || undefined;
-    const gParam = (searchParams.get("granularity") || "d") as Granularity;
+    const start = sp.get("start") || undefined;
+    const end = sp.get("end") || undefined;
+    const g = (sp.get("granularity") || "d") as Granularity;
 
-    const range = start && end
-      ? { start, end }
-      : (() => {
-          const r = deriveAutoRangeForGranularity(gParam);
-          return { start: r.startTime, end: r.endTime };
-        })();
+    // Ventana por defecto: termina AYER (consistente con KPIs y demás endpoints)
+    const range =
+      start && end
+        ? { start, end }
+        : (() => {
+            const r = deriveRangeEndingYesterday(g);
+            return { start: r.startTime, end: r.endTime };
+          })();
 
+    // Auth + GA
     const auth = getAuth();
     const analyticsData = google.analyticsdata({ version: "v1beta", auth });
     const property = normalizePropertyId(resolvePropertyId());
 
+    // Agregado por género dentro del rango (sin dimensión "date")
     const request: analyticsdata_v1beta.Schema$RunReportRequest = {
       dateRanges: [{ startDate: range.start, endDate: range.end }],
-      // userGender + date para filtrar con precisión dentro del rango
-      dimensions: [{ name: "userGender" }, { name: "date" }],
+      dimensions: [{ name: "userGender" }],
       metrics: [{ name: "activeUsers" }],
       orderBys: [{ metric: { metricName: "activeUsers" }, desc: true }],
       keepEmptyRows: false,
-      limit: "100000",
+      limit: "1000",
     };
 
-    const resp = await analyticsData.properties.runReport({ property, requestBody: request });
-    const rows = resp.data.rows ?? [];
+    const resp = await analyticsData.properties.runReport({
+      property,
+      requestBody: request,
+    });
 
-    const startDate = parseISO(range.start);
-    const endDate = parseISO(range.end);
+    const rows = resp.data.rows ?? [];
 
     const acc: Record<string, number> = {};
     for (const r of rows) {
       const rawGender = String(r.dimensionValues?.[0]?.value ?? "unknown");
-      const d = String(r.dimensionValues?.[1]?.value ?? "");
-      if (d.length !== 8) continue;
-      const iso = `${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6, 8)}`;
-      const asDate = parseISO(iso);
-      if (asDate < startDate || asDate > endDate) continue;
-
-      const v = Number(r.metricValues?.[0]?.value ?? 0);
+      const value = Number(r.metricValues?.[0]?.value ?? 0) || 0;
       const label = toSpanishGenderLabel(rawGender);
-      acc[label] = (acc[label] ?? 0) + v;
+      acc[label] = (acc[label] ?? 0) + value;
     }
 
     const items: DonutDatum[] = Object.entries(acc)
@@ -73,7 +82,10 @@ export async function GET(req: Request) {
       .sort((a, b) => b.value - a.value);
 
     const payload: GenderPayload = {
-      range: { start: toISO(startDate), end: toISO(endDate) },
+      range: {
+        start: toISO(parseISO(range.start)),
+        end: toISO(parseISO(range.end)),
+      },
       property,
       items,
     };

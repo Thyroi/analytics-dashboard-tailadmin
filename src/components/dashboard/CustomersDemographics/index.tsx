@@ -27,16 +27,20 @@ export default function CustomersDemographics({
       <div className="card-header">
         <Header title={title} Icon={MapPinned} titleSize="xs" />
       </div>
+
       <div className="card-body">
         <MapPanel markers={markers} height={mapHeight} />
 
         <div className="space-y-4">
           {countries.map((country) => {
             const countryDisabled = !country.code || isUnknown(country.name);
+            const rowKey =
+              country.code ?? `unknown:${country.name ?? "unknown"}`;
+
             return (
-              <Fragment key={country.code}>
+              <Fragment key={rowKey}>
                 <CountryRow
-                  code={country.code}
+                  code={country.code ?? ""}
                   name={country.name}
                   users={country.users}
                   pctNum={country.pctNum}
@@ -44,15 +48,13 @@ export default function CustomersDemographics({
                   isOpen={country.isOpen}
                   disabled={countryDisabled}
                   onToggle={() => {
-                    if (!countryDisabled) onToggleCountry(country.code);
+                    if (!countryDisabled) onToggleCountry(country.code ?? "");
                   }}
                 />
 
-                {country.isOpen && (
-                  <div
-                    id={`regions-${country.code}`}
-                    className="ml-6 mr-2 mb-2"
-                  >
+                {/* ⬇️ Solo mostramos hijos si está abierto Y NO está deshabilitado */}
+                {country.isOpen && !countryDisabled && (
+                  <div id={`regions-${country.code}`} className="ml-6 mr-2 mb-2">
                     {country.regionsLoading ? (
                       <CityListSkeleton rows={4} className="py-1" />
                     ) : country.regionsError ? (
@@ -68,29 +70,28 @@ export default function CustomersDemographics({
                         {country.regions!.map((r) => {
                           const regionDisabled = isUnknown(r.name);
                           return (
-                            <Fragment key={`${country.code}-${r.name}`}>
+                            <Fragment key={`${rowKey}-${r.name}`}>
                               <RegionRow
                                 region={r.name}
                                 users={r.users}
                                 pctNum={r.pctNum}
                                 pctLabel={r.pctLabel}
                                 isOpen={r.isOpen}
+                                disabled={regionDisabled}
                                 onToggle={() => {
                                   if (!regionDisabled)
-                                    onToggleRegion(country.code, r.name);
+                                    onToggleRegion(country.code ?? "", r.name);
                                 }}
                               />
 
-                              {r.isOpen && (
+                              {/* idem: hijos sólo si abierto y NO deshabilitado */}
+                              {r.isOpen && !regionDisabled && (
                                 <div
                                   id={`cities-${country.code}-${r.name}`}
                                   className="ml-6 mr-2 mb-2"
                                 >
                                   {r.citiesLoading ? (
-                                    <CityListSkeleton
-                                      rows={4}
-                                      className="py-1"
-                                    />
+                                    <CityListSkeleton rows={4} className="py-1" />
                                   ) : r.citiesError ? (
                                     <div className="text-[11px] text-red-500 py-1">
                                       {r.citiesError}
@@ -103,7 +104,7 @@ export default function CustomersDemographics({
                                     <div className="divide-y divide-white dark:divide-white/10">
                                       {r.cities!.map((c) => (
                                         <CityRow
-                                          key={`${country.code}-${r.name}-${c.name}`}
+                                          key={`${rowKey}-${r.name}-${c.name}`}
                                           city={c.name}
                                           users={c.users}
                                           pctNum={c.pctNum}

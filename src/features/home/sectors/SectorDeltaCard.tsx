@@ -4,7 +4,8 @@ import React, { useMemo } from "react";
 
 type BaseProps = {
   title: string;
-  deltaPct: number;
+  /** Ahora puede ser null si no hay datos suficientes en el período previo */
+  deltaPct: number | null;
   className?: string;
   ringSize?: number;
   ringThickness?: number;
@@ -48,17 +49,27 @@ export default function SectorDeltaCard(props: Props) {
     isTown = false,
   } = props;
 
-  const isUp = deltaPct >= 0;
   const clickable = typeof onClick === "function";
 
+  // Normalizamos: hay delta si es número finito
+  const hasDelta = typeof deltaPct === "number" && Number.isFinite(deltaPct);
+  const deltaNum = hasDelta ? (deltaPct as number) : 0;
+  const isUp = hasDelta ? deltaNum >= 0 : null;
+
   const { deg, ringColor, trackColor, innerSize } = useMemo(() => {
-    const progress = Math.max(0, Math.min(100, Math.abs(deltaPct)));
+    const progress = hasDelta
+      ? Math.max(0, Math.min(100, Math.abs(deltaNum)))
+      : 0;
     const deg = progress * 3.6;
-    const ringColor = isUp ? "#35C759" : "#902919";
-    const trackColor = "rgba(0,0,0,0)";
+    const ringColor = hasDelta
+      ? deltaNum >= 0
+        ? "#35C759"
+        : "#902919"
+      : "#9CA3AF"; // gris si no hay datos
+    const trackColor = "rgba(0,0,0,0)"; // sin track visible para mantener estética
     const innerSize = ringSize - ringThickness * 2;
     return { deg, ringColor, trackColor, innerSize };
-  }, [deltaPct, isUp, ringSize, ringThickness]);
+  }, [hasDelta, deltaNum, ringSize, ringThickness]);
 
   const baseClasses =
     "box-border w-full h-full rounded-2xl border bg-white dark:bg-[#0c1116] shadow-sm " +
@@ -68,13 +79,24 @@ export default function SectorDeltaCard(props: Props) {
       "focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-1 " +
       "focus-visible:ring-offset-white dark:focus-visible:ring-offset-[#0c1116] appearance-none"
     : "";
-  const selectedRing = expanded ? "ring-2 ring-emerald-400 ring-offset-1" : "ring-0";
+  const selectedRing = expanded
+    ? "ring-2 ring-emerald-400 ring-offset-1"
+    : "ring-0";
 
   const Wrapper: React.ElementType = clickable ? "button" : "div";
 
   // Colores del centro y del icono según variante
   const innerBg = isTown ? "#FFF1D3" : "#E64E3C";
   const iconColor = isTown ? "#E64E3C" : "#FFFFFF";
+
+  const deltaLabel = hasDelta
+    ? formatDeltaPct(deltaNum)
+    : "Sin datos suficientes";
+  const deltaClass = hasDelta
+    ? isUp
+      ? "text-[#35C759]"
+      : "text-[#E74C3C]"
+    : "text-gray-400";
 
   return (
     <Wrapper
@@ -83,6 +105,8 @@ export default function SectorDeltaCard(props: Props) {
       aria-pressed={clickable ? expanded : undefined}
       className={`${baseClasses} ${interactiveClasses} ${selectedRing} ${className}`}
       style={{ height, minHeight: height }}
+      aria-label={`${title}: ${deltaLabel}`}
+      title={`${title}: ${deltaLabel}`}
     >
       {/* 3 filas: título (42px), aro (flex), delta (52px) */}
       <div className="grid h-full grid-rows-[42px_1fr_52px] px-3 py-3">
@@ -97,7 +121,6 @@ export default function SectorDeltaCard(props: Props) {
             overflow: "hidden",
             textOverflow: "ellipsis",
           }}
-          title={title}
         >
           {title}
         </div>
@@ -128,7 +151,10 @@ export default function SectorDeltaCard(props: Props) {
                   draggable={false}
                 />
               ) : (
-                <props.Icon className="h-12 w-12" style={{ color: iconColor }} />
+                <props.Icon
+                  className="h-12 w-12"
+                  style={{ color: iconColor }}
+                />
               )}
             </div>
           </div>
@@ -136,11 +162,13 @@ export default function SectorDeltaCard(props: Props) {
 
         {/* Delta */}
         <div
-          className={`self-end text-center text-[28px] font-extrabold ${
-            isUp ? "text-[#35C759]" : "text-[#E74C3C]"
-          }`}
+          className={`self-end text-center font-extrabold ${deltaClass}`}
+          style={{
+            fontSize: hasDelta ? 28 : 14,
+            lineHeight: hasDelta ? "28px" : "18px",
+          }}
         >
-          {formatDeltaPct(deltaPct)}
+          {deltaLabel}
         </div>
       </div>
     </Wrapper>

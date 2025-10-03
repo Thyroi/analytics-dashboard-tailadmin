@@ -1,12 +1,8 @@
 import type { Granularity } from "@/lib/types";
 import { deriveRangeEndingYesterday } from "@/lib/utils/datetime";
-import {
-  getAuth,
-  normalizePropertyId,
-  resolvePropertyId,
-} from "@/lib/utils/ga";
+import { getAuth, normalizePropertyId, resolvePropertyId } from "@/lib/utils/ga";
 import { analyticsdata_v1beta, google } from "googleapis";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
@@ -24,18 +20,22 @@ export type CountriesPayload = {
   rows: CountryRow[];
 };
 
-export async function GET(req: Request) {
+function clampLimit(v: string | null, fallback = 100): number {
+  const n = Number(v ?? `${fallback}`);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.max(1, Math.min(5000, Math.floor(n)));
+}
+
+export async function GET(req: NextRequest) {
   try {
-    const { searchParams } = new URL(req.url);
+    const sp = req.nextUrl.searchParams;
 
-    const start = searchParams.get("start") || undefined;
-    const end = searchParams.get("end") || undefined;
-    const granularity = (searchParams.get("granularity") || "d") as Granularity;
-    const limitParam = Math.max(
-      1,
-      Math.min(5000, Number(searchParams.get("limit") || "100"))
-    );
+    const start = sp.get("start") || undefined;
+    const end = sp.get("end") || undefined;
+    const granularity = (sp.get("granularity") || "d") as Granularity;
+    const limitParam = clampLimit(sp.get("limit"), 100);
 
+    // Ventana terminando AYER (para 'd' es solo AYER)
     const range =
       start && end
         ? { start, end }
@@ -44,7 +44,7 @@ export async function GET(req: Request) {
             return { start: r.startTime, end: r.endTime };
           })();
 
-    // Auth + GA
+    // Auth + GA4
     const auth = getAuth();
     const analytics = google.analyticsdata({ version: "v1beta", auth });
     const property = normalizePropertyId(resolvePropertyId());
@@ -88,15 +88,14 @@ export async function GET(req: Request) {
       return { country, code, customers };
     });
 
-    const top = rows
+    const top: CountryRow[] = rows
       .sort((a, b) => b.customers - a.customers)
       .slice(0, limitParam)
       .map((x) => ({
         country: x.country,
         code: x.code,
         customers: x.customers,
-        pct:
-          globalTotal > 0 ? Math.round((x.customers / globalTotal) * 100) : 0,
+        pct: globalTotal > 0 ? Math.round((x.customers / globalTotal) * 100) : 0,
       }));
 
     const payload: CountriesPayload = {

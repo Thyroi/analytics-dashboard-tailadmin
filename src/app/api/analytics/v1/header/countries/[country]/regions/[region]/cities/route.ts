@@ -1,10 +1,6 @@
 import type { Granularity } from "@/lib/types";
 import { deriveRangeEndingYesterday } from "@/lib/utils/datetime";
-import {
-  getAuth,
-  normalizePropertyId,
-  resolvePropertyId,
-} from "@/lib/utils/ga";
+import { getAuth, normalizePropertyId, resolvePropertyId } from "@/lib/utils/ga";
 import { analyticsdata_v1beta, google } from "googleapis";
 import { NextResponse } from "next/server";
 
@@ -25,13 +21,22 @@ export type CitiesPayload = {
   rows: CityRow[];
 };
 
-export async function GET(
-  req: Request,
-  { params }: { params: { country: string; region: string } }
-) {
+export async function GET(req: Request) {
   try {
-    const country = (params.country || "").toUpperCase();
-    const region = decodeURIComponent(params.region || "");
+    const url = new URL(req.url);
+    const { pathname, searchParams } = url;
+
+    // Extraemos params del pathname para evitar tipar el segundo argumento del handler
+    // Coincide: /api/analytics/v1/header/countries/{country}/regions/{region}/cities
+    const m = pathname.match(
+      /\/api\/analytics\/v1\/header\/countries\/([^/]+)\/regions\/([^/]+)\/cities\/?$/
+    );
+    if (!m) {
+      return NextResponse.json({ error: "Ruta inválida" }, { status: 400 });
+    }
+
+    const country = decodeURIComponent(m[1] ?? "").toUpperCase();
+    const region = decodeURIComponent(m[2] ?? "");
     if (!country || country.length !== 2 || !region) {
       return NextResponse.json(
         { error: "country (ISO-2) y region son requeridos" },
@@ -39,13 +44,11 @@ export async function GET(
       );
     }
 
-    const { searchParams } = new URL(req.url);
     const start = searchParams.get("start") || undefined;
     const end = searchParams.get("end") || undefined;
     const granularity = (searchParams.get("granularity") || "d") as Granularity;
     const limitParam = Number(searchParams.get("limit") || "100");
 
-    // ⬇️ ventana terminando AYER
     const range =
       start && end
         ? { start, end }
@@ -54,6 +57,7 @@ export async function GET(
             return { start: r.startTime, end: r.endTime };
           })();
 
+    // Auth + GA4
     const auth = getAuth();
     const analytics = google.analyticsdata({ version: "v1beta", auth });
     const property = normalizePropertyId(resolvePropertyId());
@@ -66,15 +70,8 @@ export async function GET(
       dimensionFilter: {
         andGroup: {
           expressions: [
-            {
-              filter: {
-                fieldName: "countryId",
-                stringFilter: { value: country },
-              },
-            },
-            {
-              filter: { fieldName: "region", stringFilter: { value: region } },
-            },
+            { filter: { fieldName: "countryId", stringFilter: { value: country } } },
+            { filter: { fieldName: "region", stringFilter: { value: region } } },
           ],
         },
       },
@@ -86,8 +83,7 @@ export async function GET(
       requestBody: regionTotalReq,
     });
     const totalRegion =
-      Number(regionTotalResp.data.rows?.[0]?.metricValues?.[0]?.value ?? 0) ||
-      0;
+      Number(regionTotalResp.data.rows?.[0]?.metricValues?.[0]?.value ?? 0) || 0;
 
     // 2) Ciudades dentro de la región
     const citiesReq: analyticsdata_v1beta.Schema$RunReportRequest = {
@@ -97,15 +93,8 @@ export async function GET(
       dimensionFilter: {
         andGroup: {
           expressions: [
-            {
-              filter: {
-                fieldName: "countryId",
-                stringFilter: { value: country },
-              },
-            },
-            {
-              filter: { fieldName: "region", stringFilter: { value: region } },
-            },
+            { filter: { fieldName: "countryId", stringFilter: { value: country } } },
+            { filter: { fieldName: "region", stringFilter: { value: region } } },
           ],
         },
       },
@@ -137,6 +126,7 @@ export async function GET(
       total: totalRegion,
       rows: parsed,
     };
+
     return NextResponse.json(payload, { status: 200 });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : "Unknown error";

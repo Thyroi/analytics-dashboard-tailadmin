@@ -15,6 +15,7 @@ import { analyticsdata_v1beta, google } from "googleapis";
 import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 
 type SeriesItem = { name: string; data: number[] };
 type AcquisitionRangePayload = {

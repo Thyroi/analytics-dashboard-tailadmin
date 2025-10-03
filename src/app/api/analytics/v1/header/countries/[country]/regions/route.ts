@@ -1,10 +1,7 @@
+// src/app/api/analytics/v1/header/countries/[country]/regions/route.ts
 import type { Granularity } from "@/lib/types";
 import { deriveRangeEndingYesterday } from "@/lib/utils/datetime";
-import {
-  getAuth,
-  normalizePropertyId,
-  resolvePropertyId,
-} from "@/lib/utils/ga";
+import { getAuth, normalizePropertyId, resolvePropertyId } from "@/lib/utils/ga";
 import { analyticsdata_v1beta, google } from "googleapis";
 import { NextResponse } from "next/server";
 
@@ -25,12 +22,20 @@ export type RegionsPayload = {
   rows: RegionRow[];
 };
 
-export async function GET(
-  req: Request,
-  { params }: { params: { country: string } }
-) {
+export async function GET(req: Request) {
   try {
-    const country = (params.country || "").toUpperCase();
+    const url = new URL(req.url);
+    const { pathname, searchParams } = url;
+
+    // /api/analytics/v1/header/countries/{country}/regions
+    const m = pathname.match(
+      /\/api\/analytics\/v1\/header\/countries\/([^/]+)\/regions\/?$/
+    );
+    if (!m) {
+      return NextResponse.json({ error: "Ruta inválida" }, { status: 400 });
+    }
+
+    const country = decodeURIComponent(m[1] ?? "").toUpperCase();
     if (!country || country.length !== 2) {
       return NextResponse.json(
         { error: "country (ISO-2) es requerido" },
@@ -38,13 +43,12 @@ export async function GET(
       );
     }
 
-    const { searchParams } = new URL(req.url);
     const start = searchParams.get("start") || undefined;
     const end = searchParams.get("end") || undefined;
     const granularity = (searchParams.get("granularity") || "d") as Granularity;
     const limitParam = Number(searchParams.get("limit") || "100");
 
-    // ⬇️ ventana terminando AYER
+    // Ventana terminando AYER
     const range =
       start && end
         ? { start, end }
@@ -53,6 +57,7 @@ export async function GET(
             return { start: r.startTime, end: r.endTime };
           })();
 
+    // Auth + GA4
     const auth = getAuth();
     const analytics = google.analyticsdata({ version: "v1beta", auth });
     const property = normalizePropertyId(resolvePropertyId());
@@ -111,6 +116,7 @@ export async function GET(
       total,
       rows: parsed,
     };
+
     return NextResponse.json(payload, { status: 200 });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : "Unknown error";

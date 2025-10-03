@@ -3,8 +3,14 @@ import { NextResponse } from "next/server";
 import { google, analyticsdata_v1beta } from "googleapis";
 import type { Granularity } from "@/lib/types";
 
+import {
+  toISO,
+  parseISO,
+  addDaysUTC,
+  todayUTC,
+  deriveRangeEndingYesterday,
+} from "@/lib/utils/datetime";
 import { getAuth, normalizePropertyId, resolvePropertyId } from "@/lib/utils/ga";
-import { toISO, parseISO, addDaysUTC, deriveAutoRangeForGranularity } from "@/lib/utils/datetime";
 
 /* ================= Tipos de respuesta ================= */
 type Point = { label: string; value: number };
@@ -41,7 +47,7 @@ function listDatesISO(startISO: string, endISO: string): string[] {
 // ISO week helpers: YYYY-WW
 function isoWeek(date: Date): { year: number; week: number } {
   const d = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
-  d.setUTCDate(d.getUTCDate() + 4 - ((d.getUTCDay() || 7))); // jueves de esa semana
+  d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7)); // jueves de esa semana
   const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
   const week = Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
   return { year: d.getUTCFullYear(), week };
@@ -50,7 +56,6 @@ function weekSpanLabels(startISO: string, endISO: string): string[] {
   const s = parseISO(startISO);
   const e = parseISO(endISO);
   const labels = new Set<string>();
-  // avanzamos por días pero registramos el bucket de semana (evita huecos si el rango no es múltiplo de 7)
   for (let d = new Date(s); d <= e; d = addDaysUTC(d, 1)) {
     const { year, week } = isoWeek(d);
     labels.add(`${year}-W${String(week).padStart(2, "0")}`);
@@ -84,9 +89,15 @@ export async function GET(req: Request) {
     const granularity: Granularity =
       granParam === "w" ? "w" : granParam === "m" ? "m" : "d";
 
-    // Rango: si no pasan start/end, usamos preset rolling según granularidad
-    const auto = deriveAutoRangeForGranularity(granularity);
-    const range = start && end ? { start, end } : { start: auto.startTime, end: auto.endTime };
+    // Rango: si no pasan start/end, usamos ventana que TERMINA AYER.
+    // Para 'd' queremos 7 días terminando AYER (dayAsWeek=true) para tener serie, no 1 solo punto.
+    const range =
+      start && end
+        ? { start, end }
+        : (() => {
+            const r = deriveRangeEndingYesterday(granularity, todayUTC());
+            return { start: r.startTime, end: r.endTime };
+          })();
 
     // Auth + GA
     const auth = getAuth();

@@ -3,15 +3,18 @@
 import ReactCountryFlag from "react-country-flag";
 
 type Props = {
-  code: string;
+  code: string | null; // ahora permite null
   name: string;
   users: number;
-  pctNum: number;   // 0..100
+  pctNum: number; // 0..100
   pctLabel: string; // "xx.x"
   isOpen: boolean;
   onToggle: () => void;
-  disabled?: boolean; // ← NUEVO
+  disabled?: boolean; // ignora click + cursor normal
 };
+
+const isUnknown = (code: string | null, name: string) =>
+  !code || /\b(not set|unknown)\b/i.test(name);
 
 export default function CountryRow({
   code,
@@ -19,36 +22,51 @@ export default function CountryRow({
   users,
   pctNum,
   pctLabel,
-  isOpen,
+  isOpen, // (se sigue recibiendo aunque no se use aquí)
   onToggle,
   disabled = false,
 }: Props) {
-  const handleClick = () => {
-    if (!disabled) onToggle();
-  };
+  const unknown = isUnknown(code, name);
+
+  const Flag = unknown ? (
+    <span
+      title={name}
+      aria-label="Ubicación no establecida"
+      className="inline-flex items-center justify-center"
+      style={{ width: 28, height: 20 }}
+    >
+      {/* Mantiene el tamaño del “flag” */}
+      <span style={{ fontSize: 16, lineHeight: 1 }}>🔴</span>
+    </span>
+  ) : (
+    <ReactCountryFlag
+      svg
+      countryCode={code!}
+      style={{ width: 28, height: 20, borderRadius: 4 }}
+      title={name}
+    />
+  );
+
+  const actuallyDisabled = disabled || unknown;
 
   return (
     <button
       type="button"
-      onClick={handleClick}
-      className={[
-        "w-full flex items-center gap-3",
-        "rounded-2xl border border-gray-200 dark:border-white/10",
-        "bg-white dark:bg-white/[0.06] shadow-sm px-3 py-2",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-400/40",
-        disabled ? "cursor-default" : "cursor-pointer",
-      ].join(" ")}
-      aria-expanded={isOpen}
-      aria-controls={`regions-${code}`}
-      aria-disabled={disabled}
+      onClick={actuallyDisabled ? undefined : onToggle}
+      className={`
+        w-full flex items-center gap-3
+        rounded-2xl border border-gray-200 dark:border-white/10
+        bg-white dark:bg-white/[0.06]
+        shadow-sm px-3 py-2
+        focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-400/40
+        ${actuallyDisabled ? "cursor-default" : "cursor-pointer"}
+      `}
+      aria-expanded={!actuallyDisabled && isOpen}
+      aria-disabled={actuallyDisabled}
+      aria-controls={`regions-${code ?? "unknown"}`}
     >
       <div className="flex min-w-0 flex-1 items-center gap-3">
-        <ReactCountryFlag
-          svg
-          countryCode={code}
-          style={{ width: "28px", height: "20px", borderRadius: 4 }}
-          title={name}
-        />
+        {Flag}
         <div className="min-w-0 text-left">
           <div className="truncate font-medium text-gray-800 dark:text-white/90">
             {name}

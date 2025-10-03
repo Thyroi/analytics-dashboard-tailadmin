@@ -1,11 +1,11 @@
-import type { MapMarker } from "@/components/charts/WorldBubbleMap";
-import type { CountriesPayload } from "@/app/api/analytics/v1/header/countries/route";
-import type { RegionsPayload } from "@/app/api/analytics/v1/header/countries/[country]/regions/route";
 import type { CitiesPayload } from "@/app/api/analytics/v1/header/countries/[country]/regions/[region]/cities/route";
+import type { RegionsPayload } from "@/app/api/analytics/v1/header/countries/[country]/regions/route";
+import type { CountriesPayload } from "@/app/api/analytics/v1/header/countries/route";
+import type { MapMarker } from "@/components/charts/WorldBubbleMap";
 import type {
+  CityView,
   CountryView,
   RegionView,
-  CityView,
 } from "@/components/dashboard/CustomersDemographics/types";
 
 /** Trunca a 1 decimal sin redondear (4.19 -> 4.1) */
@@ -26,6 +26,8 @@ export function selectMapMarkers(
 ): MapMarker[] {
   if (!data) return [];
   return data.rows.reduce<MapMarker[]>((acc, r) => {
+    // code puede ser null para Unknown/(not set) → no ponemos marcador
+    if (!r.code) return acc;
     const c = centroids[r.code];
     if (!c) return acc;
     acc.push({
@@ -47,7 +49,13 @@ export function selectCountriesView(args: {
   expandedCountry: string | null;
   expandedRegion: string | null;
 }): CountryView[] {
-  const { countriesData, regionsData, citiesData, expandedCountry, expandedRegion } = args;
+  const {
+    countriesData,
+    regionsData,
+    citiesData,
+    expandedCountry,
+    expandedRegion,
+  } = args;
   if (!countriesData) return [];
 
   const totalCountry = countriesData.total;
@@ -58,7 +66,10 @@ export function selectCountriesView(args: {
     .slice(0, 6);
 
   return top.map<CountryView>((c) => {
-    const openCountry = expandedCountry === c.code;
+    // Normalizamos code a string para cuadrar con CountryView
+    // "" indica "Unknown/(not set)" y además lo hace fácil de marcar como disabled desde el componente
+    const code = c.code ?? "";
+    const openCountry = code !== "" && expandedCountry === code;
     const pCountry = pct1(c.customers, totalCountry);
 
     let regions: RegionView[] | undefined;
@@ -66,9 +77,9 @@ export function selectCountriesView(args: {
     let regionsError: string | null = null;
 
     if (openCountry) {
-      // Si regionsData corresponde al país expandido, armamos
       const rt = regionsData?.total ?? 0;
-      regionsLoading = regionsData === null; // el Section decide el flag real si quiere
+      // Nota: si tu hook usa undefined cuando está deshabilitado, puedes ajustar este flag
+      regionsLoading = regionsData === null;
       regionsError = null;
 
       if (regionsData && rt >= 0) {
@@ -82,7 +93,7 @@ export function selectCountriesView(args: {
 
           if (openRegion) {
             const ct = citiesData?.total ?? 0;
-            citiesLoading = citiesData === null; // idem comentario arriba
+            citiesLoading = citiesData === null;
             citiesError = null;
 
             if (citiesData && ct >= 0) {
@@ -113,7 +124,7 @@ export function selectCountriesView(args: {
     }
 
     return {
-      code: c.code,
+      code, // ← siempre string ("" para Unknown)
       name: c.country,
       users: c.customers,
       pctNum: pCountry.n,
