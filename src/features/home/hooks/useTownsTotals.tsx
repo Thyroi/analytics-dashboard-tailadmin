@@ -1,3 +1,4 @@
+// src/features/home/hooks/useTownsTotals.ts
 "use client";
 
 import {
@@ -17,18 +18,21 @@ export type TownDelta = {
   deltaPct: number | null;
 };
 
-type LoadingState = { status: "idle" | "loading" };
 type ReadyState = {
   status: "ready";
   data: TownsTotalsUIResponse;
   items: TownDelta[];
 };
 type ErrorState = { status: "error"; message: string };
-type State = LoadingState | ReadyState | ErrorState;
 
 export function useTownsTotals(granularity: Granularity, endISO?: string) {
-  const [state, setState] = useState<State>({ status: "idle" });
+  const [ready, setReady] = useState<ReadyState | null>(null);
+  const [error, setError] = useState<ErrorState | null>(null);
+  const [isInitialLoading, setIsInitialLoading] = useState(false);
+  const [isFetching, setIsFetching] = useState(false);
+
   const abortRef = useRef<AbortController | null>(null);
+  const cacheRef = useRef<ReadyState | null>(null);
 
   const key = useMemo(
     () => `${granularity}|${endISO ?? ""}`,
@@ -40,7 +44,13 @@ export function useTownsTotals(granularity: Granularity, endISO?: string) {
     const ac = new AbortController();
     abortRef.current = ac;
 
-    setState({ status: "loading" });
+    setError(null);
+    const hasCache = cacheRef.current !== null;
+    if (!hasCache) {
+      setIsInitialLoading(true);
+    } else {
+      setIsFetching(true);
+    }
 
     try {
       const res = await getTownsTotals({
@@ -60,14 +70,21 @@ export function useTownsTotals(granularity: Granularity, endISO?: string) {
             : null,
       }));
 
-      setState({ status: "ready", data: res, items });
+      const nextReady: ReadyState = { status: "ready", data: res, items };
+      cacheRef.current = nextReady;
+      setReady(nextReady);
     } catch (err: unknown) {
       if (ac.signal.aborted) return;
-      const message =
-        err instanceof Error
-          ? err.message
-          : "Unknown error fetching towns totals";
-      setState({ status: "error", message });
+      setError({
+        status: "error",
+        message:
+          err instanceof Error
+            ? err.message
+            : "Unknown error fetching towns totals",
+      });
+    } finally {
+      setIsInitialLoading(false);
+      setIsFetching(false);
     }
   }, [granularity, endISO]);
 
@@ -76,18 +93,26 @@ export function useTownsTotals(granularity: Granularity, endISO?: string) {
     return () => abortRef.current?.abort();
   }, [key, load]);
 
-  const ids = useMemo(() => {
-    if (state.status !== "ready") return [] as TownId[];
-    return state.items.map((i) => i.id);
-  }, [state]);
+  const ids = useMemo<TownId[]>(
+    () => ready?.items.map((i) => i.id) ?? [],
+    [ready]
+  );
 
-  const itemsById = useMemo(() => {
-    if (state.status !== "ready") return {} as Record<TownId, TownDelta>;
-    return Object.fromEntries(state.items.map((i) => [i.id, i])) as Record<
+  const itemsById = useMemo<Record<TownId, TownDelta>>(() => {
+    if (!ready) return {} as Record<TownId, TownDelta>;
+    return Object.fromEntries(ready.items.map((i) => [i.id, i])) as Record<
       TownId,
       TownDelta
     >;
-  }, [state]);
+  }, [ready]);
 
-  return { state, ids, itemsById, refetch: load };
+  return {
+    state: ready ?? ({ status: "loading" } as const),
+    ids,
+    itemsById,
+    isInitialLoading,
+    isFetching,
+    error,
+    refetch: load,
+  };
 }

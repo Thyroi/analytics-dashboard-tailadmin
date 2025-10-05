@@ -1,3 +1,4 @@
+// src/features/home/hooks/useCategoriesTotals.ts
 "use client";
 
 import {
@@ -15,23 +16,19 @@ type ReadyState = {
   ids: CategoryId[];
   itemsById: Record<
     CategoryId,
-    {
-      title: string;
-      total: number;
-      /** Puede ser null cuando no hay base de comparación */
-      deltaPct: number | null;
-    }
+    { title: string; total: number; deltaPct: number | null }
   >;
 };
-type LoadingState = { status: "idle" | "loading" };
-type ErrorState = { status: "error"; error: Error };
-type State = ReadyState | LoadingState | ErrorState;
 
 export function useCategoriesTotals(granularity: Granularity, endISO?: string) {
-  const [state, setState] = useState<State>({ status: "idle" });
-  const abortRef = useRef<AbortController | null>(null);
+  const [ready, setReady] = useState<ReadyState | null>(null);
+  const [error, setError] = useState<Error | null>(null);
+  const [isInitialLoading, setIsInitialLoading] = useState<boolean>(false);
+  const [isFetching, setIsFetching] = useState<boolean>(false);
 
-  // clave incluye endISO para refetch al cambiar rango
+  const abortRef = useRef<AbortController | null>(null);
+  const cacheRef = useRef<ReadyState | null>(null);
+
   const key = useMemo(
     () => `${granularity}|${endISO ?? ""}`,
     [granularity, endISO]
@@ -41,8 +38,14 @@ export function useCategoriesTotals(granularity: Granularity, endISO?: string) {
     abortRef.current?.abort();
     const ac = new AbortController();
     abortRef.current = ac;
+    setError(null);
 
-    setState({ status: "loading" });
+    const hasCache = cacheRef.current !== null;
+    if (!hasCache) {
+      setIsInitialLoading(true);
+    } else {
+      setIsFetching(true); // revalidando (mantener datos previos)
+    }
 
     try {
       const data = await getCategoriesTotals(granularity, endISO);
@@ -67,11 +70,16 @@ export function useCategoriesTotals(granularity: Granularity, endISO?: string) {
         {} as ReadyState["itemsById"]
       );
 
-      setState({ status: "ready", data, ids, itemsById });
+      const nextReady: ReadyState = { status: "ready", data, ids, itemsById };
+      cacheRef.current = nextReady;
+      setReady(nextReady);
     } catch (e) {
       if (ac.signal.aborted) return;
       const err = e instanceof Error ? e : new Error(String(e));
-      setState({ status: "error", error: err });
+      setError(err);
+    } finally {
+      setIsInitialLoading(false);
+      setIsFetching(false);
     }
   }, [granularity, endISO]);
 
@@ -80,20 +88,16 @@ export function useCategoriesTotals(granularity: Granularity, endISO?: string) {
     return () => abortRef.current?.abort();
   }, [key, load]);
 
-  const isLoading = state.status === "loading";
-  const error = state.status === "error" ? state.error : null;
-
-  const ids = state.status === "ready" ? state.ids : [];
-  const itemsById =
-    state.status === "ready"
-      ? state.itemsById
-      : ({} as ReadyState["itemsById"]);
+  const ids = ready?.ids ?? [];
+  const itemsById = (ready?.itemsById ??
+    ({} as ReadyState["itemsById"])) as ReadyState["itemsById"];
 
   return {
-    state,
+    state: ready ?? ({ status: "loading" } as const),
     ids,
     itemsById,
-    isLoading,
+    isInitialLoading,
+    isFetching,
     error,
     refetch: load,
   };

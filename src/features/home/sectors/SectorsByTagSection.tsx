@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
-import type { Granularity } from "@/lib/types";
-import SectorsGrid from "@/features/home/sectors/SectorsGrid";
 import { useCategoriesTotals } from "@/features/home/hooks/useCategoriesTotals";
-import type { CategoryId } from "@/lib/taxonomy/categories";
 import { useCategoryDetails } from "@/features/home/hooks/useCategoryDetails";
+import SectorsGrid from "@/features/home/sectors/SectorsGrid";
+import type { CategoryId } from "@/lib/taxonomy/categories";
+import { CATEGORY_ID_ORDER } from "@/lib/taxonomy/categories";
+import type { Granularity } from "@/lib/types";
+import { useMemo, useState } from "react";
 
 const GRANULARITIES: Granularity[] = ["d", "w", "m", "y"];
 
@@ -14,24 +15,28 @@ export default function SectorsByTagSection() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const { state, ids, itemsById } = useCategoriesTotals(granularity);
+  const displayedIds = useMemo<string[]>(
+    () =>
+      state.status === "ready" ? (ids as string[]) : [...CATEGORY_ID_ORDER],
+    [state.status, ids]
+  );
 
-  // detalles (cuando hay expandido)
   const catId = expandedId as CategoryId | null;
   const { series, donutData } = useCategoryDetails(
     catId ?? ("naturaleza" as CategoryId),
     granularity
   );
 
-  // ⬇️ PRESERVA null – no lo conviertas a 0
   const getDeltaPctFor = (id: string) =>
     state.status === "ready"
-      ? (itemsById[id as CategoryId]?.deltaPct ?? null)
+      ? itemsById[id as CategoryId]?.deltaPct ?? null
       : null;
 
   const getSeriesFor = (_id: string) =>
     catId && _id === catId ? series : { current: [], previous: [] };
 
-  const getDonutFor = (_id: string) => (catId && _id === catId ? donutData : []);
+  const getDonutFor = (_id: string) =>
+    catId && _id === catId ? donutData : [];
 
   return (
     <section className="max-w-[1560px]">
@@ -51,7 +56,13 @@ export default function SectorsByTagSection() {
                   : "text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/5"
               }`}
             >
-              {g === "d" ? "Día" : g === "w" ? "Semana" : g === "m" ? "Mes" : "Año"}
+              {g === "d"
+                ? "Día"
+                : g === "w"
+                ? "Semana"
+                : g === "m"
+                ? "Mes"
+                : "Año"}
             </button>
           ))}
         </span>
@@ -59,15 +70,16 @@ export default function SectorsByTagSection() {
 
       <SectorsGrid
         mode="tag"
-        ids={ids as string[]}
+        ids={displayedIds}
         granularity={granularity}
         onGranularityChange={setGranularity}
-        getDeltaPctFor={getDeltaPctFor} 
+        getDeltaPctFor={getDeltaPctFor}
         getSeriesFor={getSeriesFor}
         getDonutFor={getDonutFor}
         expandedId={expandedId}
         onOpen={setExpandedId}
         onClose={() => setExpandedId(null)}
+        isDeltaLoading={state.status !== "ready"}
       />
     </section>
   );

@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
-import type { Granularity } from "@/lib/types";
-import SectorsGrid from "./SectorsGrid";
-import { useTownsTotals } from "../hooks/useTownsTotals";
+import { useTownDetails } from "@/features/home/hooks/useTownDetails";
+import { useTownsTotals } from "@/features/home/hooks/useTownsTotals";
+import SectorsGrid from "@/features/home/sectors/SectorsGrid";
 import type { TownId } from "@/lib/taxonomy/towns";
-import { useTownDetails } from "../hooks/useTownDetails";
+import { TOWN_ID_ORDER } from "@/lib/taxonomy/towns";
+import type { Granularity } from "@/lib/types";
+import { useMemo, useState } from "react";
 
 const GRANULARITIES: Granularity[] = ["d", "w", "m", "y"];
 
@@ -13,22 +14,20 @@ export default function SectorsByTownSection() {
   const [granularity, setGranularity] = useState<Granularity>("m");
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  // Igual que en Tag: el route ya maneja "ending yesterday"; si un día quieres controlarlo,
-  // puedes pasar endISO al hook.
   const { state, ids, itemsById } = useTownsTotals(granularity);
+  const displayedIds = useMemo<string[]>(
+    () => (state.status === "ready" ? (ids as string[]) : [...TOWN_ID_ORDER]),
+    [state.status, ids]
+  );
 
-  // Detalle (cuando hay expandido)
   const townId = expandedId as TownId | null;
   const { series, donutData } = useTownDetails(
     townId ?? ("almonte" as TownId),
     granularity
   );
 
-  // ⬇️ PRESERVA null – no lo conviertas a 0
   const getDeltaPctFor = (id: string) =>
-    state.status === "ready"
-      ? (itemsById[id as TownId]?.deltaPct ?? null)
-      : null;
+    state.status === "ready" ? itemsById[id as TownId]?.deltaPct ?? null : null;
 
   const getSeriesFor = (_id: string) =>
     townId && _id === townId ? series : { current: [], previous: [] };
@@ -54,7 +53,13 @@ export default function SectorsByTownSection() {
                   : "text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/5"
               }`}
             >
-              {g === "d" ? "Día" : g === "w" ? "Semana" : g === "m" ? "Mes" : "Año"}
+              {g === "d"
+                ? "Día"
+                : g === "w"
+                ? "Semana"
+                : g === "m"
+                ? "Mes"
+                : "Año"}
             </button>
           ))}
         </span>
@@ -62,7 +67,7 @@ export default function SectorsByTownSection() {
 
       <SectorsGrid
         mode="town"
-        ids={ids as string[]}
+        ids={displayedIds}
         granularity={granularity}
         onGranularityChange={setGranularity}
         getDeltaPctFor={getDeltaPctFor}
@@ -71,6 +76,7 @@ export default function SectorsByTownSection() {
         expandedId={expandedId}
         onOpen={setExpandedId}
         onClose={() => setExpandedId(null)}
+        isDeltaLoading={state.status !== "ready"}
       />
     </section>
   );

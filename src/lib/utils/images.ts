@@ -1,4 +1,3 @@
-// lib/utils/images.ts
 import { isStaticImageImport, StaticImageImport } from "@/lib/types";
 
 /**

@@ -1,15 +1,10 @@
 "use client";
 
-import {
-  CATEGORY_ID_ORDER,
-  CATEGORY_META,
-  type CategoryId,
-} from "@/lib/taxonomy/categories";
-import { TOWN_ID_ORDER, TOWN_META, type TownId } from "@/lib/taxonomy/towns";
-import type { DonutDatum, Granularity, SeriesPoint } from "@/lib/types";
 import { MapPinIcon } from "@heroicons/react/24/solid";
 import { useMemo, useState } from "react";
-import SectorDeltaCard from "./SectorDeltaCard";
+import DeltaCard from "@/components/common/DeltaCard";
+import type { DonutDatum, Granularity, SeriesPoint } from "@/lib/types";
+import { orderIdsByTaxonomy, sectorIconSrc, sectorTitle } from "@/lib/utils/sector";
 import SectorExpandedCard from "./SectorExpandedCard";
 
 type Mode = "tag" | "town";
@@ -20,12 +15,9 @@ type Props = {
   granularity: Granularity;
   onGranularityChange: (g: Granularity) => void;
 
-  getSeriesFor: (id: string) => {
-    current: SeriesPoint[];
-    previous: SeriesPoint[];
-  };
+  getSeriesFor: (id: string) => { current: SeriesPoint[]; previous: SeriesPoint[] };
   getDonutFor: (id: string) => DonutDatum[];
-  getDeltaPctFor: (id: string) => number | null; // ⬅️ antes: number
+  getDeltaPctFor: (id: string) => number | null;
 
   expandedId?: string | null;
   onOpen?: (id: string) => void;
@@ -33,6 +25,9 @@ type Props = {
 
   startDate?: Date;
   endDate?: Date;
+
+  /** Loader en aro + delta oculto */
+  isDeltaLoading?: boolean;
 };
 
 const ROW_H = 260;
@@ -50,54 +45,33 @@ export default function SectorsGrid({
   onClose,
   startDate,
   endDate,
+  isDeltaLoading = false,
 }: Props) {
   const [uncontrolled, setUncontrolled] = useState<string | null>(null);
   const expandedId =
     controlledExpandedId !== undefined ? controlledExpandedId : uncontrolled;
 
-  const handleOpen = (id: string) =>
-    onOpen ? onOpen(id) : setUncontrolled(id);
+  const handleOpen = (id: string) => (onOpen ? onOpen(id) : setUncontrolled(id));
   const handleClose = () => (onClose ? onClose() : setUncontrolled(null));
 
-  const orderedIds = useMemo(() => {
-    const set = new Set(ids);
-    const base = mode === "tag" ? CATEGORY_ID_ORDER : TOWN_ID_ORDER;
-    return (base as readonly string[]).filter((id) => set.has(id));
-  }, [ids, mode]);
-
+  const orderedIds = useMemo(() => orderIdsByTaxonomy(mode, ids), [mode, ids]);
   const isTown = mode === "town";
   const now = new Date();
 
   return (
     <div
-      className="
-        grid grid-flow-dense
-        grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4
-        gap-4
-      "
+      className="grid grid-flow-dense grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
       style={{ gridAutoRows: `minmax(${ROW_H}px, auto)` }}
     >
       {orderedIds.map((id) => {
-        const title =
-          mode === "tag"
-            ? CATEGORY_META[id as CategoryId]?.label ?? id
-            : TOWN_META[id as TownId]?.label ?? id;
+        const title = sectorTitle(mode, id);
+        const imgSrc = sectorIconSrc(mode, id);
+        const variant =
+          imgSrc !== undefined
+            ? { imgSrc }
+            : { Icon: MapPinIcon as React.ComponentType<React.SVGProps<SVGSVGElement>> };
 
-        const iconSrc =
-          mode === "tag"
-            ? CATEGORY_META[id as CategoryId]?.iconSrc
-            : TOWN_META[id as TownId]?.iconSrc;
-
-        const imgSrc = iconSrc && iconSrc.length > 0 ? iconSrc : undefined;
-        const variant = imgSrc
-          ? { imgSrc }
-          : {
-              Icon: MapPinIcon as React.ComponentType<
-                React.SVGProps<SVGSVGElement>
-              >,
-            };
-
-        const deltaPct = getDeltaPctFor(id); // ← puede ser null
+        const deltaPct = getDeltaPctFor(id);
 
         if (expandedId === id) {
           const s = getSeriesFor(id);
@@ -130,7 +104,7 @@ export default function SectorsGrid({
 
         return (
           <div key={id} className="row-span-1">
-            <SectorDeltaCard
+            <DeltaCard
               title={title}
               deltaPct={deltaPct}
               height={ROW_H}
@@ -140,6 +114,7 @@ export default function SectorsGrid({
               onClick={() => handleOpen(id)}
               className="h-full"
               isTown={isTown}
+              loading={isDeltaLoading}
               {...variant}
             />
           </div>
