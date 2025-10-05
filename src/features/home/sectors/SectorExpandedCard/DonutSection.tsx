@@ -5,7 +5,7 @@ import { formatPct } from "./utils";
 
 type DonutSectionProps = {
   donutData: DonutDatum[];
-  deltaPct: number;
+  deltaPct: number ;
 };
 
 export default function DonutSection({ donutData, deltaPct }: DonutSectionProps) {

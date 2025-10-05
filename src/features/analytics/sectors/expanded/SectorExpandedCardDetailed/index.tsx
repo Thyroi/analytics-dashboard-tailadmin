@@ -1,18 +1,18 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
-import ChartPair from "./ChartPair";
 import Header from "@/features/home/sectors/SectorExpandedCard/Header";
-import { IconOrImage } from "@/lib/utils/images";
-import { resolveCategoryIdFromLabel } from "@/lib/utils/drilldown";
-import TownCategoryDrilldownPanel from "./TownCategoryDrilldownPanel";
 import type { CategoryId } from "@/lib/taxonomy/categories";
 import type { TownId } from "@/lib/taxonomy/towns";
 import type { DonutDatum, Granularity, SeriesPoint } from "@/lib/types";
+import { resolveCategoryIdFromLabel } from "@/lib/utils/drilldown";
+import { IconOrImage } from "@/lib/utils/images";
+import { useEffect, useMemo, useState } from "react";
+import ChartPair from "./ChartPair";
+import TownCategoryDrilldownPanel from "./TownCategoryDrilldownPanel";
 
 type BaseProps = {
   title: string;
-  deltaPct: number;
+  deltaPct: number | null;
   granularity: Granularity;
   onGranularityChange: (g: Granularity) => void;
   startDate: Date;
@@ -26,7 +26,6 @@ type BaseProps = {
   isTown?: boolean;
   townId?: TownId;
   onSliceClick?: (label: string) => void;
-  /** modo Tag con drilldown forzado */
   forceDrillTownId?: TownId;
   fixedCategoryId?: CategoryId;
 };
@@ -49,7 +48,6 @@ export default function SectorExpandedCardDetailed(props: Props) {
     fixedCategoryId,
   } = props;
 
-  // (Estos cálculos se mantienen por si los usas más adelante)
   const { categories, currData, prevData } = useMemo(() => {
     const n = Math.min(current.length, previous.length);
     return {

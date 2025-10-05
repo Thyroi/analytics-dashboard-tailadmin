@@ -1,14 +1,15 @@
 "use client";
 
-import type { Granularity } from "@/lib/types";
 import { CATEGORY_META, type CategoryId } from "@/lib/taxonomy/categories";
+import type { Granularity } from "@/lib/types";
 
 /** Item normalizado para UI */
 export type CategoryTotalsItem = {
   id: CategoryId;
   title: string;
   total: number;
-  deltaPct: number;
+  /** Puede ser null cuando no hay base de comparación */
+  deltaPct: number | null;
 };
 
 /** Respuesta normalizada para UI */
@@ -21,11 +22,11 @@ export type CategoriesTotalsResponse = {
   items: CategoryTotalsItem[];
 };
 
-/** Shape crudo del endpoint (el route.ts que me pasaste) */
+/** Shape crudo del endpoint */
 type RawTotals = {
   currentTotal: number;
   previousTotal: number;
-  deltaPct: number;
+  deltaPct: number | null;
 };
 type RawResponse = {
   granularity: Granularity;
@@ -59,14 +60,18 @@ export async function getCategoriesTotals(
 
   const raw = (await resp.json()) as RawResponse;
 
-  // Mapeo: perCategory (diccionario) → items[]
+  // perCategory (diccionario) → items[]
   const items: CategoryTotalsItem[] = Object.keys(raw.perCategory)
-    // Filtrar a ids válidos de la taxonomía para no romper tipos/linters
-    .filter((id): id is CategoryId => Object.prototype.hasOwnProperty.call(CATEGORY_META, id))
+    .filter((id): id is CategoryId =>
+      Object.prototype.hasOwnProperty.call(CATEGORY_META, id)
+    )
     .map((id) => {
       const k = raw.perCategory[id];
       const total = Number.isFinite(k.currentTotal) ? k.currentTotal : 0;
-      const deltaPct = Number.isFinite(k.deltaPct) ? k.deltaPct : 0;
+      const deltaPct =
+        typeof k.deltaPct === "number" && Number.isFinite(k.deltaPct)
+          ? k.deltaPct
+          : null;
       const title = CATEGORY_META[id].label ?? id;
       return { id, title, total, deltaPct };
     });

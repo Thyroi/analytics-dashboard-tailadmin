@@ -1,19 +1,20 @@
+// src/features/analytics/sectors/AnalyticsByTownSection/index.tsx
 "use client";
 
-import Header from "@/components/common/Header";
-import RangeControls from "@/components/dashboard/RangeControls";
 import {
   TownTimeProvider,
   useTownTimeframe,
 } from "@/features/analytics/context/TownTimeContext";
-import { useTownCategoryDrilldown } from "@/features/analytics/hooks/useTownCategoryDrilldown"; // 2º nivel
+
 import SectorsGridDetailed from "@/features/analytics/sectors/SectorsGridDetailed";
-import { useTownDetails } from "@/features/home/hooks/useTownDetails"; // 1er nivel
-import { useTownsTotals } from "@/features/home/hooks/useTownsTotals"; // reusamos
-import type { CategoryId } from "@/lib/taxonomy/categories";
-import { CATEGORY_ID_ORDER, CATEGORY_META } from "@/lib/taxonomy/categories";
+
+import { useTownsTotals } from "@/features/home/hooks/useTownsTotals"; // totales por pueblo
+import { useTownDetails } from "@/features/home/hooks/useTownDetails"; // series + donut por pueblo
+import { useTownCategoryDrilldown } from "@/features/analytics/hooks/useTownCategoryDrilldown"; // drilldown pueblo+categoría
+
+import { CATEGORY_ID_ORDER, CATEGORY_META, type CategoryId } from "@/lib/taxonomy/categories";
 import type { TownId } from "@/lib/taxonomy/towns";
-import { BarChart3 } from "lucide-react";
+
 import { useState } from "react";
 import StickyHeaderSection from "../sectors/expanded/SectorExpandedCardDetailed/StickyHeaderSection";
 
@@ -22,7 +23,6 @@ const LABEL_TO_CAT: Record<string, CategoryId> = Object.fromEntries(
 ) as Record<string, CategoryId>;
 
 function AnalyticsByTownSectionInner() {
-  // ← Consumimos el contexto (paridad con TagSection)
   const {
     mode,
     granularity,
@@ -36,7 +36,7 @@ function AnalyticsByTownSectionInner() {
 
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  // Totales por municipio — ahora recibe granularity + endISO (igual que Tag)
+  // Totales por municipio (ahora preserva deltaPct: number | null)
   const { state, ids, itemsById } = useTownsTotals(granularity, endISO);
 
   type Drill =
@@ -44,16 +44,15 @@ function AnalyticsByTownSectionInner() {
     | { kind: "town+cat"; townId: TownId; categoryId: CategoryId };
 
   const [drill, setDrill] = useState<Drill | null>(null);
-
   const townId = expandedId as TownId | null;
 
-  // Detalle de municipio (mantenemos sin rango explícito por paridad con TagSection)
+  // Serie + donut del pueblo seleccionado (primer nivel)
   const { series: seriesTown, donutData: donutTown } = useTownDetails(
     (drill?.kind === "town" ? drill.townId : townId) ?? ("almonte" as TownId),
     granularity
   );
 
-  // Drilldown municipio + categoría
+  // Drilldown pueblo + categoría (segundo nivel)
   const townCat = drill?.kind === "town+cat" ? drill : null;
   const { series: ddSeries, donut: ddDonut } = useTownCategoryDrilldown(
     townCat
@@ -61,10 +60,12 @@ function AnalyticsByTownSectionInner() {
       : null
   );
 
-  const getDeltaPctFor = (id: string) =>
-    state.status === "ready"
-      ? Math.round(itemsById[id as TownId]?.deltaPct ?? 0)
-      : 0;
+  // Mantener null si no hay base de comparación (no redondear ni forzar a 0 aquí)
+  const getDeltaPctFor = (id: string) => {
+    if (state.status !== "ready") return null;
+    const v = itemsById[id as TownId]?.deltaPct ?? null;
+    return typeof v === "number" && Number.isFinite(v) ? v : null;
+  };
 
   const getSeriesFor = (_id: string) => {
     if (drill?.kind === "town+cat") return ddSeries;
@@ -103,14 +104,15 @@ function AnalyticsByTownSectionInner() {
         onRangeChange={setRange}
         onClearRange={clearRange}
       />
+
       <SectorsGridDetailed
         mode="town"
         ids={ids as string[]}
         granularity={granularity}
         onGranularityChange={setGranularity}
-        getDeltaPctFor={(id) => getDeltaPctFor(id)}
-        getSeriesFor={(id) => getSeriesFor(id)}
-        getDonutFor={(id) => getDonutFor(id)}
+        getDeltaPctFor={getDeltaPctFor}     
+        getSeriesFor={getSeriesFor}
+        getDonutFor={getDonutFor}
         expandedId={expandedId}
         onOpen={handleOpen}
         onClose={() => {

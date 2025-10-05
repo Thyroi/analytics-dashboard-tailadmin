@@ -1,13 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { Granularity } from "@/lib/types";
-import type { CategoryId } from "@/lib/taxonomy/categories";
 import {
   getCategoriesTotals,
   type CategoriesTotalsResponse,
   type CategoryTotalsItem,
 } from "@/features/home/services/categoriesTotals";
+import type { CategoryId } from "@/lib/taxonomy/categories";
+import type { Granularity } from "@/lib/types";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 type ReadyState = {
   status: "ready";
@@ -18,7 +18,8 @@ type ReadyState = {
     {
       title: string;
       total: number;
-      deltaPct: number;
+      /** Puede ser null cuando no hay base de comparación */
+      deltaPct: number | null;
     }
   >;
 };
@@ -31,7 +32,10 @@ export function useCategoriesTotals(granularity: Granularity, endISO?: string) {
   const abortRef = useRef<AbortController | null>(null);
 
   // clave incluye endISO para refetch al cambiar rango
-  const key = useMemo(() => `${granularity}|${endISO ?? ""}`, [granularity, endISO]);
+  const key = useMemo(
+    () => `${granularity}|${endISO ?? ""}`,
+    [granularity, endISO]
+  );
 
   const load = useCallback(async () => {
     abortRef.current?.abort();
@@ -44,16 +48,24 @@ export function useCategoriesTotals(granularity: Granularity, endISO?: string) {
       const data = await getCategoriesTotals(granularity, endISO);
       if (ac.signal.aborted) return;
 
-      const ids: CategoryId[] = data.items.map((it: CategoryTotalsItem) => it.id);
+      const ids: CategoryId[] = data.items.map(
+        (it: CategoryTotalsItem) => it.id
+      );
 
-      const itemsById = data.items.reduce<ReadyState["itemsById"]>((acc, it) => {
-        acc[it.id] = {
-          title: it.title,
-          total: Number.isFinite(it.total) ? it.total : 0,
-          deltaPct: Number.isFinite(it.deltaPct) ? it.deltaPct : 0,
-        };
-        return acc;
-      }, {} as ReadyState["itemsById"]);
+      const itemsById = data.items.reduce<ReadyState["itemsById"]>(
+        (acc, it) => {
+          acc[it.id] = {
+            title: it.title,
+            total: Number.isFinite(it.total) ? it.total : 0,
+            deltaPct:
+              typeof it.deltaPct === "number" && Number.isFinite(it.deltaPct)
+                ? it.deltaPct
+                : null,
+          };
+          return acc;
+        },
+        {} as ReadyState["itemsById"]
+      );
 
       setState({ status: "ready", data, ids, itemsById });
     } catch (e) {
@@ -73,7 +85,9 @@ export function useCategoriesTotals(granularity: Granularity, endISO?: string) {
 
   const ids = state.status === "ready" ? state.ids : [];
   const itemsById =
-    state.status === "ready" ? state.itemsById : ({} as ReadyState["itemsById"]);
+    state.status === "ready"
+      ? state.itemsById
+      : ({} as ReadyState["itemsById"]);
 
   return {
     state,

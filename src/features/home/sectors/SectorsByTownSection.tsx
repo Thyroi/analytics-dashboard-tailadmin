@@ -13,16 +13,28 @@ export default function SectorsByTownSection() {
   const [granularity, setGranularity] = useState<Granularity>("m");
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
+  // Igual que en Tag: el route ya maneja "ending yesterday"; si un día quieres controlarlo,
+  // puedes pasar endISO al hook.
   const { state, ids, itemsById } = useTownsTotals(granularity);
 
+  // Detalle (cuando hay expandido)
   const townId = expandedId as TownId | null;
-  const { series, donutData } = useTownDetails(townId ?? ("almonte" as TownId), granularity);
+  const { series, donutData } = useTownDetails(
+    townId ?? ("almonte" as TownId),
+    granularity
+  );
 
+  // ⬇️ PRESERVA null – no lo conviertas a 0
   const getDeltaPctFor = (id: string) =>
-    state.status === "ready" ? Math.round(itemsById[id as TownId]?.deltaPct ?? 0) : 0;
+    state.status === "ready"
+      ? (itemsById[id as TownId]?.deltaPct ?? null)
+      : null;
 
-  const getSeriesFor = (_id: string) => (townId && _id === townId ? series : { current: [], previous: [] });
-  const getDonutFor = (_id: string) => (townId && _id === townId ? donutData : []);
+  const getSeriesFor = (_id: string) =>
+    townId && _id === townId ? series : { current: [], previous: [] };
+
+  const getDonutFor = (_id: string) =>
+    townId && _id === townId ? donutData : [];
 
   return (
     <section className="max-w-[1560px]">

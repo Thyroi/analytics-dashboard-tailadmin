@@ -39,17 +39,23 @@ function AnalyticsByTagSectionInner() {
   const [drill, setDrill] = useState<Drill | null>(null);
   const catId = expandedId as CategoryId | null;
 
-  // Detalle de la categoría del card superior (sin rango aún; lo mantenemos estable por ahora)
+  // Detalle de la categoría del card superior
   const { series: seriesCat, donutData: donutCat } = useCategoryDetails(
     (drill?.kind === "category" ? drill.categoryId : catId) ??
       ("naturaleza" as CategoryId),
     granularity
   );
 
-  const getDeltaPctFor = (id: string) =>
-    state.status === "ready"
-      ? Math.round(itemsById[id as CategoryId]?.deltaPct ?? 0)
-      : 0;
+  const getDeltaPctFor = (id: string) => {
+    // valor "antes" (tal cual viene del estado)
+    const raw =
+      state.status === "ready"
+        ? itemsById[id as CategoryId]?.deltaPct ?? null
+        : null;
+    const result = typeof raw === "number" && Number.isFinite(raw) ? raw : null;
+
+    return result;
+  };
 
   const getSeriesFor = (_id: string) => {
     if (catId && _id === catId) return seriesCat;
@@ -57,7 +63,7 @@ function AnalyticsByTagSectionInner() {
   };
 
   const getDonutFor = (_id: string) => {
-    if (catId && _id === catId) return donutCat; // donut de pueblos por categoría
+    if (catId && _id === catId) return donutCat;
     return [];
   };
 

@@ -1,21 +1,19 @@
+// src/features/analytics/sectors/SectorsGridDetailed.tsx
 "use client";
 
-import { useMemo, useState } from "react";
 import { MapPinIcon } from "@heroicons/react/24/solid";
+import { useMemo, useState } from "react";
+
 import SectorDeltaCard from "@/features/home/sectors/SectorDeltaCard";
 import SectorExpandedCardDetailed from "../sectors/expanded/SectorExpandedCardDetailed";
 
-import type { DonutDatum, Granularity, SeriesPoint } from "@/lib/types";
 import {
-  CATEGORY_META,
   CATEGORY_ID_ORDER,
+  CATEGORY_META,
   type CategoryId,
 } from "@/lib/taxonomy/categories";
-import {
-  TOWN_META,
-  TOWN_ID_ORDER,
-  type TownId,
-} from "@/lib/taxonomy/towns";
+import { TOWN_ID_ORDER, TOWN_META, type TownId } from "@/lib/taxonomy/towns";
+import type { DonutDatum, Granularity, SeriesPoint } from "@/lib/types";
 
 type Mode = "tag" | "town";
 
@@ -25,9 +23,13 @@ type Props = {
   granularity: Granularity;
   onGranularityChange: (g: Granularity) => void;
 
-  getSeriesFor: (id: string) => { current: SeriesPoint[]; previous: SeriesPoint[] };
+  getSeriesFor: (id: string) => {
+    current: SeriesPoint[];
+    previous: SeriesPoint[];
+  };
   getDonutFor: (id: string) => DonutDatum[];
-  getDeltaPctFor: (id: string) => number;
+  /** ⚠️ ahora puede devolver null (no formateado) */
+  getDeltaPctFor: (id: string) => number | null;
 
   expandedId?: string | null;
   onOpen?: (id: string) => void;
@@ -68,8 +70,7 @@ export default function SectorsGridDetailed({
 
   const handleOpen = (id: string) =>
     onOpen ? onOpen(id) : setUncontrolled(id);
-  const handleClose = () =>
-    onClose ? onClose() : setUncontrolled(null);
+  const handleClose = () => (onClose ? onClose() : setUncontrolled(null));
 
   const orderedIds = useMemo(() => {
     const set = new Set(ids);
@@ -100,12 +101,12 @@ export default function SectorsGridDetailed({
         const variant = imgSrc
           ? { imgSrc }
           : {
-              Icon:
-                MapPinIcon as React.ComponentType<
-                  React.SVGProps<SVGSVGElement>
-                >,
+              Icon: MapPinIcon as React.ComponentType<
+                React.SVGProps<SVGSVGElement>
+              >,
             };
 
+        // 🔎 delta crudo (sin formatear). Puede ser number o null.
         const deltaPct = getDeltaPctFor(id);
 
         if (expandedId === id) {
@@ -118,7 +119,8 @@ export default function SectorsGridDetailed({
             >
               <SectorExpandedCardDetailed
                 title={title}
-                deltaPct={deltaPct}
+                /** El expandido aún espera number: coaccionamos a 0 solo aquí */
+                deltaPct={deltaPct ?? 0}
                 granularity={granularity}
                 onGranularityChange={onGranularityChange}
                 startDate={startDate ?? now}
@@ -132,7 +134,6 @@ export default function SectorsGridDetailed({
                 isTown={isTown}
                 townId={isTown ? (id as TownId) : undefined}
                 onSliceClick={onSliceClick}
-                /** props para modo "tag" con drilldown forzado */
                 forceDrillTownId={forceDrillTownId}
                 fixedCategoryId={fixedCategoryId}
                 {...variant}
@@ -145,6 +146,7 @@ export default function SectorsGridDetailed({
           <div key={id} className="row-span-1">
             <SectorDeltaCard
               title={title}
+              /** Pasamos el delta tal cual (number | null). El card sabe mostrar "Sin datos suficientes" */
               deltaPct={deltaPct}
               height={ROW_H}
               ringSize={96}

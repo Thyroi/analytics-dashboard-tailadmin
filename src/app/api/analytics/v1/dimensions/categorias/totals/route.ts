@@ -1,3 +1,4 @@
+// src/app/api/analytics/v1/dimensions/categorias/totals/route.ts
 import { NextResponse } from "next/server";
 import { google, analyticsdata_v1beta } from "googleapis";
 import type { Granularity } from "@/lib/types";
@@ -5,9 +6,8 @@ import type { Granularity } from "@/lib/types";
 import { getAuth, normalizePropertyId, resolvePropertyId } from "@/lib/utils/ga";
 import {
   parseISO,
-  todayUTC,
-  deriveAutoRangeForGranularity,
   prevComparable,
+  deriveRangeEndingYesterday,
 } from "@/lib/utils/datetime";
 
 /** ========= Taxonomía mínima (id -> posibles slugs en URL) =========
@@ -27,10 +27,9 @@ const CATEGORY_SLUGS: Record<string, string[]> = {
   rutasSenderismo: ["rutas-senderismo", "senderismo", "btt", "vias-verdes", "hiking", "cicloturistas"],
   sabor: ["sabor", "taste", "gastronomia", "food"],
 };
-
 type CategoryId = keyof typeof CATEGORY_SLUGS;
 
-/** ========= Utils de URL / matching ========= */
+/* -------- utils URL -------- */
 function safeUrlPathname(raw: string): string {
   try {
     const u = new URL(raw);
@@ -57,32 +56,34 @@ function matchCategoryIdFromPath(path: string): CategoryId | null {
   return null;
 }
 
-type Totals = { currentTotal: number; previousTotal: number; deltaPct: number };
+/* -------- tipos y helpers -------- */
+type Totals = { currentTotal: number; previousTotal: number; deltaPct: number | null };
 type TotalsMap = Record<CategoryId, Totals>;
 
 function emptyTotals(): TotalsMap {
   const out = {} as TotalsMap;
   (Object.keys(CATEGORY_SLUGS) as CategoryId[]).forEach((k) => {
-    out[k] = { currentTotal: 0, previousTotal: 0, deltaPct: 0 };
+    out[k] = { currentTotal: 0, previousTotal: 0, deltaPct: null };
   });
   return out;
 }
-function computeDeltaPct(curr: number, prev: number): number {
-  if (prev <= 0) return curr > 0 ? 100 : 0;
+function computeDeltaPct(curr: number, prev: number): number | null {
+  // Sin base de comparación => null (para que el front muestre "Sin datos suficientes")
+  if (prev <= 0) return null;
   return ((curr - prev) / prev) * 100;
 }
 
-/** ========= Handler ========= */
+/* -------- handler -------- */
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
-    // g = d|w|m|y (requerido)
     const gParam = (searchParams.get("g") || "d").trim().toLowerCase() as Granularity;
     const endISO = (searchParams.get("end") || "").trim() || undefined;
 
-    // Ventanas usando datetime utils (presets) + soporte de endISO como "now"
-    const now = endISO ? parseISO(endISO) : todayUTC();
-    const currPreset = deriveAutoRangeForGranularity(gParam, now); // {startTime,endTime}
+    // Rango actual: ventana que TERMINA AYER (opcionalmente anclada a 'endISO')
+    const currPreset = endISO
+      ? deriveRangeEndingYesterday(gParam, parseISO(endISO))
+      : deriveRangeEndingYesterday(gParam);
     const prevPreset = prevComparable(currPreset);
 
     const windows = {
@@ -90,12 +91,12 @@ export async function GET(req: Request) {
       previous: { start: prevPreset.startTime, end: prevPreset.endTime },
     };
 
-    // Auth + GA
+    // GA
     const auth = getAuth();
     const analyticsData = google.analyticsdata({ version: "v1beta", auth });
     const propertyName = normalizePropertyId(resolvePropertyId());
 
-    // ===== Current =====
+    // Current
     const reqCurrent: analyticsdata_v1beta.Schema$RunReportRequest = {
       dateRanges: [{ startDate: windows.current.start, endDate: windows.current.end }],
       metrics: [{ name: "eventCount" }],
@@ -109,8 +110,7 @@ export async function GET(req: Request) {
       keepEmptyRows: false,
       limit: "100000",
     };
-
-    // ===== Previous =====
+    // Previous
     const reqPrevious: analyticsdata_v1beta.Schema$RunReportRequest = {
       dateRanges: [{ startDate: windows.previous.start, endDate: windows.previous.end }],
       metrics: [{ name: "eventCount" }],
@@ -135,7 +135,7 @@ export async function GET(req: Request) {
 
     const totals = emptyTotals();
 
-    // Agrega current
+    // agrega current
     for (const r of curRows) {
       const dims = r.dimensionValues ?? [];
       const mets = r.metricValues ?? [];
@@ -144,8 +144,7 @@ export async function GET(req: Request) {
       const cat = matchCategoryIdFromPath(path);
       if (cat) totals[cat].currentTotal += evCount;
     }
-
-    // Agrega previous
+    // agrega previous
     for (const r of prevRows) {
       const dims = r.dimensionValues ?? [];
       const mets = r.metricValues ?? [];
@@ -154,12 +153,12 @@ export async function GET(req: Request) {
       const cat = matchCategoryIdFromPath(path);
       if (cat) totals[cat].previousTotal += evCount;
     }
-
-    // deltas
+    // delta por categoría
     (Object.keys(CATEGORY_SLUGS) as CategoryId[]).forEach((cat) => {
-      const c = totals[cat].currentTotal;
-      const p = totals[cat].previousTotal;
-      totals[cat].deltaPct = computeDeltaPct(c, p);
+      totals[cat].deltaPct = computeDeltaPct(
+        totals[cat].currentTotal,
+        totals[cat].previousTotal
+      );
     });
 
     return NextResponse.json(
@@ -167,7 +166,7 @@ export async function GET(req: Request) {
         granularity: gParam,
         range: windows,
         property: propertyName,
-        categories: Object.keys(CATEGORY_SLUGS),
+        categories: Object.keys(CATEGORY_SLUGS), // orden estable
         perCategory: totals,
       },
       { status: 200 }

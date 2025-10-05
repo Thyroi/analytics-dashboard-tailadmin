@@ -1,35 +1,41 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { Granularity } from "@/lib/types";
+import {
+  getTownsTotals,
+  type TownsTotalsUIResponse,
+  type TownTotalsItem,
+} from "@/features/home/services/townsTotals";
 import type { TownId } from "@/lib/taxonomy/towns";
+import type { Granularity } from "@/lib/types";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 export type TownDelta = {
   id: TownId;
   currentTotal: number;
   previousTotal: number;
-  deltaPct: number;
+  /** Puede ser null cuando no hay base de comparación */
+  deltaPct: number | null;
 };
 
 type LoadingState = { status: "idle" | "loading" };
-type ReadyState = { status: "ready"; items: TownDelta[] };
+type ReadyState = {
+  status: "ready";
+  data: TownsTotalsUIResponse;
+  items: TownDelta[];
+};
 type ErrorState = { status: "error"; message: string };
 type State = LoadingState | ReadyState | ErrorState;
-
-type RawTownTotals = Record<
-  TownId,
-  { currentTotal: number; previousTotal: number; deltaPct: number }
->;
 
 export function useTownsTotals(granularity: Granularity, endISO?: string) {
   const [state, setState] = useState<State>({ status: "idle" });
   const abortRef = useRef<AbortController | null>(null);
 
-  // La clave incluye endISO para refetch cuando se cambia el rango
-  const key = useMemo(() => `${granularity}|${endISO ?? ""}`, [granularity, endISO]);
+  const key = useMemo(
+    () => `${granularity}|${endISO ?? ""}`,
+    [granularity, endISO]
+  );
 
   const load = useCallback(async () => {
-    // cancelar request previo si existía
     abortRef.current?.abort();
     const ac = new AbortController();
     abortRef.current = ac;
@@ -37,35 +43,30 @@ export function useTownsTotals(granularity: Granularity, endISO?: string) {
     setState({ status: "loading" });
 
     try {
-      const params = new URLSearchParams({ g: granularity });
-      if (endISO) params.set("end", endISO);
-
-      const res = await fetch(
-        `/api/analytics/v1/dimensions/pueblos/totals?${params.toString()}`,
-        {
-          method: "GET",
-          signal: ac.signal,
-          headers: { "cache-control": "no-cache" },
-        }
-      );
-
-      const raw = (await res.json()) as { perTown?: RawTownTotals } | null;
+      const res = await getTownsTotals({
+        granularity,
+        endISO,
+        signal: ac.signal,
+      });
       if (ac.signal.aborted) return;
 
-      const perTown: RawTownTotals = raw?.perTown ?? ({} as RawTownTotals);
-
-      const items: TownDelta[] = Object.entries(perTown).map(([id, v]) => ({
-        id: id as TownId,
-        currentTotal: Number.isFinite(v.currentTotal) ? v.currentTotal : 0,
-        previousTotal: Number.isFinite(v.previousTotal) ? v.previousTotal : 0,
-        deltaPct: Number.isFinite(v.deltaPct) ? v.deltaPct : 0,
+      const items: TownDelta[] = res.items.map((it: TownTotalsItem) => ({
+        id: it.id,
+        currentTotal: Number.isFinite(it.currentTotal) ? it.currentTotal : 0,
+        previousTotal: Number.isFinite(it.previousTotal) ? it.previousTotal : 0,
+        deltaPct:
+          typeof it.deltaPct === "number" && Number.isFinite(it.deltaPct)
+            ? it.deltaPct
+            : null,
       }));
 
-      setState({ status: "ready", items });
+      setState({ status: "ready", data: res, items });
     } catch (err: unknown) {
       if (ac.signal.aborted) return;
       const message =
-        err instanceof Error ? err.message : "Unknown error fetching towns totals";
+        err instanceof Error
+          ? err.message
+          : "Unknown error fetching towns totals";
       setState({ status: "error", message });
     }
   }, [granularity, endISO]);
@@ -88,5 +89,5 @@ export function useTownsTotals(granularity: Granularity, endISO?: string) {
     >;
   }, [state]);
 
-  return { state, ids, itemsById };
+  return { state, ids, itemsById, refetch: load };
 }

@@ -2,10 +2,10 @@
 
 import { useState } from "react";
 import type { Granularity } from "@/lib/types";
-import SectorsGrid from "./SectorsGrid";
-import { useCategoriesTotals } from "../hooks/useCategoriesTotals";
+import SectorsGrid from "@/features/home/sectors/SectorsGrid";
+import { useCategoriesTotals } from "@/features/home/hooks/useCategoriesTotals";
 import type { CategoryId } from "@/lib/taxonomy/categories";
-import { useCategoryDetails } from "../hooks/useCategoryDetails";
+import { useCategoryDetails } from "@/features/home/hooks/useCategoryDetails";
 
 const GRANULARITIES: Granularity[] = ["d", "w", "m", "y"];
 
@@ -17,12 +17,20 @@ export default function SectorsByTagSection() {
 
   // detalles (cuando hay expandido)
   const catId = expandedId as CategoryId | null;
-  const { series, donutData } = useCategoryDetails(catId ?? ("naturaleza" as CategoryId), granularity);
+  const { series, donutData } = useCategoryDetails(
+    catId ?? ("naturaleza" as CategoryId),
+    granularity
+  );
 
+  // ⬇️ PRESERVA null – no lo conviertas a 0
   const getDeltaPctFor = (id: string) =>
-    state.status === "ready" ? Math.round(itemsById[id as CategoryId]?.deltaPct ?? 0) : 0;
+    state.status === "ready"
+      ? (itemsById[id as CategoryId]?.deltaPct ?? null)
+      : null;
 
-  const getSeriesFor = (_id: string) => (catId && _id === catId ? series : { current: [], previous: [] });
+  const getSeriesFor = (_id: string) =>
+    catId && _id === catId ? series : { current: [], previous: [] };
+
   const getDonutFor = (_id: string) => (catId && _id === catId ? donutData : []);
 
   return (
@@ -54,7 +62,7 @@ export default function SectorsByTagSection() {
         ids={ids as string[]}
         granularity={granularity}
         onGranularityChange={setGranularity}
-        getDeltaPctFor={getDeltaPctFor}
+        getDeltaPctFor={getDeltaPctFor} 
         getSeriesFor={getSeriesFor}
         getDonutFor={getDonutFor}
         expandedId={expandedId}

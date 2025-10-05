@@ -7,15 +7,16 @@ import { getAuth, normalizePropertyId, resolvePropertyId } from "@/lib/utils/ga"
 import {
   parseISO,
   todayUTC,
-  deriveAutoRangeForGranularity,
+  deriveRangeEndingYesterday,
   prevComparable,
 } from "@/lib/utils/datetime";
 
 /* ====================== helpers fecha/rango ====================== */
 type DateRange = { start: string; end: string };
 
-function pctDelta(curr: number, prev: number): number {
-  if (prev <= 0) return curr > 0 ? 100 : 0;
+function computeDeltaPct(curr: number, prev: number): number | null {
+  // Sin base de comparación => null (el front muestra "Sin datos suficientes")
+  if (prev <= 0) return null;
   return ((curr - prev) / prev) * 100;
 }
 
@@ -82,9 +83,10 @@ export async function GET(req: Request) {
     const g = (searchParams.get("g") || "d") as Granularity;
     const endISO = searchParams.get("end") || undefined;
 
-    // Rango actual + comparable usando utils/datetime
+    // Rango actual “ending yesterday” + comparable
     const now = endISO ? parseISO(endISO) : todayUTC();
-    const currPreset = deriveAutoRangeForGranularity(g, now); // {startTime,endTime}
+    // Nota: si tu deriveRangeEndingYesterday no acepta "now", quita el 2º argumento.
+    const currPreset = deriveRangeEndingYesterday(g, now); // { startTime, endTime }
     const prevPreset = prevComparable(currPreset);
 
     const ranges: { current: DateRange; previous: DateRange } = {
@@ -99,10 +101,10 @@ export async function GET(req: Request) {
     const analyticsData = google.analyticsdata({ version: "v1beta", auth });
     const property = normalizePropertyId(resolvePropertyId());
 
-    // Un solo request: unión prev+curr + filtro por page_view y regex de pueblos
+    // Un solo request: unión prev+curr + filtro page_view + filtro regex pueblos
     const reqAll: analyticsdata_v1beta.Schema$RunReportRequest = {
       dateRanges: [{ startDate: ranges.previous.start, endDate: ranges.current.end }],
-      metrics: [{ name: "screenPageViews" }],
+      metrics: [{ name: "eventCount" }], // ← homogeneizado con categorías
       dimensions: [{ name: "date" }, { name: "pageLocation" }, { name: "eventName" }],
       dimensionFilter: {
         andGroup: {
@@ -170,16 +172,20 @@ export async function GET(req: Request) {
 
     const perTown: Record<
       TownId,
-      { currentTotal: number; previousTotal: number; deltaPct: number }
+      { currentTotal: number; previousTotal: number; deltaPct: number | null }
     > = {} as Record<
       TownId,
-      { currentTotal: number; previousTotal: number; deltaPct: number }
+      { currentTotal: number; previousTotal: number; deltaPct: number | null }
     >;
 
     for (const t of towns) {
       const c = currTotals[t] ?? 0;
       const p = prevTotals[t] ?? 0;
-      perTown[t] = { currentTotal: c, previousTotal: p, deltaPct: pctDelta(c, p) };
+      perTown[t] = {
+        currentTotal: c,
+        previousTotal: p,
+        deltaPct: computeDeltaPct(c, p), // ← null si p <= 0
+      };
     }
 
     return NextResponse.json(

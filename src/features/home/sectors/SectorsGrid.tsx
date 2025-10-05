@@ -1,20 +1,16 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { MapPinIcon } from "@heroicons/react/24/solid";
-import SectorDeltaCard from "./SectorDeltaCard";
-import SectorExpandedCard from "./SectorExpandedCard";
-import type { DonutDatum, Granularity, SeriesPoint } from "@/lib/types";
 import {
-  CATEGORY_META,
   CATEGORY_ID_ORDER,
+  CATEGORY_META,
   type CategoryId,
 } from "@/lib/taxonomy/categories";
-import {
-  TOWN_META,
-  TOWN_ID_ORDER,
-  type TownId,
-} from "@/lib/taxonomy/towns";
+import { TOWN_ID_ORDER, TOWN_META, type TownId } from "@/lib/taxonomy/towns";
+import type { DonutDatum, Granularity, SeriesPoint } from "@/lib/types";
+import { MapPinIcon } from "@heroicons/react/24/solid";
+import { useMemo, useState } from "react";
+import SectorDeltaCard from "./SectorDeltaCard";
+import SectorExpandedCard from "./SectorExpandedCard";
 
 type Mode = "tag" | "town";
 
@@ -24,12 +20,15 @@ type Props = {
   granularity: Granularity;
   onGranularityChange: (g: Granularity) => void;
 
-  getSeriesFor: (id: string) => { current: SeriesPoint[]; previous: SeriesPoint[] };
+  getSeriesFor: (id: string) => {
+    current: SeriesPoint[];
+    previous: SeriesPoint[];
+  };
   getDonutFor: (id: string) => DonutDatum[];
-  getDeltaPctFor: (id: string) => number;
+  getDeltaPctFor: (id: string) => number | null; // ⬅️ antes: number
 
-  expandedId?: string | null;     // ← controlado desde la sección
-  onOpen?: (id: string) => void;  // ← la sección decide
+  expandedId?: string | null;
+  onOpen?: (id: string) => void;
   onClose?: () => void;
 
   startDate?: Date;
@@ -53,9 +52,11 @@ export default function SectorsGrid({
   endDate,
 }: Props) {
   const [uncontrolled, setUncontrolled] = useState<string | null>(null);
-  const expandedId = controlledExpandedId !== undefined ? controlledExpandedId : uncontrolled;
+  const expandedId =
+    controlledExpandedId !== undefined ? controlledExpandedId : uncontrolled;
 
-  const handleOpen = (id: string) => (onOpen ? onOpen(id) : setUncontrolled(id));
+  const handleOpen = (id: string) =>
+    onOpen ? onOpen(id) : setUncontrolled(id);
   const handleClose = () => (onClose ? onClose() : setUncontrolled(null));
 
   const orderedIds = useMemo(() => {
@@ -88,12 +89,15 @@ export default function SectorsGrid({
             : TOWN_META[id as TownId]?.iconSrc;
 
         const imgSrc = iconSrc && iconSrc.length > 0 ? iconSrc : undefined;
-        const variant =
-          imgSrc
-            ? { imgSrc }
-            : { Icon: MapPinIcon as React.ComponentType<React.SVGProps<SVGSVGElement>> };
+        const variant = imgSrc
+          ? { imgSrc }
+          : {
+              Icon: MapPinIcon as React.ComponentType<
+                React.SVGProps<SVGSVGElement>
+              >,
+            };
 
-        const deltaPct = getDeltaPctFor(id);
+        const deltaPct = getDeltaPctFor(id); // ← puede ser null
 
         if (expandedId === id) {
           const s = getSeriesFor(id);
@@ -105,7 +109,7 @@ export default function SectorsGrid({
             >
               <SectorExpandedCard
                 title={title}
-                deltaPct={deltaPct}
+                deltaPct={deltaPct ?? 0}
                 mode="granularity"
                 granularity={granularity}
                 onGranularityChange={onGranularityChange}
