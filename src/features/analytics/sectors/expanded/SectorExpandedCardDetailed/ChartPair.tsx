@@ -3,17 +3,23 @@
 import DonutSection from "@/features/analytics/sectors/expanded/SectorExpandedCardDetailed/DonutSection";
 import DrilldownMultiLineSection from "@/features/analytics/sectors/expanded/SectorExpandedCardDetailed/DrilldownMultiLineSection";
 import type { UrlSeries } from "@/features/analytics/services/drilldown";
+import {
+  ChartSectionSkeleton,
+  DonutSectionSkeleton,
+} from "@/features/analytics/skeletons";
 import ChartSection from "@/features/home/sectors/SectorExpandedCard/ChartSection";
+
 import type { DonutDatum, SeriesPoint } from "@/lib/types";
 
 type Base = {
   donutData: DonutDatum[];
-  // ⬇️ puede ser null; (ChartPair no lo usa para cálculos)
-  deltaPct: number | null;
+  deltaPct: number | null; // no usado para cálculos
   onDonutSlice?: (label: string) => void;
   className?: string;
   donutCenterLabel?: string;
   actionButtonTarget?: string;
+  /** NEW: muestra skeletons cuando true */
+  loading?: boolean;
 };
 
 type LineChartMode = Base & {
@@ -23,55 +29,62 @@ type LineChartMode = Base & {
 
 type MultiLineMode = Base & {
   mode: "multi";
-  /** Eje X y series por sub-actividad (URL) */
   xLabels: string[];
   seriesBySub: UrlSeries[];
-  loading?: boolean;
+  loading?: boolean; // se mantiene para compat
 };
 
 type Props = LineChartMode | MultiLineMode;
 
-/**
- * Componente de layout 2 columnas:
- * - Izquierda: (Line | MultiLine)
- * - Derecha : DonutSection
- */
+/** Layout 2 columnas: Izq (Line|MultiLine) · Der (Donut) */
 export default function ChartPair(props: Props) {
+  const isLoading = props.loading === true;
+
   return (
     <div
       className={`grid grid-cols-1 xl:grid-cols-2 gap-4 ${
         props.className ?? ""
       }`}
     >
+      {/* IZQUIERDA */}
       <div>
         {props.mode === "line" ? (
-          <ChartSection
-            categories={syncCategories(
-              props.series.current,
-              props.series.previous
-            )}
-            currData={props.series.current
-              .slice(-minLen(props.series))
-              .map((p) => p.value)}
-            prevData={props.series.previous
-              .slice(-minLen(props.series))
-              .map((p) => p.value)}
-          />
+          isLoading ? (
+            <ChartSectionSkeleton />
+          ) : (
+            <ChartSection
+              categories={syncCategories(
+                props.series.current,
+                props.series.previous
+              )}
+              currData={props.series.current
+                .slice(-minLen(props.series))
+                .map((p) => p.value)}
+              prevData={props.series.previous
+                .slice(-minLen(props.series))
+                .map((p) => p.value)}
+            />
+          )
         ) : (
           <DrilldownMultiLineSection
             xLabels={props.xLabels}
             seriesBySub={props.seriesBySub}
-            loading={props.loading}
+            loading={isLoading}
           />
         )}
       </div>
 
-      <DonutSection
-        donutData={props.donutData}
-        onSliceClick={props.onDonutSlice}
-        centerLabel={props.donutCenterLabel}
-        actionButtonTarget={props.actionButtonTarget}
-      />
+      {/* DERECHA: Donut */}
+      {isLoading ? (
+        <DonutSectionSkeleton />
+      ) : (
+        <DonutSection
+          donutData={props.donutData}
+          onSliceClick={props.onDonutSlice}
+          centerLabel={props.donutCenterLabel}
+          actionButtonTarget={props.actionButtonTarget}
+        />
+      )}
     </div>
   );
 }

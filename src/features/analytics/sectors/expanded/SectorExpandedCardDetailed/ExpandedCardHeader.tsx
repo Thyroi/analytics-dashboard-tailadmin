@@ -1,6 +1,5 @@
 "use client";
 
-import RangeControls from "@/components/dashboard/RangeControls";
 import Header from "@/features/home/sectors/SectorExpandedCard/Header";
 import type { Granularity } from "@/lib/types";
 import React from "react";
@@ -27,12 +26,6 @@ export default function ExpandedCardHeader({
   imgSrc,
   Icon,
   onClose,
-  granularity,
-  startDate,
-  endDate,
-  onGranularityChange,
-  onRangeChange,
-  onClearRange,
   className = "",
 }: Props) {
   return (

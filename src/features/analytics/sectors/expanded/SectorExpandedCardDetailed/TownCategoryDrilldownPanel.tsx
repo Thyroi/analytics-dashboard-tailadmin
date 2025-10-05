@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import ChartPair from "./ChartPair";
 import UrlDetailsPanel from "./UrlDetailsPanel";
 
@@ -8,10 +8,10 @@ import { useTownCategoryDrilldown } from "@/features/analytics/hooks/useTownCate
 import { useUrlDrilldown } from "@/features/analytics/hooks/useUrlDrilldown";
 import { pickPathForSubActivity } from "@/lib/utils/drilldown";
 
-import { TOWN_META, type TownId } from "@/lib/taxonomy/towns";
-import { CATEGORY_META, type CategoryId } from "@/lib/taxonomy/categories";
-import type { Granularity } from "@/lib/types";
 import type { UrlSeries } from "@/features/analytics/services/drilldown";
+import { CATEGORY_META, type CategoryId } from "@/lib/taxonomy/categories";
+import { TOWN_META, type TownId } from "@/lib/taxonomy/towns";
+import type { Granularity } from "@/lib/types";
 import DrilldownTitle from "./DrilldownTitle";
 
 type Props = {
@@ -38,10 +38,23 @@ export default function TownCategoryDrilldownPanel({
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
   const url = useUrlDrilldown({ path: selectedPath, granularity });
 
-  // Reset del nivel 3 cuando cambie el contexto del drill
+  // Reset del nivel 3 si cambia el contexto real (pueblo/categoría)
   useEffect(() => {
     setSelectedPath(null);
-  }, [townId, categoryId, granularity]);
+  }, [townId, categoryId]);
+
+  // Auto-scroll al abrir el nivel 3
+  const detailsRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (!selectedPath) return;
+    const t = setTimeout(() => {
+      detailsRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }, 0);
+    return () => clearTimeout(t);
+  }, [selectedPath]);
 
   // Nombre a mostrar en el encabezado según el primer nivel seleccionado
   const name = useMemo(() => {
@@ -86,18 +99,20 @@ export default function TownCategoryDrilldownPanel({
 
         {/* Nivel 3: Detalle de la URL seleccionada */}
         {selectedPath && (
-          <UrlDetailsPanel
-            path={url.selectedPath ?? selectedPath}
-            loading={url.loading}
-            seriesAvgEngagement={url.seriesAvgEngagement}
-            kpis={url.kpis}
-            operatingSystems={url.operatingSystems}
-            genders={url.genders}
-            countries={url.countries}
-            deltaPct={url.deltaPct}
-            granularity={granularity}
-            onClose={() => setSelectedPath(null)}
-          />
+          <div ref={detailsRef} className="scroll-mt-24">
+            <UrlDetailsPanel
+              path={url.selectedPath ?? selectedPath}
+              loading={url.loading}
+              seriesAvgEngagement={url.seriesAvgEngagement}
+              kpis={url.kpis}
+              operatingSystems={url.operatingSystems}
+              genders={url.genders}
+              countries={url.countries}
+              deltaPct={url.deltaPct}
+              granularity={granularity}
+              onClose={() => setSelectedPath(null)}
+            />
+          </div>
         )}
       </div>
     </div>

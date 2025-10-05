@@ -1,14 +1,17 @@
-// src/features/analytics/sectors/SectorsGridDetailed.tsx
 "use client";
 
-import { MapPinIcon } from "@heroicons/react/24/solid";
-import { useMemo, useState } from "react";
 import DeltaCard from "@/components/common/DeltaCard";
-import SectorExpandedCardDetailed from "../sectors/expanded/SectorExpandedCardDetailed";
-import type { DonutDatum, Granularity, SeriesPoint } from "@/lib/types";
-import { orderIdsByTaxonomy, sectorIconSrc, sectorTitle } from "@/lib/utils/sector";
-import type { TownId } from "@/lib/taxonomy/towns";
 import type { CategoryId } from "@/lib/taxonomy/categories";
+import type { TownId } from "@/lib/taxonomy/towns";
+import type { DonutDatum, Granularity, SeriesPoint } from "@/lib/types";
+import {
+  orderIdsByTaxonomy,
+  sectorIconSrc,
+  sectorTitle,
+} from "@/lib/utils/sector";
+import { MapPinIcon } from "@heroicons/react/24/solid";
+import { useEffect, useMemo, useRef, useState } from "react";
+import SectorExpandedCardDetailed from "../sectors/expanded/SectorExpandedCardDetailed";
 
 type Mode = "tag" | "town";
 
@@ -18,7 +21,10 @@ type Props = {
   granularity: Granularity;
   onGranularityChange: (g: Granularity) => void;
 
-  getSeriesFor: (id: string) => { current: SeriesPoint[]; previous: SeriesPoint[] };
+  getSeriesFor: (id: string) => {
+    current: SeriesPoint[];
+    previous: SeriesPoint[];
+  };
   getDonutFor: (id: string) => DonutDatum[];
   /** puede devolver null (no formateado) */
   getDeltaPctFor: (id: string) => number | null;
@@ -64,12 +70,27 @@ export default function SectorsGridDetailed({
   const expandedId =
     controlledExpandedId !== undefined ? controlledExpandedId : uncontrolled;
 
-  const handleOpen = (id: string) => (onOpen ? onOpen(id) : setUncontrolled(id));
+  const expandedRef = useRef<HTMLDivElement | null>(null);
+
+  const handleOpen = (id: string) =>
+    onOpen ? onOpen(id) : setUncontrolled(id);
   const handleClose = () => (onClose ? onClose() : setUncontrolled(null));
 
   const orderedIds = useMemo(() => orderIdsByTaxonomy(mode, ids), [mode, ids]);
   const isTown = mode === "town";
   const now = new Date();
+
+  // Auto-scroll cuando aparece el expandido (nivel 1)
+  useEffect(() => {
+    if (!expandedId) return;
+    const t = setTimeout(() => {
+      expandedRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }, 0);
+    return () => clearTimeout(t);
+  }, [expandedId]);
 
   return (
     <div
@@ -82,7 +103,11 @@ export default function SectorsGridDetailed({
         const variant =
           imgSrc !== undefined
             ? { imgSrc }
-            : { Icon: MapPinIcon as React.ComponentType<React.SVGProps<SVGSVGElement>> };
+            : {
+                Icon: MapPinIcon as React.ComponentType<
+                  React.SVGProps<SVGSVGElement>
+                >,
+              };
 
         const deltaPct = getDeltaPctFor(id);
 
@@ -92,7 +117,8 @@ export default function SectorsGridDetailed({
           return (
             <div
               key={`expanded-${id}`}
-              className="col-span-1 sm:col-span-2 lg:col-span-3 xl:col-span-4 row-span-2"
+              ref={expandedRef}
+              className="col-span-1 sm:col-span-2 lg:col-span-3 xl:col-span-4 row-span-2 scroll-mt-24"
             >
               <SectorExpandedCardDetailed
                 title={title}

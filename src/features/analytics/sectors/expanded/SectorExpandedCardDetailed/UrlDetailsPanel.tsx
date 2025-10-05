@@ -4,6 +4,7 @@ import KPIList, { type KPIItem } from "@/components/charts/KPIList";
 import Header from "@/components/common/Header";
 import KPIListSkeleton from "@/components/skeletons/KPIListSkeleton";
 import DonutSection from "@/features/analytics/sectors/expanded/SectorExpandedCardDetailed/DonutSection";
+import { UrlDetailsPanelSkeleton } from "@/features/analytics/skeletons";
 import ChartSection from "@/features/home/sectors/SectorExpandedCard/ChartSection";
 import type { DonutDatum, Granularity, SeriesPoint } from "@/lib/types";
 import { Activity, Clock, Timer, Users } from "lucide-react";
@@ -98,7 +99,6 @@ export default function UrlDetailsPanel({
   operatingSystems,
   genders,
   countries,
-  deltaPct,
   onClose,
   activityName,
   contextName,
@@ -165,6 +165,9 @@ export default function UrlDetailsPanel({
     };
   }, [seriesAvgEngagement]);
 
+  if (loading) {
+    return <UrlDetailsPanelSkeleton chartHeight={260} />;
+  }
   return (
     <div
       className="

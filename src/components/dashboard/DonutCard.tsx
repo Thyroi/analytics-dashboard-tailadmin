@@ -52,9 +52,9 @@ export type DonutCardProps = {
   variant?: "card" | "plain";
 
   /** Estado vacío (muestra donut 100% + ícono centrado) */
-  emptyIcon?: LucideIcon; // por defecto CircleSlash
-  emptyLabel?: string; // por defecto "Sin datos"
-  emptyColor?: string; // por defecto "#E5E7EB"
+  emptyIcon?: LucideIcon;
+  emptyLabel?: string;
+  emptyColor?: string;
 
   className?: string;
 };

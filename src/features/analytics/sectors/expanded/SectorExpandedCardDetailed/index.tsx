@@ -6,7 +6,7 @@ import type { TownId } from "@/lib/taxonomy/towns";
 import type { DonutDatum, Granularity, SeriesPoint } from "@/lib/types";
 import { resolveCategoryIdFromLabel } from "@/lib/utils/drilldown";
 import { IconOrImage } from "@/lib/utils/images";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import ChartPair from "./ChartPair";
 import TownCategoryDrilldownPanel from "./TownCategoryDrilldownPanel";
 
@@ -26,7 +26,9 @@ type BaseProps = {
   isTown?: boolean;
   townId?: TownId;
   onSliceClick?: (label: string) => void;
+  /** Drill forzado por pueblo (cuando vienes de tag → town) */
   forceDrillTownId?: TownId;
+  /** Categoría fija (cuando vienes de town → categoría) */
   fixedCategoryId?: CategoryId;
 };
 
@@ -48,15 +50,6 @@ export default function SectorExpandedCardDetailed(props: Props) {
     fixedCategoryId,
   } = props;
 
-  const { categories, currData, prevData } = useMemo(() => {
-    const n = Math.min(current.length, previous.length);
-    return {
-      categories: current.slice(-n).map((p) => p.label),
-      currData: current.slice(-n).map((p) => p.value),
-      prevData: previous.slice(-n).map((p) => p.value),
-    };
-  }, [current, previous]);
-
   const imgSrc =
     "imgSrc" in props
       ? typeof props.imgSrc === "string"
@@ -65,21 +58,27 @@ export default function SectorExpandedCardDetailed(props: Props) {
       : undefined;
   const Icon = "Icon" in props ? props.Icon : undefined;
 
-  const drillTownId: TownId | null =
-    forceDrillTownId ?? (isTown ? townId ?? null : null);
+  // 🔒 drillTownId estable
+  const drillTownId: TownId | null = useMemo(
+    () => forceDrillTownId ?? (isTown ? townId ?? null : null),
+    [forceDrillTownId, isTown, townId]
+  );
 
+  // Nivel 2: categoría seleccionada (solo aplica en modo pueblo)
   const [selectedCategoryId, setSelectedCategoryId] =
     useState<CategoryId | null>(null);
 
+  // Reset categoría al cambiar el contexto real del drill (pueblo)
   useEffect(() => {
-    if (forceDrillTownId) return;
     setSelectedCategoryId(null);
-  }, [townId, forceDrillTownId]);
+  }, [drillTownId]);
 
+  // Fijar categoría si viene desde arriba
   useEffect(() => {
     if (fixedCategoryId) setSelectedCategoryId(fixedCategoryId);
   }, [fixedCategoryId]);
 
+  // Click en donut superior
   const handleDonutTopClick = (label: string) => {
     if (isTown && drillTownId) {
       const cid = resolveCategoryIdFromLabel(label);
@@ -88,6 +87,20 @@ export default function SectorExpandedCardDetailed(props: Props) {
     }
     if (onSliceClick) onSliceClick(label);
   };
+
+  // Auto-scroll al montar el panel de nivel 2
+  const level2Ref = useRef<HTMLDivElement | null>(null);
+  const level2Active = !!(
+    drillTownId &&
+    (fixedCategoryId ?? selectedCategoryId)
+  );
+  useEffect(() => {
+    if (!level2Active) return;
+    const t = setTimeout(() => {
+      level2Ref.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 0);
+    return () => clearTimeout(t);
+  }, [level2Active]);
 
   return (
     <div>
@@ -110,13 +123,15 @@ export default function SectorExpandedCardDetailed(props: Props) {
         className="mb-4"
       />
 
-      {drillTownId && (fixedCategoryId ?? selectedCategoryId) && (
-        <TownCategoryDrilldownPanel
-          townId={drillTownId}
-          categoryId={(fixedCategoryId ?? selectedCategoryId)!}
-          granularity={granularity}
-          headline={isTown ? "category" : "town"}
-        />
+      {level2Active && (
+        <div ref={level2Ref} className="scroll-mt-24">
+          <TownCategoryDrilldownPanel
+            townId={drillTownId!}
+            categoryId={(fixedCategoryId ?? selectedCategoryId)!}
+            granularity={granularity}
+            headline={isTown ? "category" : "town"}
+          />
+        </div>
       )}
     </div>
   );

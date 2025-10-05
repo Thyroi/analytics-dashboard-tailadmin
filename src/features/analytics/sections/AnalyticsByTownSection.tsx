@@ -30,10 +30,11 @@ function AnalyticsByTownSectionInner() {
 
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  // 👇 ahora trae flags claros
+  // Flags de carga claros (primera carga + revalidaciones)
   const { state, ids, itemsById, isInitialLoading, isFetching } =
     useTownsTotals(granularity, endISO);
 
+  // IDs persistentes para no colapsar la grilla durante las cargas
   const displayedIds = useMemo<string[]>(
     () => (state.status === "ready" ? (ids as string[]) : [...TOWN_ID_ORDER]),
     [state.status, ids]
@@ -46,11 +47,13 @@ function AnalyticsByTownSectionInner() {
   const [drill, setDrill] = useState<Drill | null>(null);
   const townId = expandedId as TownId | null;
 
+  // Detalle del 1er nivel (pueblo)
   const { series: seriesTown, donutData: donutTown } = useTownDetails(
     (drill?.kind === "town" ? drill.townId : townId) ?? ("almonte" as TownId),
     granularity
   );
 
+  // Drilldown 2do nivel (pueblo + categoría)
   const townCat = drill?.kind === "town+cat" ? drill : null;
   const { series: ddSeries, donut: ddDonut } = useTownCategoryDrilldown(
     townCat
@@ -58,6 +61,7 @@ function AnalyticsByTownSectionInner() {
       : null
   );
 
+  // Mantener null cuando no hay base de comparación
   const getDeltaPctFor = (id: string) =>
     state.status === "ready" ? itemsById[id as TownId]?.deltaPct ?? null : null;
 
@@ -114,8 +118,10 @@ function AnalyticsByTownSectionInner() {
           setDrill(null);
         }}
         onSliceClick={handleSliceClick}
-        // 👇 loader en el aro (delta oculto) tanto en primera carga como en revalidación
+        // Loader en el aro (delta oculto) en primera carga y revalidación
         isDeltaLoading={isInitialLoading || isFetching}
+        forceDrillTownId={townCat ? townCat.townId : undefined}
+        fixedCategoryId={townCat ? townCat.categoryId : undefined}
       />
     </section>
   );
