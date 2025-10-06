@@ -50,7 +50,7 @@ export default function DateRangePicker({
   }, [startDate, endDate, onRangeChange]);
 
   return (
-    <div className="relative w-[250px] group">
+    <div className="relative w-[250px] group flatpickr-host">
       <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center">
         <CalendarIcon
           aria-hidden="true"

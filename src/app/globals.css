@@ -38,7 +38,7 @@
   --text-title-xs--line-height: 26px;
   --text-title-xxs: 16px;
   --text-title-xxs--line-height: 22px;
-  
+
   /* Theme text */
   --text-theme-xl: 20px;
   --text-theme-xl--line-height: 30px;
@@ -695,4 +695,30 @@ html:not(.dark) .apexcharts-tooltip {
 /* Si usas modo “static” alineado a la derecha */
 .flatpickr-calendar.static {
   right: 0;
+}
+
+/* ========== ARREGLA ANCHO DEL CALENDARIO ========== */
+/* 7 columnas * tamaño de celda + 40px de padding lateral del panel */
+.flatpickr-host .flatpickr-calendar {
+  width: auto !important;
+  min-width: calc(7 * var(--fp-cell) + 40px) !important;
+  box-sizing: content-box !important; /* que el min-width sea del contenido, no contando padding */
+}
+
+/* Desplázalo un poco a la derecha para que no se recorte (input = 250px) */
+.flatpickr-host .flatpickr-calendar.static {
+  right: -28px !important; /* 250 - (7*var(--fp-cell)+40) = -28px cuando --fp-cell=34 */
+}
+
+/* Asegura que el interior no se contrae por debajo de 7 celdas */
+.flatpickr-host .flatpickr-innerContainer,
+.flatpickr-host .flatpickr-days,
+.flatpickr-host .flatpickr-days .dayContainer {
+  min-width: calc(7 * var(--fp-cell)) !important;
+  max-width: none !important;
+}
+
+/* Evita que el contenedor del input recorte el panel */
+.flatpickr-host {
+  overflow: visible !important;
 }
