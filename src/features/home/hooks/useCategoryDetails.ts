@@ -1,8 +1,12 @@
 "use client";
 
+import {
+  getCategoryDetails,
+  type CategoryDetailsResponse,
+} from "@/features/analytics/services/categoryDetails";
 import type { CategoryId } from "@/lib/taxonomy/categories";
 import type { DonutDatum, Granularity, SeriesPoint } from "@/lib/types";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 type State =
   | { status: "idle" | "loading" }
@@ -13,33 +17,36 @@ type State =
     }
   | { status: "error"; message: string };
 
+/**
+ * Ahora acepta `endISO` y lo pasa al service, para que el backend
+ * calcule la ventana “ending at endISO”.
+ */
 export function useCategoryDetails(
   id: CategoryId | null,
-  granularity: Granularity
+  granularity: Granularity,
+  endISO?: string
 ) {
   const [state, setState] = useState<State>({ status: "idle" });
+  const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     if (!id) return;
+    abortRef.current?.abort();
     const ac = new AbortController();
+    abortRef.current = ac;
+
     setState({ status: "loading" });
 
-    const dw = granularity === "d" ? "&dw=1" : "";
-    fetch(
-      `/api/analytics/v1/dimensions/categorias/${id}/details?g=${granularity}${dw}`,
-      {
-        method: "GET",
-        signal: ac.signal,
-        headers: { "cache-control": "no-cache" },
-      }
-    )
-      .then((r) => r.json())
-      .then((raw) => {
-        const series = (raw?.series ?? { current: [], previous: [] }) as {
-          current: SeriesPoint[];
-          previous: SeriesPoint[];
-        };
-        const donut = (raw?.donutData ?? []) as DonutDatum[];
+    getCategoryDetails({
+      categoryId: id,
+      granularity,
+      endISO,
+      signal: ac.signal,
+    })
+      .then((raw: CategoryDetailsResponse) => {
+        if (ac.signal.aborted) return;
+        const series = raw?.series ?? { current: [], previous: [] };
+        const donut = raw?.donutData ?? [];
         setState({ status: "ready", series, donutData: donut });
       })
       .catch((err: unknown) => {
@@ -52,7 +59,7 @@ export function useCategoryDetails(
       });
 
     return () => ac.abort();
-  }, [id, granularity]);
+  }, [id, granularity, endISO]);
 
   const series = useMemo(
     () =>

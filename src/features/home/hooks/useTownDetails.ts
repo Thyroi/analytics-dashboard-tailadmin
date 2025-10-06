@@ -1,8 +1,13 @@
 "use client";
 
+import {
+  getTownDetails,
+  type TownDetailsResponse,
+} from "@/features/analytics/services/townDetails";
+import type { CategoryId } from "@/lib/taxonomy/categories";
 import type { TownId } from "@/lib/taxonomy/towns";
 import type { DonutDatum, Granularity, SeriesPoint } from "@/lib/types";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 type State =
   | { status: "idle" | "loading" }
@@ -13,30 +18,38 @@ type State =
     }
   | { status: "error"; message: string };
 
-export function useTownDetails(id: TownId | null, granularity: Granularity) {
+/**
+ * Ahora acepta `endISO` y (opcionalmente) `categoryId` por si filtras
+ * pueblo+categoría desde el 2º nivel del drilldown.
+ */
+export function useTownDetails(
+  id: TownId | null,
+  granularity: Granularity,
+  endISO?: string,
+  categoryId?: CategoryId
+) {
   const [state, setState] = useState<State>({ status: "idle" });
+  const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     if (!id) return;
+    abortRef.current?.abort();
     const ac = new AbortController();
+    abortRef.current = ac;
+
     setState({ status: "loading" });
 
-    const dw = granularity === "d" ? "&dw=1" : "";
-    fetch(
-      `/api/analytics/v1/dimensions/pueblos/${id}/details?g=${granularity}${dw}`,
-      {
-        method: "GET",
-        signal: ac.signal,
-        headers: { "cache-control": "no-cache" },
-      }
-    )
-      .then((r) => r.json())
-      .then((raw) => {
-        const series = (raw?.series ?? { current: [], previous: [] }) as {
-          current: SeriesPoint[];
-          previous: SeriesPoint[];
-        };
-        const donut = (raw?.donutData ?? []) as DonutDatum[];
+    getTownDetails({
+      townId: id,
+      granularity,
+      endISO,
+      ...(categoryId ? { categoryId } : {}),
+      signal: ac.signal,
+    })
+      .then((raw: TownDetailsResponse) => {
+        if (ac.signal.aborted) return;
+        const series = raw?.series ?? { current: [], previous: [] };
+        const donut = raw?.donutData ?? [];
         setState({ status: "ready", series, donutData: donut });
       })
       .catch((err: unknown) => {
@@ -49,7 +62,7 @@ export function useTownDetails(id: TownId | null, granularity: Granularity) {
       });
 
     return () => ac.abort();
-  }, [id, granularity]);
+  }, [id, granularity, endISO, categoryId]);
 
   const series = useMemo(
     () =>

@@ -1,4 +1,4 @@
-import type { DonutDatum, Granularity, SeriesPoint } from "@/lib/types";
+import type { Granularity } from "@/lib/types";
 import { analyticsdata_v1beta, google } from "googleapis";
 import { NextResponse, type NextRequest } from "next/server";
 
@@ -11,28 +11,71 @@ import {
 import { TOWN_ID_ORDER, type TownId } from "@/lib/taxonomy/towns";
 
 import {
+  addDaysUTC,
   deriveRangeEndingYesterday,
   parseISO,
-  prevComparable,
   todayUTC,
+  toISO,
 } from "@/lib/utils/datetime";
 import {
   getAuth,
   normalizePropertyId,
   resolvePropertyId,
 } from "@/lib/utils/ga";
-import { buildAxisForGranularity } from "@/lib/utils/timeAxis";
 import { normalizePath, stripLangPrefix } from "@/lib/utils/url";
 
-/* ---------------- helpers ---------------- */
-
+/* -------- tipos/helpers -------- */
 type DateRange = { start: string; end: string };
 
-function pctDelta(curr: number, prev: number): number {
-  if (prev <= 0) return curr > 0 ? 100 : 0;
-  return ((curr - prev) / prev) * 100;
+function toISODate(yyyymmdd: string): string {
+  return `${yyyymmdd.slice(0, 4)}-${yyyymmdd.slice(4, 6)}-${yyyymmdd.slice(
+    6,
+    8
+  )}`;
+}
+function shiftRangeByDays(range: DateRange, days: number): DateRange {
+  const s = addDaysUTC(parseISO(range.start), days);
+  const e = addDaysUTC(parseISO(range.end), days);
+  return { start: toISO(s), end: toISO(e) };
+}
+function enumerateDaysUTC(startISO: string, endISO: string): string[] {
+  const s = parseISO(startISO);
+  const e = parseISO(endISO);
+  const cur = new Date(
+    Date.UTC(s.getUTCFullYear(), s.getUTCMonth(), s.getUTCDate())
+  );
+  const end = new Date(
+    Date.UTC(e.getUTCFullYear(), e.getUTCMonth(), e.getUTCDate())
+  );
+  const out: string[] = [];
+  while (cur <= end) {
+    out.push(toISO(cur));
+    cur.setUTCDate(cur.getUTCDate() + 1);
+  }
+  return out;
+}
+function ymKey(y: number, mZero: number) {
+  const mm = String(mZero + 1).padStart(2, "0");
+  return `${y}${mm}`;
+}
+function ymLabel(y: number, mZero: number) {
+  const mm = String(mZero + 1).padStart(2, "0");
+  return `${y}-${mm}`;
+}
+function listLastNMonths(endDate: Date, n = 12) {
+  const labels: string[] = [];
+  const keys: string[] = [];
+  const endY = endDate.getUTCFullYear();
+  const endM = endDate.getUTCMonth();
+  for (let i = n - 1; i >= 0; i--) {
+    const d = new Date(Date.UTC(endY, endM - i, 1));
+    labels.push(ymLabel(d.getUTCFullYear(), d.getUTCMonth()));
+    keys.push(ymKey(d.getUTCFullYear(), d.getUTCMonth()));
+  }
+  return { labels, keys };
 }
 
+/* -------- sinónimos categoría -------- */
 function normToken(s: string): string {
   return s
     .normalize("NFD")
@@ -41,8 +84,6 @@ function normToken(s: string): string {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
 }
-
-/** slug → CategoryId (usa sinónimos oficiales) */
 function buildSlugToCategory(): Record<string, CategoryId> {
   const map: Record<string, CategoryId> = {};
   for (const cid of CATEGORY_ID_ORDER) {
@@ -55,9 +96,9 @@ function buildSlugToCategory(): Record<string, CategoryId> {
   }
   return map;
 }
-const SLUG2CAT: Record<string, CategoryId> = buildSlugToCategory();
+const SLUG2CAT = buildSlugToCategory();
 
-/** Extrae townId / categoryId / subSlug de un path (ya sin prefijo de idioma) */
+/* -------- parse /town/cat/sub -------- */
 function parseTownCatSub(path: string): {
   townId?: TownId;
   categoryId?: CategoryId;
@@ -67,30 +108,23 @@ function parseTownCatSub(path: string): {
   if (!clean) return {};
   const segs = clean.split("/").map(normToken);
 
-  // town
   const townIdx = segs.findIndex((s) =>
     (TOWN_ID_ORDER as readonly string[]).includes(s)
   );
   if (townIdx === -1) return {};
 
   const townId = segs[townIdx] as TownId;
-
-  // categoría (siguiente segmento)
   const catSeg = segs[townIdx + 1];
   const categoryId = catSeg ? SLUG2CAT[catSeg] : undefined;
-
-  // sub
   const subSlug = segs[townIdx + 2];
 
   return { townId, categoryId, subSlug };
 }
 
-/* ---------------- handler ---------------- */
-
+/* -------- handler -------- */
 export async function GET(req: NextRequest, ctx: unknown) {
   try {
     const { id } = (ctx as { params: { id: string } }).params;
-
     if (!(TOWN_ID_ORDER as readonly string[]).includes(id)) {
       return NextResponse.json(
         { error: `Invalid townId '${id}'` },
@@ -116,31 +150,48 @@ export async function GET(req: NextRequest, ctx: unknown) {
       );
     }
 
-    // rangos (terminando AYER) — para 'd' queremos 7 días (dayAsWeek=true)
     const now = endISO ? parseISO(endISO) : todayUTC();
-    const currPreset = deriveRangeEndingYesterday(g, now, g === "d");
-    const prevPreset = prevComparable(currPreset);
-    const ranges: { current: DateRange; previous: DateRange } = {
-      current: { start: currPreset.startTime, end: currPreset.endTime },
-      previous: { start: prevPreset.startTime, end: prevPreset.endTime },
-    };
+    const dayAsWeek = g === "d";
+    const cur = deriveRangeEndingYesterday(g, now, dayAsWeek);
+    const current: DateRange = { start: cur.startTime, end: cur.endTime };
+    const previous: DateRange = shiftRangeByDays(current, -1);
 
-    // EJE / BUCKETS
-    const axis = buildAxisForGranularity(g, ranges);
-    const N = axis.xLabels.length;
+    const isYearly = g === "y";
+    let xLabels: string[] = [];
+    let curKeys: string[] = [];
+    let prevKeys: string[] = [];
+    let curIndex = new Map<string, number>();
+    let prevIndex = new Map<string, number>();
 
-    // GA
+    if (isYearly) {
+      const { labels: curLbl, keys: curK } = listLastNMonths(
+        parseISO(current.end),
+        12
+      );
+      const { keys: prvK } = listLastNMonths(parseISO(previous.end), 12);
+      xLabels = curLbl;
+      curKeys = curK;
+      prevKeys = prvK;
+      curIndex = new Map(curKeys.map((k, i) => [k, i]));
+      prevIndex = new Map(prevKeys.map((k, i) => [k, i]));
+    } else {
+      xLabels = enumerateDaysUTC(current.start, current.end);
+      const prevDays = enumerateDaysUTC(previous.start, previous.end);
+      curKeys = xLabels;
+      prevKeys = prevDays;
+      curIndex = new Map(curKeys.map((k, i) => [k, i]));
+      prevIndex = new Map(prevKeys.map((k, i) => [k, i]));
+    }
+
     const auth = getAuth();
     const analyticsData = google.analyticsdata({ version: "v1beta", auth });
     const property = normalizePropertyId(resolvePropertyId());
 
     const request: analyticsdata_v1beta.Schema$RunReportRequest = {
-      dateRanges: [
-        { startDate: ranges.previous.start, endDate: ranges.current.end },
-      ],
+      dateRanges: [{ startDate: previous.start, endDate: current.end }],
       metrics: [{ name: "eventCount" }],
       dimensions: [
-        { name: axis.dimensionTime },
+        { name: "date" },
         { name: "pageLocation" },
         { name: "eventName" },
       ],
@@ -164,16 +215,12 @@ export async function GET(req: NextRequest, ctx: unknown) {
     });
     const rows = resp.data.rows ?? [];
 
-    // agregadores
-    const currVec = Array(N).fill(0) as number[];
-    const prevVec = Array(N).fill(0) as number[];
+    const curVec = Array(curKeys.length).fill(0);
+    const prevVec = Array(prevKeys.length).fill(0);
 
-    // sin categoryId → donut por categorías (current)
-    const byCategoryCurrent = new Map<CategoryId, number>();
-
-    // con categoryId → donut por sub-actividad + series por URL (current)
-    const bySubCurrent = new Map<string, number>();
-    const urlVecs = new Map<string, number[]>(); // url -> vector current (N)
+    const byCategoryCurrent = new Map<CategoryId, number>(); // donut nivel 1
+    const bySubCurrent = new Map<string, number>(); // donut nivel 2
+    const urlDailyCurrent = new Map<string, Map<string, number>>(); // seriesByUrl nivel 2
 
     const useCategoryMode = Boolean(categoryIdParam);
 
@@ -181,132 +228,117 @@ export async function GET(req: NextRequest, ctx: unknown) {
       const dims = r.dimensionValues ?? [];
       const mets = r.metricValues ?? [];
 
-      const slotRaw = String(dims[0]?.value ?? ""); // date(YYYYMMDD) || yearMonth(YYYYMM)
-      const locRaw = String(dims[1]?.value ?? "");
-      const events = Number(mets[0]?.value ?? 0);
+      const dRaw = String(dims[0]?.value ?? "");
+      if (dRaw.length !== 8) continue;
 
-      // key de slot según dimensionTime
-      let slotKey: string | null = null;
-      if (axis.dimensionTime === "date") {
-        if (slotRaw.length === 8) {
-          slotKey = `${slotRaw.slice(0, 4)}-${slotRaw.slice(
-            4,
-            6
-          )}-${slotRaw.slice(6, 8)}`;
-        }
-      } else {
-        if (slotRaw.length === 6) slotKey = slotRaw; // YYYYMM
+      const iso = toISODate(dRaw);
+      const keyDay = iso;
+      const keyMonth = dRaw.slice(0, 6);
+
+      const urlRaw = String(dims[1]?.value ?? "");
+      const { path } = stripLangPrefix(normalizePath(urlRaw));
+
+      const v = Number(mets[0]?.value ?? 0);
+
+      const inCur = iso >= current.start && iso <= current.end;
+      const inPrev = iso >= previous.start && iso <= previous.end;
+
+      // serie total
+      if (inCur) {
+        const k = isYearly ? keyMonth : keyDay;
+        const idx = curIndex.get(k);
+        if (idx !== undefined) curVec[idx] += v;
       }
-      if (!slotKey) continue;
+      if (inPrev) {
+        const k = isYearly ? keyMonth : keyDay;
+        const idx = prevIndex.get(k);
+        if (idx !== undefined) prevVec[idx] += v;
+      }
 
-      const { path } = stripLangPrefix(normalizePath(locRaw));
+      if (!inCur) continue;
+
       const parsed = parseTownCatSub(path);
       if (parsed.townId !== townId) continue;
-
-      // ¿current o previous?
-      const iCur = axis.indexByCurKey.get(slotKey);
-      const iPrev = axis.indexByPrevKey.get(slotKey);
-      if (iCur !== undefined) currVec[iCur] += events;
-      else if (iPrev !== undefined) prevVec[iPrev] += events;
-      else continue;
-
-      // Solo CURRENT alimenta donut/seriesByUrl
-      if (iCur === undefined) continue;
 
       if (!useCategoryMode) {
         const cid = parsed.categoryId;
         if (cid)
-          byCategoryCurrent.set(
-            cid,
-            (byCategoryCurrent.get(cid) ?? 0) + events
-          );
+          byCategoryCurrent.set(cid, (byCategoryCurrent.get(cid) ?? 0) + v);
       } else {
         const cid = parsed.categoryId;
         if (!cid || cid !== categoryIdParam) continue;
 
-        // sub-actividad
         const clean = path.replace(/^\/+|\/+$/g, "");
         const segs = clean.split("/");
         const townIdx = segs.findIndex((s) => normToken(s) === townId);
         const sub = segs[townIdx + 2] ? segs[townIdx + 2] : `${townId}/${cid}`;
-        bySubCurrent.set(sub, (bySubCurrent.get(sub) ?? 0) + events);
 
-        // series por URL /town/cat/sub/
-        const url = "/" + segs.slice(0, townIdx + 3).join("/") + "/";
-        if (!urlVecs.has(url)) urlVecs.set(url, Array(N).fill(0));
-        urlVecs.get(url)![iCur] += events;
+        bySubCurrent.set(sub, (bySubCurrent.get(sub) ?? 0) + v);
+
+        const baseUrl = "/" + segs.slice(0, townIdx + 3).join("/") + "/";
+        if (!urlDailyCurrent.has(baseUrl))
+          urlDailyCurrent.set(baseUrl, new Map<string, number>());
+        const dict = urlDailyCurrent.get(baseUrl)!;
+        const k = isYearly ? keyMonth : keyDay;
+        dict.set(k, (dict.get(k) ?? 0) + v);
       }
     }
 
-    // serie total (alineada a xLabels current)
-    const series: { current: SeriesPoint[]; previous: SeriesPoint[] } = {
-      current: axis.xLabels.map((label, i) => ({
-        label,
-        value: currVec[i] ?? 0,
-      })),
-      previous: axis.xLabels.map((label, i) => ({
-        label,
+    const series = {
+      current: xLabels.map((lbl, i) => ({ label: lbl, value: curVec[i] ?? 0 })),
+      previous: xLabels.map((lbl, i) => ({
+        label: lbl,
         value: prevVec[i] ?? 0,
       })),
     };
-    const totals = {
-      current: currVec.reduce((a, b) => a + b, 0),
-      previous: prevVec.reduce((a, b) => a + b, 0),
-    };
+    const totalCur = curVec.reduce((a, b) => a + b, 0);
+    const totalPrev = prevVec.reduce((a, b) => a + b, 0);
+    const deltaPct =
+      totalPrev > 0 ? ((totalCur - totalPrev) / totalPrev) * 100 : 0;
+
+    let donut: Array<{ label: string; value: number }>;
+    let seriesByUrl: Array<{ name: string; data: number[]; path: string }> = [];
 
     if (!useCategoryMode) {
-      const donut: DonutDatum[] = CATEGORY_ID_ORDER.map((cid) => ({
+      donut = CATEGORY_ID_ORDER.map((cid) => ({
         label: CATEGORY_META[cid].label,
         value: byCategoryCurrent.get(cid) ?? 0,
       }))
         .filter((d) => d.value > 0)
         .sort((a, b) => b.value - a.value);
+    } else {
+      donut = Array.from(bySubCurrent.entries())
+        .map(([label, value]) => ({ label, value }))
+        .sort((a, b) => b.value - a.value);
 
-      return NextResponse.json(
-        {
-          granularity: g,
-          range: ranges,
-          context: { townId },
-          series,
-          xLabels: axis.xLabels,
-          donut,
-          deltaPct: pctDelta(totals.current, totals.previous),
-          seriesByUrl: [],
-        },
-        { status: 200 }
+      const xKeyList = isYearly ? curKeys : curKeys; // ya están alineadas
+      seriesByUrl = Array.from(urlDailyCurrent.entries()).map(
+        ([path, dict]) => ({
+          name: path,
+          data: xKeyList.map((k) => dict.get(k) ?? 0),
+          path,
+        })
       );
     }
-
-    const donut: DonutDatum[] = Array.from(bySubCurrent.entries())
-      .map(([label, value]) => ({ label, value }))
-      .sort((a, b) => b.value - a.value);
-
-    const seriesByUrl = Array.from(urlVecs.entries()).map(([url, vec]) => ({
-      name: url,
-      data: vec,
-      path: url,
-    }));
 
     return NextResponse.json(
       {
         granularity: g,
-        range: ranges,
-        context: { townId, categoryId: categoryIdParam },
+        range: { current, previous },
+        context: {
+          townId,
+          ...(categoryIdParam ? { categoryId: categoryIdParam } : {}),
+        },
         series,
-        xLabels: axis.xLabels,
+        xLabels,
         donut,
+        deltaPct,
         seriesByUrl,
-        deltaPct: pctDelta(totals.current, totals.previous),
       },
       { status: 200 }
     );
   } catch (err: unknown) {
-    const message =
-      err instanceof Error
-        ? err.message
-        : typeof err === "string"
-        ? err
-        : "Unknown error";
+    const message = err instanceof Error ? err.message : "Unknown error";
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

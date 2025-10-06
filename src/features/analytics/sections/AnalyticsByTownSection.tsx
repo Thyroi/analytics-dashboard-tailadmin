@@ -1,16 +1,17 @@
-// src/features/analytics/sections/AnalyticsByTownSection.tsx
 "use client";
 
 import {
   TownTimeProvider,
   useTownTimeframe,
 } from "@/features/analytics/context/TownTimeContext";
+import { useTownCategoryDrilldown } from "@/features/analytics/hooks/useTownCategoryDrilldown";
 import SectorsGridDetailed from "@/features/analytics/sectors/SectorsGridDetailed";
 import { useTownDetails } from "@/features/home/hooks/useTownDetails";
 import { useTownsTotals } from "@/features/home/hooks/useTownsTotals";
-import { TOWN_ID_ORDER, type TownId } from "@/lib/taxonomy/towns";
+import { type CategoryId } from "@/lib/taxonomy/categories";
+import type { TownId } from "@/lib/taxonomy/towns";
+import { TOWN_ID_ORDER } from "@/lib/taxonomy/towns";
 import { labelToCategoryId } from "@/lib/utils/sector";
-import type { CategoryId } from "@/lib/taxonomy/categories";
 import { useMemo, useState } from "react";
 import StickyHeaderSection from "../sectors/expanded/SectorExpandedCardDetailed/StickyHeaderSection";
 
@@ -28,19 +29,14 @@ function AnalyticsByTownSectionInner() {
 
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  // Totales de los pueblos (para los aros de la grilla)
   const { state, ids, itemsById, isInitialLoading, isFetching } =
     useTownsTotals(granularity, endISO);
 
-  // Mientras carga, mantenemos el orden de taxonomía (placeholders)
   const displayedIds = useMemo<string[]>(
     () => (state.status === "ready" ? (ids as string[]) : [...TOWN_ID_ORDER]),
     [state.status, ids]
   );
 
-  // --- DRILL STATE ---
-  // kind "town" -> solo overview del municipio (nivel 1)
-  // kind "town+cat" -> mostrar nivel 2 dentro del expandido
   type Drill =
     | { kind: "town"; townId: TownId }
     | { kind: "town+cat"; townId: TownId; categoryId: CategoryId };
@@ -48,50 +44,49 @@ function AnalyticsByTownSectionInner() {
   const [drill, setDrill] = useState<Drill | null>(null);
   const townId = expandedId as TownId | null;
 
-  // Datos del NIVEL 1 (overview del municipio seleccionado)
+  // ⬇️ ahora pasa endISO; si el drill es "town" fijamos ese id
   const { series: seriesTown, donutData: donutTown } = useTownDetails(
     (drill?.kind === "town" ? drill.townId : townId) ?? ("almonte" as TownId),
-    granularity
+    granularity,
+    endISO
   );
 
-  // IMPORTANTÍSIMO:
-  // El nivel 2 se carga DENTRO de <SectorExpandedCardDetailed /> usando
-  // forceDrillTownId + fixedCategoryId. NO cambiamos las series del nivel 1.
-  const forceDrillTownId =
-    drill?.kind === "town+cat" ? (drill.townId as TownId) : undefined;
-  const fixedCategoryId =
-    drill?.kind === "town+cat" ? (drill.categoryId as CategoryId) : undefined;
+  // 2º nivel (town+cat) con endISO
+  const { series: ddSeries, donut: ddDonut } = useTownCategoryDrilldown(
+    drill?.kind === "town+cat"
+      ? {
+          townId: drill.townId,
+          categoryId: drill.categoryId,
+          granularity,
+          endISO,
+        }
+      : null
+  );
 
-  // Helpers para SectorsGridDetailed (solo nivel 1)
   const getDeltaPctFor = (id: string) =>
     state.status === "ready" ? itemsById[id as TownId]?.deltaPct ?? null : null;
 
-  const getSeriesFor = (_id: string) =>
-    townId && _id === townId ? seriesTown : { current: [], previous: [] };
+  const getSeriesFor = (_id: string) => {
+    if (drill?.kind === "town+cat") return ddSeries;
+    if (townId && _id === townId) return seriesTown;
+    return { current: [], previous: [] };
+  };
 
-  const getDonutFor = (_id: string) =>
-    townId && _id === townId ? donutTown : [];
+  const getDonutFor = (_id: string) => {
+    if (drill?.kind === "town+cat") return ddDonut;
+    if (townId && _id === townId) return donutTown;
+    return [];
+  };
 
-  // Abrir/cerrar
   const handleOpen = (id: string) => {
     setExpandedId(id);
     setDrill({ kind: "town", townId: id as TownId });
   };
 
-  const handleClose = () => {
-    setExpandedId(null);
-    setDrill(null);
-  };
-
-  // Click en una porción del donut del NIVEL 1 => habilita NIVEL 2
   const handleSliceClick = (label: string) => {
     const categoryId = labelToCategoryId(label);
     if (categoryId && expandedId) {
-      setDrill({
-        kind: "town+cat",
-        townId: expandedId as TownId,
-        categoryId,
-      });
+      setDrill({ kind: "town+cat", townId: expandedId as TownId, categoryId });
     }
   };
 
@@ -119,11 +114,12 @@ function AnalyticsByTownSectionInner() {
         getDonutFor={getDonutFor}
         expandedId={expandedId}
         onOpen={handleOpen}
-        onClose={handleClose}
+        onClose={() => {
+          setExpandedId(null);
+          setDrill(null);
+        }}
         onSliceClick={handleSliceClick}
         isDeltaLoading={isInitialLoading || isFetching}
-        forceDrillTownId={forceDrillTownId}
-        fixedCategoryId={fixedCategoryId}
       />
     </section>
   );

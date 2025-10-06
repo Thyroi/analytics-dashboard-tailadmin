@@ -4,6 +4,7 @@ import {
   TagTimeProvider,
   useTagTimeframe,
 } from "@/features/analytics/context/TagTimeContext";
+import { useTownCategoryDrilldown } from "@/features/analytics/hooks/useTownCategoryDrilldown";
 import SectorsGridDetailed from "@/features/analytics/sectors/SectorsGridDetailed";
 import { useCategoriesTotals } from "@/features/home/hooks/useCategoriesTotals";
 import { useCategoryDetails } from "@/features/home/hooks/useCategoryDetails";
@@ -26,9 +27,9 @@ function AnalyticsByTagSectionInner() {
   } = useTagTimeframe();
 
   const [expandedId, setExpandedId] = useState<string | null>(null);
+
   const { state, ids, itemsById } = useCategoriesTotals(granularity, endISO);
 
-  // ids persistentes
   const displayedIds = useMemo<string[]>(
     () =>
       state.status === "ready" ? (ids as string[]) : [...CATEGORY_ID_ORDER],
@@ -42,10 +43,24 @@ function AnalyticsByTagSectionInner() {
   const [drill, setDrill] = useState<Drill | null>(null);
   const catId = expandedId as CategoryId | null;
 
+  // ⬇️ ahora pasa endISO
   const { series: seriesCat, donutData: donutCat } = useCategoryDetails(
     (drill?.kind === "category" ? drill.categoryId : catId) ??
       ("naturaleza" as CategoryId),
-    granularity
+    granularity,
+    endISO
+  );
+
+  // Drilldown de 2º nivel (categoría -> pueblo) también con endISO
+  const dd = useTownCategoryDrilldown(
+    drill?.kind === "town+cat"
+      ? {
+          townId: drill.townId,
+          categoryId: drill.categoryId,
+          granularity,
+          endISO,
+        }
+      : null
   );
 
   const getDeltaPctFor = (id: string) =>
@@ -53,10 +68,17 @@ function AnalyticsByTagSectionInner() {
       ? itemsById[id as CategoryId]?.deltaPct ?? null
       : null;
 
-  const getSeriesFor = (_id: string) =>
-    catId && _id === catId ? seriesCat : { current: [], previous: [] };
+  const getSeriesFor = (_id: string) => {
+    if (drill?.kind === "town+cat") return dd.series;
+    if (catId && _id === catId) return seriesCat;
+    return { current: [], previous: [] };
+  };
 
-  const getDonutFor = (_id: string) => (catId && _id === catId ? donutCat : []);
+  const getDonutFor = (_id: string) => {
+    if (drill?.kind === "town+cat") return dd.donut;
+    if (catId && _id === catId) return donutCat;
+    return [];
+  };
 
   const handleOpen = (id: string) => {
     setExpandedId(id);

@@ -1,39 +1,81 @@
+import { NextResponse, type NextRequest } from "next/server";
+import { google, analyticsdata_v1beta } from "googleapis";
+import type { Granularity } from "@/lib/types";
 import {
   CATEGORY_ID_ORDER,
   CATEGORY_META,
   type CategoryId,
 } from "@/lib/taxonomy/categories";
-import { TOWN_ID_ORDER, TOWN_META, type TownId } from "@/lib/taxonomy/towns";
-import type { DonutDatum, Granularity, SeriesPoint } from "@/lib/types";
-import { analyticsdata_v1beta, google } from "googleapis";
-import { NextResponse, type NextRequest } from "next/server";
-
 import {
-  deriveRangeEndingYesterday,
-  parseISO,
-  prevComparable,
-  todayUTC,
-} from "@/lib/utils/datetime";
+  TOWN_ID_ORDER,
+  TOWN_META,
+} from "@/lib/taxonomy/towns";
+
 import {
   getAuth,
   normalizePropertyId,
   resolvePropertyId,
 } from "@/lib/utils/ga";
-import { buildAxisForGranularity } from "@/lib/utils/timeAxis";
+import {
+  parseISO,
+  todayUTC,
+  deriveRangeEndingYesterday,
+  toISO,
+  addDaysUTC,
+} from "@/lib/utils/datetime";
 
-/* ====================== opciones de despliegue ====================== */
-export const dynamic = "force-dynamic";
-export const runtime = "nodejs";
+/* ====================== tipos / helpers ====================== */
+type DateRange = { start: string; end: string };
 
-/* ====================== helpers ====================== */
+function toISODate(yyyymmdd: string): string {
+  return `${yyyymmdd.slice(0, 4)}-${yyyymmdd.slice(4, 6)}-${yyyymmdd.slice(6, 8)}`;
+}
+
+/* ============ eje (alineado) ============ */
+function enumerateDaysUTC(startISO: string, endISO: string): string[] {
+  const s = parseISO(startISO);
+  const e = parseISO(endISO);
+  const cur = new Date(Date.UTC(s.getUTCFullYear(), s.getUTCMonth(), s.getUTCDate()));
+  const end = new Date(Date.UTC(e.getUTCFullYear(), e.getUTCMonth(), e.getUTCDate()));
+  const out: string[] = [];
+  while (cur <= end) {
+    out.push(toISO(cur));
+    cur.setUTCDate(cur.getUTCDate() + 1);
+  }
+  return out;
+}
+function ymKey(y: number, mZero: number) {
+  const mm = String(mZero + 1).padStart(2, "0");
+  return `${y}${mm}`;
+}
+function ymLabel(y: number, mZero: number) {
+  const mm = String(mZero + 1).padStart(2, "0");
+  return `${y}-${mm}`;
+}
+function listLastNMonths(endDate: Date, n = 12) {
+  const labels: string[] = [];
+  const keys: string[] = [];
+  const endY = endDate.getUTCFullYear();
+  const endM = endDate.getUTCMonth();
+  for (let i = n - 1; i >= 0; i--) {
+    const d = new Date(Date.UTC(endY, endM - i, 1));
+    labels.push(ymLabel(d.getUTCFullYear(), d.getUTCMonth()));
+    keys.push(ymKey(d.getUTCFullYear(), d.getUTCMonth()));
+  }
+  return { labels, keys };
+}
+function shiftRangeByDays(range: DateRange, days: number): DateRange {
+  const s = addDaysUTC(parseISO(range.start), days);
+  const e = addDaysUTC(parseISO(range.end), days);
+  return { start: toISO(s), end: toISO(e) };
+}
+
+/* ====================== tokens / regex ====================== */
 function escapeRe(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 function toTokens(baseLabel: string): string[] {
-  const base = baseLabel
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase();
+  const base = baseLabel.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
   const kebab = base.replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
   const compact = base.replace(/[^a-z0-9]+/g, "");
   return Array.from(new Set([kebab, compact].filter(Boolean)));
@@ -42,9 +84,7 @@ function pageRegexForCategory(id: CategoryId): string {
   const label = CATEGORY_META[id].label;
   const alts = [...toTokens(label), id.toLowerCase()].map(escapeRe);
   const host = "^https?://[^/]+";
-  const pathAlt = `(?:/(?:${alts.join("|")})(?:/|$)|[-_](?:${alts.join(
-    "|"
-  )})[-_]|${alts.join("|")})`;
+  const pathAlt = `(?:/(?:${alts.join("|")})(?:/|$)|[-_](?:${alts.join("|")})[-_]|${alts.join("|")})`;
   return `${host}.*${pathAlt}.*`;
 }
 function safePathname(raw: string): string {
@@ -55,74 +95,47 @@ function safePathname(raw: string): string {
   }
 }
 
-/** Tokens por pueblo para clasificar urls → pueblo */
-function tokensForTown(id: TownId): string[] {
-  const base = TOWN_META[id].label
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase();
-  const byId = id.toLowerCase();
-  const kebab = base.replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
-  const compact = base.replace(/[^a-z0-9]+/g, "");
-  return Array.from(new Set([kebab, compact, byId].filter(Boolean)));
-}
-
-/** Donut por pueblos dentro del rango current (soporta date/yearMonth) */
-function donutByTownsFlexible(
+/** donut por pueblos (solo rango current) */
+function donutByTowns(
   rows: analyticsdata_v1beta.Schema$Row[] | undefined,
-  timeDim: "date" | "yearMonth",
-  currentKeys: string[] // YYYY-MM-DD (date) o YYYYMM (yearMonth)
-): DonutDatum[] {
+  current: DateRange
+) {
+  const totals: Record<string, number> = {};
   const rr = rows ?? [];
-  const currentSet = new Set(currentKeys);
-  const totals = new Map<string, number>(); // label → total
-
-  const townTokens: Array<{ id: TownId; tokens: string[]; label: string }> =
-    TOWN_ID_ORDER.map((tid) => ({
-      id: tid,
-      tokens: tokensForTown(tid),
-      label: TOWN_META[tid].label,
-    }));
+  const townTokens = TOWN_ID_ORDER.map((tid) => ({
+    id: tid,
+    label: TOWN_META[tid].label,
+    tokens: Array.from(new Set([...toTokens(TOWN_META[tid].label), tid.toLowerCase()])),
+  }));
 
   for (const r of rr) {
-    const dims = r.dimensionValues ?? [];
-    const mets = r.metricValues ?? [];
-    const slotRaw = String(dims[0]?.value ?? "");
-    const url = String(dims[1]?.value ?? "");
-    const path = safePathname(url).toLowerCase();
-    const val = Number(mets[0]?.value ?? 0);
+    const dRaw = String(r.dimensionValues?.[0]?.value ?? "");
+    if (dRaw.length !== 8) continue;
+    const iso = toISODate(dRaw);
+    if (iso < current.start || iso > current.end) continue;
 
-    // key del slot
-    let key: string | null = null;
-    if (timeDim === "date") {
-      if (slotRaw.length === 8) {
-        key = `${slotRaw.slice(0, 4)}-${slotRaw.slice(4, 6)}-${slotRaw.slice(
-          6,
-          8
-        )}`;
-      }
-    } else {
-      if (slotRaw.length === 6) key = slotRaw; // YYYYMM
-    }
-    if (!key || !currentSet.has(key)) continue;
+    const url = String(r.dimensionValues?.[1]?.value ?? "");
+    const path = safePathname(url).toLowerCase();
+    const v = Number(r.metricValues?.[0]?.value ?? 0);
 
     for (const t of townTokens) {
-      const hit = t.tokens.some(
-        (tok) =>
-          path.includes(`/${tok}/`) ||
-          path.endsWith(`/${tok}`) ||
-          path.includes(`-${tok}-`) ||
-          path.includes(`_${tok}_`) ||
-          path.includes(tok)
-      );
-      if (hit) {
-        totals.set(t.label, (totals.get(t.label) ?? 0) + val);
+      if (
+        t.tokens.some(
+          (tok) =>
+            path.includes(`/${tok}/`) ||
+            path.endsWith(`/${tok}`) ||
+            path.includes(`-${tok}-`) ||
+            path.includes(`_${tok}_`) ||
+            path.includes(tok)
+        )
+      ) {
+        totals[t.label] = (totals[t.label] ?? 0) + v;
         break;
       }
     }
   }
 
-  return Array.from(totals.entries())
+  return Object.entries(totals)
     .map(([label, value]) => ({ label, value }))
     .sort((a, b) => b.value - a.value);
 }
@@ -131,12 +144,8 @@ function donutByTownsFlexible(
 export async function GET(req: NextRequest, ctx: unknown) {
   try {
     const { id } = (ctx as { params: { id: string } }).params;
-
     if (!(CATEGORY_ID_ORDER as readonly string[]).includes(id)) {
-      return NextResponse.json(
-        { error: `CategoryId inválido: ${id}` },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: `CategoryId inválido: ${id}` }, { status: 400 });
     }
     const catId = id as CategoryId;
 
@@ -144,47 +153,55 @@ export async function GET(req: NextRequest, ctx: unknown) {
     const g = (url.searchParams.get("g") || "d") as Granularity;
     const endISO = url.searchParams.get("end") || undefined;
 
-    // Rango que TERMINA AYER; para 'd' queremos 7 días (serie) → dayAsWeek=true
+    // current termina ayer; para 'd' usamos 7 días (series)
     const now = endISO ? parseISO(endISO) : todayUTC();
-    const currPreset = deriveRangeEndingYesterday(g, now, g === "d");
-    const prevPreset = prevComparable(currPreset);
+    const dayAsWeek = g === "d";
+    const currPreset = deriveRangeEndingYesterday(g, now, dayAsWeek);
+    const current: DateRange = { start: currPreset.startTime, end: currPreset.endTime };
+    // previous = current -1 día
+    const previous: DateRange = shiftRangeByDays(current, -1);
 
-    const ranges = {
-      current: { start: currPreset.startTime, end: currPreset.endTime },
-      previous: { start: prevPreset.startTime, end: prevPreset.endTime },
-    };
+    // Eje
+    let xLabels: string[] = [];
+    let curKeys: string[] = [];
+    let prevKeys: string[] = [];
+    let curIndexByKey = new Map<string, number>();
+    let prevIndexByKey = new Map<string, number>();
+    const isYearly = g === "y";
 
-    // Eje temporal alineado (d/w/m por día, y por mes)
-    const axis = buildAxisForGranularity(g, ranges);
-    const timeDim = axis.dimensionTime; // "date" | "yearMonth"
+    if (isYearly) {
+      const { labels: curLabels, keys: curKs } = listLastNMonths(parseISO(current.end), 12);
+      const { keys: prevKs } = listLastNMonths(parseISO(previous.end), 12);
+      xLabels = curLabels;
+      curKeys = curKs;
+      prevKeys = prevKs;
+      curIndexByKey = new Map(curKeys.map((k, i) => [k, i]));
+      prevIndexByKey = new Map(prevKeys.map((k, i) => [k, i]));
+    } else {
+      xLabels = enumerateDaysUTC(current.start, current.end);
+      const prevDays = enumerateDaysUTC(previous.start, previous.end);
+      curKeys = xLabels;
+      prevKeys = prevDays;
+      curIndexByKey = new Map(curKeys.map((k, i) => [k, i]));
+      prevIndexByKey = new Map(prevKeys.map((k, i) => [k, i]));
+    }
 
     // GA
     const auth = getAuth();
     const analytics = google.analyticsdata({ version: "v1beta", auth });
     const property = normalizePropertyId(resolvePropertyId());
 
-    // Un request (prev+curr) con filtro page_view + regex de la categoría
     const request: analyticsdata_v1beta.Schema$RunReportRequest = {
-      dateRanges: [
-        { startDate: ranges.previous.start, endDate: ranges.current.end },
-      ],
+      dateRanges: [{ startDate: previous.start, endDate: current.end }],
       metrics: [{ name: "eventCount" }],
-      dimensions: [
-        { name: timeDim },
-        { name: "pageLocation" },
-        { name: "eventName" },
-      ],
+      dimensions: [{ name: "date" }, { name: "pageLocation" }, { name: "eventName" }],
       dimensionFilter: {
         andGroup: {
           expressions: [
             {
               filter: {
                 fieldName: "eventName",
-                stringFilter: {
-                  matchType: "EXACT",
-                  value: "page_view",
-                  caseSensitive: false,
-                },
+                stringFilter: { matchType: "EXACT", value: "page_view", caseSensitive: false },
               },
             },
             {
@@ -200,86 +217,52 @@ export async function GET(req: NextRequest, ctx: unknown) {
           ],
         },
       },
-      orderBys: [{ dimension: { dimensionName: timeDim } }],
       keepEmptyRows: false,
       limit: "200000",
     };
 
-    const resp = await analytics.properties.runReport({
-      property,
-      requestBody: request,
-    });
-
+    const resp = await analytics.properties.runReport({ property, requestBody: request });
     const rows = resp.data.rows ?? [];
 
-    // Vectores current/previous pre-llenados a 0
-    const curVec = Array(axis.curKeys.length).fill(0);
-    const prevVec = Array(axis.prevKeys.length).fill(0);
+    const curVec = Array(curKeys.length).fill(0);
+    const prevVec = Array(prevKeys.length).fill(0);
 
     for (const r of rows) {
-      const dims = r.dimensionValues ?? [];
-      const mets = r.metricValues ?? [];
-      const slotRaw = String(dims[0]?.value ?? "");
-      const v = Number(mets[0]?.value ?? 0);
+      const dRaw = String(r.dimensionValues?.[0]?.value ?? "");
+      if (dRaw.length !== 8) continue;
+      const iso = toISODate(dRaw);
+      const value = Number(r.metricValues?.[0]?.value ?? 0);
 
-      let key: string | null = null;
-      if (timeDim === "date") {
-        if (slotRaw.length === 8) {
-          key = `${slotRaw.slice(0, 4)}-${slotRaw.slice(4, 6)}-${slotRaw.slice(
-            6,
-            8
-          )}`;
-        }
-      } else {
-        if (slotRaw.length === 6) key = slotRaw; // YYYYMM
-      }
-      if (!key) continue;
+      const keyDay = iso;
+      const keyMonth = dRaw.slice(0, 6); // YYYYMM
 
-      const iCur = axis.indexByCurKey.get(key);
-      if (iCur !== undefined) {
-        curVec[iCur] += v;
-        continue;
+      const inCurrent = iso >= current.start && iso <= current.end;
+      const inPrevious = iso >= previous.start && iso <= previous.end;
+
+      if (inCurrent) {
+        const k = isYearly ? keyMonth : keyDay;
+        const idx = curIndexByKey.get(k);
+        if (idx !== undefined) curVec[idx] += value;
       }
-      const iPrev = axis.indexByPrevKey.get(key);
-      if (iPrev !== undefined) {
-        prevVec[iPrev] += v;
+      if (inPrevious) {
+        const k = isYearly ? keyMonth : keyDay;
+        const idx = prevIndexByKey.get(k);
+        if (idx !== undefined) prevVec[idx] += value;
       }
     }
 
-    // --- SERIESPOINTS con labels correctos para current y previous ---
-    const prevLabelsRaw =
-      timeDim === "date"
-        ? axis.prevKeys // YYYY-MM-DD
-        : axis.prevKeys.map((k) => `${k.slice(0, 4)}-${k.slice(4, 6)}`); // YYYYMM → YYYY-MM
-    const curLabels = axis.xLabels;
-
-    const n = Math.min(
-      curLabels.length,
-      prevLabelsRaw.length,
-      curVec.length,
-      prevVec.length
-    );
-
-    const series: { current: SeriesPoint[]; previous: SeriesPoint[] } = {
-      current: curLabels
-        .slice(0, n)
-        .map((lab, i) => ({ label: lab, value: curVec[i] ?? 0 })),
-      previous: prevLabelsRaw
-        .slice(0, n)
-        .map((lab, i) => ({ label: lab, value: prevVec[i] ?? 0 })),
+    const series = {
+      current: xLabels.map((lbl, i) => ({ label: lbl, value: curVec[i] ?? 0 })),
+      previous: xLabels.map((lbl, i) => ({ label: lbl, value: prevVec[i] ?? 0 })),
     };
 
-    // Donut por pueblos (solo current)
-    const donutData: DonutDatum[] = donutByTownsFlexible(
-      rows,
-      timeDim,
-      timeDim === "date" ? axis.curKeys : axis.curKeys
-    );
+    // Donut: pueblos solo en current
+    const donutData = donutByTowns(rows, current);
 
     return NextResponse.json(
       {
         granularity: g,
-        range: ranges,
+        range: { current, previous },
         property,
         id: catId,
         title: CATEGORY_META[catId].label,

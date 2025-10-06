@@ -1,22 +1,23 @@
+// src/lib/utils/timeAxis.ts
 import type { Granularity } from "@/lib/types";
-import { parseISO, toISO } from "@/lib/utils/datetime";
+import { addDaysUTC, parseISO, toISO, todayUTC } from "@/lib/utils/datetime";
 
-export type AxisInfo = {
-  /** "date" para d/w/m (slots por día) | "yearMonth" para y (slots por mes) */
+/** Eje y ventanas “lagged”:
+ * - d/w → 7 días terminando ayer (o endISO) y previous = esos mismos 7 días pero -1 día
+ * - m   → 30 días terminando ayer (o endISO) y previous = 30 días -1 día
+ * - y   → 12 meses; previous = esos 12 meses -1 mes (alineados por índice)
+ */
+export type AxisLagged = {
   dimensionTime: "date" | "yearMonth";
-  /** Etiquetas a pintar en el eje X (si y => "YYYY-MM", si no => "YYYY-MM-DD") del rango current */
-  xLabels: string[];
-  /** Claves de slot para mapear filas de GA al vector current (YYYY-MM-DD | YYYYMM) */
-  curKeys: string[];
-  /** Claves de slot para mapear filas de GA al vector previous (YYYY-MM-DD | YYYYMM) */
-  prevKeys: string[];
-  /** Índice por clave (current) */
-  indexByCurKey: Map<string, number>;
-  /** Índice por clave (previous) */
-  indexByPrevKey: Map<string, number>;
+  xLabels: string[]; // etiquetas para el eje X (current)
+  curRange: { start: string; end: string };
+  prevRange: { start: string; end: string };
+  queryRange: { start: string; end: string }; // unión para GA
+  curKeys: string[]; // keys para current (YYYY-MM-DD | YYYYMM)
+  prevKeys: string[]; // keys para previous (misma longitud, desplazadas 1 slot)
+  curIndexByKey: Map<string, number>;
+  prevIndexByKey: Map<string, number>;
 };
-
-/* ===== helpers de día/mes ===== */
 
 export function enumerateDaysUTC(startISO: string, endISO: string): string[] {
   const s = parseISO(startISO);
@@ -35,17 +36,17 @@ export function enumerateDaysUTC(startISO: string, endISO: string): string[] {
   return out;
 }
 
-function ymLabel(y: number, mZero: number): string {
-  const mm = String(mZero + 1).padStart(2, "0");
-  return `${y}-${mm}`;
-}
 function ymKey(y: number, mZero: number): string {
   const mm = String(mZero + 1).padStart(2, "0");
-  return `${y}${mm}`;
+  return `${y}${mm}`; // YYYYMM
+}
+function ymLabel(y: number, mZero: number): string {
+  const mm = String(mZero + 1).padStart(2, "0");
+  return `${y}-${mm}`; // YYYY-MM
 }
 
-/** Últimos n meses incluyendo el mes de `endDate` */
-export function listLastNMonths(endDate: Date, n = 12) {
+/** Últimos n meses (incluyendo el mes de endDate) */
+function listLastNMonths(endDate: Date, n = 12) {
   const labels: string[] = [];
   const keys: string[] = [];
   const endY = endDate.getUTCFullYear();
@@ -58,42 +59,68 @@ export function listLastNMonths(endDate: Date, n = 12) {
   return { labels, keys };
 }
 
-/** Construye la info de eje para current+previous alineados al **mismo número de slots** */
-export function buildAxisForGranularity(
+export function buildLaggedAxisForGranularity(
   g: Granularity,
-  ranges: {
-    current: { start: string; end: string };
-    previous: { start: string; end: string };
-  }
-): AxisInfo {
-  if (g === "y") {
-    // 12 meses: current y previous se alinean por índice
-    const endCur = parseISO(ranges.current.end);
-    const endPrev = parseISO(ranges.previous.end);
-    const cur = listLastNMonths(endCur, 12);
-    const prv = listLastNMonths(endPrev, 12);
+  opts?: { endISO?: string }
+): AxisLagged {
+  const endBase = opts?.endISO
+    ? parseISO(opts.endISO)
+    : addDaysUTC(todayUTC(), -1);
+  const isYear = g === "y";
+
+  if (isYear) {
+    // 12 meses current + previous desplazados -1 mes
+    const cur = listLastNMonths(endBase, 12);
+    const prevEnd = new Date(
+      Date.UTC(endBase.getUTCFullYear(), endBase.getUTCMonth() - 1, 1)
+    );
+    const prv = listLastNMonths(prevEnd, 12);
+
+    const curRange = {
+      // 12 meses desde el mes (endBase) hacia atrás
+      start: `${cur.labels[0]}-01`,
+      end: `${cur.labels[cur.labels.length - 1]}-28`, // aproximado, sólo se usa para contexto
+    };
+    const prevRange = {
+      start: `${prv.labels[0]}-01`,
+      end: `${prv.labels[prv.labels.length - 1]}-28`,
+    };
+
     return {
       dimensionTime: "yearMonth",
       xLabels: cur.labels,
-      curKeys: cur.keys,
-      prevKeys: prv.keys,
-      indexByCurKey: new Map(cur.keys.map((k, i) => [k, i])),
-      indexByPrevKey: new Map(prv.keys.map((k, i) => [k, i])),
+      curRange,
+      prevRange,
+      queryRange: { start: prevRange.start, end: curRange.end },
+      curKeys: cur.keys, // YYYYMM
+      prevKeys: prv.keys, // YYYYMM (12 meses anteriores, alineados por índice)
+      curIndexByKey: new Map(cur.keys.map((k, i) => [k, i])),
+      prevIndexByKey: new Map(prv.keys.map((k, i) => [k, i])),
     };
   }
 
-  // d / w / m => slots por DÍA
-  const xLabels = enumerateDaysUTC(ranges.current.start, ranges.current.end);
-  const prevLabels = enumerateDaysUTC(
-    ranges.previous.start,
-    ranges.previous.end
-  );
+  // d / w / m → slots por día
+  const N = g === "m" ? 30 : 7; // d y w usan 7; m usa 30
+  const curEnd = endBase;
+  const curStart = addDaysUTC(curEnd, -(N - 1));
+  const prevEnd = addDaysUTC(curEnd, -1);
+  const prevStart = addDaysUTC(prevEnd, -(N - 1));
+
+  const curRange = { start: toISO(curStart), end: toISO(curEnd) };
+  const prevRange = { start: toISO(prevStart), end: toISO(prevEnd) };
+
+  const curKeys = enumerateDaysUTC(curRange.start, curRange.end); // YYYY-MM-DD
+  const prevKeys = enumerateDaysUTC(prevRange.start, prevRange.end); // YYYY-MM-DD
+
   return {
     dimensionTime: "date",
-    xLabels,
-    curKeys: xLabels, // YYYY-MM-DD
-    prevKeys: prevLabels,
-    indexByCurKey: new Map(xLabels.map((k, i) => [k, i])),
-    indexByPrevKey: new Map(prevLabels.map((k, i) => [k, i])),
+    xLabels: curKeys,
+    curRange,
+    prevRange,
+    queryRange: { start: prevRange.start, end: curRange.end },
+    curKeys,
+    prevKeys,
+    curIndexByKey: new Map(curKeys.map((k, i) => [k, i])),
+    prevIndexByKey: new Map(prevKeys.map((k, i) => [k, i])),
   };
 }

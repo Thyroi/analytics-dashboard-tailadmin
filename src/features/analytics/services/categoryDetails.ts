@@ -20,15 +20,16 @@ export type CategoryDetailsResponse = {
 export async function getCategoryDetails(params: {
   categoryId: CategoryId;
   granularity: Granularity;
+  /** si usas modo rango (DatePicker) pásalos; si no, omítelos y el backend hará preset */
+  startISO?: string;
   endISO?: string;
-  /** cuando venga, el backend filtrará categoría+pueblo y la donut será sub-actividades */
-  townId?: TownId;
+  townId?: TownId; // (para futuros filtros)
   signal?: AbortSignal;
 }): Promise<CategoryDetailsResponse> {
-  const { categoryId, granularity, endISO, townId, signal } = params;
+  const { categoryId, granularity, startISO, endISO, townId, signal } = params;
   const qs = buildQS({
     g: granularity,
-    ...(endISO ? { end: endISO } : null),
+    ...(startISO && endISO ? { start: startISO, end: endISO } : endISO ? { end: endISO } : null),
     ...(townId ? { townId } : null),
   });
   const url = `/api/analytics/v1/dimensions/categorias/${categoryId}/details?${qs}`;
