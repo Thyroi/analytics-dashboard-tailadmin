@@ -1,8 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  getUrlDrilldown,
+  type UrlDrilldownResponse,
+} from "@/features/analytics/services/urlDrilldown";
 import type { DonutDatum, Granularity, SeriesPoint } from "@/lib/types";
-import { getUrlDrilldown, type UrlDrilldownResponse } from "@/features/analytics/services/urlDrilldown";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 type ReadyData = {
   seriesAvgEngagement: { current: SeriesPoint[]; previous: SeriesPoint[] };
@@ -29,7 +32,10 @@ export function useUrlDrilldown(args: {
   const [state, setState] = useState<State>({ status: "idle" });
   const abortRef = useRef<AbortController | null>(null);
 
-  const key = useMemo(() => `${path ?? ""}|${granularity}|${endISO ?? ""}`, [path, granularity, endISO]);
+  const key = useMemo(
+    () => `${path ?? ""}|${granularity}|${endISO ?? ""}`,
+    [path, granularity, endISO]
+  );
 
   const load = useCallback(async () => {
     if (!path) return;
@@ -44,6 +50,7 @@ export function useUrlDrilldown(args: {
         granularity,
         endISO,
         signal: ac.signal,
+        dayAsWeek: granularity === "d", // 👈 activar semana para “Día”
       });
       if (ac.signal.aborted) return;
       setState({
@@ -60,7 +67,10 @@ export function useUrlDrilldown(args: {
       });
     } catch (e) {
       if (ac.signal.aborted) return;
-      setState({ status: "error", message: e instanceof Error ? e.message : "Unknown error" });
+      setState({
+        status: "error",
+        message: e instanceof Error ? e.message : "Unknown error",
+      });
     }
   }, [path, granularity, endISO]);
 
@@ -72,9 +82,12 @@ export function useUrlDrilldown(args: {
 
   const loading = state.status === "loading";
   const seriesAvgEngagement =
-    state.status === "ready" ? state.data.seriesAvgEngagement : { current: [], previous: [] };
+    state.status === "ready"
+      ? state.data.seriesAvgEngagement
+      : { current: [], previous: [] };
   const kpis = state.status === "ready" ? state.data.kpis : null;
-  const operatingSystems = state.status === "ready" ? state.data.operatingSystems : [];
+  const operatingSystems =
+    state.status === "ready" ? state.data.operatingSystems : [];
   const genders = state.status === "ready" ? state.data.genders : [];
   const countries = state.status === "ready" ? state.data.countries : [];
   const deltaPct = state.status === "ready" ? state.data.deltaPct : 0;

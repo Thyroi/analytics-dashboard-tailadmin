@@ -1,23 +1,23 @@
-import { NextResponse } from "next/server";
-import { google, analyticsdata_v1beta } from "googleapis";
-import type { GoogleAuth } from "google-auth-library";
-import type { Granularity, DonutDatum, SeriesPoint } from "@/lib/types";
-import { getAuth, normalizePropertyId, resolvePropertyId } from "@/lib/utils/ga";
+import type { DonutDatum, Granularity, SeriesPoint } from "@/lib/types";
 import {
-  deriveAutoRangeForGranularity,
+  deriveRangeEndingYesterday,
   parseISO,
   prevComparable,
   todayUTC,
 } from "@/lib/utils/datetime";
-import { normalizePath, stripLangPrefix, safePathname } from "@/lib/utils/url";
-import { groupFromDailyMaps } from "@/lib/utils/charts";
+import {
+  getAuth,
+  normalizePropertyId,
+  resolvePropertyId,
+} from "@/lib/utils/ga";
+import { buildAxisForGranularity } from "@/lib/utils/timeAxis";
+import { normalizePath, safePathname, stripLangPrefix } from "@/lib/utils/url";
+import type { GoogleAuth } from "google-auth-library";
+import { analyticsdata_v1beta, google } from "googleapis";
+import { NextResponse } from "next/server";
 
 /* ---------- helpers ---------- */
 type DateRange = { start: string; end: string };
-
-function toISODate(yyyymmdd: string): string {
-  return `${yyyymmdd.slice(0, 4)}-${yyyymmdd.slice(4, 6)}-${yyyymmdd.slice(6, 8)}`;
-}
 
 function pctDelta(curr: number, prev: number): number {
   if (prev <= 0) return curr > 0 ? 100 : 0;
@@ -30,7 +30,7 @@ function eqPath(a: string, b: string): boolean {
   return na === nb;
 }
 
-/** divide series (num/den) bucket a bucket */
+/* promedio bucket a bucket: num/den */
 function ratioSeries(
   num: { current: SeriesPoint[]; previous: SeriesPoint[] },
   den: { current: SeriesPoint[]; previous: SeriesPoint[] }
@@ -59,10 +59,7 @@ function num(v?: string | null) {
   return Number(v ?? 0);
 }
 
-/**
- * Agrega totales filtrando por pageLocation a nivel de código
- * usando eqPath(targetPath). Calcula averageSessionDuration ponderado por sesiones.
- */
+/** KPIs totales por URL (filtrando pageLocation en el código con eqPath) */
 async function fetchUrlTotalsAggregated(
   analyticsData: analyticsdata_v1beta.Analyticsdata,
   property: string,
@@ -81,17 +78,23 @@ async function fetchUrlTotalsAggregated(
     ],
     dimensions: [{ name: "pageLocation" }, { name: "eventName" }],
     dimensionFilter: {
-      // solo page_view (no filtramos pageLocation aquí)
       filter: {
         fieldName: "eventName",
-        stringFilter: { matchType: "EXACT", value: "page_view", caseSensitive: false },
+        stringFilter: {
+          matchType: "EXACT",
+          value: "page_view",
+          caseSensitive: false,
+        },
       },
     },
     keepEmptyRows: false,
     limit: "100000",
   };
 
-  const resp = await analyticsData.properties.runReport({ property, requestBody: req });
+  const resp = await analyticsData.properties.runReport({
+    property,
+    requestBody: req,
+  });
   const rows = resp.data.rows ?? [];
 
   const acc: Totals = {
@@ -103,8 +106,7 @@ async function fetchUrlTotalsAggregated(
     averageSessionDuration: 0,
   };
 
-  // Para media ponderada de averageSessionDuration
-  let weightedSumAvgSess = 0; // sum( avgSessRow * sessionsRow )
+  let weightedSumAvgSess = 0;
   let sumSessions = 0;
 
   for (const r of rows) {
@@ -128,13 +130,12 @@ async function fetchUrlTotalsAggregated(
     acc.eventCount += eventCount;
     acc.sessions += sessions;
 
-    // media ponderada
     weightedSumAvgSess += averageSessionDuration * sessions;
     sumSessions += sessions;
   }
 
-  acc.averageSessionDuration = sumSessions > 0 ? weightedSumAvgSess / sumSessions : 0;
-
+  acc.averageSessionDuration =
+    sumSessions > 0 ? weightedSumAvgSess / sumSessions : 0;
   return acc;
 }
 
@@ -147,39 +148,54 @@ export async function GET(req: Request) {
     const endISO = url.searchParams.get("end") || undefined;
 
     if (!rawPath) {
-      return NextResponse.json({ error: "Missing 'path' query param" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Missing 'path' query param" },
+        { status: 400 }
+      );
     }
 
-    // normaliza el objetivo (path seguro)
     const targetPath = safePathname(rawPath);
 
-    // rangos
+    // rangos (terminando AYER) — para 'd' queremos 7 días
     const now = endISO ? parseISO(endISO) : todayUTC();
-    const currPreset = deriveAutoRangeForGranularity(g, now);
+    const currPreset = deriveRangeEndingYesterday(g, now, g === "d");
     const prevPreset = prevComparable(currPreset);
     const ranges: { current: DateRange; previous: DateRange } = {
       current: { start: currPreset.startTime, end: currPreset.endTime },
       previous: { start: prevPreset.startTime, end: prevPreset.endTime },
     };
 
-    // Logs de contexto
-    console.log("[url-drilldown] targetPath =", targetPath);
-    console.log("[url-drilldown] ranges =", JSON.stringify(ranges));
+    // EJE / BUCKETS
+    const axis = buildAxisForGranularity(g, ranges);
+    const N = axis.xLabels.length;
 
     // GA
     const auth: GoogleAuth = getAuth();
     const analyticsData = google.analyticsdata({ version: "v1beta", auth });
     const property = normalizePropertyId(resolvePropertyId());
 
-    /* -------- 1) Serie diaria: engagementDuration + views por pageLocation -------- */
+    /* -------- Serie por bucket: engagement (seg) y vistas -------- */
     const reqSeries: analyticsdata_v1beta.Schema$RunReportRequest = {
-      dateRanges: [{ startDate: ranges.previous.start, endDate: ranges.current.end }],
-      metrics: [{ name: "userEngagementDuration" }, { name: "screenPageViews" }],
-      dimensions: [{ name: "date" }, { name: "pageLocation" }, { name: "eventName" }],
+      dateRanges: [
+        { startDate: ranges.previous.start, endDate: ranges.current.end },
+      ],
+      metrics: [
+        { name: "userEngagementDuration" },
+        { name: "screenPageViews" },
+      ],
+      dimensions: [
+        { name: axis.dimensionTime },
+        { name: "pageLocation" },
+        { name: "eventName" },
+      ],
       dimensionFilter: {
         filter: {
           fieldName: "eventName",
-          stringFilter: { matchType: "EXACT", value: "page_view", caseSensitive: false },
+          stringFilter: {
+            matchType: "EXACT",
+            value: "page_view",
+            caseSensitive: false,
+          },
         },
       },
       keepEmptyRows: false,
@@ -192,76 +208,114 @@ export async function GET(req: Request) {
     });
 
     const rows = seriesResp.data.rows ?? [];
-    console.log("[url-drilldown] series rows =", rows.length);
 
-    // Acumuladores diarios para la URL seleccionada
-    const currEng = new Map<string, number>();
-    const prevEng = new Map<string, number>();
-    const currViews = new Map<string, number>();
-    const prevViews = new Map<string, number>();
+    // Vectores current/previous
+    const currEng = Array(N).fill(0) as number[];
+    const prevEng = Array(N).fill(0) as number[];
+    const currViews = Array(N).fill(0) as number[];
+    const prevViews = Array(N).fill(0) as number[];
 
     for (const r of rows) {
       const dims = r.dimensionValues ?? [];
       const mets = r.metricValues ?? [];
 
-      const dRaw = String(dims[0]?.value ?? "");
-      if (dRaw.length !== 8) continue;
-      const iso = toISODate(dRaw);
-
+      const slotRaw = String(dims[0]?.value ?? "");
       const loc = String(dims[1]?.value ?? "");
       const onlyPath = stripLangPrefix(normalizePath(loc)).path;
-
-      // sólo la URL exacta (ignorando slash final/lang)
       if (!eqPath(onlyPath, targetPath)) continue;
 
-      const eng = Number(mets[0]?.value ?? 0); // segundos totales
+      const eng = Number(mets[0]?.value ?? 0);
       const vws = Number(mets[1]?.value ?? 0);
 
-      const inCurrent = iso >= ranges.current.start && iso <= ranges.current.end;
-      const inPrevious = iso >= ranges.previous.start && iso <= ranges.previous.end;
+      // key del slot
+      let slotKey: string | null = null;
+      if (axis.dimensionTime === "date") {
+        if (slotRaw.length === 8) {
+          slotKey = `${slotRaw.slice(0, 4)}-${slotRaw.slice(
+            4,
+            6
+          )}-${slotRaw.slice(6, 8)}`;
+        }
+      } else {
+        if (slotRaw.length === 6) slotKey = slotRaw; // YYYYMM
+      }
+      if (!slotKey) continue;
 
-      if (inCurrent) {
-        currEng.set(iso, (currEng.get(iso) ?? 0) + eng);
-        currViews.set(iso, (currViews.get(iso) ?? 0) + vws);
-      } else if (inPrevious) {
-        prevEng.set(iso, (prevEng.get(iso) ?? 0) + eng);
-        prevViews.set(iso, (prevViews.get(iso) ?? 0) + vws);
+      const iCur = axis.indexByCurKey.get(slotKey);
+      const iPrev = axis.indexByPrevKey.get(slotKey);
+
+      if (iCur !== undefined) {
+        currEng[iCur] += eng;
+        currViews[iCur] += vws;
+      } else if (iPrev !== undefined) {
+        prevEng[iPrev] += eng;
+        prevViews[iPrev] += vws;
       }
     }
 
-    // Agrupamos por granularidad usando el helper común
-    const { series: seriesEng } = groupFromDailyMaps(g, ranges, currEng, prevEng);
-    const { series: seriesVws, totals } = groupFromDailyMaps(g, ranges, currViews, prevViews);
+    // to SeriesPoint
+    const seriesEng: { current: SeriesPoint[]; previous: SeriesPoint[] } = {
+      current: axis.xLabels.map((label, i) => ({
+        label,
+        value: currEng[i] ?? 0,
+      })),
+      previous: axis.xLabels.map((label, i) => ({
+        label,
+        value: prevEng[i] ?? 0,
+      })),
+    };
+    const seriesVws: { current: SeriesPoint[]; previous: SeriesPoint[] } = {
+      current: axis.xLabels.map((label, i) => ({
+        label,
+        value: currViews[i] ?? 0,
+      })),
+      previous: axis.xLabels.map((label, i) => ({
+        label,
+        value: prevViews[i] ?? 0,
+      })),
+    };
 
-    const seriesAvg = ratioSeries(seriesEng, seriesVws); // segundos promedio por bucket
-    const deltaPct = pctDelta(totals.current, totals.previous); // delta de VIEWS (referencia)
+    const totals = {
+      current: currViews.reduce((a, b) => a + b, 0),
+      previous: prevViews.reduce((a, b) => a + b, 0),
+    };
 
-    console.log("[url-drilldown] seriesAvgEngagement current buckets =", seriesAvg.current.length);
-    console.log("[url-drilldown] seriesAvgEngagement previous buckets =", seriesAvg.previous.length);
-    console.log("[url-drilldown] deltaPct views =", deltaPct.toFixed(2));
+    const seriesAvg = ratioSeries(seriesEng, seriesVws); // segundos avg por bucket
+    const deltaPct = pctDelta(totals.current, totals.previous); // respecto a vistas
 
-    /* -------- 1.b) KPIs totales por URL (current / previous) -------- */
+    /* -------- 1.b) KPIs totales (current / previous) -------- */
     const [totCurr, totPrev] = await Promise.all([
-      fetchUrlTotalsAggregated(analyticsData, property, ranges.current, targetPath),
-      fetchUrlTotalsAggregated(analyticsData, property, ranges.previous, targetPath),
+      fetchUrlTotalsAggregated(
+        analyticsData,
+        property,
+        ranges.current,
+        targetPath
+      ),
+      fetchUrlTotalsAggregated(
+        analyticsData,
+        property,
+        ranges.previous,
+        targetPath
+      ),
     ]);
 
-    console.log("[url-drilldown] totals current =", totCurr);
-    console.log("[url-drilldown] totals previous =", totPrev);
-
     const safeDiv = (a: number, b: number) => (b > 0 ? a / b : 0);
-
     const kpisCurrent = {
       ...totCurr,
-      avgEngagementPerUser: safeDiv(totCurr.userEngagementDuration, totCurr.activeUsers),
+      avgEngagementPerUser: safeDiv(
+        totCurr.userEngagementDuration,
+        totCurr.activeUsers
+      ),
       eventsPerSession: safeDiv(totCurr.eventCount, totCurr.sessions),
     };
     const kpisPrevious = {
       ...totPrev,
-      avgEngagementPerUser: safeDiv(totPrev.userEngagementDuration, totPrev.activeUsers),
+      avgEngagementPerUser: safeDiv(
+        totPrev.userEngagementDuration,
+        totPrev.activeUsers
+      ),
       eventsPerSession: safeDiv(totPrev.eventCount, totPrev.sessions),
     };
-
     const kpisDeltaPct = {
       activeUsers: pctDelta(totCurr.activeUsers, totPrev.activeUsers),
       newUsers: pctDelta(totCurr.newUsers, totPrev.newUsers),
@@ -281,106 +335,61 @@ export async function GET(req: Request) {
       ),
     };
 
-    /* -------- 2) Donut operating systems (operatingSystem) — sólo rango current -------- */
-    const reqOS: analyticsdata_v1beta.Schema$RunReportRequest = {
-      dateRanges: [{ startDate: ranges.current.start, endDate: ranges.current.end }],
-      metrics: [{ name: "screenPageViews" }],
-      dimensions: [{ name: "operatingSystem" }, { name: "pageLocation" }, { name: "eventName" }],
-      dimensionFilter: {
-        filter: {
-          fieldName: "eventName",
-          stringFilter: { matchType: "EXACT", value: "page_view", caseSensitive: false },
+    /* -------- 2-4) Donuts (current) -------- */
+    const donutFor = async (
+      dim: "operatingSystem" | "userGender" | "country",
+      metric: "screenPageViews" | "activeUsers"
+    ): Promise<DonutDatum[]> => {
+      const req: analyticsdata_v1beta.Schema$RunReportRequest = {
+        dateRanges: [
+          { startDate: ranges.current.start, endDate: ranges.current.end },
+        ],
+        metrics: [{ name: metric }],
+        dimensions: [
+          { name: dim },
+          { name: "pageLocation" },
+          { name: "eventName" },
+        ],
+        dimensionFilter: {
+          filter: {
+            fieldName: "eventName",
+            stringFilter: {
+              matchType: "EXACT",
+              value: "page_view",
+              caseSensitive: false,
+            },
+          },
         },
-      },
-      keepEmptyRows: false,
-      limit: "100000",
+        keepEmptyRows: false,
+        limit: "100000",
+      };
+      const r = await analyticsData.properties.runReport({
+        property,
+        requestBody: req,
+      });
+      const rows = r.data.rows ?? [];
+      const map = new Map<string, number>();
+      for (const row of rows) {
+        const dims = row.dimensionValues ?? [];
+        const mets = row.metricValues ?? [];
+        const loc = String(dims[1]?.value ?? "");
+        const onlyPath = stripLangPrefix(normalizePath(loc)).path;
+        if (!eqPath(onlyPath, targetPath)) continue;
+        const raw = String(dims[0]?.value ?? "Unknown").trim();
+        const label = raw.length > 0 ? raw : "Unknown";
+        const val = Number(mets[0]?.value ?? 0);
+        map.set(label, (map.get(label) ?? 0) + val);
+      }
+      return Array.from(map.entries())
+        .map(([label, value]) => ({ label, value }))
+        .sort((a, b) => b.value - a.value);
     };
 
-    const osResp = await analyticsData.properties.runReport({ property, requestBody: reqOS });
-    const osRows = osResp.data.rows ?? [];
-    const osMap = new Map<string, number>();
-    for (const r of osRows) {
-      const dims = r.dimensionValues ?? [];
-      const mets = r.metricValues ?? [];
-      const loc = String(dims[1]?.value ?? "");
-      const onlyPath = stripLangPrefix(normalizePath(loc)).path;
-      if (!eqPath(onlyPath, targetPath)) continue;
-      const raw = String(dims[0]?.value ?? "Unknown");
-      const os = raw.trim().length > 0 ? raw : "Unknown";
-      const val = Number(mets[0]?.value ?? 0);
-      osMap.set(os, (osMap.get(os) ?? 0) + val);
-    }
-    const operatingSystems: DonutDatum[] = Array.from(osMap.entries())
-      .map(([label, value]) => ({ label, value }))
-      .sort((a, b) => b.value - a.value);
-
-    /* -------- 3) Donut genders (userGender) — sólo rango current -------- */
-    const reqGender: analyticsdata_v1beta.Schema$RunReportRequest = {
-      dateRanges: [{ startDate: ranges.current.start, endDate: ranges.current.end }],
-      metrics: [{ name: "activeUsers" }],
-      dimensions: [{ name: "userGender" }, { name: "pageLocation" }, { name: "eventName" }],
-      dimensionFilter: {
-        filter: {
-          fieldName: "eventName",
-          stringFilter: { matchType: "EXACT", value: "page_view", caseSensitive: false },
-        },
-      },
-      keepEmptyRows: false,
-      limit: "100000",
-    };
-
-    const genResp = await analyticsData.properties.runReport({ property, requestBody: reqGender });
-    const genRows = genResp.data.rows ?? [];
-    const genMap = new Map<string, number>();
-    for (const r of genRows) {
-      const dims = r.dimensionValues ?? [];
-      const mets = r.metricValues ?? [];
-      const loc = String(dims[1]?.value ?? "");
-      const onlyPath = stripLangPrefix(normalizePath(loc)).path;
-      if (!eqPath(onlyPath, targetPath)) continue;
-      const gnd = String(dims[0]?.value ?? "unknown").toLowerCase();
-      const val = Number(mets[0]?.value ?? 0);
-      genMap.set(gnd, (genMap.get(gnd) ?? 0) + val);
-    }
-    const genders: DonutDatum[] = Array.from(genMap.entries())
-      .map(([label, value]) => ({ label, value }))
-      .sort((a, b) => b.value - a.value);
-
-    /* -------- 4) Donut countries (country) — sólo rango current -------- */
-    const reqCountry: analyticsdata_v1beta.Schema$RunReportRequest = {
-      dateRanges: [{ startDate: ranges.current.start, endDate: ranges.current.end }],
-      metrics: [{ name: "activeUsers" }],
-      dimensions: [{ name: "country" }, { name: "pageLocation" }, { name: "eventName" }],
-      dimensionFilter: {
-        filter: {
-          fieldName: "eventName",
-          stringFilter: { matchType: "EXACT", value: "page_view", caseSensitive: false },
-        },
-      },
-      keepEmptyRows: false,
-      limit: "100000",
-    };
-
-    const ctyResp = await analyticsData.properties.runReport({ property, requestBody: reqCountry });
-    const ctyRows = ctyResp.data.rows ?? [];
-    const ctyMap = new Map<string, number>();
-    for (const r of ctyRows) {
-      const dims = r.dimensionValues ?? [];
-      const mets = r.metricValues ?? [];
-      const loc = String(dims[1]?.value ?? "");
-      const onlyPath = stripLangPrefix(normalizePath(loc)).path;
-      if (!eqPath(onlyPath, targetPath)) continue;
-      const ctry = String(dims[0]?.value ?? "Unknown");
-      const val = Number(mets[0]?.value ?? 0);
-      ctyMap.set(ctry, (ctyMap.get(ctry) ?? 0) + val);
-    }
-    const countries: DonutDatum[] = Array.from(ctyMap.entries())
-      .map(([label, value]) => ({ label, value }))
-      .sort((a, b) => b.value - a.value);
-
-    console.log("[url-drilldown] OS count =", operatingSystems.length);
-    console.log("[url-drilldown] genders count =", genders.length);
-    console.log("[url-drilldown] countries count =", countries.length);
+    const [operatingSystems, genders, countries] = await Promise.all([
+      donutFor("operatingSystem", "screenPageViews"),
+      donutFor("userGender", "activeUsers"),
+      donutFor("country", "activeUsers"),
+    ]);
 
     return NextResponse.json(
       {
@@ -396,7 +405,7 @@ export async function GET(req: Request) {
         operatingSystems,
         genders,
         countries,
-        deltaPct, // respecto a vistas (referencia)
+        deltaPct,
       },
       { status: 200 }
     );

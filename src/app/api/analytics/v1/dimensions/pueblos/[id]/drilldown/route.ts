@@ -1,12 +1,6 @@
-// src/app/api/analytics/v1/dimensions/pueblos/[id]/drilldown/route.ts
+import type { DonutDatum, Granularity, SeriesPoint } from "@/lib/types";
+import { analyticsdata_v1beta, google } from "googleapis";
 import { NextResponse, type NextRequest } from "next/server";
-import { google, analyticsdata_v1beta } from "googleapis";
-import type { Granularity, DonutDatum } from "@/lib/types";
-
-import {
-  TOWN_ID_ORDER,
-  type TownId,
-} from "@/lib/taxonomy/towns";
 
 import {
   CATEGORY_ID_ORDER,
@@ -14,15 +8,20 @@ import {
   CATEGORY_SYNONYMS,
   type CategoryId,
 } from "@/lib/taxonomy/categories";
+import { TOWN_ID_ORDER, type TownId } from "@/lib/taxonomy/towns";
 
-import { getAuth, normalizePropertyId, resolvePropertyId } from "@/lib/utils/ga";
 import {
+  deriveRangeEndingYesterday,
   parseISO,
-  todayUTC,
-  deriveAutoRangeForGranularity,
   prevComparable,
+  todayUTC,
 } from "@/lib/utils/datetime";
-import { groupFromDailyMaps } from "@/lib/utils/charts";
+import {
+  getAuth,
+  normalizePropertyId,
+  resolvePropertyId,
+} from "@/lib/utils/ga";
+import { buildAxisForGranularity } from "@/lib/utils/timeAxis";
 import { normalizePath, stripLangPrefix } from "@/lib/utils/url";
 
 /* ---------------- helpers ---------------- */
@@ -34,19 +33,16 @@ function pctDelta(curr: number, prev: number): number {
   return ((curr - prev) / prev) * 100;
 }
 
-function toISODate(yyyymmdd: string): string {
-  return `${yyyymmdd.slice(0, 4)}-${yyyymmdd.slice(4, 6)}-${yyyymmdd.slice(6, 8)}`;
-}
-
 function normToken(s: string): string {
   return s
-    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
 }
 
-/** Construye mapa slug-normalizado → CategoryId usando sinónimos oficiales */
+/** slug → CategoryId (usa sinónimos oficiales) */
 function buildSlugToCategory(): Record<string, CategoryId> {
   const map: Record<string, CategoryId> = {};
   for (const cid of CATEGORY_ID_ORDER) {
@@ -55,22 +51,26 @@ function buildSlugToCategory(): Record<string, CategoryId> {
       CATEGORY_META[cid].label,
       ...(CATEGORY_SYNONYMS[cid] ?? []),
     ].filter(Boolean) as string[];
-
     for (const v of base) map[normToken(v)] = cid;
   }
   return map;
 }
-
 const SLUG2CAT: Record<string, CategoryId> = buildSlugToCategory();
 
 /** Extrae townId / categoryId / subSlug de un path (ya sin prefijo de idioma) */
-function parseTownCatSub(path: string): { townId?: TownId; categoryId?: CategoryId; subSlug?: string } {
+function parseTownCatSub(path: string): {
+  townId?: TownId;
+  categoryId?: CategoryId;
+  subSlug?: string;
+} {
   const clean = path.replace(/^\/+|\/+$/g, "");
   if (!clean) return {};
   const segs = clean.split("/").map(normToken);
 
   // town
-  const townIdx = segs.findIndex((s) => (TOWN_ID_ORDER as readonly string[]).includes(s));
+  const townIdx = segs.findIndex((s) =>
+    (TOWN_ID_ORDER as readonly string[]).includes(s)
+  );
   if (townIdx === -1) return {};
 
   const townId = segs[townIdx] as TownId;
@@ -89,31 +89,45 @@ function parseTownCatSub(path: string): { townId?: TownId; categoryId?: Category
 
 export async function GET(req: NextRequest, ctx: unknown) {
   try {
-    // Firma strict de Next: obtenemos params con cast seguro
     const { id } = (ctx as { params: { id: string } }).params;
 
     if (!(TOWN_ID_ORDER as readonly string[]).includes(id)) {
-      return NextResponse.json({ error: `Invalid townId '${id}'` }, { status: 400 });
+      return NextResponse.json(
+        { error: `Invalid townId '${id}'` },
+        { status: 400 }
+      );
     }
     const townId = id as TownId;
 
     const { searchParams } = new URL(req.url);
     const g = (searchParams.get("g") || "d") as Granularity;
     const endISO = searchParams.get("end") || undefined;
-    const categoryIdParam = (searchParams.get("categoryId") || "").trim() as CategoryId | "";
+    const categoryIdParam = (searchParams.get("categoryId") || "").trim() as
+      | CategoryId
+      | "";
 
-    if (categoryIdParam && !CATEGORY_ID_ORDER.includes(categoryIdParam as CategoryId)) {
-      return NextResponse.json({ error: `Invalid categoryId '${categoryIdParam}'` }, { status: 400 });
+    if (
+      categoryIdParam &&
+      !CATEGORY_ID_ORDER.includes(categoryIdParam as CategoryId)
+    ) {
+      return NextResponse.json(
+        { error: `Invalid categoryId '${categoryIdParam}'` },
+        { status: 400 }
+      );
     }
 
-    // rangos
+    // rangos (terminando AYER) — para 'd' queremos 7 días (dayAsWeek=true)
     const now = endISO ? parseISO(endISO) : todayUTC();
-    const currPreset = deriveAutoRangeForGranularity(g, now);
+    const currPreset = deriveRangeEndingYesterday(g, now, g === "d");
     const prevPreset = prevComparable(currPreset);
     const ranges: { current: DateRange; previous: DateRange } = {
       current: { start: currPreset.startTime, end: currPreset.endTime },
       previous: { start: prevPreset.startTime, end: prevPreset.endTime },
     };
+
+    // EJE / BUCKETS
+    const axis = buildAxisForGranularity(g, ranges);
+    const N = axis.xLabels.length;
 
     // GA
     const auth = getAuth();
@@ -121,32 +135,45 @@ export async function GET(req: NextRequest, ctx: unknown) {
     const property = normalizePropertyId(resolvePropertyId());
 
     const request: analyticsdata_v1beta.Schema$RunReportRequest = {
-      dateRanges: [{ startDate: ranges.previous.start, endDate: ranges.current.end }],
-      metrics: [{ name: "eventCount" }, { name: "screenPageViews" }],
-      dimensions: [{ name: "date" }, { name: "pageLocation" }, { name: "eventName" }],
+      dateRanges: [
+        { startDate: ranges.previous.start, endDate: ranges.current.end },
+      ],
+      metrics: [{ name: "eventCount" }],
+      dimensions: [
+        { name: axis.dimensionTime },
+        { name: "pageLocation" },
+        { name: "eventName" },
+      ],
       dimensionFilter: {
         filter: {
           fieldName: "eventName",
-          stringFilter: { matchType: "EXACT", value: "page_view", caseSensitive: false },
+          stringFilter: {
+            matchType: "EXACT",
+            value: "page_view",
+            caseSensitive: false,
+          },
         },
       },
       keepEmptyRows: false,
       limit: "200000",
     };
 
-    const resp = await analyticsData.properties.runReport({ property, requestBody: request });
+    const resp = await analyticsData.properties.runReport({
+      property,
+      requestBody: request,
+    });
     const rows = resp.data.rows ?? [];
 
     // agregadores
-    const currByDate = new Map<string, number>();
-    const prevByDate = new Map<string, number>();
+    const currVec = Array(N).fill(0) as number[];
+    const prevVec = Array(N).fill(0) as number[];
 
-    // sin categoryId → donut por categorías
+    // sin categoryId → donut por categorías (current)
     const byCategoryCurrent = new Map<CategoryId, number>();
 
-    // con categoryId → donut por sub-actividad + series por URL
-    const bySubCurrent = new Map<string, number>(); // subSlug/path base -> total
-    const urlDailyCurrent = new Map<string, Map<string, number>>(); // url -> (dateISO -> events)
+    // con categoryId → donut por sub-actividad + series por URL (current)
+    const bySubCurrent = new Map<string, number>();
+    const urlVecs = new Map<string, number[]>(); // url -> vector current (N)
 
     const useCategoryMode = Boolean(categoryIdParam);
 
@@ -154,65 +181,84 @@ export async function GET(req: NextRequest, ctx: unknown) {
       const dims = r.dimensionValues ?? [];
       const mets = r.metricValues ?? [];
 
-      const dRaw = String(dims[0]?.value ?? "");
-      if (dRaw.length !== 8) continue;
-      const iso = toISODate(dRaw);
-
-      const urlRaw = String(dims[1]?.value ?? "");
-      const { path } = stripLangPrefix(normalizePath(urlRaw));
-      const parsed = parseTownCatSub(path);
-
-      if (parsed.townId !== townId) continue;
-
+      const slotRaw = String(dims[0]?.value ?? ""); // date(YYYYMMDD) || yearMonth(YYYYMM)
+      const locRaw = String(dims[1]?.value ?? "");
       const events = Number(mets[0]?.value ?? 0);
 
-      const inCurrent = iso >= ranges.current.start && iso <= ranges.current.end;
-      const inPrevious = iso >= ranges.previous.start && iso <= ranges.previous.end;
-
-      // serie total
-      if (inCurrent) {
-        currByDate.set(iso, (currByDate.get(iso) ?? 0) + events);
-      } else if (inPrevious) {
-        prevByDate.set(iso, (prevByDate.get(iso) ?? 0) + events);
+      // key de slot según dimensionTime
+      let slotKey: string | null = null;
+      if (axis.dimensionTime === "date") {
+        if (slotRaw.length === 8) {
+          slotKey = `${slotRaw.slice(0, 4)}-${slotRaw.slice(
+            4,
+            6
+          )}-${slotRaw.slice(6, 8)}`;
+        }
+      } else {
+        if (slotRaw.length === 6) slotKey = slotRaw; // YYYYMM
       }
+      if (!slotKey) continue;
 
-      if (!inCurrent) continue;
+      const { path } = stripLangPrefix(normalizePath(locRaw));
+      const parsed = parseTownCatSub(path);
+      if (parsed.townId !== townId) continue;
+
+      // ¿current o previous?
+      const iCur = axis.indexByCurKey.get(slotKey);
+      const iPrev = axis.indexByPrevKey.get(slotKey);
+      if (iCur !== undefined) currVec[iCur] += events;
+      else if (iPrev !== undefined) prevVec[iPrev] += events;
+      else continue;
+
+      // Solo CURRENT alimenta donut/seriesByUrl
+      if (iCur === undefined) continue;
 
       if (!useCategoryMode) {
-        // donut por categoría (usa clasificación por sinónimos)
         const cid = parsed.categoryId;
-        if (cid) byCategoryCurrent.set(cid, (byCategoryCurrent.get(cid) ?? 0) + events);
+        if (cid)
+          byCategoryCurrent.set(
+            cid,
+            (byCategoryCurrent.get(cid) ?? 0) + events
+          );
       } else {
-        // requiere coincidencia de categoría
         const cid = parsed.categoryId;
         if (!cid || cid !== categoryIdParam) continue;
 
-        // sub-actividad: segmento siguiente, o el propio /town/cat/
+        // sub-actividad
         const clean = path.replace(/^\/+|\/+$/g, "");
         const segs = clean.split("/");
         const townIdx = segs.findIndex((s) => normToken(s) === townId);
         const sub = segs[townIdx + 2] ? segs[townIdx + 2] : `${townId}/${cid}`;
-
         bySubCurrent.set(sub, (bySubCurrent.get(sub) ?? 0) + events);
 
-        // series por URL (alineada a fechas actuales)
-        const url = "/" + segs.slice(0, townIdx + 3).join("/") + "/"; // /town/cat/sub/
-        if (!urlDailyCurrent.has(url)) urlDailyCurrent.set(url, new Map<string, number>());
-        const dict = urlDailyCurrent.get(url)!;
-        dict.set(iso, (dict.get(iso) ?? 0) + events);
+        // series por URL /town/cat/sub/
+        const url = "/" + segs.slice(0, townIdx + 3).join("/") + "/";
+        if (!urlVecs.has(url)) urlVecs.set(url, Array(N).fill(0));
+        urlVecs.get(url)![iCur] += events;
       }
     }
 
-    // serie total agrupada
-    const { series, totals } = groupFromDailyMaps(g, ranges, currByDate, prevByDate);
-    const xLabels = series.current.map((p) => p.label);
+    // serie total (alineada a xLabels current)
+    const series: { current: SeriesPoint[]; previous: SeriesPoint[] } = {
+      current: axis.xLabels.map((label, i) => ({
+        label,
+        value: currVec[i] ?? 0,
+      })),
+      previous: axis.xLabels.map((label, i) => ({
+        label,
+        value: prevVec[i] ?? 0,
+      })),
+    };
+    const totals = {
+      current: currVec.reduce((a, b) => a + b, 0),
+      previous: prevVec.reduce((a, b) => a + b, 0),
+    };
 
     if (!useCategoryMode) {
-      const donut: DonutDatum[] = CATEGORY_ID_ORDER
-        .map((cid) => ({
-          label: CATEGORY_META[cid].label,
-          value: byCategoryCurrent.get(cid) ?? 0,
-        }))
+      const donut: DonutDatum[] = CATEGORY_ID_ORDER.map((cid) => ({
+        label: CATEGORY_META[cid].label,
+        value: byCategoryCurrent.get(cid) ?? 0,
+      }))
         .filter((d) => d.value > 0)
         .sort((a, b) => b.value - a.value);
 
@@ -222,7 +268,7 @@ export async function GET(req: NextRequest, ctx: unknown) {
           range: ranges,
           context: { townId },
           series,
-          xLabels,
+          xLabels: axis.xLabels,
           donut,
           deltaPct: pctDelta(totals.current, totals.previous),
           seriesByUrl: [],
@@ -235,14 +281,11 @@ export async function GET(req: NextRequest, ctx: unknown) {
       .map(([label, value]) => ({ label, value }))
       .sort((a, b) => b.value - a.value);
 
-    const seriesByUrl = Array.from(urlDailyCurrent.entries()).map(([url, daily]) => {
-      const { series: s } = groupFromDailyMaps(g, ranges, daily, new Map<string, number>());
-      return {
-        name: url,
-        data: s.current.map((p) => p.value),
-        path: url,
-      };
-    });
+    const seriesByUrl = Array.from(urlVecs.entries()).map(([url, vec]) => ({
+      name: url,
+      data: vec,
+      path: url,
+    }));
 
     return NextResponse.json(
       {
@@ -250,7 +293,7 @@ export async function GET(req: NextRequest, ctx: unknown) {
         range: ranges,
         context: { townId, categoryId: categoryIdParam },
         series,
-        xLabels,
+        xLabels: axis.xLabels,
         donut,
         seriesByUrl,
         deltaPct: pctDelta(totals.current, totals.previous),
@@ -259,7 +302,11 @@ export async function GET(req: NextRequest, ctx: unknown) {
     );
   } catch (err: unknown) {
     const message =
-      err instanceof Error ? err.message : typeof err === "string" ? err : "Unknown error";
+      err instanceof Error
+        ? err.message
+        : typeof err === "string"
+        ? err
+        : "Unknown error";
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

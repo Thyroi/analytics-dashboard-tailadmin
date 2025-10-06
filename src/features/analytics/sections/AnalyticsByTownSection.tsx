@@ -5,14 +5,12 @@ import {
   TownTimeProvider,
   useTownTimeframe,
 } from "@/features/analytics/context/TownTimeContext";
-import { useTownCategoryDrilldown } from "@/features/analytics/hooks/useTownCategoryDrilldown";
 import SectorsGridDetailed from "@/features/analytics/sectors/SectorsGridDetailed";
 import { useTownDetails } from "@/features/home/hooks/useTownDetails";
 import { useTownsTotals } from "@/features/home/hooks/useTownsTotals";
-import { type CategoryId } from "@/lib/taxonomy/categories";
-import type { TownId } from "@/lib/taxonomy/towns";
-import { TOWN_ID_ORDER } from "@/lib/taxonomy/towns";
+import { TOWN_ID_ORDER, type TownId } from "@/lib/taxonomy/towns";
 import { labelToCategoryId } from "@/lib/utils/sector";
+import type { CategoryId } from "@/lib/taxonomy/categories";
 import { useMemo, useState } from "react";
 import StickyHeaderSection from "../sectors/expanded/SectorExpandedCardDetailed/StickyHeaderSection";
 
@@ -30,16 +28,19 @@ function AnalyticsByTownSectionInner() {
 
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  // Flags de carga claros (primera carga + revalidaciones)
+  // Totales de los pueblos (para los aros de la grilla)
   const { state, ids, itemsById, isInitialLoading, isFetching } =
     useTownsTotals(granularity, endISO);
 
-  // IDs persistentes para no colapsar la grilla durante las cargas
+  // Mientras carga, mantenemos el orden de taxonomía (placeholders)
   const displayedIds = useMemo<string[]>(
     () => (state.status === "ready" ? (ids as string[]) : [...TOWN_ID_ORDER]),
     [state.status, ids]
   );
 
+  // --- DRILL STATE ---
+  // kind "town" -> solo overview del municipio (nivel 1)
+  // kind "town+cat" -> mostrar nivel 2 dentro del expandido
   type Drill =
     | { kind: "town"; townId: TownId }
     | { kind: "town+cat"; townId: TownId; categoryId: CategoryId };
@@ -47,45 +48,50 @@ function AnalyticsByTownSectionInner() {
   const [drill, setDrill] = useState<Drill | null>(null);
   const townId = expandedId as TownId | null;
 
-  // Detalle del 1er nivel (pueblo)
+  // Datos del NIVEL 1 (overview del municipio seleccionado)
   const { series: seriesTown, donutData: donutTown } = useTownDetails(
     (drill?.kind === "town" ? drill.townId : townId) ?? ("almonte" as TownId),
     granularity
   );
 
-  // Drilldown 2do nivel (pueblo + categoría)
-  const townCat = drill?.kind === "town+cat" ? drill : null;
-  const { series: ddSeries, donut: ddDonut } = useTownCategoryDrilldown(
-    townCat
-      ? { townId: townCat.townId, categoryId: townCat.categoryId, granularity }
-      : null
-  );
+  // IMPORTANTÍSIMO:
+  // El nivel 2 se carga DENTRO de <SectorExpandedCardDetailed /> usando
+  // forceDrillTownId + fixedCategoryId. NO cambiamos las series del nivel 1.
+  const forceDrillTownId =
+    drill?.kind === "town+cat" ? (drill.townId as TownId) : undefined;
+  const fixedCategoryId =
+    drill?.kind === "town+cat" ? (drill.categoryId as CategoryId) : undefined;
 
-  // Mantener null cuando no hay base de comparación
+  // Helpers para SectorsGridDetailed (solo nivel 1)
   const getDeltaPctFor = (id: string) =>
     state.status === "ready" ? itemsById[id as TownId]?.deltaPct ?? null : null;
 
-  const getSeriesFor = (_id: string) => {
-    if (townCat) return ddSeries;
-    if (townId && _id === townId) return seriesTown;
-    return { current: [], previous: [] };
-  };
+  const getSeriesFor = (_id: string) =>
+    townId && _id === townId ? seriesTown : { current: [], previous: [] };
 
-  const getDonutFor = (_id: string) => {
-    if (townCat) return ddDonut;
-    if (townId && _id === townId) return donutTown;
-    return [];
-  };
+  const getDonutFor = (_id: string) =>
+    townId && _id === townId ? donutTown : [];
 
+  // Abrir/cerrar
   const handleOpen = (id: string) => {
     setExpandedId(id);
     setDrill({ kind: "town", townId: id as TownId });
   };
 
+  const handleClose = () => {
+    setExpandedId(null);
+    setDrill(null);
+  };
+
+  // Click en una porción del donut del NIVEL 1 => habilita NIVEL 2
   const handleSliceClick = (label: string) => {
     const categoryId = labelToCategoryId(label);
     if (categoryId && expandedId) {
-      setDrill({ kind: "town+cat", townId: expandedId as TownId, categoryId });
+      setDrill({
+        kind: "town+cat",
+        townId: expandedId as TownId,
+        categoryId,
+      });
     }
   };
 
@@ -113,15 +119,11 @@ function AnalyticsByTownSectionInner() {
         getDonutFor={getDonutFor}
         expandedId={expandedId}
         onOpen={handleOpen}
-        onClose={() => {
-          setExpandedId(null);
-          setDrill(null);
-        }}
+        onClose={handleClose}
         onSliceClick={handleSliceClick}
-        // Loader en el aro (delta oculto) en primera carga y revalidación
         isDeltaLoading={isInitialLoading || isFetching}
-        forceDrillTownId={townCat ? townCat.townId : undefined}
-        fixedCategoryId={townCat ? townCat.categoryId : undefined}
+        forceDrillTownId={forceDrillTownId}
+        fixedCategoryId={fixedCategoryId}
       />
     </section>
   );

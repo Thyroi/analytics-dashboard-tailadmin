@@ -121,17 +121,16 @@ export default function SectorExpandedCardDetailed(props: Props) {
         donutCenterLabel={isTown ? "Categorías" : "Pueblos"}
         actionButtonTarget={isTown ? "categoría" : "pueblo"}
         className="mb-4"
+        granularity={granularity}
       />
 
-      {level2Active && (
-        <div ref={level2Ref} className="scroll-mt-24">
-          <TownCategoryDrilldownPanel
-            townId={drillTownId!}
-            categoryId={(fixedCategoryId ?? selectedCategoryId)!}
-            granularity={granularity}
-            headline={isTown ? "category" : "town"}
-          />
-        </div>
+      {drillTownId && (fixedCategoryId ?? selectedCategoryId) && (
+        <TownCategoryDrilldownPanel
+          townId={drillTownId}
+          categoryId={(fixedCategoryId ?? selectedCategoryId)!}
+          granularity={granularity}
+          headline={isTown ? "category" : "town"}
+        />
       )}
     </div>
   );

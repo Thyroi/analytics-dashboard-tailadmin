@@ -1,14 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { Granularity, DonutDatum, SeriesPoint } from "@/lib/types";
-import type { TownId } from "@/lib/taxonomy/towns";
-import type { CategoryId } from "@/lib/taxonomy/categories";
 import {
   getTownDrilldown,
   type TownDrilldownResponse,
   type UrlSeries,
 } from "@/features/analytics/services/drilldown";
+import type { CategoryId } from "@/lib/taxonomy/categories";
+import type { TownId } from "@/lib/taxonomy/towns";
+import type { DonutDatum, Granularity, SeriesPoint } from "@/lib/types";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 type ReadyState = { status: "ready"; data: TownDrilldownResponse };
 type LoadingState = { status: "idle" | "loading" };
@@ -23,7 +23,9 @@ export type TownCategoryDDOpts = {
   auto?: boolean;
 };
 
-export function useTownCategoryDrilldown(opts: TownCategoryDDOpts | null | undefined) {
+export function useTownCategoryDrilldown(
+  opts: TownCategoryDDOpts | null | undefined
+) {
   const [state, setState] = useState<State>({ status: "idle" });
   const abortRef = useRef<AbortController | null>(null);
 
@@ -55,6 +57,7 @@ export function useTownCategoryDrilldown(opts: TownCategoryDDOpts | null | undef
         granularity: opts.granularity,
         endISO: opts.endISO,
         categoryId: opts.categoryId ?? undefined,
+        dayAsWeek: opts.granularity === "d",
       });
 
       if (!ac.signal.aborted) {
@@ -80,7 +83,6 @@ export function useTownCategoryDrilldown(opts: TownCategoryDDOpts | null | undef
     error: state.status === "error" ? state.error : null,
     refetch: load,
 
-    // Proyecciones con defaults
     granularity: opts?.granularity,
     xLabels: useMemo<string[]>(
       () => (state.status === "ready" ? state.data.xLabels : []),
