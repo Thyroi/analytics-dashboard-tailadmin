@@ -1,9 +1,17 @@
 // src/app/api/analytics/v1/series/top-pages-range/route.ts
-import { NextResponse } from "next/server";
-import { google, analyticsdata_v1beta } from "googleapis";
-import { getAuth, normalizePropertyId, resolvePropertyId } from "@/lib/utils/ga";
-import { parseISO, toISO, deriveAutoRangeForGranularity } from "@/lib/utils/datetime";
 import type { Granularity } from "@/lib/types";
+import {
+  deriveAutoRangeForGranularity,
+  parseISO,
+  toISO,
+} from "@/lib/utils/datetime";
+import {
+  getAuth,
+  normalizePropertyId,
+  resolvePropertyId,
+} from "@/lib/utils/ga";
+import { analyticsdata_v1beta, google } from "googleapis";
+import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
@@ -12,7 +20,7 @@ type TopPagesRangePayload = {
   range: { start: string; end: string };
   property: string;
   categoriesLabels: string[]; // días YYYY-MM-DD
-  series: XYSeries[];         // Top N + (opcional) "Total"
+  series: XYSeries[]; // Top N + (opcional) "Total"
   top: number;
   metric: "screenPageViews";
 };
@@ -20,8 +28,12 @@ type TopPagesRangePayload = {
 function enumerateDaysUTC(startISO: string, endISO: string): string[] {
   const s = parseISO(startISO);
   const e = parseISO(endISO);
-  const cur = new Date(Date.UTC(s.getUTCFullYear(), s.getUTCMonth(), s.getUTCDate()));
-  const end = new Date(Date.UTC(e.getUTCFullYear(), e.getUTCMonth(), e.getUTCDate()));
+  const cur = new Date(
+    Date.UTC(s.getUTCFullYear(), s.getUTCMonth(), s.getUTCDate())
+  );
+  const end = new Date(
+    Date.UTC(e.getUTCFullYear(), e.getUTCMonth(), e.getUTCDate())
+  );
   const out: string[] = [];
   while (cur <= end) {
     out.push(toISO(cur));
@@ -37,15 +49,19 @@ export async function GET(req: Request) {
     const start = searchParams.get("start") || undefined;
     const end = searchParams.get("end") || undefined;
     const g = (searchParams.get("granularity") || "d") as Granularity;
-    const top = Math.max(1, Math.min(20, Number(searchParams.get("top") || "5"))); // default 5, máx 20
+    const top = Math.max(
+      1,
+      Math.min(20, Number(searchParams.get("top") || "5"))
+    ); // default 5, máx 20
     const includeTotal = (searchParams.get("includeTotal") ?? "1") !== "0";
 
-    const range = start && end
-      ? { start, end }
-      : (() => {
-          const r = deriveAutoRangeForGranularity(g);
-          return { start: r.startTime, end: r.endTime };
-        })();
+    const range =
+      start && end
+        ? { start, end }
+        : (() => {
+            const r = deriveAutoRangeForGranularity(g); // ⬅️ devuelve { start, end }
+            return { start: r.start, end: r.end }; // ⬅️ usar las claves correctas
+          })();
 
     const days = enumerateDaysUTC(range.start, range.end);
     const idxByDay = new Map(days.map((d, i) => [d, i]));

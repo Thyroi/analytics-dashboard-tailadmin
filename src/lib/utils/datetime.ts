@@ -1,8 +1,23 @@
 /**
  * Utilidades de fecha en UTC y presets de rango por granularidad.
+ * Unificamos dos "shapes":
+ *  - GA4Preset: { startTime, endTime }  -> lo que pide GA4
+ *  - DateRange: { start, end }          -> lo que usamos internamente
  */
 
 import type { Granularity } from "@/lib/types";
+
+/* ==================== Tipos unificados ==================== */
+
+export type GA4Preset = { startTime: string; endTime: string };
+export type DateRange = { start: string; end: string };
+
+export function presetToRange(p: GA4Preset): DateRange {
+  return { start: p.startTime, end: p.endTime };
+}
+export function rangeToPreset(r: DateRange): GA4Preset {
+  return { startTime: r.start, endTime: r.end };
+}
 
 /* ==================== Helpers base UTC ==================== */
 
@@ -68,122 +83,69 @@ export function daysDiffInclusive(s: Date, e: Date): number {
 
 /* ==================== Presets por granularidad ==================== */
 /**
- * Cantidades configurables por preset:
+ * Cantidades configurables por preset (para UI de auto-rangos):
  *  - Día: 7 días
  *  - Semana: 4 semanas (28 días)
- *  - Mes: últimos 6 meses **completos**
- *  - Año: últimos 2 años **completos**
+ *  - Mes: 30 días (rolling)
+ *  - Año: YTD
  */
 export const PRESET_DAY_COUNT = 7;
 export const PRESET_WEEK_COUNT = 4;
-export const PRESET_MONTH_COUNT = 6;
+export const PRESET_MONTH_COUNT = 6; // no se usa en las reglas "rolling" nuevas, lo dejamos a mano
 export const PRESET_YEAR_COUNT = 2;
 
 /**
- * Devuelve {startTime, endTime} para la granularidad seleccionada.
- * Reglas:
- *  - "d": últimos 7 días (rolling), hoy incluido.
- *  - "w": últimas 4 semanas (28 días rolling), hoy incluido.
- *  - "m": últimos 6 **meses completos** (hasta el último día del mes previo).
- *  - "y": últimos 2 **años completos** (hasta 31/12 del año previo).
- */
-/* ==================== Rango por granularidad (ACTUALIZADO) ==================== */
-/**
- * Reglas:
- *  - "d": últimos 7 días (rolling), hoy incluido.
- *  - "w": 28 días (rolling), hoy incluido.
- *  - "m": 30 días rolling (no mes calendario), hoy incluido.
- *  - "y": YTD (01-01 UTC del año vigente) hasta hoy.
+ * Rango sugerido por granularidad, terminando HOY (UTC).
+ * - "d": últimos 7 días (rolling)
+ * - "w": últimos 28 días (rolling)
+ * - "m": últimos 30 días (rolling)
+ * - "y": YTD (01-01…hoy)
  */
 export function deriveAutoRangeForGranularity(
   g: Granularity,
   now: Date = todayUTC()
-): { startTime: string; endTime: string } {
+): DateRange {
   if (g === "d") {
     const end = now;
     const start = addDaysUTC(end, -6); // 7 días inclusivos
-    return { startTime: toISO(start), endTime: toISO(end) };
+    return { start: toISO(start), end: toISO(end) };
   }
 
   if (g === "w") {
     const end = now;
     const start = addDaysUTC(end, -27); // 28 días inclusivos
-    return { startTime: toISO(start), endTime: toISO(end) };
+    return { start: toISO(start), end: toISO(end) };
   }
 
   if (g === "m") {
     const end = now;
     const start = addDaysUTC(end, -29); // 30 días inclusivos
-    return { startTime: toISO(start), endTime: toISO(end) };
+    return { start: toISO(start), end: toISO(end) };
   }
 
   // g === "y" -> YTD
   const start = new Date(Date.UTC(now.getUTCFullYear(), 0, 1));
   const end = now;
-  return { startTime: toISO(start), endTime: toISO(end) };
+  return { start: toISO(start), end: toISO(end) };
 }
 
-/* ==================== Rango comparativo desplazado (NUEVO) ==================== */
+/* ==================== Rango “terminando AYER” ==================== */
 /**
- * Devuelve el rango inmediatamente anterior desplazado según la granularidad:
- *  - "d": desplaza 1 día (alineación día vs día anterior)
- *  - "w": desplaza 7 días (alineación semana vs semana previa)
- *  - "m": desplaza 30 días (alineación bloque de 30 días vs bloque anterior)
- *  - "y": desplaza 1 año (YTD vs YTD-1)
+ * Devuelve el rango que termina AYER (UTC), en formato GA4Preset.
+ * - "d": si dayAsWeek=false → 1 día (ayer..ayer)
+ *        si dayAsWeek=true  → 7 días terminando ayer
+ * - "w": 7 días terminando ayer
+ * - "m": 30 días terminando ayer
+ * - "y": 365 días terminando ayer
  */
-export function derivePrevShifted(
-  current: { startTime: string; endTime: string },
-  g: Granularity
-): { startTime: string; endTime: string } {
-  const s = parseISO(current.startTime);
-  const e = parseISO(current.endTime);
-
-  if (g === "y") {
-    // Mantener misma longitud desplazando 1 año
-    const prevStart = addYearsUTC(s, -1);
-    const prevEnd = addYearsUTC(e, -1);
-    return { startTime: toISO(prevStart), endTime: toISO(prevEnd) };
-  }
-
-  const shiftDays = g === "d" ? 1 : g === "w" ? 7 : 30; // d=1, w=7, m=30
-  const prevStart = addDaysUTC(s, -shiftDays);
-  const prevEnd = addDaysUTC(e, -shiftDays);
-  return { startTime: toISO(prevStart), endTime: toISO(prevEnd) };
-}
-
-/* ==================== Compatibilidad (OPCIONAL) ==================== */
-/**
- * Si en algún sitio seguís usando `prevComparable(range)` clásico (que hacía “chunk anterior contiguo”),
- * lo dejamos aquí, pero MARCADO como deprecated. Recomendación: migrar a `derivePrevShifted`.
- */
-export function prevComparable(range: { startTime: string; endTime: string }): {
-  startTime: string;
-  endTime: string;
-} {
-  const s = parseISO(range.startTime);
-  const e = parseISO(range.endTime);
-  const days = daysDiffInclusive(s, e);
-  const prevEnd = addDaysUTC(s, -1);
-  const prevStart = addDaysUTC(prevEnd, -(days - 1));
-  return { startTime: toISO(prevStart), endTime: toISO(prevEnd) };
-}
-
-export function prevComparableForGranularity(
-  range: { startTime: string; endTime: string },
-  g: Granularity
-): { startTime: string; endTime: string } {
-  return derivePrevShifted(range, g);
-}
-
 export function deriveRangeEndingYesterday(
   g: Granularity,
   now: Date = todayUTC(),
   dayAsWeek: boolean = false
-): { startTime: string; endTime: string } {
+): GA4Preset {
   const yesterday = addDaysUTC(now, -1);
 
   if (g === "d") {
-    // 1 día (ayer…ayer) o 7 días terminando ayer si dayAsWeek=true
     if (dayAsWeek) {
       const start = addDaysUTC(yesterday, -(7 - 1));
       return { startTime: toISO(start), endTime: toISO(yesterday) };
@@ -192,25 +154,75 @@ export function deriveRangeEndingYesterday(
   }
 
   if (g === "w") {
-    // 7 días completos hasta ayer
     const start = addDaysUTC(yesterday, -(7 - 1));
     return { startTime: toISO(start), endTime: toISO(yesterday) };
   }
 
   if (g === "m") {
-    // 30 días completos hasta ayer
     const start = addDaysUTC(yesterday, -(30 - 1));
     return { startTime: toISO(start), endTime: toISO(yesterday) };
   }
 
-  // g === "y" → 365 días completos hasta ayer
+  // g === "y"
   const start = addDaysUTC(yesterday, -(365 - 1));
   return { startTime: toISO(start), endTime: toISO(yesterday) };
 }
 
-export function prevComparableSameLength(range: {
-  startTime: string;
-  endTime: string;
-}) {
-  return prevComparable(range);
+/* ==================== Ventana desplazada (SOLAPE) ==================== */
+/**
+ * Versión DateRange:
+ *  - "d": desplaza 1 día
+ *  - "w": desplaza 7 días
+ *  - "m": desplaza 30 días
+ *  - "y": desplaza 1 año
+ */
+export function derivePrevShifted(
+  current: DateRange,
+  g: Granularity
+): DateRange {
+  const s = parseISO(current.start);
+  const e = parseISO(current.end);
+
+  if (g === "y") {
+    const prevStart = addYearsUTC(s, -1);
+    const prevEnd = addYearsUTC(e, -1);
+    return { start: toISO(prevStart), end: toISO(prevEnd) };
+  }
+
+  const shiftDays = g === "d" ? 1 : g === "w" ? 7 : 30; // d=1, w=7, m=30
+  const prevStart = addDaysUTC(s, -shiftDays);
+  const prevEnd = addDaysUTC(e, -shiftDays);
+  return { start: toISO(prevStart), end: toISO(prevEnd) };
+}
+
+/* ==================== Compatibilidad con código legado ==================== */
+/**
+ * (LEGACY) Si todavía tienes llamadas que usan GA4Preset:
+ * prevComparable / prevComparableForGranularity siguen existiendo pero devuelven GA4Preset.
+ * Recomendación: migra a derivePrevShifted(DateRange).
+ */
+export function prevComparable(preset: GA4Preset): GA4Preset {
+  const s = parseISO(preset.startTime);
+  const e = parseISO(preset.endTime);
+  const days = daysDiffInclusive(s, e);
+  const prevEnd = addDaysUTC(s, -1);
+  const prevStart = addDaysUTC(prevEnd, -(days - 1));
+  return { startTime: toISO(prevStart), endTime: toISO(prevEnd) };
+}
+
+export function prevComparableForGranularity(
+  preset: GA4Preset,
+  g: Granularity
+): GA4Preset {
+  // desplazamiento por granularidad, pero en GA4Preset
+  const range = presetToRange(preset);
+  const prev = derivePrevShifted(range, g);
+  return rangeToPreset(prev);
+}
+
+/* Conveniencia: desplazar un DateRange en días */
+export function shiftRangeByDays(range: DateRange, days: number): DateRange {
+  const s = addDaysUTC(parseISO(range.start), days);
+  const e = addDaysUTC(parseISO(range.end), days);
+  return { start: toISO(s), end: toISO(e) };
 }

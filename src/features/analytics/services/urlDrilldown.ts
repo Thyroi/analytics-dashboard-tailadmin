@@ -1,13 +1,29 @@
+"use client";
+
+import { buildQS, fetchJSON } from "@/lib/api/analytics";
 import type { DonutDatum, Granularity, SeriesPoint } from "@/lib/types";
+
+/** Rango simple YYYY-MM-DD */
+export type DateRange = { start: string; end: string };
 
 export type UrlDrilldownResponse = {
   granularity: Granularity;
   range: {
-    current: { start: string; end: string };
-    previous: { start: string; end: string };
+    current: DateRange;
+    previous: DateRange;
   };
   context: { path: string };
-  seriesAvgEngagement: { current: SeriesPoint[]; previous: SeriesPoint[] };
+
+  /** Etiquetas del X (YYYY-MM-DD para d/w/m; YYYY-MM para y) */
+  xLabels: string[];
+
+  /** Serie de promedio de engagement por bucket (segundos) */
+  seriesAvgEngagement: {
+    current: SeriesPoint[];
+    previous: SeriesPoint[];
+  };
+
+  /** KPIs agregados para el path (nullable por seguridad) */
   kpis: {
     current: {
       activeUsers: number;
@@ -16,6 +32,7 @@ export type UrlDrilldownResponse = {
       eventCount: number;
       sessions: number;
       averageSessionDuration: number;
+      /** derivados */
       avgEngagementPerUser: number;
       eventsPerSession: number;
     };
@@ -26,9 +43,11 @@ export type UrlDrilldownResponse = {
       eventCount: number;
       sessions: number;
       averageSessionDuration: number;
+      /** derivados */
       avgEngagementPerUser: number;
       eventsPerSession: number;
     };
+    /** deltas % respecto a previous */
     deltaPct: {
       activeUsers: number;
       newUsers: number;
@@ -38,38 +57,33 @@ export type UrlDrilldownResponse = {
       avgEngagementPerUser: number;
       eventsPerSession: number;
     };
-  };
+  } | null;
+
+  /** Donuts (policy backend: si g==='d' → último día; si no, todo current) */
   operatingSystems: DonutDatum[];
   genders: DonutDatum[];
   countries: DonutDatum[];
+
+  /** delta % de la serie base (p.ej. vistas) current vs previous */
   deltaPct: number;
 };
 
-export async function getUrlDrilldown(args: {
+export async function getUrlDrilldown(params: {
+  /** Puede ser URL completa o pathname; el backend normaliza */
   path: string;
   granularity: Granularity;
+  /** Si se pasa, ancla la ventana para que termine en `endISO` (AYER relativo) */
   endISO?: string;
   signal?: AbortSignal;
-  dayAsWeek?: boolean; // 👈 NUEVO
 }): Promise<UrlDrilldownResponse> {
-  const { path, granularity, endISO, signal, dayAsWeek } = args;
-  const qs = new URLSearchParams({ g: granularity, path });
-  if (endISO) qs.set("end", endISO);
-  if (granularity === "d" && dayAsWeek) qs.set("dw", "1"); // 👈
+  const { path, granularity, endISO, signal } = params;
 
-  const res = await fetch(`/api/analytics/v1/drilldown/url?${qs.toString()}`, {
-    method: "GET",
-    headers: { "cache-control": "no-cache" },
-    signal,
+  const qs = buildQS({
+    path,
+    g: granularity,
+    ...(endISO ? { end: endISO } : null),
   });
 
-  if (!res.ok) {
-    const raw = await res.json().catch(() => ({}));
-    const message =
-      typeof (raw as { error?: string })?.error === "string"
-        ? (raw as { error?: string }).error
-        : `HTTP ${res.status}`;
-    throw new Error(message);
-  }
-  return (await res.json()) as UrlDrilldownResponse;
+  const url = `/api/analytics/v1/drilldown/url?${qs}`;
+  return fetchJSON<UrlDrilldownResponse>(url, { method: "GET", signal });
 }

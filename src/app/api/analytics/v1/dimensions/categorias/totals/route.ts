@@ -1,43 +1,54 @@
 // src/app/api/analytics/v1/dimensions/categorias/totals/route.ts
-import { NextResponse } from "next/server";
-import { google, analyticsdata_v1beta } from "googleapis";
 import type { Granularity } from "@/lib/types";
+import { google } from "googleapis";
+import { NextResponse } from "next/server";
 
-import { getAuth, normalizePropertyId, resolvePropertyId } from "@/lib/utils/ga";
+import { buildUnionRunReportRequest } from "@/lib/utils/ga4Requests";
 import {
-  parseISO,
-  prevComparable,
-  deriveRangeEndingYesterday,
-} from "@/lib/utils/datetime";
+  computeDeltaPct,
+  computeRangesFromQuery,
+  safeUrlPathname,
+} from "@/lib/utils/timeWindows";
+import {
+  getAuth,
+  normalizePropertyId,
+  resolvePropertyId,
+} from "@/lib/utils/ga";
 
-/** ========= Taxonomía mínima (id -> posibles slugs en URL) =========
- *  Ajusta/añade si detectas más variantes en tus paths.
- */
+/** ========= Taxonomía mínima (id -> posibles slugs en URL) ========= */
 const CATEGORY_SLUGS: Record<string, string[]> = {
   circuitoMonteblanco: ["circuito-monteblanco", "monteblanco"],
   donana: ["donana", "doñana"],
-  espaciosMuseisticos: ["espacios-museisticos", "museos", "museistics", "museistics-es"],
-  fiestasTradiciones: ["fiestas-tradiciones", "festivals-and-traditions", "fiestas"],
+  espaciosMuseisticos: [
+    "espacios-museisticos",
+    "museos",
+    "museistics",
+    "museistics-es",
+  ],
+  fiestasTradiciones: [
+    "fiestas-tradiciones",
+    "festivals-and-traditions",
+    "fiestas",
+  ],
   laRabida: ["la-rabida", "rabida"],
   lugaresColombinos: ["lugares-colombinos", "colombinos"],
   naturaleza: ["naturaleza", "nature"],
   patrimonio: ["patrimonio", "heritage"],
   playa: ["playa", "playas", "beaches", "beach"],
   rutasCulturales: ["rutas-culturales", "cultural-routes"],
-  rutasSenderismo: ["rutas-senderismo", "senderismo", "btt", "vias-verdes", "hiking", "cicloturistas"],
+  rutasSenderismo: [
+    "rutas-senderismo",
+    "senderismo",
+    "btt",
+    "vias-verdes",
+    "hiking",
+    "cicloturistas",
+  ],
   sabor: ["sabor", "taste", "gastronomia", "food"],
 };
 type CategoryId = keyof typeof CATEGORY_SLUGS;
 
-/* -------- utils URL -------- */
-function safeUrlPathname(raw: string): string {
-  try {
-    const u = new URL(raw);
-    return u.pathname || "/";
-  } catch {
-    return raw.startsWith("/") ? raw : `/${raw}`;
-  }
-}
+/* -------- matching por path -------- */
 function matchCategoryIdFromPath(path: string): CategoryId | null {
   const lc = path.toLowerCase();
   for (const [catId, slugs] of Object.entries(CATEGORY_SLUGS)) {
@@ -56,118 +67,98 @@ function matchCategoryIdFromPath(path: string): CategoryId | null {
   return null;
 }
 
-/* -------- tipos y helpers -------- */
-type Totals = { currentTotal: number; previousTotal: number; deltaPct: number | null };
-type TotalsMap = Record<CategoryId, Totals>;
-
-function emptyTotals(): TotalsMap {
-  const out = {} as TotalsMap;
-  (Object.keys(CATEGORY_SLUGS) as CategoryId[]).forEach((k) => {
-    out[k] = { currentTotal: 0, previousTotal: 0, deltaPct: null };
-  });
-  return out;
-}
-function computeDeltaPct(curr: number, prev: number): number | null {
-  // Sin base de comparación => null (para que el front muestre "Sin datos suficientes")
-  if (prev <= 0) return null;
-  return ((curr - prev) / prev) * 100;
-}
-
 /* -------- handler -------- */
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
-    const gParam = (searchParams.get("g") || "d").trim().toLowerCase() as Granularity;
-    const endISO = (searchParams.get("end") || "").trim() || undefined;
+    const g = (searchParams.get("g") || "d")
+      .trim()
+      .toLowerCase() as Granularity;
+    const startQ = searchParams.get("start");
+    const endQ = searchParams.get("end");
 
-    // Rango actual: ventana que TERMINA AYER (opcionalmente anclada a 'endISO')
-    const currPreset = endISO
-      ? deriveRangeEndingYesterday(gParam, parseISO(endISO))
-      : deriveRangeEndingYesterday(gParam);
-    const prevPreset = prevComparable(currPreset);
-
-    const windows = {
-      current: { start: currPreset.startTime, end: currPreset.endTime },
-      previous: { start: prevPreset.startTime, end: prevPreset.endTime },
-    };
+    // Rangos con política (desplazamiento con solape)
+    const ranges = computeRangesFromQuery(g, startQ, endQ);
 
     // GA
     const auth = getAuth();
-    const analyticsData = google.analyticsdata({ version: "v1beta", auth });
-    const propertyName = normalizePropertyId(resolvePropertyId());
+    const analytics = google.analyticsdata({ version: "v1beta", auth });
+    const property = normalizePropertyId(resolvePropertyId());
 
-    // Current
-    const reqCurrent: analyticsdata_v1beta.Schema$RunReportRequest = {
-      dateRanges: [{ startDate: windows.current.start, endDate: windows.current.end }],
+    // Unión prev.start → curr.end + filtro page_view
+    const requestBody = buildUnionRunReportRequest({
+      current: ranges.current,
+      previous: ranges.previous,
       metrics: [{ name: "eventCount" }],
-      dimensions: [{ name: "eventName" }, { name: "pageLocation" }],
+      dimensions: [
+        { name: "date" },
+        { name: "pageLocation" },
+        { name: "eventName" },
+      ],
       dimensionFilter: {
         filter: {
           fieldName: "eventName",
-          stringFilter: { matchType: "EXACT", value: "page_view", caseSensitive: false },
+          stringFilter: {
+            matchType: "EXACT",
+            value: "page_view",
+            caseSensitive: false,
+          },
         },
       },
-      keepEmptyRows: false,
-      limit: "100000",
-    };
-    // Previous
-    const reqPrevious: analyticsdata_v1beta.Schema$RunReportRequest = {
-      dateRanges: [{ startDate: windows.previous.start, endDate: windows.previous.end }],
-      metrics: [{ name: "eventCount" }],
-      dimensions: [{ name: "eventName" }, { name: "pageLocation" }],
-      dimensionFilter: {
-        filter: {
-          fieldName: "eventName",
-          stringFilter: { matchType: "EXACT", value: "page_view", caseSensitive: false },
-        },
-      },
-      keepEmptyRows: false,
-      limit: "100000",
-    };
+    });
 
-    const [resCur, resPrev] = await Promise.all([
-      analyticsData.properties.runReport({ property: propertyName, requestBody: reqCurrent }),
-      analyticsData.properties.runReport({ property: propertyName, requestBody: reqPrevious }),
-    ]);
+    const resp = await analytics.properties.runReport({
+      property,
+      requestBody,
+    });
+    const rows = resp.data.rows ?? [];
 
-    const curRows = resCur.data.rows ?? [];
-    const prevRows = resPrev.data.rows ?? [];
+    const currentTotals: Record<CategoryId, number> = Object.fromEntries(
+      (Object.keys(CATEGORY_SLUGS) as CategoryId[]).map((k) => [k, 0])
+    ) as Record<CategoryId, number>;
+    const previousTotals: Record<CategoryId, number> = Object.fromEntries(
+      (Object.keys(CATEGORY_SLUGS) as CategoryId[]).map((k) => [k, 0])
+    ) as Record<CategoryId, number>;
 
-    const totals = emptyTotals();
+    for (const r of rows) {
+      const dateRaw = String(r.dimensionValues?.[0]?.value ?? ""); // YYYYMMDD
+      if (dateRaw.length !== 8) continue;
+      const iso = `${dateRaw.slice(0, 4)}-${dateRaw.slice(
+        4,
+        6
+      )}-${dateRaw.slice(6, 8)}`;
 
-    // agrega current
-    for (const r of curRows) {
-      const dims = r.dimensionValues ?? [];
-      const mets = r.metricValues ?? [];
-      const path = safeUrlPathname(String(dims[1]?.value ?? ""));
-      const evCount = Number(mets[0]?.value ?? 0);
+      const url = String(r.dimensionValues?.[1]?.value ?? "");
+      const path = safeUrlPathname(url);
+      const value = Number(r.metricValues?.[0]?.value ?? 0);
+
       const cat = matchCategoryIdFromPath(path);
-      if (cat) totals[cat].currentTotal += evCount;
+      if (!cat) continue;
+
+      if (iso >= ranges.current.start && iso <= ranges.current.end) {
+        currentTotals[cat] += value;
+      } else if (iso >= ranges.previous.start && iso <= ranges.previous.end) {
+        previousTotals[cat] += value;
+      }
     }
-    // agrega previous
-    for (const r of prevRows) {
-      const dims = r.dimensionValues ?? [];
-      const mets = r.metricValues ?? [];
-      const path = safeUrlPathname(String(dims[1]?.value ?? ""));
-      const evCount = Number(mets[0]?.value ?? 0);
-      const cat = matchCategoryIdFromPath(path);
-      if (cat) totals[cat].previousTotal += evCount;
-    }
-    // delta por categoría
-    (Object.keys(CATEGORY_SLUGS) as CategoryId[]).forEach((cat) => {
-      totals[cat].deltaPct = computeDeltaPct(
-        totals[cat].currentTotal,
-        totals[cat].previousTotal
-      );
+
+    const items = (Object.keys(CATEGORY_SLUGS) as CategoryId[]).map((id) => {
+      const curr = currentTotals[id] ?? 0;
+      const prev = previousTotals[id] ?? 0;
+      return {
+        id,
+        title: id,
+        total: curr,
+        deltaPct: computeDeltaPct(curr, prev),
+      };
     });
 
     return NextResponse.json(
       {
-        granularity: gParam,
-        range: windows,
-        property: propertyName,
-        categories: Object.keys(CATEGORY_SLUGS), // orden estable
-        perCategory: totals,
+        granularity: g,
+        range: ranges, // { current: {start,end}, previous: {start,end} }
+        property,
+        items,
       },
       { status: 200 }
     );

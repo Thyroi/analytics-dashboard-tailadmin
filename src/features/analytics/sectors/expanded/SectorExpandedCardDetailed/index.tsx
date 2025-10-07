@@ -30,6 +30,9 @@ type BaseProps = {
   forceDrillTownId?: TownId;
   /** Categoría fija (cuando vienes de town → categoría) */
   fixedCategoryId?: CategoryId;
+
+  /** Fin del rango si estás en modo "range" (YYYY-MM-DD). Opcional. */
+  endISO?: string;
 };
 
 type Props = BaseProps & IconOrImage;
@@ -48,6 +51,7 @@ export default function SectorExpandedCardDetailed(props: Props) {
     onSliceClick,
     forceDrillTownId,
     fixedCategoryId,
+    endISO, // ← ahora lo propagamos al panel de drilldown
   } = props;
 
   const imgSrc =
@@ -58,27 +62,22 @@ export default function SectorExpandedCardDetailed(props: Props) {
       : undefined;
   const Icon = "Icon" in props ? props.Icon : undefined;
 
-  // 🔒 drillTownId estable
   const drillTownId: TownId | null = useMemo(
     () => forceDrillTownId ?? (isTown ? townId ?? null : null),
     [forceDrillTownId, isTown, townId]
   );
 
-  // Nivel 2: categoría seleccionada (solo aplica en modo pueblo)
   const [selectedCategoryId, setSelectedCategoryId] =
     useState<CategoryId | null>(null);
 
-  // Reset categoría al cambiar el contexto real del drill (pueblo)
   useEffect(() => {
     setSelectedCategoryId(null);
   }, [drillTownId]);
 
-  // Fijar categoría si viene desde arriba
   useEffect(() => {
     if (fixedCategoryId) setSelectedCategoryId(fixedCategoryId);
   }, [fixedCategoryId]);
 
-  // Click en donut superior
   const handleDonutTopClick = (label: string) => {
     if (isTown && drillTownId) {
       const cid = resolveCategoryIdFromLabel(label);
@@ -88,7 +87,6 @@ export default function SectorExpandedCardDetailed(props: Props) {
     if (onSliceClick) onSliceClick(label);
   };
 
-  // Auto-scroll al montar el panel de nivel 2
   const level2Ref = useRef<HTMLDivElement | null>(null);
   const level2Active = !!(
     drillTownId &&
@@ -125,12 +123,15 @@ export default function SectorExpandedCardDetailed(props: Props) {
       />
 
       {drillTownId && (fixedCategoryId ?? selectedCategoryId) && (
-        <TownCategoryDrilldownPanel
-          townId={drillTownId}
-          categoryId={(fixedCategoryId ?? selectedCategoryId)!}
-          granularity={granularity}
-          headline={isTown ? "category" : "town"}
-        />
+        <div ref={level2Ref} className="scroll-mt-24">
+          <TownCategoryDrilldownPanel
+            townId={drillTownId}
+            categoryId={(fixedCategoryId ?? selectedCategoryId)!}
+            granularity={granularity}
+            headline={isTown ? "category" : "town"}
+            endISO={endISO} // ← pasa endISO al nivel 2
+          />
+        </div>
       )}
     </div>
   );

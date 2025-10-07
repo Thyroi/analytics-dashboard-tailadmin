@@ -15,7 +15,7 @@ import { NextResponse } from "next/server";
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-/* ---------- helpers ---------- */
+/* ---------- tipos/helpers ---------- */
 type DateRange = { start: string; end: string };
 
 function pctDelta(curr: number, prev: number): number {
@@ -167,10 +167,10 @@ export async function GET(req: Request) {
         return `${yyyy}-${mm}-${dd}`;
       })();
 
-    // ===== EJE / BUCKETS (ventanas “lagged”) =====
+    // ===== EJE / BUCKETS (ventanas “lagged” solapadas) =====
     // d/w → 7 días (prev = esos 7 días -1 día)
     // m   → 30 días (prev = 30 días -1 día)
-    // y   → 12 meses (prev = 12 meses -1 mes, alineados por índice)
+    // y   → 12 meses (prev = 12 meses -1 mes), alineados por índice
     const axis = buildLaggedAxisForGranularity(g, { endISO });
     const N = axis.xLabels.length;
 
@@ -214,7 +214,7 @@ export async function GET(req: Request) {
 
     const rows: analyticsdata_v1beta.Schema$Row[] = seriesResp.data.rows ?? [];
 
-    // Vectores current/previous vacíos
+    // Vectores current/previous
     const currEng: number[] = Array<number>(N).fill(0);
     const prevEng: number[] = Array<number>(N).fill(0);
     const currViews: number[] = Array<number>(N).fill(0);
@@ -232,7 +232,6 @@ export async function GET(req: Request) {
       const eng = Number(mets[0]?.value ?? 0);
       const vws = Number(mets[1]?.value ?? 0);
 
-      // key del slot
       let slotKey: string | null = null;
       if (axis.dimensionTime === "date") {
         // YYYYMMDD -> YYYY-MM-DD
@@ -254,13 +253,13 @@ export async function GET(req: Request) {
       if (iCur !== undefined) {
         currEng[iCur] += eng;
         currViews[iCur] += vws;
-      } else if (iPrev !== undefined) {
+      }
+      if (iPrev !== undefined) {
         prevEng[iPrev] += eng;
         prevViews[iPrev] += vws;
       }
     }
 
-    // to SeriesPoint
     const seriesEng: { current: SeriesPoint[]; previous: SeriesPoint[] } = {
       current: axis.xLabels.map((label: string, i: number) => ({
         label,
@@ -292,18 +291,8 @@ export async function GET(req: Request) {
 
     // ===== KPIs (current / previous) =====
     const [totCurr, totPrev] = await Promise.all([
-      fetchUrlTotalsAggregated(
-        analyticsData,
-        property,
-        axis.curRange,
-        targetPath
-      ),
-      fetchUrlTotalsAggregated(
-        analyticsData,
-        property,
-        axis.prevRange,
-        targetPath
-      ),
+      fetchUrlTotalsAggregated(analyticsData, property, axis.curRange, targetPath),
+      fetchUrlTotalsAggregated(analyticsData, property, axis.prevRange, targetPath),
     ]);
 
     const safeDiv = (a: number, b: number): number => (b > 0 ? a / b : 0);
@@ -342,21 +331,15 @@ export async function GET(req: Request) {
       ),
     };
 
-    // ===== Donuts (current) =====
+    // ===== Donuts (current) — ejemplo: por SO, género y país =====
     async function donutFor(
       dim: "operatingSystem" | "userGender" | "country",
       metric: "screenPageViews" | "activeUsers"
     ): Promise<DonutDatum[]> {
       const req: analyticsdata_v1beta.Schema$RunReportRequest = {
-        dateRanges: [
-          { startDate: axis.curRange.start, endDate: axis.curRange.end },
-        ],
+        dateRanges: [{ startDate: axis.curRange.start, endDate: axis.curRange.end }],
         metrics: [{ name: metric }],
-        dimensions: [
-          { name: dim },
-          { name: "pageLocation" },
-          { name: "eventName" },
-        ],
+        dimensions: [{ name: dim }, { name: "pageLocation" }, { name: "eventName" }],
         dimensionFilter: {
           filter: {
             fieldName: "eventName",
@@ -371,27 +354,21 @@ export async function GET(req: Request) {
         limit: "100000",
       };
 
-      const r = await analyticsData.properties.runReport({
-        property,
-        requestBody: req,
-      });
+      const r = await analyticsData.properties.runReport({ property, requestBody: req });
       const rowsDonut: analyticsdata_v1beta.Schema$Row[] = r.data.rows ?? [];
       const map = new Map<string, number>();
 
       for (const row of rowsDonut) {
         const dims = row.dimensionValues ?? [];
-        theLoop: {
-          const mets = row.metricValues ?? [];
+        const mets = row.metricValues ?? [];
+        const loc = String(dims[1]?.value ?? "");
+        const onlyPath = stripLangPrefix(normalizePath(loc)).path;
+        if (!eqPath(onlyPath, targetPath)) continue;
 
-          const loc = String(dims[1]?.value ?? "");
-          const onlyPath = stripLangPrefix(normalizePath(loc)).path;
-          if (!eqPath(onlyPath, targetPath)) break theLoop;
-
-          const raw = String(dims[0]?.value ?? "Unknown").trim();
-          const label = raw.length > 0 ? raw : "Unknown";
-          const val = Number(mets[0]?.value ?? 0);
-          map.set(label, (map.get(label) ?? 0) + val);
-        }
+        const raw = String(dims[0]?.value ?? "Unknown").trim();
+        const label = raw.length > 0 ? raw : "Unknown";
+        const val = Number(mets[0]?.value ?? 0);
+        map.set(label, (map.get(label) ?? 0) + val);
       }
 
       return Array.from(map.entries())
@@ -410,7 +387,6 @@ export async function GET(req: Request) {
         granularity: g,
         range: { current: axis.curRange, previous: axis.prevRange },
         context: { path: targetPath },
-        // === NUEVO: xLabels consistente con otros drilldowns ===
         xLabels: axis.xLabels,
         seriesAvgEngagement: seriesAvg,
         kpis: {

@@ -1,7 +1,6 @@
 "use client";
 
 import DonutCard from "@/components/dashboard/DonutCard";
-import ChartSkeleton from "@/components/skeletons/ChartSkeleton";
 import {
   colorizeGender,
   useGender,
@@ -9,6 +8,7 @@ import {
 import { Users } from "lucide-react";
 import { useMemo } from "react";
 import { useHeaderAnalyticsTimeframe } from "../context/HeaderAnalyticsTimeContext";
+import { DonutSectionSkeleton } from "../skeletons";
 
 const CHART_HEIGHT = 260;
 
@@ -28,11 +28,7 @@ export default function GenderDonutSection() {
   );
 
   if (isLoading) {
-    return (
-      <div className="card bg-analytics-gradient overflow-hidden">
-        <ChartSkeleton height={CHART_HEIGHT} />
-      </div>
-    );
+    return <DonutSectionSkeleton />;
   }
 
   if (error) {

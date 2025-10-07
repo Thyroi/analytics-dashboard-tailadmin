@@ -122,7 +122,6 @@ export default function AnalyticsKPISection({
     <KPIStatGrid
       className={className}
       items={items}
-      /** el grid controla el wrap con min 221px */
       colsClassName="[grid-template-columns:repeat(auto-fit,minmax(221px,1fr))]"
     />
   );

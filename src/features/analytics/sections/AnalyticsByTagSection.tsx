@@ -4,7 +4,6 @@ import {
   TagTimeProvider,
   useTagTimeframe,
 } from "@/features/analytics/context/TagTimeContext";
-import { useTownCategoryDrilldown } from "@/features/analytics/hooks/useTownCategoryDrilldown";
 import SectorsGridDetailed from "@/features/analytics/sectors/SectorsGridDetailed";
 import { useCategoriesTotals } from "@/features/home/hooks/useCategoriesTotals";
 import { useCategoryDetails } from "@/features/home/hooks/useCategoryDetails";
@@ -23,7 +22,7 @@ function AnalyticsByTagSectionInner() {
     endDate,
     setRange,
     clearRange,
-    endISO,
+    endISO, // YYYY-MM-DD cuando estás en "range"; undefined si estás en "granularity"
   } = useTagTimeframe();
 
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -43,24 +42,12 @@ function AnalyticsByTagSectionInner() {
   const [drill, setDrill] = useState<Drill | null>(null);
   const catId = expandedId as CategoryId | null;
 
-  // ⬇️ ahora pasa endISO
+  // NIVEL 1 (base)
   const { series: seriesCat, donutData: donutCat } = useCategoryDetails(
     (drill?.kind === "category" ? drill.categoryId : catId) ??
       ("naturaleza" as CategoryId),
     granularity,
     endISO
-  );
-
-  // Drilldown de 2º nivel (categoría -> pueblo) también con endISO
-  const dd = useTownCategoryDrilldown(
-    drill?.kind === "town+cat"
-      ? {
-          townId: drill.townId,
-          categoryId: drill.categoryId,
-          granularity,
-          endISO,
-        }
-      : null
   );
 
   const getDeltaPctFor = (id: string) =>
@@ -69,13 +56,11 @@ function AnalyticsByTagSectionInner() {
       : null;
 
   const getSeriesFor = (_id: string) => {
-    if (drill?.kind === "town+cat") return dd.series;
     if (catId && _id === catId) return seriesCat;
     return { current: [], previous: [] };
   };
 
   const getDonutFor = (_id: string) => {
-    if (drill?.kind === "town+cat") return dd.donut;
     if (catId && _id === catId) return donutCat;
     return [];
   };
@@ -99,8 +84,8 @@ function AnalyticsByTagSectionInner() {
   return (
     <section className="max-w-[1560px]">
       <StickyHeaderSection
-        title="Anlíticas por categoría"
-        subtitle="Vista general del rendimiento y métricas"
+        title="Analíticas por categoría"
+        subtitle="Vista general del rendimiento y métrricas"
         mode={mode}
         granularity={granularity}
         onGranularityChange={setGranularity}
@@ -126,10 +111,14 @@ function AnalyticsByTagSectionInner() {
         }}
         onSliceClick={handleSliceClick}
         isDeltaLoading={state.status !== "ready"}
+        // NIVEL 2 (drill)
         forceDrillTownId={drill?.kind === "town+cat" ? drill.townId : undefined}
         fixedCategoryId={
           drill?.kind === "town+cat" ? drill.categoryId : undefined
         }
+        endISO={endISO}
+        startDate={startDate}
+        endDate={endDate}
       />
     </section>
   );

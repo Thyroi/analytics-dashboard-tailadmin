@@ -1,42 +1,47 @@
-import { NextResponse, type NextRequest } from "next/server";
-import { google, analyticsdata_v1beta } from "googleapis";
-import type { Granularity } from "@/lib/types";
+// src/app/api/analytics/v1/dimensions/categorias/[id]/details/route.ts
 import {
   CATEGORY_ID_ORDER,
   CATEGORY_META,
   type CategoryId,
 } from "@/lib/taxonomy/categories";
-import {
-  TOWN_ID_ORDER,
-  TOWN_META,
-} from "@/lib/taxonomy/towns";
+import { TOWN_ID_ORDER, TOWN_META } from "@/lib/taxonomy/towns";
+import type { Granularity } from "@/lib/types";
+import { analyticsdata_v1beta, google } from "googleapis";
+import { NextResponse } from "next/server";
 
+import {
+  addDaysUTC,
+  deriveRangeEndingYesterday,
+  parseISO,
+  todayUTC,
+  toISO,
+} from "@/lib/utils/datetime";
 import {
   getAuth,
   normalizePropertyId,
   resolvePropertyId,
 } from "@/lib/utils/ga";
-import {
-  parseISO,
-  todayUTC,
-  deriveRangeEndingYesterday,
-  toISO,
-  addDaysUTC,
-} from "@/lib/utils/datetime";
 
 /* ====================== tipos / helpers ====================== */
 type DateRange = { start: string; end: string };
 
 function toISODate(yyyymmdd: string): string {
-  return `${yyyymmdd.slice(0, 4)}-${yyyymmdd.slice(4, 6)}-${yyyymmdd.slice(6, 8)}`;
+  return `${yyyymmdd.slice(0, 4)}-${yyyymmdd.slice(4, 6)}-${yyyymmdd.slice(
+    6,
+    8
+  )}`;
 }
 
 /* ============ eje (alineado) ============ */
 function enumerateDaysUTC(startISO: string, endISO: string): string[] {
   const s = parseISO(startISO);
   const e = parseISO(endISO);
-  const cur = new Date(Date.UTC(s.getUTCFullYear(), s.getUTCMonth(), s.getUTCDate()));
-  const end = new Date(Date.UTC(e.getUTCFullYear(), e.getUTCMonth(), e.getUTCDate()));
+  const cur = new Date(
+    Date.UTC(s.getUTCFullYear(), s.getUTCMonth(), s.getUTCDate())
+  );
+  const end = new Date(
+    Date.UTC(e.getUTCFullYear(), e.getUTCMonth(), e.getUTCDate())
+  );
   const out: string[] = [];
   while (cur <= end) {
     out.push(toISO(cur));
@@ -75,7 +80,10 @@ function escapeRe(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 function toTokens(baseLabel: string): string[] {
-  const base = baseLabel.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  const base = baseLabel
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
   const kebab = base.replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
   const compact = base.replace(/[^a-z0-9]+/g, "");
   return Array.from(new Set([kebab, compact].filter(Boolean)));
@@ -84,7 +92,9 @@ function pageRegexForCategory(id: CategoryId): string {
   const label = CATEGORY_META[id].label;
   const alts = [...toTokens(label), id.toLowerCase()].map(escapeRe);
   const host = "^https?://[^/]+";
-  const pathAlt = `(?:/(?:${alts.join("|")})(?:/|$)|[-_](?:${alts.join("|")})[-_]|${alts.join("|")})`;
+  const pathAlt = `(?:/(?:${alts.join("|")})(?:/|$)|[-_](?:${alts.join(
+    "|"
+  )})[-_]|${alts.join("|")})`;
   return `${host}.*${pathAlt}.*`;
 }
 function safePathname(raw: string): string {
@@ -95,24 +105,26 @@ function safePathname(raw: string): string {
   }
 }
 
-/** donut por pueblos (solo rango current) */
+/** ✅ donut por pueblos (usa un rango específico `donutWindow`) */
 function donutByTowns(
   rows: analyticsdata_v1beta.Schema$Row[] | undefined,
-  current: DateRange
+  donutWindow: DateRange
 ) {
   const totals: Record<string, number> = {};
   const rr = rows ?? [];
   const townTokens = TOWN_ID_ORDER.map((tid) => ({
     id: tid,
     label: TOWN_META[tid].label,
-    tokens: Array.from(new Set([...toTokens(TOWN_META[tid].label), tid.toLowerCase()])),
+    tokens: Array.from(
+      new Set([...toTokens(TOWN_META[tid].label), tid.toLowerCase()])
+    ),
   }));
 
   for (const r of rr) {
     const dRaw = String(r.dimensionValues?.[0]?.value ?? "");
     if (dRaw.length !== 8) continue;
     const iso = toISODate(dRaw);
-    if (iso < current.start || iso > current.end) continue;
+    if (iso < donutWindow.start || iso > donutWindow.end) continue;
 
     const url = String(r.dimensionValues?.[1]?.value ?? "");
     const path = safePathname(url).toLowerCase();
@@ -141,25 +153,38 @@ function donutByTowns(
 }
 
 /* ====================== handler ====================== */
-export async function GET(req: NextRequest, ctx: unknown) {
+type RouteParams = { id: string };
+
+export async function GET(req: Request, ctx: { params: Promise<RouteParams> }) {
   try {
-    const { id } = (ctx as { params: { id: string } }).params;
-    if (!(CATEGORY_ID_ORDER as readonly string[]).includes(id)) {
-      return NextResponse.json({ error: `CategoryId inválido: ${id}` }, { status: 400 });
-    }
+    // 👇 corrección clave para Vercel/Next: params es Promise
+    const { id } = await ctx.params;
     const catId = id as CategoryId;
+
+    if (!CATEGORY_ID_ORDER.includes(catId)) {
+      return NextResponse.json(
+        { error: `CategoryId inválido: ${catId}` },
+        { status: 400 }
+      );
+    }
 
     const url = new URL(req.url);
     const g = (url.searchParams.get("g") || "d") as Granularity;
     const endISO = url.searchParams.get("end") || undefined;
 
-    // current termina ayer; para 'd' usamos 7 días (series)
+    // current (series) termina ayer; para 'd' usamos 7 días (series)
     const now = endISO ? parseISO(endISO) : todayUTC();
     const dayAsWeek = g === "d";
     const currPreset = deriveRangeEndingYesterday(g, now, dayAsWeek);
-    const current: DateRange = { start: currPreset.startTime, end: currPreset.endTime };
-    // previous = current -1 día
+    const current: DateRange = {
+      start: currPreset.startTime,
+      end: currPreset.endTime,
+    };
     const previous: DateRange = shiftRangeByDays(current, -1);
+
+    // ✅ donutWindow: si g==='d' → SOLO EL DÍA FINAL; si no → el mismo current
+    const donutWindow: DateRange =
+      g === "d" ? { start: current.end, end: current.end } : current;
 
     // Eje
     let xLabels: string[] = [];
@@ -170,7 +195,10 @@ export async function GET(req: NextRequest, ctx: unknown) {
     const isYearly = g === "y";
 
     if (isYearly) {
-      const { labels: curLabels, keys: curKs } = listLastNMonths(parseISO(current.end), 12);
+      const { labels: curLabels, keys: curKs } = listLastNMonths(
+        parseISO(current.end),
+        12
+      );
       const { keys: prevKs } = listLastNMonths(parseISO(previous.end), 12);
       xLabels = curLabels;
       curKeys = curKs;
@@ -194,14 +222,22 @@ export async function GET(req: NextRequest, ctx: unknown) {
     const request: analyticsdata_v1beta.Schema$RunReportRequest = {
       dateRanges: [{ startDate: previous.start, endDate: current.end }],
       metrics: [{ name: "eventCount" }],
-      dimensions: [{ name: "date" }, { name: "pageLocation" }, { name: "eventName" }],
+      dimensions: [
+        { name: "date" },
+        { name: "pageLocation" },
+        { name: "eventName" },
+      ],
       dimensionFilter: {
         andGroup: {
           expressions: [
             {
               filter: {
                 fieldName: "eventName",
-                stringFilter: { matchType: "EXACT", value: "page_view", caseSensitive: false },
+                stringFilter: {
+                  matchType: "EXACT",
+                  value: "page_view",
+                  caseSensitive: false,
+                },
               },
             },
             {
@@ -221,7 +257,10 @@ export async function GET(req: NextRequest, ctx: unknown) {
       limit: "200000",
     };
 
-    const resp = await analytics.properties.runReport({ property, requestBody: request });
+    const resp = await analytics.properties.runReport({
+      property,
+      requestBody: request,
+    });
     const rows = resp.data.rows ?? [];
 
     const curVec = Array(curKeys.length).fill(0);
@@ -253,11 +292,14 @@ export async function GET(req: NextRequest, ctx: unknown) {
 
     const series = {
       current: xLabels.map((lbl, i) => ({ label: lbl, value: curVec[i] ?? 0 })),
-      previous: xLabels.map((lbl, i) => ({ label: lbl, value: prevVec[i] ?? 0 })),
+      previous: xLabels.map((lbl, i) => ({
+        label: lbl,
+        value: prevVec[i] ?? 0,
+      })),
     };
 
-    // Donut: pueblos solo en current
-    const donutData = donutByTowns(rows, current);
+    // ✅ Donut: pueblos SOLO en donutWindow
+    const donutData = donutByTowns(rows, donutWindow);
 
     return NextResponse.json(
       {

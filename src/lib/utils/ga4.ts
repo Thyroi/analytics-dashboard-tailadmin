@@ -1,33 +1,34 @@
 // src/lib/analytics/ga4.ts
 import type { DonutDatum, Granularity, SeriesPoint } from "@/lib/types";
 import { groupFromDailyMaps } from "@/lib/utils/charts";
-import {
-  deriveRangeEndingYesterday,
-  parseISO,
-  prevComparable,
-  todayUTC,
-} from "@/lib/utils/datetime";
 import { normalizePath, safePathname, stripLangPrefix } from "@/lib/utils/url";
 import type { GoogleAuth } from "google-auth-library";
 import { analyticsdata_v1beta, google } from "googleapis";
 
+// ✅ NUEVO: utilidades de ventanas unificadas
+import {
+  computeRangesFromQuery,
+  type DateRange,
+} from "@/lib/utils/timeWindows";
+
 /* ---------------- tipos compartidos ---------------- */
-export type DateRange = { start: string; end: string };
 export type Ranges = { current: DateRange; previous: DateRange };
 
-/* ---------------- rangos comparables ---------------- */
-export function buildComparableRanges(
-  g: Granularity,
-  endISO?: string,
-  dayAsWeek = false
-): Ranges {
-  const now = endISO ? parseISO(endISO) : todayUTC();
-  const curr = deriveRangeEndingYesterday(g, now, dayAsWeek);
-  const prev = prevComparable(curr);
-  return {
-    current: { start: curr.startTime, end: curr.endTime },
-    previous: { start: prev.startTime, end: prev.endTime },
-  };
+/* ---------------- rangos comparables (política unificada) ---------------- */
+/**
+ * Devuelve rangos current/previous con política:
+ *  - si pasas endISO: preset terminando en endISO (AYER si endISO=“hoy”)
+ *  - si no pasas: preset terminando AYER
+ *  - previous = desplazado con solape (d:1, w:7, m:30, y:1 año)
+ */
+export function buildComparableRanges(g: Granularity, endISO?: string): Ranges {
+  // usa la ruta estándar de computeRangesFromQuery
+  const { current, previous } = computeRangesFromQuery(
+    g,
+    undefined, // sin start
+    endISO ?? null
+  );
+  return { current, previous };
 }
 
 /* ---------------- fechas/series ---------------- */
@@ -181,8 +182,25 @@ export function buildTokensDict<T extends string>(
   return out;
 }
 
-/** Donut por tokens (sólo rango current) */
-export function donutByTokens<T extends string>(
+/* ---------------- reglas para DONUT ---------------- */
+/**
+ * Regla de donuts:
+ *  - Si g === "d" ⇒ usar **sólo el último día** (ayer) del rango current.
+ *  - En otro caso ⇒ usar el rango current completo.
+ */
+export function donutCurrentWindow(g: Granularity, ranges: Ranges): DateRange {
+  if (g === "d") {
+    return { start: ranges.current.end, end: ranges.current.end };
+  }
+  return ranges.current;
+}
+
+/**
+ * Donut por tokens (sólo current) con política de día.
+ * No rompe `donutByTokens` existente; es una variante opt-in.
+ */
+export function donutByTokensWithPolicy<T extends string>(
+  g: Granularity,
   rows: analyticsdata_v1beta.Schema$Row[] | undefined,
   ranges: Ranges,
   dict: Record<T, string[]>,
@@ -197,7 +215,9 @@ export function donutByTokens<T extends string>(
   const metricIdx = cfg.metricIndex ?? 0;
 
   const rr = rows ?? [];
-  const totals = new Map<T, number>(); // ✅ evita el problema del Record<>
+  const use = donutCurrentWindow(g, ranges); // <- aplica regla de "día"
+
+  const totals = new Map<T, number>();
 
   for (const r of rr) {
     const dims = r.dimensionValues ?? [];
@@ -206,7 +226,9 @@ export function donutByTokens<T extends string>(
     const dRaw = String(dims[dateIdx]?.value ?? "");
     if (dRaw.length !== 8) continue;
     const iso = yyyymmddToISO(dRaw);
-    if (iso < ranges.current.start || iso > ranges.current.end) continue;
+
+    // sólo dentro del current (ajustado por policy)
+    if (iso < use.start || iso > use.end) continue;
 
     const loc = String(dims[locIdx]?.value ?? "");
     const path = safePathname(loc);
@@ -233,7 +255,7 @@ export function eventNameEquals(
   };
 }
 
-/* ---------------- azucar para GA client ---------------- */
+/* ---------------- azúcar para GA client ---------------- */
 export function analyticsClient(auth: GoogleAuth) {
   return google.analyticsdata({ version: "v1beta", auth });
 }

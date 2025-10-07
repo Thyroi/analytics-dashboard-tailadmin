@@ -8,6 +8,12 @@ import type { CategoryId } from "@/lib/taxonomy/categories";
 import type { DonutDatum, Granularity, SeriesPoint } from "@/lib/types";
 import { useEffect, useMemo, useRef, useState } from "react";
 
+/** Permite rango completo, objeto con endISO, o string endISO. */
+export type TimeParams =
+  | { startISO: string; endISO: string }
+  | { endISO?: string }
+  | undefined;
+
 type State =
   | { status: "idle" | "loading" }
   | {
@@ -17,17 +23,56 @@ type State =
     }
   | { status: "error"; message: string };
 
-/**
- * Ahora acepta `endISO` y lo pasa al service, para que el backend
- * calcule la ventana “ending at endISO”.
- */
+// Overloads
 export function useCategoryDetails(
   id: CategoryId | null,
   granularity: Granularity,
-  endISO?: string
+  time?: { endISO?: string } | string
+): ReturnType<typeof useCategoryDetailsImpl>;
+export function useCategoryDetails(
+  id: CategoryId | null,
+  granularity: Granularity,
+  time: { startISO: string; endISO: string }
+): ReturnType<typeof useCategoryDetailsImpl>;
+export function useCategoryDetails(
+  id: CategoryId | null,
+  granularity: Granularity,
+  time?: TimeParams | string
+): ReturnType<typeof useCategoryDetailsImpl> {
+  return useCategoryDetailsImpl(id, granularity, time);
+}
+
+function isFullRange(t: TimeParams): t is { startISO: string; endISO: string } {
+  return (
+    !!t &&
+    typeof t === "object" &&
+    "startISO" in t &&
+    "endISO" in t &&
+    typeof t.startISO === "string" &&
+    typeof t.endISO === "string"
+  );
+}
+
+function normalizeTime(time?: TimeParams | string): {
+  startISO?: string;
+  endISO?: string;
+} {
+  if (typeof time === "string") return { endISO: time };
+  if (!time) return {};
+  if (isFullRange(time))
+    return { startISO: time.startISO, endISO: time.endISO };
+  return { endISO: time.endISO };
+}
+
+function useCategoryDetailsImpl(
+  id: CategoryId | null,
+  granularity: Granularity,
+  time?: TimeParams | string
 ) {
   const [state, setState] = useState<State>({ status: "idle" });
   const abortRef = useRef<AbortController | null>(null);
+
+  const { startISO, endISO } = normalizeTime(time);
 
   useEffect(() => {
     if (!id) return;
@@ -40,7 +85,11 @@ export function useCategoryDetails(
     getCategoryDetails({
       categoryId: id,
       granularity,
-      endISO,
+      ...(startISO && endISO
+        ? { startISO, endISO }
+        : endISO
+        ? { endISO }
+        : null),
       signal: ac.signal,
     })
       .then((raw: CategoryDetailsResponse) => {
@@ -59,7 +108,7 @@ export function useCategoryDetails(
       });
 
     return () => ac.abort();
-  }, [id, granularity, endISO]);
+  }, [id, granularity, startISO, endISO]);
 
   const series = useMemo(
     () =>

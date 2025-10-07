@@ -1,7 +1,6 @@
 "use client";
 
 import DonutCard from "@/components/dashboard/DonutCard";
-import ChartSkeleton from "@/components/skeletons/ChartSkeleton";
 import {
   colorizeOs,
   useDevicesOs,
@@ -9,6 +8,7 @@ import {
 import { Laptop } from "lucide-react";
 import { useMemo } from "react";
 import { useHeaderAnalyticsTimeframe } from "../context/HeaderAnalyticsTimeContext";
+import { DonutSectionSkeleton } from "../skeletons";
 
 const CHART_HEIGHT = 260;
 
@@ -28,11 +28,7 @@ export default function DevicesOsDonutSection() {
   );
 
   if (isLoading) {
-    return (
-      <div className="card bg-analytics-gradient overflow-hidden">
-        <ChartSkeleton height={CHART_HEIGHT} />
-      </div>
-    );
+    return <DonutSectionSkeleton />;
   }
 
   if (error) {
@@ -45,8 +41,6 @@ export default function DevicesOsDonutSection() {
       </div>
     );
   }
-
-  // Sin branch de "sin datos": DonutCard maneja el estado vacío (dona 100% + ícono)
   return (
     <DonutCard
       className="card bg-analytics-gradient overflow-hidden p-6"

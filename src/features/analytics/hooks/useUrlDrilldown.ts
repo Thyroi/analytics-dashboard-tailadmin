@@ -1,108 +1,114 @@
 "use client";
 
+import type { DonutDatum, Granularity, SeriesPoint } from "@/lib/types";
+import { useEffect, useRef, useState } from "react";
 import {
   getUrlDrilldown,
-  type UrlDrilldownResponse,
-} from "@/features/analytics/services/urlDrilldown";
-import type { DonutDatum, Granularity, SeriesPoint } from "@/lib/types";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+  UrlDrilldownResponse,
+} from "../services/urlDrilldown";
 
-type ReadyData = {
-  seriesAvgEngagement: { current: SeriesPoint[]; previous: SeriesPoint[] };
-  kpis: UrlDrilldownResponse["kpis"];
-  operatingSystems: DonutDatum[];
-  genders: DonutDatum[];
-  countries: DonutDatum[];
-  deltaPct: number;
-  path: string;
+type Args = {
+  path: string | null; // puede ser null mientras no haya selección
+  granularity: Granularity;
+  endISO?: string;
 };
 
 type State =
-  | { status: "idle" | "loading" }
-  | { status: "ready"; data: ReadyData }
-  | { status: "error"; message: string };
+  | { loading: true; selectedPath: string | null }
+  | {
+      loading: false;
+      selectedPath: string;
+      seriesAvgEngagement: { current: SeriesPoint[]; previous: SeriesPoint[] };
+      kpis: {
+        current: {
+          activeUsers: number;
+          userEngagementDuration: number;
+          newUsers: number;
+          eventCount: number;
+          sessions: number;
+          averageSessionDuration: number;
+          avgEngagementPerUser: number;
+          eventsPerSession: number;
+        };
+        previous: {
+          activeUsers: number;
+          userEngagementDuration: number;
+          newUsers: number;
+          eventCount: number;
+          sessions: number;
+          averageSessionDuration: number;
+          avgEngagementPerUser: number;
+          eventsPerSession: number;
+        };
+        deltaPct: {
+          activeUsers: number;
+          newUsers: number;
+          eventCount: number;
+          sessions: number;
+          averageSessionDuration: number;
+          avgEngagementPerUser: number;
+          eventsPerSession: number;
+        };
+      } | null;
+      operatingSystems: DonutDatum[];
+      genders: DonutDatum[];
+      countries: DonutDatum[];
+      deltaPct: number;
+    };
 
-export function useUrlDrilldown(args: {
-  path: string | null;
-  granularity: Granularity;
-  endISO?: string;
-  auto?: boolean;
-}) {
-  const { path, granularity, endISO, auto = true } = args;
-  const [state, setState] = useState<State>({ status: "idle" });
+export function useUrlDrilldown({ path, granularity, endISO }: Args) {
+  const [state, setState] = useState<State>({
+    loading: true,
+    selectedPath: null,
+  });
   const abortRef = useRef<AbortController | null>(null);
 
-  const key = useMemo(
-    () => `${path ?? ""}|${granularity}|${endISO ?? ""}`,
-    [path, granularity, endISO]
-  );
+  useEffect(() => {
+    // Si no hay path aún, resetea a idle rápido y no llames al backend
+    if (!path) {
+      abortRef.current?.abort();
+      setState({ loading: true, selectedPath: null });
+      // opcional: podrías devolver un estado loading:false vacío si prefieres no mostrar skeleton
+      return;
+    }
 
-  const load = useCallback(async () => {
-    if (!path) return;
     abortRef.current?.abort();
     const ac = new AbortController();
     abortRef.current = ac;
+    setState({ loading: true, selectedPath: path });
 
-    setState({ status: "loading" });
-    try {
-      const resp: UrlDrilldownResponse = await getUrlDrilldown({
-        path,
-        granularity,
-        endISO,
-        signal: ac.signal,
-        dayAsWeek: granularity === "d", // 👈 activar semana para “Día”
+    getUrlDrilldown({ path, granularity, endISO })
+      .then((payload: UrlDrilldownResponse) => {
+        if (ac.signal.aborted) return;
+
+        setState({
+          loading: false,
+          selectedPath: payload.context?.path ?? path,
+          seriesAvgEngagement: payload.seriesAvgEngagement,
+          kpis: payload.kpis ?? null,
+          operatingSystems: payload.operatingSystems ?? [],
+          genders: payload.genders ?? [],
+          countries: payload.countries ?? [],
+          deltaPct: Number.isFinite(payload.deltaPct) ? payload.deltaPct : 0,
+        });
+      })
+      .catch(() => {
+        if (ac.signal.aborted) return;
+        // En error devolvemos estructura vacía pero válida
+        setState({
+          loading: false,
+          selectedPath: path,
+          seriesAvgEngagement: { current: [], previous: [] },
+          kpis: null,
+          operatingSystems: [],
+          genders: [],
+          countries: [],
+          deltaPct: 0,
+        });
       });
-      if (ac.signal.aborted) return;
-      setState({
-        status: "ready",
-        data: {
-          seriesAvgEngagement: resp.seriesAvgEngagement,
-          kpis: resp.kpis,
-          operatingSystems: resp.operatingSystems,
-          genders: resp.genders,
-          countries: resp.countries,
-          deltaPct: resp.deltaPct,
-          path: resp.context.path,
-        },
-      });
-    } catch (e) {
-      if (ac.signal.aborted) return;
-      setState({
-        status: "error",
-        message: e instanceof Error ? e.message : "Unknown error",
-      });
-    }
+
+    return () => ac.abort();
   }, [path, granularity, endISO]);
 
-  useEffect(() => {
-    if (!auto || !path) return;
-    void load();
-    return () => abortRef.current?.abort();
-  }, [auto, key, load, path]);
-
-  const loading = state.status === "loading";
-  const seriesAvgEngagement =
-    state.status === "ready"
-      ? state.data.seriesAvgEngagement
-      : { current: [], previous: [] };
-  const kpis = state.status === "ready" ? state.data.kpis : null;
-  const operatingSystems =
-    state.status === "ready" ? state.data.operatingSystems : [];
-  const genders = state.status === "ready" ? state.data.genders : [];
-  const countries = state.status === "ready" ? state.data.countries : [];
-  const deltaPct = state.status === "ready" ? state.data.deltaPct : 0;
-  const selectedPath = state.status === "ready" ? state.data.path : null;
-
-  return {
-    state,
-    loading,
-    seriesAvgEngagement,
-    kpis,
-    operatingSystems,
-    genders,
-    countries,
-    deltaPct,
-    selectedPath,
-    refetch: load,
-  };
+  return state;
 }

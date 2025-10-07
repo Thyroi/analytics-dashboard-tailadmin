@@ -1,8 +1,17 @@
 "use client";
 
-import React, { createContext, useContext, useMemo, useState, useCallback } from "react";
+import React, {
+  createContext,
+  useContext,
+  useMemo,
+  useState,
+  useCallback,
+} from "react";
 import type { Granularity, SliceName } from "@/lib/types";
-import { deriveAutoRangeForGranularity } from "@/lib/utils/datetime";
+import {
+  deriveAutoRangeForGranularity,
+  rangeToPreset, // 👈 convertidor {start,end} -> {startTime,endTime}
+} from "@/lib/utils/datetime";
 
 type Range = { startTime: string; endTime: string };
 
@@ -47,7 +56,7 @@ export function HomeFiltersProvider({
   const initialRange: Range =
     initialDateFrom && initialDateTo
       ? { startTime: initialDateFrom, endTime: initialDateTo }
-      : deriveAutoRangeForGranularity(initialGranularity);
+      : rangeToPreset(deriveAutoRangeForGranularity(initialGranularity)); // ✅ convertir
 
   const [users, setUsers] = useState<SliceState>({
     granularity: initialGranularity,
@@ -69,7 +78,7 @@ export function HomeFiltersProvider({
   }, []);
 
   const resetUsers = useCallback(() => {
-    const range = deriveAutoRangeForGranularity(initialGranularity);
+    const range = rangeToPreset(deriveAutoRangeForGranularity(initialGranularity)); // ✅
     setUsers({ granularity: initialGranularity, range });
   }, [initialGranularity]);
 
@@ -82,23 +91,23 @@ export function HomeFiltersProvider({
   }, []);
 
   const resetInteractions = useCallback(() => {
-    const range = deriveAutoRangeForGranularity(initialGranularity);
+    const range = rangeToPreset(deriveAutoRangeForGranularity(initialGranularity)); // ✅
     setInteractions({ granularity: initialGranularity, range });
   }, [initialGranularity]);
 
   // aplicar preset (granularidad + rango auto)
   const applyUsersGranularityPreset = useCallback((g: Granularity) => {
-    const range = deriveAutoRangeForGranularity(g);
+    const range = rangeToPreset(deriveAutoRangeForGranularity(g)); // ✅
     setUsers({ granularity: g, range });
   }, []);
 
   const applyInteractionsGranularityPreset = useCallback((g: Granularity) => {
-    const range = deriveAutoRangeForGranularity(g);
+    const range = rangeToPreset(deriveAutoRangeForGranularity(g)); // ✅
     setInteractions({ granularity: g, range });
   }, []);
 
   const applyGranularityPreset = useCallback((slice: SliceName, g: Granularity) => {
-    const range = deriveAutoRangeForGranularity(g);
+    const range = rangeToPreset(deriveAutoRangeForGranularity(g)); // ✅
     if (slice === "users") {
       setUsers({ granularity: g, range });
     } else {
@@ -135,7 +144,11 @@ export function HomeFiltersProvider({
     ]
   );
 
-  return <HomeFiltersContext.Provider value={value}>{children}</HomeFiltersContext.Provider>;
+  return (
+    <HomeFiltersContext.Provider value={value}>
+      {children}
+    </HomeFiltersContext.Provider>
+  );
 }
 
 export function useHomeFilters(): Ctx {

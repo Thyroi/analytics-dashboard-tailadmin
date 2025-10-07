@@ -1,25 +1,19 @@
-// src/features/analytics/sectors/expanded/SectorExpandedCardDetailed/DrilldownMultiLineSection.tsx
 "use client";
 
 import React, { useMemo } from "react";
 import LineChart from "@/components/charts/LineChart";
 
-export type SubSeries = {
-  name: string;
-  data: number[]; // valores alineados a xLabels
-};
+export type SubSeries = { name: string; data: number[] };
 
 type Props = {
   xLabels: string[];
   seriesBySub: SubSeries[];
-  /** muestra un placeholder mientras carga */
   loading?: boolean;
-
-  height?: number | string;  // default: 320
-  maxSeries?: number;        // default: 5 (top-N)
-  smooth?: boolean;          // default: true
+  height?: number | string;
+  maxSeries?: number;
+  smooth?: boolean;
   className?: string;
-  emptyHint?: string;        // mensaje cuando no hay datos
+  emptyHint?: string;
 };
 
 function padToLen(arr: number[], len: number): number[] {
@@ -40,13 +34,15 @@ export default function DrilldownMultiLineSection({
   className = "",
   emptyHint = "No hay datos para mostrar en este rango.",
 }: Props) {
-  // Normaliza: top-N, padding de arrays al largo de xLabels
+  const safeX = xLabels ?? [];
+  const safeSeries = seriesBySub ?? [];
+
   const chartSeries = useMemo(() => {
-    const N = Math.max(0, Math.min(maxSeries, seriesBySub.length));
-    return seriesBySub
+    const N = Math.max(0, Math.min(maxSeries, safeSeries.length));
+    return safeSeries
       .slice(0, N)
-      .map((s) => ({ name: s.name, data: padToLen(s.data ?? [], xLabels.length) }));
-  }, [seriesBySub, xLabels.length, maxSeries]);
+      .map((s) => ({ name: s.name, data: padToLen(s.data ?? [], safeX.length) }));
+  }, [safeSeries, safeX, maxSeries]);
 
   const hasData = useMemo(
     () => chartSeries.some((s) => (s.data ?? []).some((v) => v > 0)),
@@ -59,7 +55,6 @@ export default function DrilldownMultiLineSection({
         Sub-actividades (comparativa por URL)
       </div>
 
-      {/* Loading skeleton */}
       {loading && (
         <div
           className="w-full rounded-md bg-gray-100 dark:bg-white/5 animate-pulse"
@@ -67,19 +62,19 @@ export default function DrilldownMultiLineSection({
         />
       )}
 
-      {/* Empty state */}
       {!loading && chartSeries.length === 0 && (
-        <div className="w-full flex items-center justify-center text-sm text-gray-500 dark:text-gray-400"
-             style={{ height: typeof height === "number" ? `${height}px` : height }}>
+        <div
+          className="w-full flex items-center justify-center text-sm text-gray-500 dark:text-gray-400"
+          style={{ height: typeof height === "number" ? `${height}px` : height }}
+        >
           {emptyHint}
         </div>
       )}
 
-      {/* Chart */}
       {!loading && chartSeries.length > 0 && (
         <div className="w-full" style={{ height: typeof height === "number" ? `${height}px` : height }}>
           <LineChart
-            categories={xLabels}
+            categories={safeX}
             series={chartSeries.map((s) => ({ name: s.name, data: s.data }))}
             type="line"
             height="100%"

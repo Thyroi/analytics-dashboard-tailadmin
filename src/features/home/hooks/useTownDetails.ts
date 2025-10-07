@@ -9,6 +9,12 @@ import type { TownId } from "@/lib/taxonomy/towns";
 import type { DonutDatum, Granularity, SeriesPoint } from "@/lib/types";
 import { useEffect, useMemo, useRef, useState } from "react";
 
+/** Permite rango completo, objeto con endISO, o string endISO. */
+export type TimeParams =
+  | { startISO: string; endISO: string }
+  | { endISO?: string }
+  | undefined;
+
 type State =
   | { status: "idle" | "loading" }
   | {
@@ -18,18 +24,60 @@ type State =
     }
   | { status: "error"; message: string };
 
-/**
- * Ahora acepta `endISO` y (opcionalmente) `categoryId` por si filtras
- * pueblo+categoría desde el 2º nivel del drilldown.
- */
+// Overloads
 export function useTownDetails(
   id: TownId | null,
   granularity: Granularity,
-  endISO?: string,
+  time?: { endISO?: string } | string,
+  categoryId?: CategoryId
+): ReturnType<typeof useTownDetailsImpl>;
+export function useTownDetails(
+  id: TownId | null,
+  granularity: Granularity,
+  time: { startISO: string; endISO: string },
+  categoryId?: CategoryId
+): ReturnType<typeof useTownDetailsImpl>;
+export function useTownDetails(
+  id: TownId | null,
+  granularity: Granularity,
+  time?: TimeParams | string,
+  categoryId?: CategoryId
+): ReturnType<typeof useTownDetailsImpl> {
+  return useTownDetailsImpl(id, granularity, time, categoryId);
+}
+
+function isFullRange(t: TimeParams): t is { startISO: string; endISO: string } {
+  return (
+    !!t &&
+    typeof t === "object" &&
+    "startISO" in t &&
+    "endISO" in t &&
+    typeof t.startISO === "string" &&
+    typeof t.endISO === "string"
+  );
+}
+
+function normalizeTime(time?: TimeParams | string): {
+  startISO?: string;
+  endISO?: string;
+} {
+  if (typeof time === "string") return { endISO: time };
+  if (!time) return {};
+  if (isFullRange(time))
+    return { startISO: time.startISO, endISO: time.endISO };
+  return { endISO: time.endISO };
+}
+
+function useTownDetailsImpl(
+  id: TownId | null,
+  granularity: Granularity,
+  time?: TimeParams | string,
   categoryId?: CategoryId
 ) {
   const [state, setState] = useState<State>({ status: "idle" });
   const abortRef = useRef<AbortController | null>(null);
+
+  const { startISO, endISO } = normalizeTime(time);
 
   useEffect(() => {
     if (!id) return;
@@ -42,8 +90,12 @@ export function useTownDetails(
     getTownDetails({
       townId: id,
       granularity,
-      endISO,
-      ...(categoryId ? { categoryId } : {}),
+      ...(startISO && endISO
+        ? { startISO, endISO }
+        : endISO
+        ? { endISO }
+        : null),
+      ...(categoryId ? { categoryId } : null),
       signal: ac.signal,
     })
       .then((raw: TownDetailsResponse) => {
@@ -62,7 +114,7 @@ export function useTownDetails(
       });
 
     return () => ac.abort();
-  }, [id, granularity, endISO, categoryId]);
+  }, [id, granularity, startISO, endISO, categoryId]);
 
   const series = useMemo(
     () =>

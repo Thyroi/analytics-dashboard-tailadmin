@@ -13,7 +13,6 @@ import AnalyticsKPISection from "@/features/analytics/sections/AnalyticsKPISecti
 import CustomersDemographicsSection from "@/features/analytics/sections/CustomersDemographicsSection";
 import DevicesOsSection from "@/features/analytics/sections/DevicesOsDonutSection";
 import GenderDonutSection from "@/features/analytics/sections/GenderDonutSection";
-import TopPagesRangeSection from "@/features/analytics/sections/TopPagesRangeSection";
 import UserAcquisitionSection from "@/features/analytics/sections/UserAcquisitionSection";
 import { Suspense } from "react";
 

@@ -4,7 +4,6 @@ import {
   TownTimeProvider,
   useTownTimeframe,
 } from "@/features/analytics/context/TownTimeContext";
-import { useTownCategoryDrilldown } from "@/features/analytics/hooks/useTownCategoryDrilldown";
 import SectorsGridDetailed from "@/features/analytics/sectors/SectorsGridDetailed";
 import { useTownDetails } from "@/features/home/hooks/useTownDetails";
 import { useTownsTotals } from "@/features/home/hooks/useTownsTotals";
@@ -44,36 +43,22 @@ function AnalyticsByTownSectionInner() {
   const [drill, setDrill] = useState<Drill | null>(null);
   const townId = expandedId as TownId | null;
 
-  // ⬇️ ahora pasa endISO; si el drill es "town" fijamos ese id
+  // NIVEL 1 (base)
   const { series: seriesTown, donutData: donutTown } = useTownDetails(
     (drill?.kind === "town" ? drill.townId : townId) ?? ("almonte" as TownId),
     granularity,
     endISO
   );
 
-  // 2º nivel (town+cat) con endISO
-  const { series: ddSeries, donut: ddDonut } = useTownCategoryDrilldown(
-    drill?.kind === "town+cat"
-      ? {
-          townId: drill.townId,
-          categoryId: drill.categoryId,
-          granularity,
-          endISO,
-        }
-      : null
-  );
-
   const getDeltaPctFor = (id: string) =>
     state.status === "ready" ? itemsById[id as TownId]?.deltaPct ?? null : null;
 
   const getSeriesFor = (_id: string) => {
-    if (drill?.kind === "town+cat") return ddSeries;
     if (townId && _id === townId) return seriesTown;
     return { current: [], previous: [] };
   };
 
   const getDonutFor = (_id: string) => {
-    if (drill?.kind === "town+cat") return ddDonut;
     if (townId && _id === townId) return donutTown;
     return [];
   };
@@ -120,6 +105,14 @@ function AnalyticsByTownSectionInner() {
         }}
         onSliceClick={handleSliceClick}
         isDeltaLoading={isInitialLoading || isFetching}
+        // NIVEL 2 (drill)
+        forceDrillTownId={drill?.kind === "town+cat" ? drill.townId : undefined}
+        fixedCategoryId={
+          drill?.kind === "town+cat" ? drill.categoryId : undefined
+        }
+        endISO={endISO}
+        startDate={startDate}
+        endDate={endDate}
       />
     </section>
   );

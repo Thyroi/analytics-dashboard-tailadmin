@@ -2,13 +2,12 @@
 
 import LineChart from "@/components/charts/LineChart";
 import Header from "@/components/common/Header";
-import { AreaChartSkeleton } from "@/components/skeletons";
 import { useUserAcquisitionRange } from "@/features/analytics/hooks/useUserAcquisitionRange";
 import { buildSeriesColorMap } from "@/lib/utils/colors";
 import { UserPlus } from "lucide-react";
 import { useHeaderAnalyticsTimeframe } from "../context/HeaderAnalyticsTimeContext";
+import { ChartSectionSkeleton } from "../skeletons";
 
-const SKELETON_HEIGHT = 340;
 const FIXED_TOTAL_COLOR = "#FF6B35";
 
 type LegacyPayload = { categoriesLabels?: string[] };
@@ -25,11 +24,7 @@ export default function UserAcquisitionSection() {
   });
 
   if (isLoading) {
-    return (
-      <div className="card bg-analytics-pastel-diag" style={{ height: SKELETON_HEIGHT }}>
-        <AreaChartSkeleton height={SKELETON_HEIGHT} />
-      </div>
-    );
+    return <ChartSectionSkeleton/>;
   }
 
   const categories: string[] =

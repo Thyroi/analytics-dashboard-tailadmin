@@ -12,8 +12,8 @@ const MapBanner = () => {
       }}
     >
       {/* Contenedor fijo en altura */}
-      <div className="h-[160px] w-full relative">
-        {/* Imagen de fondo ocupando todo el ancho */}
+      <div className="h-[160px] w-full relative overflow-hidden">
+        {/* Imagen de fondo */}
         <Image
           src="/condado-banner.png"
           alt="Condado de Huelva - Mancomunidad de Desarrollo"
@@ -22,8 +22,8 @@ const MapBanner = () => {
           className="object-cover object-bottom"
         />
 
-        {/* Imagen del mapa sobrepuesta en la esquina superior derecha */}
-        <div className="absolute top-[-40px] right-0 h-full w-auto flex items-start justify-end p-4">
+        {/* Imagen del mapa sobrepuesta */}
+        <div className="absolute top-[-40px] right-0 flex items-start justify-end p-4">
           <Image
             src="/mapa-condado.png"
             alt="Mapa del Condado de Huelva"
@@ -31,6 +31,7 @@ const MapBanner = () => {
             height={250}
             priority
             className="object-contain drop-shadow-lg"
+            style={{ width: "auto", height: "auto" }} 
           />
         </div>
       </div>

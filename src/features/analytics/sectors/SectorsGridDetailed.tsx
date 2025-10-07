@@ -4,6 +4,7 @@ import DeltaCard from "@/components/common/DeltaCard";
 import type { CategoryId } from "@/lib/taxonomy/categories";
 import type { TownId } from "@/lib/taxonomy/towns";
 import type { DonutDatum, Granularity, SeriesPoint } from "@/lib/types";
+import type { IconOrImage } from "@/lib/utils/images";
 import {
   orderIdsByTaxonomy,
   sectorIconSrc,
@@ -35,8 +36,12 @@ type Props = {
 
   onSliceClick?: (label: string) => void;
 
+  /** Fechas del contexto (para mostrar en header de la card expandida) */
   startDate?: Date;
   endDate?: Date;
+
+  /** endISO del contexto (YYYY-MM-DD) cuando mode === "range"; si no, undefined */
+  endISO?: string;
 
   /** para modo "tag" con drilldown forzado */
   forceDrillTownId?: TownId;
@@ -47,6 +52,20 @@ type Props = {
 };
 
 const ROW_H = 260;
+
+/* ---------- type guards util ---------- */
+function isRecord(val: unknown): val is Record<string, unknown> {
+  return typeof val === "object" && val !== null;
+}
+
+function extractImageSrc(iconCandidate: unknown): string | null {
+  if (typeof iconCandidate === "string") return iconCandidate;
+  if (isRecord(iconCandidate) && "src" in iconCandidate) {
+    const srcVal = (iconCandidate as { src: unknown }).src;
+    return typeof srcVal === "string" ? srcVal : null;
+  }
+  return null;
+}
 
 export default function SectorsGridDetailed({
   mode,
@@ -62,6 +81,7 @@ export default function SectorsGridDetailed({
   onSliceClick,
   startDate,
   endDate,
+  endISO, // ← **ahora disponible y propagado**
   forceDrillTownId,
   fixedCategoryId,
   isDeltaLoading = false,
@@ -99,15 +119,17 @@ export default function SectorsGridDetailed({
     >
       {orderedIds.map((id) => {
         const title = sectorTitle(mode, id);
-        const imgSrc = sectorIconSrc(mode, id);
-        const variant =
-          imgSrc !== undefined
-            ? { imgSrc }
-            : {
-                Icon: MapPinIcon as React.ComponentType<
-                  React.SVGProps<SVGSVGElement>
-                >,
-              };
+        const iconCandidate = sectorIconSrc(mode, id);
+        const imgSrcStr = extractImageSrc(iconCandidate);
+
+        // Para la card expandida aceptamos { imgSrc: string } o { Icon }
+        const expandedVariant: IconOrImage = imgSrcStr
+          ? { imgSrc: imgSrcStr }
+          : {
+              Icon: MapPinIcon as React.ComponentType<
+                React.SVGProps<SVGSVGElement>
+              >,
+            };
 
         const deltaPct = getDeltaPctFor(id);
 
@@ -137,7 +159,8 @@ export default function SectorsGridDetailed({
                 onSliceClick={onSliceClick}
                 forceDrillTownId={forceDrillTownId}
                 fixedCategoryId={fixedCategoryId}
-                {...variant}
+                endISO={endISO} // ← propagado
+                {...expandedVariant}
               />
             </div>
           );
@@ -156,7 +179,13 @@ export default function SectorsGridDetailed({
               className="h-full"
               isTown={isTown}
               loading={isDeltaLoading}
-              {...variant}
+              {...(imgSrcStr
+                ? { imgSrc: imgSrcStr }
+                : {
+                    Icon: MapPinIcon as React.ComponentType<
+                      React.SVGProps<SVGSVGElement>
+                    >,
+                  })}
             />
           </div>
         );

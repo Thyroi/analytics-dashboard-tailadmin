@@ -11,7 +11,7 @@ import { pickPathForSubActivity } from "@/lib/utils/drilldown";
 import type { UrlSeries } from "@/features/analytics/services/drilldown";
 import { CATEGORY_META, type CategoryId } from "@/lib/taxonomy/categories";
 import { TOWN_META, type TownId } from "@/lib/taxonomy/towns";
-import type { Granularity } from "@/lib/types";
+import type { Granularity, SeriesPoint } from "@/lib/types";
 import DrilldownTitle from "./DrilldownTitle";
 
 type Props = {
@@ -21,6 +21,8 @@ type Props = {
   headline: "town" | "category";
   headlinePercent?: number;
   color?: "dark" | "primary" | "secondary";
+  /** Fin del rango si el contexto está en modo "range" */
+  endISO?: string;
 };
 
 export default function TownCategoryDrilldownPanel({
@@ -30,20 +32,26 @@ export default function TownCategoryDrilldownPanel({
   headline,
   headlinePercent,
   color = "dark",
+  endISO,
 }: Props) {
   // Nivel 2: sub-actividades (series por URL + donut)
-  const dd = useTownCategoryDrilldown({ townId, categoryId, granularity });
+  const dd = useTownCategoryDrilldown({
+    townId,
+    categoryId,
+    granularity,
+    endISO,
+  });
 
   // Nivel 3: URL seleccionada
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
-  const url = useUrlDrilldown({ path: selectedPath, granularity });
+  const url = useUrlDrilldown({ path: selectedPath, granularity, endISO });
 
-  // Reset del nivel 3 si cambia el contexto real (pueblo/categoría)
+  // reset selección al cambiar town/cat
   useEffect(() => {
     setSelectedPath(null);
   }, [townId, categoryId]);
 
-  // Auto-scroll al abrir el nivel 3
+  // auto-scroll cuando hay selección
   const detailsRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
     if (!selectedPath) return;
@@ -56,12 +64,61 @@ export default function TownCategoryDrilldownPanel({
     return () => clearTimeout(t);
   }, [selectedPath]);
 
-  // Nombre a mostrar en el encabezado según el primer nivel seleccionado
   const name = useMemo(() => {
     return headline === "town"
       ? TOWN_META[townId]?.label ?? "Pueblo"
       : CATEGORY_META[categoryId]?.label ?? "Categoría";
   }, [headline, townId, categoryId]);
+
+  // ========= Narrowing/Defaults seguros para UrlDetailsPanel =========
+  // Cuando url.loading === true, url no tiene las props de datos (union type).
+  // Definimos valores vacíos seguros para pasar al panel mientras carga.
+  const emptySeries: { current: SeriesPoint[]; previous: SeriesPoint[] } = {
+    current: [],
+    previous: [],
+  };
+  const emptyKpis = {
+    current: {
+      activeUsers: 0,
+      userEngagementDuration: 0,
+      newUsers: 0,
+      eventCount: 0,
+      sessions: 0,
+      averageSessionDuration: 0,
+      avgEngagementPerUser: 0,
+      eventsPerSession: 0,
+    },
+    previous: {
+      activeUsers: 0,
+      userEngagementDuration: 0,
+      newUsers: 0,
+      eventCount: 0,
+      sessions: 0,
+      averageSessionDuration: 0,
+      avgEngagementPerUser: 0,
+      eventsPerSession: 0,
+    },
+    deltaPct: {
+      activeUsers: 0,
+      newUsers: 0,
+      eventCount: 0,
+      sessions: 0,
+      averageSessionDuration: 0,
+      avgEngagementPerUser: 0,
+      eventsPerSession: 0,
+    },
+  };
+
+  // Guard de tipo: loaded si el objeto tiene la prop 'seriesAvgEngagement'
+  const isLoaded =
+    !url.loading && "seriesAvgEngagement" in url && !!url.seriesAvgEngagement;
+
+  const seriesAvgEngagement = isLoaded ? url.seriesAvgEngagement : emptySeries;
+  const kpis = isLoaded ? url.kpis : emptyKpis;
+  const operatingSystems = isLoaded ? url.operatingSystems : [];
+  const genders = isLoaded ? url.genders : [];
+  const countries = isLoaded ? url.countries : [];
+  const deltaPct = isLoaded ? url.deltaPct : 0;
 
   return (
     <div className="overflow-hidden mt-8">
@@ -103,12 +160,12 @@ export default function TownCategoryDrilldownPanel({
             <UrlDetailsPanel
               path={url.selectedPath ?? selectedPath}
               loading={url.loading}
-              seriesAvgEngagement={url.seriesAvgEngagement}
-              kpis={url.kpis}
-              operatingSystems={url.operatingSystems}
-              genders={url.genders}
-              countries={url.countries}
-              deltaPct={url.deltaPct}
+              seriesAvgEngagement={seriesAvgEngagement}
+              kpis={kpis}
+              operatingSystems={operatingSystems}
+              genders={genders}
+              countries={countries}
+              deltaPct={deltaPct}
               granularity={granularity}
               onClose={() => setSelectedPath(null)}
             />

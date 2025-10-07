@@ -109,7 +109,7 @@ export async function GET(req: Request) {
 
     if (isYearlyMonthly) {
       const endDate = parseISO(range.end);
-      const { labels, keys, indexByKey } = listLastNMonths(endDate, 12);
+      const { labels, indexByKey } = listLastNMonths(endDate, 12);
       categoriesLabels = labels; // ["YYYY-MM", ...]
       indexBySlot = indexByKey; // índices por "YYYYMM"
       dimensionTime = "yearMonth";

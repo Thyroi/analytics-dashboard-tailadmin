@@ -57,8 +57,6 @@ export default function PieChart({
   legendPosition = "bottom",
   dataLabels = "percent",
   labelPosition = "outside",
-  donutTotalLabel = "Total",
-  donutTotalFormatter,
   optionsExtra,
   className = "",
   compactHover = false,

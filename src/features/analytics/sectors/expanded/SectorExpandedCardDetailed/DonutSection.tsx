@@ -7,14 +7,12 @@ import type { DonutDatum } from "@/lib/types";
 import { useMemo } from "react";
 
 type DonutSectionProps = {
-  donutData: DonutDatum[];
+  donutData: DonutDatum[] | undefined;
   onSliceClick?: (label: string) => void;
   centerLabel?: string;
   centerValueOverride?: number;
   actionButtonTarget?: string;
   title?: string;
-  /** Clase de Tailwind para el título (p. ej. "text-gray-700").
-   *  Si necesitas soportar HEX directo, avísame y añadimos `titleStyle` al Header. */
   titleColor?: string;
 };
 
@@ -27,10 +25,9 @@ export default function DonutSection({
   title = "Subcategorías",
   titleColor = "text-gray-700",
 }: DonutSectionProps) {
-  // Adaptamos tus datos al contrato de DonutCard
   const items = useMemo<DonutCardItem[]>(
     () =>
-      donutData.map((d) => ({
+      (donutData ?? []).map((d) => ({
         label: d.label,
         value: d.value,
         color: d.color,

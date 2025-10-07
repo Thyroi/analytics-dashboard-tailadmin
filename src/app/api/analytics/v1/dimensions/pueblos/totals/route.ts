@@ -1,26 +1,22 @@
-import { NextResponse } from "next/server";
-import { google, analyticsdata_v1beta } from "googleapis";
-import type { Granularity } from "@/lib/types";
+// src/app/api/analytics/v1/dimensions/pueblos/totals/route.ts
 import { TOWN_ID_ORDER, TOWN_META, type TownId } from "@/lib/taxonomy/towns";
+import type { Granularity } from "@/lib/types";
+import { google } from "googleapis";
+import { NextResponse } from "next/server";
 
-import { getAuth, normalizePropertyId, resolvePropertyId } from "@/lib/utils/ga";
+import { buildUnionRunReportRequest } from "@/lib/utils/ga4Requests";
 import {
-  parseISO,
-  todayUTC,
-  deriveRangeEndingYesterday,
-  prevComparable,
-} from "@/lib/utils/datetime";
+  computeDeltaPct,
+  computeRangesFromQuery,
+  safeUrlPathname,
+} from "@/lib/utils/timeWindows";
+import {
+  getAuth,
+  normalizePropertyId,
+  resolvePropertyId,
+} from "@/lib/utils/ga";
 
-/* ====================== helpers fecha/rango ====================== */
-type DateRange = { start: string; end: string };
-
-function computeDeltaPct(curr: number, prev: number): number | null {
-  // Sin base de comparación => null (el front muestra "Sin datos suficientes")
-  if (prev <= 0) return null;
-  return ((curr - prev) / prev) * 100;
-}
-
-/* ====================== towns regex tokens ====================== */
+/* =========== helpers towns/regex =========== */
 function escapeRe(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
@@ -39,24 +35,15 @@ function tokensForTown(id: TownId): string[] {
 function buildFullRegexForTowns(towns: TownId[]): string {
   const host = "^https?://[^/]+";
   const alts: string[] = [];
-
   for (const id of towns) {
     const toks = tokensForTown(id).map(escapeRe);
-    // Coincidimos como segmento, sufijo, entre guiones/guiones bajos, o texto plano.
     alts.push(
-      `(?:/(?:${toks.join("|")})(?:/|$)|[-_](?:${toks.join("|")})[-_]|${toks.join("|")})`
+      `(?:/(?:${toks.join("|")})(?:/|$)|[-_](?:${toks.join(
+        "|"
+      )})[-_]|${toks.join("|")})`
     );
   }
-
   return `${host}.*(?:${alts.join("|")}).*`;
-}
-
-function safePathname(raw: string): string {
-  try {
-    return new URL(raw).pathname || "/";
-  } catch {
-    return raw.startsWith("/") ? raw : `/${raw}`;
-  }
 }
 
 function classifyTownByPath(path: string, towns: TownId[]): TownId | null {
@@ -76,36 +63,32 @@ function classifyTownByPath(path: string, towns: TownId[]): TownId | null {
   return null;
 }
 
-/* ====================== handler ====================== */
+/* =========== handler =========== */
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
     const g = (searchParams.get("g") || "d") as Granularity;
-    const endISO = searchParams.get("end") || undefined;
+    const startQ = searchParams.get("start");
+    const endQ = searchParams.get("end");
 
-    // Rango actual “ending yesterday” + comparable
-    const now = endISO ? parseISO(endISO) : todayUTC();
-    // Nota: si tu deriveRangeEndingYesterday no acepta "now", quita el 2º argumento.
-    const currPreset = deriveRangeEndingYesterday(g, now); // { startTime, endTime }
-    const prevPreset = prevComparable(currPreset);
-
-    const ranges: { current: DateRange; previous: DateRange } = {
-      current: { start: currPreset.startTime, end: currPreset.endTime },
-      previous: { start: prevPreset.startTime, end: prevPreset.endTime },
-    };
-
+    const ranges = computeRangesFromQuery(g, startQ, endQ);
     const towns: TownId[] = [...TOWN_ID_ORDER];
 
     // GA
     const auth = getAuth();
-    const analyticsData = google.analyticsdata({ version: "v1beta", auth });
+    const analytics = google.analyticsdata({ version: "v1beta", auth });
     const property = normalizePropertyId(resolvePropertyId());
 
-    // Un solo request: unión prev+curr + filtro page_view + filtro regex pueblos
-    const reqAll: analyticsdata_v1beta.Schema$RunReportRequest = {
-      dateRanges: [{ startDate: ranges.previous.start, endDate: ranges.current.end }],
-      metrics: [{ name: "eventCount" }], // ← homogeneizado con categorías
-      dimensions: [{ name: "date" }, { name: "pageLocation" }, { name: "eventName" }],
+    // Unión prev.start → curr.end + filtros: page_view + regex pueblos
+    const requestBody = buildUnionRunReportRequest({
+      current: ranges.current,
+      previous: ranges.previous,
+      metrics: [{ name: "eventCount" }],
+      dimensions: [
+        { name: "date" },
+        { name: "pageLocation" },
+        { name: "eventName" },
+      ],
       dimensionFilter: {
         andGroup: {
           expressions: [
@@ -132,21 +115,17 @@ export async function GET(req: Request) {
           ],
         },
       },
-      keepEmptyRows: false,
-      limit: "200000",
-    };
-
-    const resp = await analyticsData.properties.runReport({
-      property,
-      requestBody: reqAll,
     });
 
+    const resp = await analytics.properties.runReport({
+      property,
+      requestBody,
+    });
     const rows = resp.data.rows ?? [];
 
     const currTotals: Record<TownId, number> = Object.fromEntries(
       towns.map((t) => [t, 0])
     ) as Record<TownId, number>;
-
     const prevTotals: Record<TownId, number> = Object.fromEntries(
       towns.map((t) => [t, 0])
     ) as Record<TownId, number>;
@@ -155,9 +134,12 @@ export async function GET(req: Request) {
       const dateRaw = String(r.dimensionValues?.[0]?.value ?? ""); // YYYYMMDD
       if (dateRaw.length !== 8) continue;
 
-      const iso = `${dateRaw.slice(0, 4)}-${dateRaw.slice(4, 6)}-${dateRaw.slice(6, 8)}`;
+      const iso = `${dateRaw.slice(0, 4)}-${dateRaw.slice(
+        4,
+        6
+      )}-${dateRaw.slice(6, 8)}`;
       const url = String(r.dimensionValues?.[1]?.value ?? "");
-      const path = safePathname(url);
+      const path = safeUrlPathname(url);
       const val = Number(r.metricValues?.[0]?.value ?? 0);
 
       const town = classifyTownByPath(path, towns);
@@ -170,31 +152,23 @@ export async function GET(req: Request) {
       }
     }
 
-    const perTown: Record<
-      TownId,
-      { currentTotal: number; previousTotal: number; deltaPct: number | null }
-    > = {} as Record<
-      TownId,
-      { currentTotal: number; previousTotal: number; deltaPct: number | null }
-    >;
-
-    for (const t of towns) {
-      const c = currTotals[t] ?? 0;
-      const p = prevTotals[t] ?? 0;
-      perTown[t] = {
+    const items = towns.map((id) => {
+      const c = currTotals[id] ?? 0;
+      const p = prevTotals[id] ?? 0;
+      return {
+        id,
         currentTotal: c,
         previousTotal: p,
-        deltaPct: computeDeltaPct(c, p), // ← null si p <= 0
+        deltaPct: computeDeltaPct(c, p),
       };
-    }
+    });
 
     return NextResponse.json(
       {
         granularity: g,
-        range: ranges,
+        range: ranges, // { current: {start,end}, previous: {start,end} }
         property,
-        towns,
-        perTown,
+        items,
       },
       { status: 200 }
     );

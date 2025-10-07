@@ -1,7 +1,19 @@
 "use client";
 
-import React, { createContext, useCallback, useContext, useMemo, useState } from "react";
 import type { Granularity } from "@/lib/types";
+import {
+  addDaysUTC,
+  deriveRangeEndingYesterday,
+  todayUTC,
+  toISO,
+} from "@/lib/utils/datetime";
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useMemo,
+  useState,
+} from "react";
 
 type Mode = "granularity" | "range";
 
@@ -19,54 +31,83 @@ type TimeframeActions = {
 };
 
 type TimeframeContextValue = TimeframeState & {
-  /** Devuelve YYYY-MM-DD si mode === "range", en otro caso undefined */
+  /** YYYY-MM-DD si mode === "range"; si no, undefined */
   endISO?: string;
 } & TimeframeActions;
 
 const TagTimeContext = createContext<TimeframeContextValue | null>(null);
 
-function monthAgo(date: Date): Date {
-  const d = new Date(date);
-  d.setMonth(d.getMonth() - 1);
-  return d;
+/* ========= helpers ========= */
+function toUTCDate(iso: string): Date {
+  return new Date(`${iso}T00:00:00Z`);
 }
 
-function toISODate(d: Date): string {
-  return d.toISOString().split("T")[0];
+function yesterdayUTC(): Date {
+  return addDaysUTC(todayUTC(), -1);
 }
+
+/** Preset por granularidad, terminando AYER (usa startTime/endTime del preset) */
+function presetForGranularity(g: Granularity) {
+  const r = deriveRangeEndingYesterday(g, todayUTC(), g === "d");
+  return { start: toUTCDate(r.startTime), end: toUTCDate(r.endTime) };
+}
+
+/* ========= provider ========= */
 
 export function TagTimeProvider({ children }: { children: React.ReactNode }) {
-  // Defaults seguros: granularidad por defecto "m", rango último mes (sin activarlo)
+  const initial = presetForGranularity("d");
   const [state, setState] = useState<TimeframeState>({
     mode: "granularity",
     granularity: "d",
-    startDate: monthAgo(new Date()),
-    endDate: new Date(),
+    startDate: initial.start,
+    endDate: initial.end,
   });
 
   const setGranularity = useCallback((g: Granularity) => {
-    setState((s) => ({ ...s, mode: "granularity", granularity: g }));
+    const r = presetForGranularity(g);
+    setState({
+      mode: "granularity",
+      granularity: g,
+      startDate: r.start,
+      endDate: r.end,
+    });
   }, []);
 
   const setRange = useCallback((start: Date, end: Date) => {
-    setState((s) => ({
-      ...s,
+    const maxEnd = yesterdayUTC();
+    const s0 = new Date(Math.min(start.getTime(), end.getTime()));
+    const e0 = new Date(Math.max(start.getTime(), end.getTime()));
+    const e = e0 > maxEnd ? maxEnd : e0;
+    const s = s0 > e ? e : s0;
+
+    setState((curr) => ({
+      ...curr,
       mode: "range",
-      startDate: start,
-      endDate: end,
+      startDate: s,
+      endDate: e,
     }));
   }, []);
 
   const clearRange = useCallback(() => {
-    setState((s) => ({ ...s, mode: "granularity" }));
+    setState((s) => {
+      const r = presetForGranularity(s.granularity);
+      return {
+        mode: "granularity",
+        granularity: s.granularity,
+        startDate: r.start,
+        endDate: r.end,
+      };
+    });
   }, []);
 
   const value: TimeframeContextValue = useMemo(() => {
-    const endISO = state.mode === "range" ? toISODate(state.endDate) : undefined;
+    const endISO = state.mode === "range" ? toISO(state.endDate) : undefined;
     return { ...state, endISO, setGranularity, setRange, clearRange };
   }, [state, setGranularity, setRange, clearRange]);
 
-  return <TagTimeContext.Provider value={value}>{children}</TagTimeContext.Provider>;
+  return (
+    <TagTimeContext.Provider value={value}>{children}</TagTimeContext.Provider>
+  );
 }
 
 export function useTagTimeframe(): TimeframeContextValue {

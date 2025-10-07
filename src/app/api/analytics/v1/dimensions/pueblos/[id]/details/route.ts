@@ -1,43 +1,52 @@
-import { NextResponse, type NextRequest } from "next/server";
-import { google, analyticsdata_v1beta } from "googleapis";
-import type { Granularity } from "@/lib/types";
-import {
-  TOWN_ID_ORDER,
-  TOWN_META,
-  type TownId,
-} from "@/lib/taxonomy/towns";
 import {
   CATEGORY_ID_ORDER,
   CATEGORY_META,
+  CATEGORY_SYNONYMS,
   type CategoryId,
 } from "@/lib/taxonomy/categories";
+import { TOWN_ID_ORDER, TOWN_META, type TownId } from "@/lib/taxonomy/towns";
+import type { Granularity } from "@/lib/types";
+import { analyticsdata_v1beta, google } from "googleapis";
+import { NextResponse, type NextRequest } from "next/server";
 
+import {
+  addDaysUTC,
+  deriveRangeEndingYesterday,
+  parseISO,
+  todayUTC,
+  toISO,
+} from "@/lib/utils/datetime";
 import {
   getAuth,
   normalizePropertyId,
   resolvePropertyId,
 } from "@/lib/utils/ga";
-import {
-  parseISO,
-  todayUTC,
-  deriveRangeEndingYesterday,
-  toISO,
-  addDaysUTC,
-} from "@/lib/utils/datetime";
+import { normalizePath, stripLangPrefix } from "@/lib/utils/url";
 
-/* ====================== tipos ====================== */
+/* ====================== tipos/ayudas ====================== */
 type DateRange = { start: string; end: string };
+type UrlSeries = { name: string; data: number[]; path: string };
 
 function toISODate(yyyymmdd: string): string {
-  return `${yyyymmdd.slice(0, 4)}-${yyyymmdd.slice(4, 6)}-${yyyymmdd.slice(6, 8)}`;
+  return `${yyyymmdd.slice(0, 4)}-${yyyymmdd.slice(4, 6)}-${yyyymmdd.slice(
+    6,
+    8
+  )}`;
 }
-
-/* ============ helpers eje (current/previous alineados) ============ */
+function shiftRangeByDays(range: DateRange, days: number): DateRange {
+  const s = addDaysUTC(parseISO(range.start), days);
+  const e = addDaysUTC(parseISO(range.end), days);
+  return { start: toISO(s), end: toISO(e) };
+}
 function enumerateDaysUTC(startISO: string, endISO: string): string[] {
   const s = parseISO(startISO);
   const e = parseISO(endISO);
-  const cur = new Date(Date.UTC(s.getUTCFullYear(), s.getUTCMonth(), s.getUTCDate()));
-  const end = new Date(Date.UTC(e.getUTCFullYear(), e.getUTCMonth(), e.getUTCDate()));
+  const cur = new Date(
+    Date.UTC(s.getUTCFullYear(), s.getUTCMonth(), s.getUTCDate())
+  );
+  const end = new Date(
+    Date.UTC(e.getUTCFullYear(), e.getUTCMonth(), e.getUTCDate())
+  );
   const out: string[] = [];
   while (cur <= end) {
     out.push(toISO(cur));
@@ -66,202 +75,270 @@ function listLastNMonths(endDate: Date, n = 12) {
   return { labels, keys };
 }
 
-/** previous = current desplazada -1 día */
-function shiftRangeByDays(range: DateRange, days: number): DateRange {
-  const s = addDaysUTC(parseISO(range.start), days);
-  const e = addDaysUTC(parseISO(range.end), days);
-  return { start: toISO(s), end: toISO(e) };
+/* ---------- sinónimos categoría y parser /town/cat/sub ---------- */
+function normToken(s: string): string {
+  return s
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
 }
-
-/* ====================== tokens / regex ====================== */
-function escapeRe(s: string): string {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-function toTokens(baseLabel: string): string[] {
-  const base = baseLabel.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-  const kebab = base.replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
-  const compact = base.replace(/[^a-z0-9]+/g, "");
-  return Array.from(new Set([kebab, compact].filter(Boolean)));
-}
-function pageRegexForTown(id: TownId): string {
-  const label = TOWN_META[id].label;
-  const alts = [...toTokens(label), id.toLowerCase()].map(escapeRe);
-  const host = "^https?://[^/]+";
-  const pathAlt = `(?:/(?:${alts.join("|")})(?:/|$)|[-_](?:${alts.join("|")})[-_]|${alts.join("|")})`;
-  return `${host}.*${pathAlt}.*`;
-}
-function safePathname(raw: string): string {
-  try {
-    return new URL(raw).pathname || "/";
-  } catch {
-    return raw.startsWith("/") ? raw : `/${raw}`;
+function buildSlugToCategory(): Record<string, CategoryId> {
+  const map: Record<string, CategoryId> = {};
+  for (const cid of CATEGORY_ID_ORDER) {
+    const base: string[] = [
+      cid,
+      CATEGORY_META[cid].label,
+      ...(CATEGORY_SYNONYMS[cid] ?? []),
+    ].filter(Boolean) as string[];
+    for (const v of base) map[normToken(v)] = cid;
   }
+  return map;
 }
+const SLUG2CAT = buildSlugToCategory();
 
-/** donut por categorías (solo rango current) */
-function donutByCategories(
-  rows: analyticsdata_v1beta.Schema$Row[] | undefined,
-  current: DateRange
-) {
-  const map: Record<string, number> = {};
-  const rr = rows ?? [];
-  const catTokens = CATEGORY_ID_ORDER.map((cid) => ({
-    id: cid,
-    label: CATEGORY_META[cid].label,
-    tokens: Array.from(new Set([...toTokens(CATEGORY_META[cid].label), cid.toLowerCase()])),
-  }));
+function parseTownCatSub(path: string): {
+  townId?: TownId;
+  categoryId?: CategoryId;
+  subSlug?: string;
+} {
+  const clean = path.replace(/^\/+|\/+$/g, "");
+  if (!clean) return {};
+  const segs = clean.split("/").map(normToken);
 
-  for (const r of rr) {
-    const dRaw = String(r.dimensionValues?.[0]?.value ?? "");
-    if (dRaw.length !== 8) continue;
-    const iso = toISODate(dRaw);
-    if (iso < current.start || iso > current.end) continue;
+  const townIdx = segs.findIndex((s) =>
+    (TOWN_ID_ORDER as readonly string[]).includes(s)
+  );
+  if (townIdx === -1) return {};
 
-    const url = String(r.dimensionValues?.[1]?.value ?? "");
-    const p = safePathname(url).toLowerCase();
-    const v = Number(r.metricValues?.[0]?.value ?? 0);
+  const tId = segs[townIdx] as TownId;
+  const catSeg = segs[townIdx + 1];
+  const cId = catSeg ? SLUG2CAT[catSeg] : undefined;
+  const sub = segs[townIdx + 2];
 
-    for (const c of catTokens) {
-      if (
-        c.tokens.some(
-          (tok) =>
-            p.includes(`/${tok}/`) ||
-            p.endsWith(`/${tok}`) ||
-            p.includes(`-${tok}-`) ||
-            p.includes(`_${tok}_`) ||
-            p.includes(tok)
-        )
-      ) {
-        map[c.label] = (map[c.label] ?? 0) + v;
-        break;
-      }
-    }
-  }
-  return Object.entries(map)
-    .map(([label, value]) => ({ label, value }))
-    .sort((a, b) => b.value - a.value);
+  return { townId: tId, categoryId: cId, subSlug: sub };
 }
 
 /* ====================== handler ====================== */
-export async function GET(req: NextRequest, ctx: unknown) {
+type RouteParams = { id: string };
+
+export async function GET(
+  req: NextRequest,
+  ctx: { params: Promise<RouteParams> } // ⬅️ params puede ser Promise
+) {
   try {
-    const { id } = (ctx as { params: { id: string } }).params;
-    if (!(TOWN_ID_ORDER as readonly string[]).includes(id)) {
-      return NextResponse.json({ error: `TownId inválido: ${id}` }, { status: 400 });
-    }
+    const { id } = await ctx.params; // ⬅️ await obligatorio
     const townId = id as TownId;
+
+    if (!TOWN_ID_ORDER.includes(townId)) {
+      return NextResponse.json(
+        { error: `TownId inválido: ${townId}` },
+        { status: 400 }
+      );
+    }
 
     const url = new URL(req.url);
     const g = (url.searchParams.get("g") || "d") as Granularity;
     const endISO = url.searchParams.get("end") || undefined;
+    const categoryIdParam = (
+      url.searchParams.get("categoryId") || ""
+    ).trim() as CategoryId | "";
 
-    // current (termina ayer) — para 'd' usamos ventana de 7 días (series)
+    if (
+      categoryIdParam &&
+      !CATEGORY_ID_ORDER.includes(categoryIdParam as CategoryId)
+    ) {
+      return NextResponse.json(
+        { error: `Invalid categoryId '${categoryIdParam}'` },
+        { status: 400 }
+      );
+    }
+
+    // Serie → d usa dayAsWeek; Donut → si d, sólo el día final
     const now = endISO ? parseISO(endISO) : todayUTC();
     const dayAsWeek = g === "d";
-    const currPreset = deriveRangeEndingYesterday(g, now, dayAsWeek);
-    const current: DateRange = { start: currPreset.startTime, end: currPreset.endTime };
-    // previous = current desplazada -1 día (mismo largo)
+    const cur = deriveRangeEndingYesterday(g, now, dayAsWeek);
+    const current: DateRange = { start: cur.startTime, end: cur.endTime };
     const previous: DateRange = shiftRangeByDays(current, -1);
+    const donutWindow: DateRange =
+      g === "d" ? { start: current.end, end: current.end } : current;
 
-    // Eje: d/w/m por días; y por meses
+    // Eje
+    const isYearly = g === "y";
     let xLabels: string[] = [];
     let curKeys: string[] = [];
     let prevKeys: string[] = [];
-    let curIndexByKey = new Map<string, number>();
-    let prevIndexByKey = new Map<string, number>();
-    const isYearly = g === "y";
+    let curIndex = new Map<string, number>();
+    let prevIndex = new Map<string, number>();
 
     if (isYearly) {
-      const { labels: curLabels, keys: curKs } = listLastNMonths(parseISO(current.end), 12);
-      const { keys: prevKs } = listLastNMonths(parseISO(previous.end), 12);
-      xLabels = curLabels;
-      curKeys = curKs;
-      prevKeys = prevKs;
-      curIndexByKey = new Map(curKeys.map((k, i) => [k, i]));
-      prevIndexByKey = new Map(prevKeys.map((k, i) => [k, i]));
+      const { labels: curLbl, keys: curK } = listLastNMonths(
+        parseISO(current.end),
+        12
+      );
+      const { keys: prvK } = listLastNMonths(parseISO(previous.end), 12);
+      xLabels = curLbl;
+      curKeys = curK;
+      prevKeys = prvK;
+      curIndex = new Map(curKeys.map((k, i) => [k, i]));
+      prevIndex = new Map(prevKeys.map((k, i) => [k, i]));
     } else {
       xLabels = enumerateDaysUTC(current.start, current.end);
       const prevDays = enumerateDaysUTC(previous.start, previous.end);
       curKeys = xLabels; // YYYY-MM-DD
       prevKeys = prevDays;
-      curIndexByKey = new Map(curKeys.map((k, i) => [k, i]));
-      prevIndexByKey = new Map(prevKeys.map((k, i) => [k, i]));
+      curIndex = new Map(curKeys.map((k, i) => [k, i]));
+      prevIndex = new Map(prevKeys.map((k, i) => [k, i]));
     }
 
-    // GA4
+    // GA4: prev+cur juntos y filtramos en código
     const auth = getAuth();
-    const analytics = google.analyticsdata({ version: "v1beta", auth });
+    const analyticsData = google.analyticsdata({ version: "v1beta", auth });
     const property = normalizePropertyId(resolvePropertyId());
 
     const request: analyticsdata_v1beta.Schema$RunReportRequest = {
       dateRanges: [{ startDate: previous.start, endDate: current.end }],
       metrics: [{ name: "eventCount" }],
-      dimensions: [{ name: "date" }, { name: "pageLocation" }, { name: "eventName" }],
+      dimensions: [
+        { name: "date" },
+        { name: "pageLocation" },
+        { name: "eventName" },
+      ],
       dimensionFilter: {
-        andGroup: {
-          expressions: [
-            {
-              filter: {
-                fieldName: "eventName",
-                stringFilter: { matchType: "EXACT", value: "page_view", caseSensitive: false },
-              },
-            },
-            {
-              filter: {
-                fieldName: "pageLocation",
-                stringFilter: {
-                  matchType: "FULL_REGEXP",
-                  value: pageRegexForTown(townId),
-                  caseSensitive: false,
-                },
-              },
-            },
-          ],
+        filter: {
+          fieldName: "eventName",
+          stringFilter: {
+            matchType: "EXACT",
+            value: "page_view",
+            caseSensitive: false,
+          },
         },
       },
       keepEmptyRows: false,
       limit: "200000",
     };
 
-    const resp = await analytics.properties.runReport({ property, requestBody: request });
+    const resp = await analyticsData.properties.runReport({
+      property,
+      requestBody: request,
+    });
     const rows = resp.data.rows ?? [];
 
-    // vectores
+    // acumuladores serie
     const curVec = Array(curKeys.length).fill(0);
     const prevVec = Array(prevKeys.length).fill(0);
 
+    // Donuts y series por URL
+    const byCategoryCurrent = new Map<CategoryId, number>(); // cuando NO hay categoryIdParam
+    const bySubCurrent = new Map<string, number>(); // cuando SÍ hay categoryIdParam
+    const urlDailyCurrent = new Map<string, Map<string, number>>(); // url -> (key -> value) (cuando SÍ hay categoryIdParam)
+
+    const useCategoryMode = Boolean(categoryIdParam);
+
     for (const r of rows) {
-      const dRaw = String(r.dimensionValues?.[0]?.value ?? "");
+      const dims = r.dimensionValues ?? [];
+      const mets = r.metricValues ?? [];
+
+      const dRaw = String(dims[0]?.value ?? "");
       if (dRaw.length !== 8) continue;
+
       const iso = toISODate(dRaw);
-      const value = Number(r.metricValues?.[0]?.value ?? 0);
-
       const keyDay = iso;
-      const keyMonth = dRaw.slice(0, 6); // YYYYMM
+      const keyMonth = dRaw.slice(0, 6);
 
-      const inCurrent = iso >= current.start && iso <= current.end;
-      const inPrevious = iso >= previous.start && iso <= previous.end;
+      const urlRaw = String(dims[1]?.value ?? "");
+      const { path } = stripLangPrefix(normalizePath(urlRaw));
 
-      // ⚠️ Dos IFs (no else-if) por ventanas solapadas
-      if (inCurrent) {
+      const v = Number(mets[0]?.value ?? 0);
+
+      const inCur = iso >= current.start && iso <= current.end;
+      const inPrev = iso >= previous.start && iso <= previous.end;
+
+      // Serie total (por pueblo; si hay categoría, igual computa totales)
+      if (inCur) {
         const k = isYearly ? keyMonth : keyDay;
-        const idx = curIndexByKey.get(k);
-        if (idx !== undefined) curVec[idx] += value;
+        const idx = curIndex.get(k);
+        if (idx !== undefined) curVec[idx] += v;
       }
-      if (inPrevious) {
+      if (inPrev) {
         const k = isYearly ? keyMonth : keyDay;
-        const idx = prevIndexByKey.get(k);
-        if (idx !== undefined) prevVec[idx] += value;
+        const idx = prevIndex.get(k);
+        if (idx !== undefined) prevVec[idx] += v;
+      }
+
+      // Donut/seriesByUrl sólo dentro del donutWindow
+      if (iso < donutWindow.start || iso > donutWindow.end) continue;
+
+      const parsed = parseTownCatSub(path);
+      if (parsed.townId !== townId) continue;
+
+      if (!useCategoryMode) {
+        // Nivel 1 dentro del pueblo: donut de CATEGORÍAS
+        const cid = parsed.categoryId;
+        if (cid)
+          byCategoryCurrent.set(cid, (byCategoryCurrent.get(cid) ?? 0) + v);
+      } else {
+        // Nivel 2: pueblo ∧ categoría
+        const cid = parsed.categoryId;
+        if (!cid || cid !== categoryIdParam) continue;
+
+        // sub = segmento siguiente o fallback /town/category
+        const clean = path.replace(/^\/+|\/+$/g, "");
+        const segs = clean.split("/");
+        const townIdx = segs.findIndex((s) => normToken(s) === townId);
+        const sub = segs[townIdx + 2] ? segs[townIdx + 2] : `${townId}/${cid}`;
+        bySubCurrent.set(sub, (bySubCurrent.get(sub) ?? 0) + v);
+
+        // Serie por URL (hasta /town/category/sub/)
+        const baseUrl = "/" + segs.slice(0, townIdx + 3).join("/") + "/";
+        if (!urlDailyCurrent.has(baseUrl)) {
+          urlDailyCurrent.set(baseUrl, new Map<string, number>());
+        }
+        const dict = urlDailyCurrent.get(baseUrl)!;
+        const k = isYearly ? keyMonth : keyDay;
+        dict.set(k, (dict.get(k) ?? 0) + v);
       }
     }
 
     const series = {
       current: xLabels.map((lbl, i) => ({ label: lbl, value: curVec[i] ?? 0 })),
-      previous: xLabels.map((lbl, i) => ({ label: lbl, value: prevVec[i] ?? 0 })),
+      previous: xLabels.map((lbl, i) => ({
+        label: lbl,
+        value: prevVec[i] ?? 0,
+      })),
     };
+    const totalCur = curVec.reduce((a, b) => a + b, 0);
+    const totalPrev = prevVec.reduce((a, b) => a + b, 0);
+    const deltaPct =
+      totalPrev > 0 ? ((totalCur - totalPrev) / totalPrev) * 100 : 0;
 
-    // Donut: categorías sólo en current
-    const donutData = donutByCategories(rows, current);
+    let donut: Array<{ label: string; value: number }>;
+    let seriesByUrl: UrlSeries[] = [];
+
+    if (!useCategoryMode) {
+      // donut por CATEGORÍAS (pueblo sin categoría seleccionada)
+      donut = CATEGORY_ID_ORDER.map((cid) => ({
+        label: CATEGORY_META[cid].label,
+        value: byCategoryCurrent.get(cid) ?? 0,
+      }))
+        .filter((d) => d.value > 0)
+        .sort((a, b) => b.value - a.value);
+    } else {
+      // donut por SUB-actividad + seriesByUrl
+      donut = Array.from(bySubCurrent.entries())
+        .map(([label, value]) => ({ label, value }))
+        .sort((a, b) => b.value - a.value);
+
+      const xKeyList = curKeys; // ya alineadas a xLabels
+      seriesByUrl = Array.from(urlDailyCurrent.entries()).map(
+        ([path, dict]) => ({
+          name: path,
+          data: xKeyList.map((k) => dict.get(k) ?? 0),
+          path,
+        })
+      );
+    }
 
     return NextResponse.json(
       {
@@ -271,7 +348,10 @@ export async function GET(req: NextRequest, ctx: unknown) {
         id: townId,
         title: TOWN_META[townId].label,
         series,
-        donutData,
+        xLabels,
+        donut,
+        deltaPct,
+        seriesByUrl,
       },
       { status: 200 }
     );

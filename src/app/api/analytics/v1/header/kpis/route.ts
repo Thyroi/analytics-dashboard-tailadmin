@@ -2,11 +2,6 @@
 import type { KpiPayload } from "@/lib/api/analytics";
 import type { Granularity } from "@/lib/types";
 import {
-  deriveRangeEndingYesterday,
-  parseISO,
-  toISO,
-} from "@/lib/utils/datetime";
-import {
   getAuth,
   normalizePropertyId,
   resolvePropertyId,
@@ -14,26 +9,10 @@ import {
 import { analyticsdata_v1beta, google } from "googleapis";
 import { NextRequest, NextResponse } from "next/server";
 
+import { computeRangesFromQuery } from "@/lib/utils/timeWindows";
+
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
-
-/* ======================= utils fecha ======================= */
-function addDaysUTC(d: Date, days: number) {
-  const n = new Date(
-    Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())
-  );
-  n.setUTCDate(n.getUTCDate() + days);
-  return n;
-}
-
-function daysInclusive(startISO: string, endISO: string): number {
-  const s = parseISO(startISO);
-  const e = parseISO(endISO);
-  const ms =
-    Date.UTC(e.getUTCFullYear(), e.getUTCMonth(), e.getUTCDate()) -
-    Date.UTC(s.getUTCFullYear(), s.getUTCMonth(), s.getUTCDate());
-  return Math.max(1, Math.round(ms / 86400000) + 1);
-}
 
 /* ======================= tipos internos ======================= */
 type Totals = {
@@ -85,44 +64,38 @@ async function queryTotals(
 export async function GET(req: NextRequest) {
   try {
     const sp = req.nextUrl.searchParams;
-    const startQ = sp.get("start") || undefined;
-    const endQ = sp.get("end") || undefined;
+    const startQ = sp.get("start");
+    const endQ = sp.get("end");
     const granularity = (sp.get("granularity") || "d") as Granularity;
 
-    // Rango actual: explícito o derivado (terminando AYER)
-    const range =
-      startQ && endQ
-        ? { start: startQ, end: endQ }
-        : (() => {
-            const r = deriveRangeEndingYesterday(granularity);
-            return { start: r.startTime, end: r.endTime };
-          })();
-
-    // Rango anterior (misma longitud, inmediatamente anterior)
-    const len = daysInclusive(range.start, range.end);
-    const curStart = parseISO(range.start);
-    const prevEnd = addDaysUTC(curStart, -1);
-    const prevStart = addDaysUTC(prevEnd, -(len - 1));
-    const compareRange = { start: toISO(prevStart), end: toISO(prevEnd) };
+    // RANGOS con política unificada (desplazado con solape)
+    const { current, previous } = computeRangesFromQuery(
+      granularity,
+      startQ,
+      endQ
+    );
 
     // Auth + GA4
     const auth = getAuth();
     const analytics = google.analyticsdata({ version: "v1beta", auth });
     const property = normalizePropertyId(resolvePropertyId());
 
-    const [current, previous] = await Promise.all([
-      queryTotals(analytics, property, range.start, range.end),
-      queryTotals(analytics, property, compareRange.start, compareRange.end),
+    const [currentTotals, previousTotals] = await Promise.all([
+      queryTotals(analytics, property, current.start, current.end),
+      queryTotals(analytics, property, previous.start, previous.end),
     ]);
 
     // Deltas absolutos
     const delta = {
-      activeUsers: current.activeUsers - previous.activeUsers,
-      engagedSessions: current.engagedSessions - previous.engagedSessions,
-      eventCount: current.eventCount - previous.eventCount,
-      screenPageViews: current.screenPageViews - previous.screenPageViews,
+      activeUsers: currentTotals.activeUsers - previousTotals.activeUsers,
+      engagedSessions:
+        currentTotals.engagedSessions - previousTotals.engagedSessions,
+      eventCount: currentTotals.eventCount - previousTotals.eventCount,
+      screenPageViews:
+        currentTotals.screenPageViews - previousTotals.screenPageViews,
       averageSessionDuration:
-        current.averageSessionDuration - previous.averageSessionDuration,
+        currentTotals.averageSessionDuration -
+        previousTotals.averageSessionDuration,
     };
 
     // Deltas %
@@ -130,22 +103,28 @@ export async function GET(req: NextRequest) {
       p <= 0 ? (c > 0 ? 1 : null) : c / p - 1;
 
     const deltaPct = {
-      activeUsers: pct(current.activeUsers, previous.activeUsers),
-      engagedSessions: pct(current.engagedSessions, previous.engagedSessions),
-      eventCount: pct(current.eventCount, previous.eventCount),
-      screenPageViews: pct(current.screenPageViews, previous.screenPageViews),
+      activeUsers: pct(currentTotals.activeUsers, previousTotals.activeUsers),
+      engagedSessions: pct(
+        currentTotals.engagedSessions,
+        previousTotals.engagedSessions
+      ),
+      eventCount: pct(currentTotals.eventCount, previousTotals.eventCount),
+      screenPageViews: pct(
+        currentTotals.screenPageViews,
+        previousTotals.screenPageViews
+      ),
       averageSessionDuration: pct(
-        current.averageSessionDuration,
-        previous.averageSessionDuration
+        currentTotals.averageSessionDuration,
+        previousTotals.averageSessionDuration
       ),
     };
 
     const payload: KpiPayload = {
-      range,
-      compareRange,
+      range: { start: current.start, end: current.end },
+      compareRange: { start: previous.start, end: previous.end },
       property,
-      current,
-      previous,
+      current: currentTotals,
+      previous: previousTotals,
       delta,
       deltaPct,
     };

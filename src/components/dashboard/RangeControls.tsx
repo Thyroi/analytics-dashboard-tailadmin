@@ -1,9 +1,8 @@
 "use client";
 
-import React from "react";
-import GranularityTabs from "./GranularityTabs";
 import DateRangePicker from "@/components/common/DateRangePicker";
-import { Granularity } from "@/lib/types";
+import type { Granularity } from "@/lib/types";
+import GranularityTabs from "./GranularityTabs";
 
 type Props = {
   mode: "granularity" | "range";
@@ -18,7 +17,7 @@ type Props = {
   className?: string;
 };
 
-export default function   RangeControls({
+export default function RangeControls({
   mode,
   granularity,
   onGranularityChange,
@@ -28,12 +27,15 @@ export default function   RangeControls({
   onClearRange,
   className = "",
 }: Props) {
+  const tabsDisabled = mode === "range";
+
   return (
     <div className={`flex flex-wrap items-center gap-3 ${className}`}>
+      {/* Tabs deshabilitados en modo rango */}
       <GranularityTabs
         value={granularity}
-        onChange={onGranularityChange}
-        className={mode === "granularity" ? "" : "opacity-60 pointer-events-none"}
+        onChange={tabsDisabled ? () => {} : onGranularityChange}
+        className={tabsDisabled ? "opacity-50 pointer-events-none" : ""}
       />
 
       <div className="ml-auto flex items-center gap-2">

@@ -1,4 +1,3 @@
-// src/features/home/hooks/useCategoriesTotals.ts
 "use client";
 
 import {
@@ -10,6 +9,12 @@ import type { CategoryId } from "@/lib/taxonomy/categories";
 import type { Granularity } from "@/lib/types";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+/** Permite rango completo, objeto con endISO, o string endISO. */
+export type TimeParams =
+  | { startISO: string; endISO: string }
+  | { endISO?: string }
+  | undefined;
+
 type ReadyState = {
   status: "ready";
   data: CategoriesTotalsResponse;
@@ -20,7 +25,45 @@ type ReadyState = {
   >;
 };
 
-export function useCategoriesTotals(granularity: Granularity, endISO?: string) {
+// Overloads
+export function useCategoriesTotals(
+  granularity: Granularity,
+  time?: { endISO?: string } | string
+): ReturnType<typeof useCategoriesTotalsImpl>;
+export function useCategoriesTotals(
+  granularity: Granularity,
+  time: { startISO: string; endISO: string }
+): ReturnType<typeof useCategoriesTotalsImpl>;
+export function useCategoriesTotals(
+  granularity: Granularity,
+  time?: TimeParams | string
+): ReturnType<typeof useCategoriesTotalsImpl> {
+  return useCategoriesTotalsImpl(granularity, time);
+}
+
+function isFullRange(t: TimeParams): t is { startISO: string; endISO: string } {
+  return (
+    !!t &&
+    typeof t === "object" &&
+    "startISO" in t &&
+    "endISO" in t &&
+    typeof t.startISO === "string" &&
+    typeof t.endISO === "string"
+  );
+}
+
+function normalizeEndISO(time?: TimeParams | string): string | undefined {
+  if (typeof time === "string") return time;
+  if (!time) return undefined;
+  return isFullRange(time) ? time.endISO : time.endISO;
+}
+
+function useCategoriesTotalsImpl(
+  granularity: Granularity,
+  time?: TimeParams | string
+) {
+  const endISO = normalizeEndISO(time); // services actuales sólo aceptan endISO
+
   const [ready, setReady] = useState<ReadyState | null>(null);
   const [error, setError] = useState<Error | null>(null);
   const [isInitialLoading, setIsInitialLoading] = useState<boolean>(false);
@@ -41,13 +84,11 @@ export function useCategoriesTotals(granularity: Granularity, endISO?: string) {
     setError(null);
 
     const hasCache = cacheRef.current !== null;
-    if (!hasCache) {
-      setIsInitialLoading(true);
-    } else {
-      setIsFetching(true); // revalidando (mantener datos previos)
-    }
+    if (!hasCache) setIsInitialLoading(true);
+    else setIsFetching(true);
 
     try {
+      // TODO: cuando el service soporte start+end, pásalos desde `time`
       const data = await getCategoriesTotals(granularity, endISO);
       if (ac.signal.aborted) return;
 

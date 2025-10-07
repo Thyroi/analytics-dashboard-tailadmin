@@ -1,14 +1,16 @@
+// src/features/home/services/townsTotals.ts
 "use client";
 
-import { TOWN_META, type TownId } from "@/lib/taxonomy/towns";
+import { buildQS, fetchJSON } from "@/lib/api/analytics";
 import type { Granularity } from "@/lib/types";
+import type { TownId } from "@/lib/taxonomy/towns";
 
-/** Item normalizado para UI */
+/** === Tipos del payload (existentes en tu proyecto) === */
 export type TownTotalsItem = {
   id: TownId;
   currentTotal: number;
   previousTotal: number;
-  /** Puede ser null cuando no hay base de comparación */
+  /** Puede ser null si no hay base comparable */
   deltaPct: number | null;
 };
 
@@ -18,71 +20,56 @@ export type TownsTotalsUIResponse = {
     current: { start: string; end: string };
     previous: { start: string; end: string };
   };
+  property: string;
   items: TownTotalsItem[];
 };
 
-/** Shape crudo del endpoint */
-type RawPerTown = Record<
-  string,
-  { currentTotal: number; previousTotal: number; deltaPct: number | null }
->;
-type RawResponse = {
-  granularity: Granularity;
-  range: {
-    current: { start: string; end: string };
-    previous: { start: string; end: string };
-  };
-  property: string;
-  perTown?: RawPerTown;
-};
+/** === Parámetros de tiempo (nuevo) === */
+export type TimeParams =
+  | { startISO: string; endISO: string }
+  | { endISO?: string }
+  | string
+  | undefined;
 
-function isTownId(id: string): id is TownId {
-  return Object.prototype.hasOwnProperty.call(TOWN_META, id);
+/** Normaliza el parámetro de tiempo para QS */
+function normalizeTimeParams(time?: TimeParams): {
+  start?: string;
+  end?: string;
+  endOnly?: string;
+} {
+  if (typeof time === "string") {
+    return { endOnly: time };
+  }
+  if (!time) {
+    return {};
+  }
+  if ("startISO" in time && "endISO" in time) {
+    return { start: time.startISO, end: time.endISO };
+  }
+  return { endOnly: time.endISO };
 }
 
-/** GET /api/analytics/v1/dimensions/pueblos/totals */
-export async function getTownsTotals(input: {
-  granularity: Granularity; // "d" | "w" | "m" | "y"
+/** === Firma compatible con tu hook actual (objeto) === */
+export async function getTownsTotals(params: {
+  granularity: Granularity;
+  /** Compat: puedes mandar endISO directo o usar `time` */
   endISO?: string;
+  time?: { startISO: string; endISO: string } | { endISO?: string } | string;
   signal?: AbortSignal;
 }): Promise<TownsTotalsUIResponse> {
-  const sp = new URLSearchParams({ g: input.granularity });
-  if (input.endISO) sp.set("end", input.endISO);
+  const { granularity, endISO, time, signal } = params;
 
-  const url = `/api/analytics/v1/dimensions/pueblos/totals?${sp.toString()}`;
-
-  const resp = await fetch(url, {
-    method: "GET",
-    signal: input.signal,
-    headers: { "cache-control": "no-cache" },
+  const norm = normalizeTimeParams(time ?? endISO);
+  const qs = buildQS({
+    g: granularity,
+    ...(norm.start && norm.end
+      ? { start: norm.start, end: norm.end }
+      : norm.endOnly
+      ? { end: norm.endOnly }
+      : null),
   });
 
-  if (!resp.ok) {
-    const text = await resp.text().catch(() => "");
-    throw new Error(text || `HTTP ${resp.status}`);
-  }
-
-  const raw = (await resp.json()) as RawResponse;
-  const perTown: RawPerTown = raw.perTown ?? {};
-
-  const items: TownTotalsItem[] = Object.keys(perTown)
-    .filter(isTownId)
-    .map((id) => {
-      const v = perTown[id];
-      return {
-        id,
-        currentTotal: Number.isFinite(v.currentTotal) ? v.currentTotal : 0,
-        previousTotal: Number.isFinite(v.previousTotal) ? v.previousTotal : 0,
-        deltaPct:
-          typeof v.deltaPct === "number" && Number.isFinite(v.deltaPct)
-            ? v.deltaPct
-            : null,
-      };
-    });
-
-  return {
-    granularity: raw.granularity,
-    range: raw.range,
-    items,
-  };
+  // Endpoint estándar para “totales por municipio”
+  const url = `/api/analytics/v1/dimensions/pueblos/totals?${qs}`;
+  return fetchJSON<TownsTotalsUIResponse>(url, { signal, method: "GET" });
 }

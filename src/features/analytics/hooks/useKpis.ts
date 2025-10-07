@@ -36,8 +36,6 @@ export function useKpis({ start, end, granularity = "d" }: UseKpisParams) {
     if (start) sp.set("start", start);
     if (end) sp.set("end", end);
     if (granularity) sp.set("granularity", granularity);
-    // 👇 este log debe cambiar al cambiar granularity si NO se envían start/end
-    console.log("[useKpis] GET /api/analytics/v1/header/kpis?" + sp.toString());
 
     (async () => {
       try {
