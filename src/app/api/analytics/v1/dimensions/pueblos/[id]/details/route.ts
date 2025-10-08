@@ -339,22 +339,23 @@ export async function GET(
         })
       );
     }
-
     return NextResponse.json(
-      {
-        granularity: g,
-        range: { current, previous },
-        property,
-        id: townId,
-        title: TOWN_META[townId].label,
-        series,
-        xLabels,
-        donut,
-        deltaPct,
-        seriesByUrl,
-      },
-      { status: 200 }
-    );
+  {
+    granularity: g,
+    range: { current, previous },
+    property,
+    id: townId,
+    title: TOWN_META[townId].label,
+    series,
+    xLabels,
+    donutData: donut,
+    donut,
+    deltaPct,
+    seriesByUrl,
+  },
+  { status: 200 }
+);
+
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : "Unknown error";
     return NextResponse.json({ error: msg }, { status: 500 });

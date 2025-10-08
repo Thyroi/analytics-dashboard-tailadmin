@@ -51,7 +51,7 @@ export default function SectorExpandedCardDetailed(props: Props) {
     onSliceClick,
     forceDrillTownId,
     fixedCategoryId,
-    endISO, // ← ahora lo propagamos al panel de drilldown
+    endISO,
   } = props;
 
   const imgSrc =
@@ -62,6 +62,7 @@ export default function SectorExpandedCardDetailed(props: Props) {
       : undefined;
   const Icon = "Icon" in props ? props.Icon : undefined;
 
+  // Pueblo a drillear (si viene forzado, ese; si no, si esTown, el townId local)
   const drillTownId: TownId | null = useMemo(
     () => forceDrillTownId ?? (isTown ? townId ?? null : null),
     [forceDrillTownId, isTown, townId]
@@ -70,14 +71,17 @@ export default function SectorExpandedCardDetailed(props: Props) {
   const [selectedCategoryId, setSelectedCategoryId] =
     useState<CategoryId | null>(null);
 
+  // Reset cuando cambia el pueblo (o cuando viene forzado)
   useEffect(() => {
     setSelectedCategoryId(null);
   }, [drillTownId]);
 
+  // Si nos pasan una categoría fija desde fuera, sincroniza selección
   useEffect(() => {
     if (fixedCategoryId) setSelectedCategoryId(fixedCategoryId);
   }, [fixedCategoryId]);
 
+  // Click en dona superior
   const handleDonutTopClick = (label: string) => {
     if (isTown && drillTownId) {
       const cid = resolveCategoryIdFromLabel(label);
@@ -87,6 +91,7 @@ export default function SectorExpandedCardDetailed(props: Props) {
     if (onSliceClick) onSliceClick(label);
   };
 
+  // Auto-scroll a nivel 2 cuando hay selección
   const level2Ref = useRef<HTMLDivElement | null>(null);
   const level2Active = !!(
     drillTownId &&
@@ -99,6 +104,15 @@ export default function SectorExpandedCardDetailed(props: Props) {
     }, 0);
     return () => clearTimeout(t);
   }, [level2Active]);
+
+  // 👇 CLAVE: re-monta el panel de drill cuando cambie selección o rango/granularidad
+  const panelKey = useMemo(
+    () =>
+      `${drillTownId ?? ""}|${
+        fixedCategoryId ?? selectedCategoryId ?? ""
+      }|${granularity}|${endISO ?? ""}`,
+    [drillTownId, fixedCategoryId, selectedCategoryId, granularity, endISO]
+  );
 
   return (
     <div>
@@ -125,11 +139,12 @@ export default function SectorExpandedCardDetailed(props: Props) {
       {drillTownId && (fixedCategoryId ?? selectedCategoryId) && (
         <div ref={level2Ref} className="scroll-mt-24">
           <TownCategoryDrilldownPanel
+            key={panelKey} // 👈 fuerza refetch/redraw al cambiar porción, rango o granularidad
             townId={drillTownId}
             categoryId={(fixedCategoryId ?? selectedCategoryId)!}
             granularity={granularity}
             headline={isTown ? "category" : "town"}
-            endISO={endISO} // ← pasa endISO al nivel 2
+            endISO={endISO}
           />
         </div>
       )}

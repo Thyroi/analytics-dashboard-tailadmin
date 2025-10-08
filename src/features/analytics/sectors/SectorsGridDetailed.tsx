@@ -81,7 +81,7 @@ export default function SectorsGridDetailed({
   onSliceClick,
   startDate,
   endDate,
-  endISO, // ← **ahora disponible y propagado**
+  endISO,
   forceDrillTownId,
   fixedCategoryId,
   isDeltaLoading = false,
@@ -159,7 +159,7 @@ export default function SectorsGridDetailed({
                 onSliceClick={onSliceClick}
                 forceDrillTownId={forceDrillTownId}
                 fixedCategoryId={fixedCategoryId}
-                endISO={endISO} // ← propagado
+                endISO={endISO} // ← propagado al expandido
                 {...expandedVariant}
               />
             </div>

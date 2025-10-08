@@ -24,6 +24,45 @@ type State =
     }
   | { status: "error"; message: string };
 
+/* ================= helpers de tipo (sin any) ================= */
+function isRecord(x: unknown): x is Record<string, unknown> {
+  return typeof x === "object" && x !== null;
+}
+
+function hasStringKey<K extends string>(
+  x: unknown,
+  key: K
+): x is Record<K, string> {
+  return isRecord(x) && key in x && typeof (x as Record<string, unknown>)[key] === "string";
+}
+
+function isFullRange(t: TimeParams): t is { startISO: string; endISO: string } {
+  return (
+    isRecord(t) &&
+    hasStringKey(t, "startISO") &&
+    hasStringKey(t, "endISO")
+  );
+}
+
+/** Acepta backends con donutData (nuevo) o donut (legacy) */
+type MaybeDonuts = { donutData?: DonutDatum[]; donut?: DonutDatum[] };
+function pickDonutData(x: MaybeDonuts): DonutDatum[] {
+  if (Array.isArray(x.donutData)) return x.donutData;
+  if (Array.isArray(x.donut)) return x.donut;
+  return [];
+}
+
+function normalizeTime(time?: TimeParams | string): {
+  startISO?: string;
+  endISO?: string;
+} {
+  if (typeof time === "string") return { endISO: time };
+  if (!time) return {};
+  if (isFullRange(time)) return { startISO: time.startISO, endISO: time.endISO };
+  return { endISO: time.endISO };
+}
+
+/* ========================= API pública ========================= */
 // Overloads
 export function useTownDetails(
   id: TownId | null,
@@ -46,28 +85,7 @@ export function useTownDetails(
   return useTownDetailsImpl(id, granularity, time, categoryId);
 }
 
-function isFullRange(t: TimeParams): t is { startISO: string; endISO: string } {
-  return (
-    !!t &&
-    typeof t === "object" &&
-    "startISO" in t &&
-    "endISO" in t &&
-    typeof t.startISO === "string" &&
-    typeof t.endISO === "string"
-  );
-}
-
-function normalizeTime(time?: TimeParams | string): {
-  startISO?: string;
-  endISO?: string;
-} {
-  if (typeof time === "string") return { endISO: time };
-  if (!time) return {};
-  if (isFullRange(time))
-    return { startISO: time.startISO, endISO: time.endISO };
-  return { endISO: time.endISO };
-}
-
+/* ========================= implementación ========================= */
 function useTownDetailsImpl(
   id: TownId | null,
   granularity: Granularity,
@@ -98,11 +116,18 @@ function useTownDetailsImpl(
       ...(categoryId ? { categoryId } : null),
       signal: ac.signal,
     })
-      .then((raw: TownDetailsResponse) => {
+      .then((raw: TownDetailsResponse & MaybeDonuts) => {
         if (ac.signal.aborted) return;
-        const series = raw?.series ?? { current: [], previous: [] };
-        const donut = raw?.donutData ?? [];
-        setState({ status: "ready", series, donutData: donut });
+
+        const series =
+          raw.series ?? ({ current: [], previous: [] } as {
+            current: SeriesPoint[];
+            previous: SeriesPoint[];
+          });
+
+        const donutData = pickDonutData(raw);
+
+        setState({ status: "ready", series, donutData });
       })
       .catch((err: unknown) => {
         if (ac.signal.aborted) return;
