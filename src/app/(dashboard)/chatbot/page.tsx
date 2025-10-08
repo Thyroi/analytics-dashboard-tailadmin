@@ -2,6 +2,7 @@
 
 import Header from "@/components/common/Header";
 import ChatbotByTagSection from "@/features/chatbot/components/sections/ChatbotByTagSection";
+import ChatbotByTownSection from "@/features/chatbot/components/sections/ChatbotByTownSection";
 
 export default function TagsDashboard() {
   return (
@@ -10,8 +11,8 @@ export default function TagsDashboard() {
         title="Top tags con más búsquedas"
         subtitle="Icono, número de búsquedas y etiqueta"
       />
-      {/* sin props: usa granularity="d" y rango por defecto del mock/endpoint */}
       <ChatbotByTagSection />
+      <ChatbotByTownSection />
     </main>
   );
 }
