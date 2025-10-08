@@ -1,6 +1,12 @@
 "use client";
 
-import type { KPISeries, Metric, Point, SliceName } from "@/lib/types";
+import type {
+  Granularity,
+  KPISeries,
+  Metric,
+  Point,
+  SliceName,
+} from "@/lib/types/index";
 import { useMemo } from "react";
 import { useOverview } from "./useOverview";
 
@@ -21,11 +27,19 @@ function pctChange(curr: number, prev: number): number {
  * Obtiene overview actual (hook) + overview del periodo anterior (fetch),
  * y devuelve KPISeries + currentValue + deltaPct para la métrica pedida.
  */
-export function useOverviewCompare(
+export default function useOverviewCompare(
   slice: SliceName,
-  metric: Metric
+  metric: Metric,
+  granularity: Granularity,
+  startTime: string,
+  endTime: string
 ): CompareResult {
-  const { data: currentData } = useOverview(slice);
+  const { data: currentData } = useOverview(
+    slice,
+    granularity,
+    startTime,
+    endTime
+  );
 
   // Usar los datos previos directamente del payload
   const kpiSeries: KPISeries | null = useMemo(() => {
@@ -71,4 +85,4 @@ export function useOverviewCompare(
   };
 }
 
-export default useOverviewCompare;
+// export default useOverviewCompare; (eliminado, ya está exportado arriba)

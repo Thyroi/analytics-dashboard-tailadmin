@@ -1,10 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, useCallback } from "react";
-import type { SliceName } from "@/lib/types";
-import type { OverviewResponse } from "@/lib/api/analytics";
-import { useHomeFilters } from "@/features/home/context/HomeFiltersContext";
 import { getOverview } from "@/features/home/services/overview";
+import type { OverviewResponse } from "@/lib/api/analytics";
+import type { Granularity, SliceName } from "@/lib/types";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 type UseOverviewResult =
   | {
@@ -20,11 +19,11 @@ type UseOverviewResult =
       refetch: () => void;
     }
   | {
-    data: null;
-    isLoading: false;
-    error: Error;
-    refetch: () => void;
-  };
+      data: null;
+      isLoading: false;
+      error: Error;
+      refetch: () => void;
+    };
 
 /**
  * Hook para obtener el overview (users + interactions) según el slice actual.
@@ -32,10 +31,12 @@ type UseOverviewResult =
  * - Llama al service getOverview (normaliza la respuesta del backend).
  */
 
-export function useOverview(slice: SliceName): UseOverviewResult {
-  const { users, interactions } = useHomeFilters();
-  const cfg = slice === "users" ? users : interactions;
-
+export function useOverview(
+  slice: SliceName,
+  granularity: Granularity,
+  startTime: string,
+  endTime: string
+): UseOverviewResult {
   const [data, setData] = useState<OverviewResponse | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<Error | null>(null);
@@ -43,12 +44,11 @@ export function useOverview(slice: SliceName): UseOverviewResult {
   const abortRef = useRef<AbortController | null>(null);
 
   const depsKey = useMemo(
-    () => `${cfg.granularity}:${cfg.range.startTime}:${cfg.range.endTime}`,
-    [cfg.granularity, cfg.range.startTime, cfg.range.endTime]
+    () => `${slice}:${granularity}:${startTime}:${endTime}`,
+    [slice, granularity, startTime, endTime]
   );
 
   const run = useCallback(() => {
-
     abortRef.current?.abort();
     const ac = new AbortController();
     abortRef.current = ac;
@@ -57,13 +57,12 @@ export function useOverview(slice: SliceName): UseOverviewResult {
     setError(null);
 
     getOverview({
-      granularity: cfg.granularity,
-      range: { startTime: cfg.range.startTime, endTime: cfg.range.endTime },
+      granularity,
+      range: { startTime, endTime },
       signal: ac.signal,
     })
       .then((res) => {
         if (ac.signal.aborted) return;
-        // Normalize meta.source to match the expected type
         setData({
           ...res,
           meta: {
@@ -80,7 +79,7 @@ export function useOverview(slice: SliceName): UseOverviewResult {
       .finally(() => {
         if (!ac.signal.aborted) setIsLoading(false);
       });
-  }, [cfg.granularity, cfg.range.startTime, cfg.range.endTime]);
+  }, [granularity, startTime, endTime, slice]);
 
   useEffect(() => {
     run();

@@ -1,9 +1,8 @@
 "use client";
 
 import LineChart from "@/components/charts/LineChart";
-import RangeControls from "@/components/dashboard/RangeControls";
+import type { Granularity, KPISeries } from "@/lib/types"; // ⬅️ ACTUALIZADO
 import { useMemo } from "react";
-import type { KPISeries, Granularity } from "@/lib/types"; // ⬅️ ACTUALIZADO
 
 type Props = {
   mode: "granularity" | "range";
@@ -18,13 +17,6 @@ type Props = {
 };
 
 export default function GeneralDataBody({
-  mode,
-  granularity,
-  onGranularityChange,
-  startDate,
-  endDate,
-  onRangeChange,
-  onClearRange,
   kpiSeries,
   className = "",
 }: Props) {
@@ -47,18 +39,6 @@ export default function GeneralDataBody({
     <div
       className={`w-full bg-amber-50/60 dark:bg-white/5 rounded-b-xl border-t border-gray-100 dark:border-white/10 ${className}`}
     >
-      <div className="px-4 pt-3 pb-2">
-        <RangeControls
-          mode={mode}
-          granularity={granularity}
-          onGranularityChange={onGranularityChange}
-          startDate={startDate}
-          endDate={endDate}
-          onRangeChange={onRangeChange}
-          onClearRange={onClearRange}
-        />
-      </div>
-
       <div className="px-6 pb-3">
         <div className="w-full h-[300px] md:h-[340px]">
           <LineChart

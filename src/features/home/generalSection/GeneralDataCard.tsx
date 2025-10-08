@@ -1,84 +1,40 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import useOverviewCompare from "@/features/home/hooks/useOverviewCompare";
+import type { Granularity, Metric, Mode, SliceName } from "@/lib/types";
 import { Users } from "lucide-react";
 import GeneralDataCardView from "./GeneralDataCardView";
 
-import { useHomeFilters } from "@/features/home/context/HomeFiltersContext";
-import { useOverviewCompare } from "@/features/home/hooks/useOverviewCompare";
-
-import type { Granularity, Metric, Mode, SliceName } from "@/lib/types";
-import { parseISO, toISO } from "@/lib/utils/datetime";
-
 type Props = {
   title?: string;
-  metric?: Metric;                // "users" | "interactions" | "visits"
-  defaultGranularity?: Granularity;
+  metric?: Metric;
+  mode: Mode;
+  granularity: Granularity;
+  startDate: Date;
+  endDate: Date;
+  onGranularityChange: (g: Granularity) => void;
+  onRangeChange: (start: Date, end: Date) => void;
+  onClearRange: () => void;
   className?: string;
 };
+
 
 export default function GeneralDataCard({
   title = "Usuarios totales",
   metric = "visits",
-  defaultGranularity = "d",
+  mode,
+  granularity,
+  startDate,
+  endDate,
+  onGranularityChange,
+  onRangeChange,
+  onClearRange,
   className = "",
 }: Props) {
   const sliceName: SliceName = metric === "interactions" ? "interactions" : "users";
-  const {
-    users, interactions,
-    applyUsersGranularityPreset,
-    applyInteractionsGranularityPreset,
-    setUsersRange, setInteractionsRange,
-    resetUsers, resetInteractions,
-  } = useHomeFilters();
-
-  const slice = sliceName === "users" ? users : interactions;
-
-  useEffect(() => {
-    if (slice.granularity !== defaultGranularity) {
-      if (sliceName === "users") {
-        applyUsersGranularityPreset(defaultGranularity);
-      } else {
-        applyInteractionsGranularityPreset(defaultGranularity);
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [defaultGranularity, sliceName]);
-
-  const [mode, setMode] = useState<Mode>("granularity");
-  const { kpiSeries, currentValue, deltaPct } = useOverviewCompare(sliceName, metric!);
-
-  const startDate = useMemo(() => parseISO(slice.range.startTime), [slice.range.startTime]);
-  const endDate = useMemo(() => parseISO(slice.range.endTime), [slice.range.endTime]);
-  const handleGranularityChange = (g: Granularity) => {
-    setMode("granularity");
-    if (sliceName === "users") {
-      applyUsersGranularityPreset(g);
-    } else {
-      applyInteractionsGranularityPreset(g);
-    }
-  };
-
-  const handleRangeChange = (start: Date, end: Date) => {
-    setMode("range");
-    const r = { startTime: toISO(start), endTime: toISO(end) };
-    if (sliceName === "users") {
-      setUsersRange(r);
-    } else {
-      setInteractionsRange(r);
-    }
-  };
-
-  const clearRange = () => {
-    setMode("granularity");
-    if (sliceName === "users") {
-      applyUsersGranularityPreset(users.granularity);
-      resetUsers();
-    } else {
-      applyInteractionsGranularityPreset(interactions.granularity);
-      resetInteractions();
-    }
-  };
+  const startTime = startDate.toISOString().split("T")[0];
+  const endTime = endDate.toISOString().split("T")[0];
+  const { kpiSeries, currentValue, deltaPct } = useOverviewCompare(sliceName, metric!, granularity, startTime, endTime);
 
   return (
     <GeneralDataCardView
@@ -87,13 +43,13 @@ export default function GeneralDataCard({
       value={currentValue}
       deltaPct={deltaPct}
       mode={mode}
-      granularity={slice.granularity}
-      onGranularityChange={handleGranularityChange}
+      granularity={granularity}
+      onGranularityChange={onGranularityChange}
       startDate={startDate}
       endDate={endDate}
-      onRangeChange={handleRangeChange}
-      onClearRange={clearRange}
-      kpiSeries={kpiSeries ?? { bucket: slice.granularity, current: [], previous: [] }}
+      onRangeChange={onRangeChange}
+      onClearRange={onClearRange}
+      kpiSeries={kpiSeries ?? { bucket: granularity, current: [], previous: [] }}
       className={className}
     />
   );
