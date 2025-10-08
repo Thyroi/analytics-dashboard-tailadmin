@@ -96,24 +96,51 @@ export function buildAxisFromChatbot(
   g: ChatbotGranularity,
   locale = "es-ES"
 ) {
-  // 1) juntar todas las claves de tiempo que aparezcan en cualquiera de las series
+  if (g === "y") {
+    // Eje mensual: últimos 12 meses, formato 'YYYY/MM' para alinearse con la API/mock
+    const allPoints: ChatbotPoint[] = Object.values(seriesMap).flat();
+    let maxDate: Date | null = null;
+    for (const p of allPoints) {
+      let d: Date;
+      if (p.time.length === 7 && p.time.includes("/")) {
+        // YYYY/MM
+        const [y, m] = p.time.split("/");
+        d = parseISO(`${y}-${m}-01`);
+      } else if (p.time.length === 8) {
+        d = parseISO(
+          `${p.time.slice(0, 4)}-${p.time.slice(4, 6)}-${p.time.slice(6, 8)}`
+        );
+      } else if (p.time.length === 10) {
+        d = parseISO(p.time);
+      } else {
+        continue;
+      }
+      if (!maxDate || d > maxDate) maxDate = d;
+    }
+    const endDate = maxDate ?? new Date();
+    const labels: string[] = [];
+    const keys: string[] = [];
+    const endY = endDate.getUTCFullYear();
+    const endM = endDate.getUTCMonth();
+    for (let i = 11; i >= 0; i--) {
+      const d = new Date(Date.UTC(endY, endM - i, 1));
+      const mm = String(d.getUTCMonth() + 1).padStart(2, "0");
+      labels.push(`${d.getUTCFullYear()}-${mm}`);
+      keys.push(`${d.getUTCFullYear()}/${mm}`);
+    }
+    const indexByKey = new Map(keys.map((k, i) => [k, i]));
+    return { keysOrdered: keys, xLabels: labels, indexByKey };
+  }
+  // --- resto granularidades ---
   const allTimes = new Set<string>();
   for (const points of Object.values(seriesMap)) {
-    points?.forEach((p) => allTimes.add(p.time));
+    points?.forEach((p: ChatbotPoint) => allTimes.add(p.time));
   }
-
-  // 2) orden cronológico según granularidad
   const keysOrdered = sortTimesChronologically([...allTimes], g);
-
-  // 3) labels “bonitos”
   const xLabels = keysOrdered.map((k) => formatAxisLabel(k, g, locale));
-
-  // 4) índice por clave para rellenar series alineadas
   const indexByKey = new Map(keysOrdered.map((k, i) => [k, i]));
-
   return { keysOrdered, xLabels, indexByKey };
 }
-
 /** Rellena una serie (sparse) a vector alineado con `keysOrdered`. */
 export function materializeSeries(
   points: ChatbotPoint[] | undefined,

@@ -68,7 +68,22 @@ function ChatbotByTownSectionInner() {
   const getDeltaPctFor = (id: string) =>
     state.status === "ready" ? itemsById[id as TownId]?.deltaPct ?? null : null;
 
+  // Usar la serie mensual del hook para granularidad 'y'
+  const { monthlySeriesById } = useTownsTotalsChatbot(granularity, endISO);
   const getSeriesFor = (_id: string) => {
+    if (
+      granularity === "y" &&
+      monthlySeriesById &&
+      Array.isArray(monthlySeriesById[_id as TownId])
+    ) {
+      return {
+        current: (monthlySeriesById[_id as TownId] ?? []).map(
+          ({ time, value }) => ({ label: time, value })
+        ),
+        previous: [],
+      };
+    }
+    // Fallback: usar la serieTown si está expandido
     if (townId && _id === townId) return seriesTown;
     return { current: [], previous: [] };
   };

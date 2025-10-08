@@ -70,10 +70,24 @@ export function useTownsTotalsChatbot(
       }
     : null;
 
+  // Serie mensual por pueblo para granularidad 'y'
+  const monthlySeriesById: Partial<Record<TownId, { time: string; value: number }[]>> = {};
+  if (data && data.granularity === "y") {
+    for (const it of data.items) {
+      // Tipar correctamente los campos opcionales
+      const keys = Array.isArray(it.monthlyKeys) ? it.monthlyKeys : undefined;
+      const totals = Array.isArray(it.monthlyTotals) ? it.monthlyTotals : undefined;
+      if (keys && totals && keys.length === totals.length) {
+        monthlySeriesById[it.id] = keys.map((k, i) => ({ time: k, value: totals[i] }));
+      }
+    }
+  }
+
   return {
     state: ready ?? ({ status: "loading" } as const),
     ids: ready?.ids ?? [],
     itemsById: (ready?.itemsById ?? {}) as ReadyState["itemsById"],
+    monthlySeriesById,
     isInitialLoading: q.isLoading && !q.isFetched,
     isFetching: q.isFetching,
     error: q.error as Error | null,

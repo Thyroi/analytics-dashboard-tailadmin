@@ -7,7 +7,12 @@ import {
 } from "@/lib/api/chatbot";
 import { CATEGORY_ID_ORDER, type CategoryId } from "@/lib/taxonomy/categories";
 import type { Granularity } from "@/lib/types";
-import { buildWindowSets } from "@/lib/utils/windowPolicy";
+import { parseISO } from "@/lib/utils/datetime";
+import {
+  deriveRangeEndingYesterday,
+  getDonutWindow,
+  shiftRangeByDays,
+} from "@/lib/utils/windowPolicyAnalytics";
 
 /* ---------- tipos públicos (compatibles con la UI) ---------- */
 export type CategoryTotalsItem = {
@@ -61,15 +66,15 @@ export async function getCategoriesTotals(
       ? time.endISO
       : undefined;
 
-  const sets = buildWindowSets({ granularity, startISO, endISO });
+  // Unificar lógica de rangos y donut
+  const now = endISO ? parseISO(endISO) : undefined;
+  const currPreset = deriveRangeEndingYesterday(granularity, now);
+  const current = { start: currPreset.startTime, end: currPreset.endTime };
+  const previous = shiftRangeByDays(current, -1);
+  const donutWindow = getDonutWindow(granularity, current);
 
-  // si el bucket es diario (1d) el "donut.current" ya es un solo día = ayer
-  const current = sets.donut.current; // para total "current"
-  // para previous usamos la ventana "previous" de series (equivale a anteayer cuando bucket=1d)
-  const previous = sets.range.previous;
-
-  const curStart = toYYYYMMDD(current.start);
-  const curEnd = toYYYYMMDD(current.end);
+  const curStart = toYYYYMMDD(donutWindow.start);
+  const curEnd = toYYYYMMDD(donutWindow.end);
   const prvStart = toYYYYMMDD(previous.start);
   const prvEnd = toYYYYMMDD(previous.end);
 
@@ -111,7 +116,7 @@ export async function getCategoriesTotals(
 
   return {
     granularity,
-    range: { current: sets.range.current, previous: sets.range.previous },
+    range: { current, previous },
     property: "chatbot",
     items,
   };
