@@ -16,6 +16,8 @@ export type TownTotalsItem = {
   deltaPct: number | null;
   monthlyTotals?: number[];
   monthlyKeys?: string[];
+  monthlyTotalsPrev?: number[];
+  monthlyKeysPrev?: string[];
 };
 
 export type TownsTotalsResponse = {
@@ -70,14 +72,13 @@ export async function getTownsTotalsChatbot(
 
   let items;
   if (granularity === "y") {
-    // Consulta mensual, eje y buckets de 12 meses
     items = await Promise.all(
       TOWN_ID_ORDER.map(async (town) => {
         const [curResp, prvResp] = await Promise.all([
           fetchChatbotTags(
             {
               pattern: `root.${town}.*`,
-              granularity: "m" as ChatbotGranularity, // mensual
+              granularity: "d" as ChatbotGranularity,
               startTime: toYYYYMMDD(current.start),
               endTime: toYYYYMMDD(current.end),
             },
@@ -86,7 +87,7 @@ export async function getTownsTotalsChatbot(
           fetchChatbotTags(
             {
               pattern: `root.${town}.*`,
-              granularity: "m" as ChatbotGranularity, // mensual
+              granularity: "d" as ChatbotGranularity,
               startTime: toYYYYMMDD(previous.start),
               endTime: toYYYYMMDD(previous.end),
             },
@@ -96,21 +97,36 @@ export async function getTownsTotalsChatbot(
         // Eje de meses
         const axis = buildAxisFromChatbot(curResp.output, "y");
         const prevAxis = buildAxisFromChatbot(prvResp.output, "y");
-        // buckets mensuales
-        const getBuckets = (
+        // buckets mensuales: sumar por mes
+        const sumByMonth = (
           output: Record<string, { time: string; value: number }[]>,
           keys: string[]
         ) => {
           const map = new Map<string, number>();
-          for (const arr of Object.values(output)) {
-            for (const p of arr) {
-              map.set(p.time, (map.get(p.time) ?? 0) + (p.value || 0));
-            }
-          }
+          Object.values(output ?? {}).forEach((arr) => {
+            (arr ?? []).forEach((p) => {
+              let key;
+              if (p && typeof p.time === "string" && p.time.length === 8) {
+                key = `${p.time.slice(0, 4)}/${p.time.slice(4, 6)}`;
+              } else if (
+                p &&
+                typeof p.time === "string" &&
+                p.time.length === 7 &&
+                p.time.includes("/")
+              ) {
+                key = p.time;
+              } else if (p && typeof p.time === "string") {
+                key = p.time;
+              } else {
+                key = "";
+              }
+              if (key) map.set(key, (map.get(key) ?? 0) + (p.value || 0));
+            });
+          });
           return keys.map((k) => map.get(k) ?? 0);
         };
-        const curMonths = getBuckets(curResp.output, axis.keysOrdered);
-        const prevMonths = getBuckets(prvResp.output, prevAxis.keysOrdered);
+        const curMonths = sumByMonth(curResp.output, axis.keysOrdered);
+        const prevMonths = sumByMonth(prvResp.output, prevAxis.keysOrdered);
         const total = curMonths.reduce((a, b) => a + b, 0);
         const prev = prevMonths.reduce((a, b) => a + b, 0);
         const deltaPct = prev > 0 ? ((total - prev) / prev) * 100 : null;
@@ -119,8 +135,10 @@ export async function getTownsTotalsChatbot(
           title: town,
           total,
           deltaPct,
-          monthlyTotals: curMonths, // buckets mensuales
-          monthlyKeys: axis.keysOrdered, // claves YYYYMM
+          monthlyTotals: curMonths,
+          monthlyKeys: axis.keysOrdered,
+          monthlyTotalsPrev: prevMonths,
+          monthlyKeysPrev: prevAxis.keysOrdered,
         };
       })
     );
