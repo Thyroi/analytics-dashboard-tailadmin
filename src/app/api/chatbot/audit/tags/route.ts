@@ -1,107 +1,153 @@
-// src/app/api/chatbot/audit/tags/route.ts
 import { NextResponse } from "next/server";
-
-// ⚠️ Toggle inline (borra este if cuando ya no necesites mock)
-// true  -> usa mockGenerator (sin red externa)
-// false -> proxy a la API real
-const USE_MOCK = true;
-
-// Si luego dejas sólo la rama real, puedes borrar estas constantes:
-const MINDSAIC_BASE_URL = "https://c01.mindsaic.com:2053";
-const MINDSAIC_PATH = "/audit/tags";
-const MINDSAIC_DB = "project_huelva";
-
-type Gran = "d" | "w" | "m" | "y";
-type ReqBody = {
-  pattern: string;
-  granularity: Gran;
-  startTime?: string;
-  endTime?: string;
-  db?: string;
-};
-type Point = { time: string; value: number };
-type OkPayload = { code: number; output: Record<string, Point[]> };
 
 export const dynamic = "force-dynamic";
 
-export async function POST(req: Request) {
+type Gran = "d" | "w" | "m" | "y";
+
+/* ==================== utils fecha UTC ==================== */
+function toISO(d: Date): string {
+  return d.toISOString().slice(0, 10);
+}
+function addDaysUTC(d: Date, days: number): Date {
+  const x = new Date(
+    Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())
+  );
+  x.setUTCDate(x.getUTCDate() + days);
+  return x;
+}
+function todayUTC(): Date {
+  const now = new Date();
+  return new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
+  );
+}
+function yesterdayUTC(): Date {
+  return addDaysUTC(todayUTC(), -1);
+}
+
+/* ==================== parseo de query ==================== */
+function parsePatterns(sp: URLSearchParams): string[] {
+  // Soporta ?patterns=a,b y/o múltiples ?patterns=...
+  const all = sp.getAll("patterns");
+  const flat = all
+    .flatMap((v) => v.split(","))
+    .map((s) => s.trim())
+    .filter(Boolean);
+  return Array.from(new Set(flat));
+}
+
+/* ==================== rangos según consigna ====================
+
+  - d (day-as-week): 7 días terminando en end (incl.), previous = [end-7, end-1]
+  - w (igual que d, por tu ejemplo)
+  - m (mensual "autobucket"): 33 días terminando en end, previous = [end-33, end-1]
+  - y (anual 12 buckets): 365 días terminando en end, previous = [end-365, end-1]
+
+  Nota: todos los rangos SON inclusivos.
+*/
+function computeRanges(gran: Gran, endISO?: string) {
+  const end = endISO ? new Date(`${endISO}T00:00:00Z`) : yesterdayUTC();
+
+  const spanByG: Record<Gran, number> = {
+    d: 7, // 7 días (como tu ejemplo para day)
+    w: 7, // igual que day (como indicaste)
+    m: 33, // ventana "mensual" de 33 días (según tu ejemplo)
+    y: 365, // ventana anual exacta de 365 días
+  };
+
+  const span = spanByG[gran];
+  const currentStart = addDaysUTC(end, -(span - 1));
+  const previousStart = addDaysUTC(end, -span);
+  const previousEnd = addDaysUTC(end, -1);
+
+  return {
+    current: { start: toISO(currentStart), end: toISO(end) },
+    previous: { start: toISO(previousStart), end: toISO(previousEnd) },
+  };
+}
+
+export async function GET(req: Request) {
   try {
-    const body = (await req.json()) as ReqBody;
+    const url = new URL(req.url);
+    const sp = url.searchParams;
 
-    // Validación mínima
-    if (!body?.pattern || !body?.granularity) {
+    const gran = (sp.get("granularity") || sp.get("g") || "d").trim() as Gran;
+    if (!["d", "w", "m", "y"].includes(gran)) {
       return NextResponse.json(
-        { code: 400, error: "pattern y granularity son obligatorios" },
-        { status: 400 }
-      );
-    }
-    if (!["d", "w", "m", "y"].includes(body.granularity)) {
-      return NextResponse.json(
-        { code: 400, error: "granularity inválida" },
+        { code: 400, error: "granularity inválida. Usa d|w|m|y" },
         { status: 400 }
       );
     }
 
-    if (USE_MOCK) {
-      // ===================== MOCK BRANCH =====================
-      // Import dinámico para no cargar en el bundle si no hace falta
-      const { generateMockResponse } = await import(
-        "@/lib/mockData"
+    const patterns = parsePatterns(sp);
+    if (patterns.length === 0) {
+      return NextResponse.json(
+        {
+          code: 400,
+          error:
+            "Debes pasar al menos un patrón vía ?patterns=foo,bar o ?patterns=foo&patterns=bar",
+        },
+        { status: 400 }
       );
-      const payload: OkPayload = generateMockResponse({
-        db: body.db ?? MINDSAIC_DB,
-        pattern: body.pattern,
-        granularity: body.granularity,
-        startTime: body.startTime,
-        endTime: body.endTime,
-      });
-      return NextResponse.json(payload, { status: 200 });
-      // =======================================================
-    } else {
-      // ===================== REAL API BRANCH =================
-      // Aquí va a la API real sin tocar envs (para que puedas copiar/pegar y borrar arriba)
-      const url = `${MINDSAIC_BASE_URL}${MINDSAIC_PATH}`;
-      console.log("[chatbot→real] POST", url, {
-        db: body.db ?? MINDSAIC_DB,
-        pattern: body.pattern,
-        granularity: body.granularity,
-        startTime: body.startTime,
-        endTime: body.endTime,
-      });
-
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 15000); // 15s
-
-      const res = await fetch(url, {
-        method: "POST",
-        signal: controller.signal,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          db: body.db ?? MINDSAIC_DB,
-          pattern: body.pattern,
-          granularity: body.granularity,
-          ...(body.startTime ? { startTime: body.startTime } : null),
-          ...(body.endTime ? { endTime: body.endTime } : null),
-        }),
-      }).finally(() => clearTimeout(timeout));
-
-      if (!res.ok) {
-        const text = await res.text().catch(() => "");
-        return NextResponse.json(
-          { code: res.status, error: text || res.statusText },
-          { status: 502 }
-        );
-      }
-
-      const json = (await res.json()) as OkPayload;
-      return NextResponse.json(json, { status: 200 });
-      // =======================================================
     }
+
+    // Permite fijar el ancla de fin por query (?end=YYYY-MM-DD); si no, ayer UTC
+    const endISO = sp.get("end") || undefined;
+    const db = sp.get("db") || undefined;
+
+    // 1) Calcula los rangos con la política pedida
+    const range = computeRanges(gran, endISO);
+
+    // 2) Llama a tu endpoint real que pega a Mindsaic
+    const internalUrl = new URL(
+      "/api/chatbot/audit/tags",
+      url.origin
+    ).toString();
+    const payload = {
+      patterns,
+      granularity: gran,
+      ...(range.current.start ? { startTime: range.current.start } : null),
+      ...(range.current.end ? { endTime: range.current.end } : null),
+      ...(db ? { db } : null),
+    };
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
+
+    const res = await fetch(internalUrl, {
+      method: "POST",
+      signal: controller.signal,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    }).finally(() => clearTimeout(timeout));
+
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      return NextResponse.json(
+        { code: res.status, error: text || res.statusText },
+        { status: 502 }
+      );
+    }
+
+    const json = await res.json();
+
+    // 3) Inyecta meta/range con tu política (sin tocar el resto del payload)
+    const out = {
+      ...json,
+      meta: {
+        ...(json?.meta ?? {}),
+        range,
+        granularity: gran,
+        timezone: "UTC",
+      },
+    };
+
+    return NextResponse.json(out, { status: 200 });
   } catch (err: unknown) {
     const msg =
       err instanceof Error
         ? err.name === "AbortError"
-          ? "Timeout al conectar con Mindsaic"
+          ? "Timeout al consultar overview"
           : err.message
         : "Unknown error";
     return NextResponse.json({ code: 500, error: msg }, { status: 500 });

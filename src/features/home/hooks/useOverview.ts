@@ -63,7 +63,14 @@ export function useOverview(slice: SliceName): UseOverviewResult {
     })
       .then((res) => {
         if (ac.signal.aborted) return;
-        setData(res);
+        // Normalize meta.source to match the expected type
+        setData({
+          ...res,
+          meta: {
+            ...res.meta,
+            source: "wpideanto",
+          },
+        });
       })
       .catch((err) => {
         if (ac.signal.aborted) return;

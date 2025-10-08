@@ -20,7 +20,7 @@ type Props = {
 export default function GeneralDataCard({
   title = "Usuarios totales",
   metric = "visits",
-  defaultGranularity = "m",
+  defaultGranularity = "d",
   className = "",
 }: Props) {
   const sliceName: SliceName = metric === "interactions" ? "interactions" : "users";

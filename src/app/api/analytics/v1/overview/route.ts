@@ -1,79 +1,114 @@
 // app/api/analytics/v1/overview/route.ts
-import { NextResponse } from "next/server";
-import { google, analyticsdata_v1beta } from "googleapis";
 import type { Granularity } from "@/lib/types";
+import { analyticsdata_v1beta, google } from "googleapis";
+import { NextResponse } from "next/server";
 
+import { addDaysUTC, parseISO, toISO, todayUTC } from "@/lib/utils/datetime";
 import {
-  toISO,
-  parseISO,
-  addDaysUTC,
-  todayUTC,
-  deriveRangeEndingYesterday,
-} from "@/lib/utils/datetime";
-import { getAuth, normalizePropertyId, resolvePropertyId } from "@/lib/utils/ga";
+  getAuth,
+  normalizePropertyId,
+  resolvePropertyId,
+} from "@/lib/utils/ga";
+import { buildLaggedAxisForGranularity } from "@/lib/utils/timeAxis";
 
-/* ================= Tipos de respuesta ================= */
+/* ================= Tipos ================= */
 type Point = { label: string; value: number };
+type Range = { start: string; end: string };
 
-type OverviewPayload = {
+type OverviewResponse = {
   meta: {
-    range: { start: string; end: string };
-    granularity: Granularity; // "d" | "w" | "m"
+    range: { current: Range; previous: Range };
+    granularity: Granularity;
     timezone: "UTC";
     source: "wpideanto";
     property: string;
   };
   totals: {
-    users: number;        // activeUsers (sin dimensión) del período
-    interactions: number; // eventCount del período
+    users: number;
+    usersPrev: number;
+    interactions: number;
+    interactionsPrev: number;
   };
   series: {
     usersByBucket: Point[];
+    usersByBucketPrev: Point[];
     interactionsByBucket: Point[];
+    interactionsByBucketPrev: Point[];
   };
 };
 
-/* ================= Helpers locales mínimos ================= */
+/* ================= Helpers ================= */
+function yesterdayISO(): string {
+  const y = addDaysUTC(todayUTC(), -1);
+  return toISO(y);
+}
+function minusOneDayISO(iso: string): string {
+  return toISO(addDaysUTC(parseISO(iso), -1));
+}
+function plusOneDayISO(iso: string): string {
+  return toISO(addDaysUTC(parseISO(iso), 1));
+}
+function daysInMonthOf(iso: string): number {
+  const d = parseISO(iso);
+  const y = d.getUTCFullYear();
+  const m = d.getUTCMonth();
+  const last = new Date(Date.UTC(y, m + 1, 0));
+  return last.getUTCDate();
+}
 function listDatesISO(startISO: string, endISO: string): string[] {
   const out: string[] = [];
-  let d = parseISO(startISO);
+  let cur = parseISO(startISO);
   const end = parseISO(endISO);
-  for (; d.getTime() <= end.getTime(); d = addDaysUTC(d, 1)) {
-    out.push(toISO(d));
+  while (cur.getTime() <= end.getTime()) {
+    out.push(toISO(cur));
+    cur = addDaysUTC(cur, 1);
   }
   return out;
 }
 
-// ISO week helpers: YYYY-WW
-function isoWeek(date: Date): { year: number; week: number } {
-  const d = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
-  d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7)); // jueves de esa semana
-  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-  const week = Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
-  return { year: d.getUTCFullYear(), week };
+/* --- helpers año/mes --- */
+function addMonthsISO(iso: string, delta: number): string {
+  const d = parseISO(iso);
+  const d2 = new Date(
+    Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + delta, d.getUTCDate())
+  );
+  return toISO(d2);
 }
-function weekSpanLabels(startISO: string, endISO: string): string[] {
-  const s = parseISO(startISO);
-  const e = parseISO(endISO);
-  const labels = new Set<string>();
-  for (let d = new Date(s); d <= e; d = addDaysUTC(d, 1)) {
-    const { year, week } = isoWeek(d);
-    labels.add(`${year}-W${String(week).padStart(2, "0")}`);
-  }
-  return Array.from(labels).sort();
+function firstDayOfMonthISO(anchorISO: string, monthsBack: number): string {
+  const d = parseISO(anchorISO);
+  const d2 = new Date(
+    Date.UTC(d.getUTCFullYear(), d.getUTCMonth() - monthsBack, 1)
+  );
+  return toISO(d2);
 }
-function monthSpanLabels(startISO: string, endISO: string): string[] {
-  const s = parseISO(startISO);
-  const e = parseISO(endISO);
+function lastDayOfMonthISO(anchorISO: string): string {
+  const d = parseISO(anchorISO);
+  const last = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0));
+  return toISO(last);
+}
+/** 12 claves YYYY-MM desde (end - 11 meses) a end */
+function listLast12YearMonthKeys(endISO: string): string[] {
+  const end = parseISO(endISO);
   const out: string[] = [];
-  let y = s.getUTCFullYear();
-  let m = s.getUTCMonth();
-  while (y < e.getUTCFullYear() || (y === e.getUTCFullYear() && m <= e.getUTCMonth())) {
-    out.push(`${y}-${String(m + 1).padStart(2, "0")}`);
-    m++;
-    if (m > 11) { m = 0; y++; }
+  for (let i = 11; i >= 0; i--) {
+    const d = new Date(
+      Date.UTC(end.getUTCFullYear(), end.getUTCMonth() - i, 1)
+    );
+    out.push(
+      `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`
+    );
   }
   return out;
+}
+/** alinear previous (YYYY-MM) a las claves actuales sumando 1 mes */
+function plusOneMonthYM(ym: string): string {
+  const [y, m] = ym.split("-").map(Number);
+  const d = new Date(Date.UTC(y, m - 1, 1));
+  const d2 = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1));
+  return `${d2.getUTCFullYear()}-${String(d2.getUTCMonth() + 1).padStart(
+    2,
+    "0"
+  )}`;
 }
 
 /* ================= Handler ================= */
@@ -81,168 +116,175 @@ export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
 
-    const start = searchParams.get("start") || undefined;
-    const end = searchParams.get("end") || undefined;
+    const gParam = (
+      searchParams.get("granularity") ||
+      searchParams.get("g") ||
+      "d"
+    ).toLowerCase() as Granularity;
 
-    // Sólo soportamos "d" | "w" | "m" aquí. Si llega "y", el cliente ya lo mapea a "m".
-    const granParam = (searchParams.get("granularity") || "d").toLowerCase();
-    const granularity: Granularity =
-      granParam === "w" ? "w" : granParam === "m" ? "m" : "d";
+    // Ancla de fin (?end=YYYY-MM-DD); default: ayer UTC
+    const endISO = searchParams.get("end") || yesterdayISO();
 
-    // Rango: si no pasan start/end, usamos ventana que TERMINA AYER.
-    // Para 'd' queremos 7 días terminando AYER (dayAsWeek=true) para tener serie, no 1 solo punto.
-    const range =
-      start && end
-        ? { start, end }
-        : (() => {
-            const r = deriveRangeEndingYesterday(granularity, todayUTC());
-            return { start: r.startTime, end: r.endTime };
-          })();
+    // ===== Config por granularidad (rango + claves + labels) =====
+    type DimName = "date" | "yearMonth";
+    let dimensionTime: DimName;
+    let curRange: Range;
+    let prevRange: Range;
+    let dictKeys: string[];
+    let outLabels: string[];
 
-    // Auth + GA
+    if (gParam === "m") {
+      // === MES: buckets DIARIOS del MES de endISO (respeta 28/29/30/31)
+      dimensionTime = "date";
+      const nDays = daysInMonthOf(endISO);
+      const startCur = toISO(addDaysUTC(parseISO(endISO), -(nDays - 1)));
+      curRange = { start: startCur, end: endISO };
+      // previous desplazado -1 día (ventana solapada)
+      prevRange = {
+        start: minusOneDayISO(startCur),
+        end: minusOneDayISO(endISO),
+      };
+      dictKeys = listDatesISO(curRange.start, curRange.end); // YYYY-MM-DD
+      outLabels = dictKeys.map((k) => k.slice(8, 10)); // "DD"
+    } else if (gParam === "y") {
+      // === AÑO: 12 buckets MENSUALES (solo MM)
+      dimensionTime = "yearMonth";
+
+      // RANGO ACTUAL: del 1º de hace 11 meses hasta endISO (mes actual parcial)
+      const curStart = firstDayOfMonthISO(endISO, 11);
+      curRange = { start: curStart, end: endISO };
+
+      // RANGO PREVIO (CORREGIDO): 1º de hace 12 meses .. último día del mes anterior
+      const prevStart = firstDayOfMonthISO(endISO, 12);
+      const prevEnd = lastDayOfMonthISO(addMonthsISO(endISO, -1));
+      prevRange = { start: prevStart, end: prevEnd };
+
+      // 12 claves YYYY-MM actuales y labels "MM"
+      dictKeys = listLast12YearMonthKeys(endISO);
+      outLabels = dictKeys.map((k) => k.slice(5, 7)); // "01".."12"
+    } else {
+      // === D / W: eje diario + previous desfase -1 día
+      const axis = buildLaggedAxisForGranularity(gParam, { endISO });
+
+      curRange = axis.curRange as Range;
+      prevRange = {
+        start: minusOneDayISO(curRange.start),
+        end: minusOneDayISO(curRange.end),
+      };
+
+      dictKeys = axis.xLabels as string[]; // YYYY-MM-DD
+      dimensionTime = "date";
+      outLabels = dictKeys;
+    }
+
+    // ===== GA =====
     const auth = getAuth();
     const analyticsData = google.analyticsdata({ version: "v1beta", auth });
     const property = normalizePropertyId(resolvePropertyId());
 
-    /* 1) Totales sin dimensión (usuarios correctos de-duplicados + interacciones) */
-    const reqTotals: analyticsdata_v1beta.Schema$RunReportRequest = {
-      dateRanges: [{ startDate: range.start, endDate: range.end }],
-      metrics: [{ name: "activeUsers" }, { name: "eventCount" }],
-      keepEmptyRows: false,
-      limit: "1",
+    // Normalizar claves que devuelve GA
+    const normKey = (raw: string) => {
+      if (dimensionTime === "date") {
+        return raw.length === 8
+          ? `${raw.slice(0, 4)}-${raw.slice(4, 6)}-${raw.slice(6, 8)}`
+          : raw;
+      }
+      // yearMonth → "YYYYMM" a "YYYY-MM"
+      return raw.length === 6 ? `${raw.slice(0, 4)}-${raw.slice(4)}` : raw;
     };
-    const respTotals = await analyticsData.properties.runReport({
-      property,
-      requestBody: reqTotals,
-    });
-    const totalsRow = (respTotals.data.rows ?? [])[0];
-    const usersTotal = totalsRow ? Number(totalsRow.metricValues?.[0]?.value ?? 0) : 0;
-    const interactionsTotal = totalsRow ? Number(totalsRow.metricValues?.[1]?.value ?? 0) : 0;
 
-    /* 2) Series por granularidad (con zero-fill de buckets) */
-    let usersSeries: Point[] = [];
-    let interactionsSeries: Point[] = [];
+    // Alinear previous a las claves actuales (y: +1 mes, d/w: +1 día)
+    const translatePrevToCur = (key: string) =>
+      dimensionTime === "yearMonth" ? plusOneMonthYM(key) : plusOneDayISO(key);
 
-    if (granularity === "d") {
-      // Diario: dimensión "date" → YYYYMMDD
-      const reqDaily: analyticsdata_v1beta.Schema$RunReportRequest = {
+    async function fetchUsersSeries(
+      range: Range,
+      isPrev = false
+    ): Promise<Point[]> {
+      const req: analyticsdata_v1beta.Schema$RunReportRequest = {
         dateRanges: [{ startDate: range.start, endDate: range.end }],
-        metrics: [{ name: "activeUsers" }, { name: "eventCount" }],
-        dimensions: [{ name: "date" }],
+        metrics: [{ name: "activeUsers" }],
+        dimensions: [{ name: dimensionTime }],
         keepEmptyRows: false,
-        orderBys: [{ dimension: { dimensionName: "date" } }],
+        orderBys: [{ dimension: { dimensionName: dimensionTime } }],
         limit: "100000",
       };
-      const respDaily = await analyticsData.properties.runReport({
+      const resp = await analyticsData.properties.runReport({
         property,
-        requestBody: reqDaily,
+        requestBody: req,
       });
-
-      const baseUsers = new Map<string, number>();
-      const baseInter = new Map<string, number>();
-      for (const d of listDatesISO(range.start, range.end)) {
-        baseUsers.set(d, 0);
-        baseInter.set(d, 0);
+      const dict = new Map<string, number>(dictKeys.map((k) => [k, 0]));
+      for (const r of resp.data.rows ?? []) {
+        const raw = String(r.dimensionValues?.[0]?.value ?? "");
+        const k = normKey(raw);
+        const kAligned = isPrev ? translatePrevToCur(k) : k;
+        if (dict.has(kAligned))
+          dict.set(kAligned, Number(r.metricValues?.[0]?.value ?? 0));
       }
-
-      for (const r of respDaily.data.rows ?? []) {
-        const dateRaw = String(r.dimensionValues?.[0]?.value ?? ""); // YYYYMMDD
-        if (dateRaw.length !== 8) continue;
-        const iso = `${dateRaw.slice(0, 4)}-${dateRaw.slice(4, 6)}-${dateRaw.slice(6, 8)}`;
-        baseUsers.set(iso, Number(r.metricValues?.[0]?.value ?? 0));
-        baseInter.set(iso, Number(r.metricValues?.[1]?.value ?? 0));
-      }
-
-      usersSeries = Array.from(baseUsers.entries())
-        .sort(([a], [b]) => (a < b ? -1 : 1))
-        .map(([label, value]) => ({ label, value }));
-
-      interactionsSeries = Array.from(baseInter.entries())
-        .sort(([a], [b]) => (a < b ? -1 : 1))
-        .map(([label, value]) => ({ label, value }));
-
-    } else if (granularity === "w") {
-      // Semanal: dimensión "yearWeek" → "YYYYWW"
-      const reqWeek: analyticsdata_v1beta.Schema$RunReportRequest = {
-        dateRanges: [{ startDate: range.start, endDate: range.end }],
-        metrics: [{ name: "activeUsers" }, { name: "eventCount" }],
-        dimensions: [{ name: "yearWeek" }],
-        keepEmptyRows: false,
-        orderBys: [{ dimension: { dimensionName: "yearWeek" } }],
-        limit: "100000",
-      };
-      const respWeek = await analyticsData.properties.runReport({
-        property,
-        requestBody: reqWeek,
-      });
-
-      const base: Record<string, { u: number; i: number }> = {};
-      for (const label of weekSpanLabels(range.start, range.end)) {
-        base[label] = { u: 0, i: 0 };
-      }
-
-      for (const r of respWeek.data.rows ?? []) {
-        const yW = String(r.dimensionValues?.[0]?.value ?? ""); // "YYYYWW"
-        if (yW.length !== 6) continue;
-        const label = `${yW.slice(0, 4)}-W${yW.slice(4)}`;
-        if (!base[label]) base[label] = { u: 0, i: 0 };
-        base[label].u += Number(r.metricValues?.[0]?.value ?? 0);
-        base[label].i += Number(r.metricValues?.[1]?.value ?? 0);
-      }
-
-      const labels = Object.keys(base).sort();
-      usersSeries = labels.map((l) => ({ label: l, value: base[l].u }));
-      interactionsSeries = labels.map((l) => ({ label: l, value: base[l].i }));
-
-    } else {
-      // Mensual: dimensión "month" → "YYYYMM"
-      const reqMonth: analyticsdata_v1beta.Schema$RunReportRequest = {
-        dateRanges: [{ startDate: range.start, endDate: range.end }],
-        metrics: [{ name: "activeUsers" }, { name: "eventCount" }],
-        dimensions: [{ name: "month" }],
-        keepEmptyRows: false,
-        orderBys: [{ dimension: { dimensionName: "month" } }],
-        limit: "100000",
-      };
-      const respMonth = await analyticsData.properties.runReport({
-        property,
-        requestBody: reqMonth,
-      });
-
-      const base: Record<string, { u: number; i: number }> = {};
-      for (const label of monthSpanLabels(range.start, range.end)) {
-        base[label] = { u: 0, i: 0 };
-      }
-
-      for (const r of respMonth.data.rows ?? []) {
-        const ym = String(r.dimensionValues?.[0]?.value ?? ""); // "YYYYMM"
-        if (ym.length !== 6) continue;
-        const label = `${ym.slice(0, 4)}-${ym.slice(4)}`;
-        if (!base[label]) base[label] = { u: 0, i: 0 };
-        base[label].u += Number(r.metricValues?.[0]?.value ?? 0);
-        base[label].i += Number(r.metricValues?.[1]?.value ?? 0);
-      }
-
-      const labels = Object.keys(base).sort();
-      usersSeries = labels.map((l) => ({ label: l, value: base[l].u }));
-      interactionsSeries = labels.map((l) => ({ label: l, value: base[l].i }));
+      return dictKeys.map((k, i) => ({
+        label: outLabels[i],
+        value: dict.get(k) ?? 0,
+      }));
     }
 
-    const payload: OverviewPayload = {
+    // ⬇⬇⬇ CAMBIO AQUÍ: eventCount **SIN** filtrar a page_view (todas las interacciones GA4)
+    async function fetchInteractionsSeries(
+      range: Range,
+      isPrev = false
+    ): Promise<Point[]> {
+      const req: analyticsdata_v1beta.Schema$RunReportRequest = {
+        dateRanges: [{ startDate: range.start, endDate: range.end }],
+        metrics: [{ name: "eventCount" }],
+        dimensions: [{ name: dimensionTime }],
+        keepEmptyRows: false,
+        orderBys: [{ dimension: { dimensionName: dimensionTime } }],
+        limit: "100000",
+      };
+      const resp = await analyticsData.properties.runReport({
+        property,
+        requestBody: req,
+      });
+      const dict = new Map<string, number>(dictKeys.map((k) => [k, 0]));
+      for (const r of resp.data.rows ?? []) {
+        const raw = String(r.dimensionValues?.[0]?.value ?? "");
+        const k = normKey(raw);
+        const kAligned = isPrev ? translatePrevToCur(k) : k;
+        if (dict.has(kAligned))
+          dict.set(kAligned, Number(r.metricValues?.[0]?.value ?? 0));
+      }
+      return dictKeys.map((k, i) => ({
+        label: outLabels[i],
+        value: dict.get(k) ?? 0,
+      }));
+    }
+
+    const [usersCur, usersPrev, interCur, interPrev] = await Promise.all([
+      fetchUsersSeries(curRange, false),
+      fetchUsersSeries(prevRange, true),
+      fetchInteractionsSeries(curRange, false),
+      fetchInteractionsSeries(prevRange, true),
+    ]);
+
+    const sum = (arr: Point[]) => arr.reduce((a, p) => a + p.value, 0);
+    const payload: OverviewResponse = {
       meta: {
-        range,
-        granularity,
+        range: { current: curRange, previous: prevRange },
+        granularity: gParam,
         timezone: "UTC",
         source: "wpideanto",
         property,
       },
       totals: {
-        users: usersTotal,
-        interactions: interactionsTotal,
+        users: sum(usersCur),
+        usersPrev: sum(usersPrev),
+        interactions: sum(interCur),
+        interactionsPrev: sum(interPrev),
       },
       series: {
-        usersByBucket: usersSeries,
-        interactionsByBucket: interactionsSeries,
+        usersByBucket: usersCur,
+        usersByBucketPrev: usersPrev,
+        interactionsByBucket: interCur,
+        interactionsByBucketPrev: interPrev,
       },
     };
 

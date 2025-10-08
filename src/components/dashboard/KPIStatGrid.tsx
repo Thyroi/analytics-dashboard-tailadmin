@@ -1,5 +1,6 @@
 "use client";
 
+import PagerDots from "@/components/common/PagerDots";
 import * as React from "react";
 import KPIStatCard, { type Props as KPIStatCardProps } from "./KPIStatCard";
 
@@ -8,6 +9,8 @@ type Props = {
   className?: string;
   colsClassName?: string;
   minItemWidth?: number;
+  infiniteRow?: boolean;
+  itemsPerPage?: number;
 };
 
 export default function KPIStatGrid({
@@ -15,16 +18,44 @@ export default function KPIStatGrid({
   className = "",
   colsClassName = "",
   minItemWidth = 221,
+  infiniteRow = false,
+  itemsPerPage = 4,
 }: Props) {
+  const [page, setPage] = React.useState(0);
+  const pages = infiniteRow
+    ? Math.max(1, Math.ceil(items.length / itemsPerPage))
+    : 1;
+  const sliceStart = infiniteRow ? page * itemsPerPage : 0;
+  const slice = infiniteRow
+    ? items.slice(sliceStart, sliceStart + itemsPerPage)
+    : items;
+
+  const next = () => setPage((p) => Math.min(pages - 1, p + 1));
+  const prev = () => setPage((p) => Math.max(0, p - 1));
+
   return (
     <div
       className={`grid items-stretch gap-6 ${colsClassName} ${className}`}
-      /** ⬇️ clave: tantas columnas como quepan, cada item con mínimo 221px */
-      style={{ gridTemplateColumns: `repeat(auto-fit, minmax(${minItemWidth}px, 1fr))` }}
+      style={{
+        gridTemplateColumns: `repeat(auto-fit, minmax(${minItemWidth}px, 1fr))`,
+      }}
     >
-      {items.map((it, i) => (
-        <KPIStatCard key={`${it.title}-${i}`} {...it} delay={it.delay ?? i * 0.1} />
+      {slice.map((it, i) => (
+        <KPIStatCard
+          key={`${it.title}-${i + sliceStart}`}
+          {...it}
+          delay={it.delay ?? (i + sliceStart) * 0.1}
+        />
       ))}
+      {infiniteRow && items.length > itemsPerPage && (
+        <PagerDots
+          className="mt-3"
+          page={page}
+          pages={pages}
+          onPrev={prev}
+          onNext={next}
+        />
+      )}
     </div>
   );
 }

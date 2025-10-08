@@ -5,13 +5,7 @@
 
 import type { CategoryId } from "@/lib/taxonomy/categories";
 import { TownId } from "@/lib/taxonomy/towns";
-import type {
-  DateRange,
-  DonutDatum,
-  Granularity,
-  Point,
-  SeriesPoint,
-} from "@/lib/types";
+import type { DonutDatum, Granularity, Point, SeriesPoint } from "@/lib/types";
 
 /* ============================ Helpers ============================ */
 
@@ -67,19 +61,26 @@ export async function fetchJSON<T>(
 /** Respuesta normalizada del endpoint /api/analytics/v1/overview */
 export type OverviewResponse = {
   meta: {
-    range: DateRange; // {startTime, endTime} | null
-    granularity: Granularity; // "d" | "w" | "m" | "y"
+    range: {
+      current: { start: string; end: string };
+      previous: { start: string; end: string };
+    };
+    granularity: Granularity;
     timezone: "UTC";
     source: "wpideanto";
     property: string;
   };
   totals: {
     users: number;
+    usersPrev: number;
     interactions: number;
+    interactionsPrev: number;
   };
   series: {
     usersByBucket: Point[];
+    usersByBucketPrev: Point[];
     interactionsByBucket: Point[];
+    interactionsByBucketPrev: Point[];
   };
 };
 

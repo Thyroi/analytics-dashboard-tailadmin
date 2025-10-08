@@ -1,68 +1,60 @@
-import type { OverviewResponse } from "@/lib/api/analytics";
 import { buildQS, fetchJSON } from "@/lib/api/analytics";
 import type { DateRange, Granularity } from "@/lib/types";
 
-/* ----- tipos mínimos del payload server para normalizar ----- */
-type MetaRangeStartEnd = { start: string; end: string };
-type MetaRangeStartTimeEndTime = { startTime: string; endTime: string };
+type Point = { label: string; value: number };
 type OverviewResponseServer = {
   meta: {
-    range: MetaRangeStartEnd | MetaRangeStartTimeEndTime;
+    range: {
+      current: { start: string; end: string };
+      previous: { start: string; end: string };
+    };
     granularity: Granularity;
     timezone: "UTC";
-    source: "wpideanto";
+    source: string;
     property: string;
   };
-  totals: { users: number; interactions: number };
+  totals: {
+    users: number;
+    usersPrev: number;
+    interactions: number;
+    interactionsPrev: number;
+  };
   series: {
-    usersByBucket: Array<{ label: string; value: number }>;
-    interactionsByBucket: Array<{ label: string; value: number }>;
+    usersByBucket: Point[];
+    usersByBucketPrev: Point[];
+    interactionsByBucket: Point[];
+    interactionsByBucketPrev: Point[];
   };
 };
 
-function hasStartEnd(
-  r: MetaRangeStartEnd | MetaRangeStartTimeEndTime
-): r is MetaRangeStartEnd {
-  return "start" in r && "end" in r;
-}
+export type OverviewResponse = {
+  meta: OverviewResponseServer["meta"];
+  totals: OverviewResponseServer["totals"];
+  series: OverviewResponseServer["series"];
+};
 
 function normalizeOverviewResponse(
   input: OverviewResponseServer
 ): OverviewResponse {
-  const range = hasStartEnd(input.meta.range)
-    ? { startTime: input.meta.range.start, endTime: input.meta.range.end }
-    : input.meta.range;
-
   return {
-    meta: {
-      range,
-      granularity: input.meta.granularity,
-      timezone: input.meta.timezone,
-      source: input.meta.source,
-      property: input.meta.property,
-    },
+    meta: input.meta,
     totals: input.totals,
     series: input.series,
   };
 }
 
-/** GET /api/analytics/v1/overview */
 export async function getOverview(input: {
-  range?: DateRange; // si no viene => el server deriva (terminando AYER)
-  granularity: Granularity; // "d" | "w" | "m" | "y" (y -> m)
+  range?: DateRange;
+  granularity: Granularity;
   signal?: AbortSignal;
 }): Promise<OverviewResponse> {
-  // El server solo soporta d/w/m; mapeamos 'y' a 'm'
-  const g = input.granularity === "y" ? "m" : input.granularity;
-
-  // Si NO nos pasan range, NO enviamos start/end => que el server aplique deriveRangeEndingYesterday
+  const g = input.granularity;
   const qs = buildQS({
     ...(input.range?.startTime && input.range?.endTime
       ? { start: input.range.startTime, end: input.range.endTime }
       : {}),
     granularity: g,
   });
-
   const url = `/api/analytics/v1/overview?${qs}`;
   const raw = await fetchJSON<OverviewResponseServer>(url, {
     method: "GET",

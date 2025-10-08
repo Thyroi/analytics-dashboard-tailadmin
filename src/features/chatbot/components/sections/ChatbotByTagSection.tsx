@@ -14,11 +14,18 @@ import type { TownId } from "@/lib/taxonomy/towns";
 import type { DonutDatum, Granularity, SeriesPoint } from "@/lib/types";
 import { labelToTownId } from "@/lib/utils/sector";
 
+import TopCategoriesKPI from "../TopCategoriesKPI";
 import { useCategoriesTotals } from "@/features/chatbot/hooks/useCategoriesTotals";
 import { useCategoryDetailsChatbot } from "@/features/chatbot/hooks/useCategoryDetailsChatbot";
+import { useTopCategories } from "@/features/chatbot/hooks/useTopKategories";
 
 /* ============ sección interna ============ */
 function ChatbotByTagSectionInner() {
+  // ...existing code...
+  // ...existing context and state code...
+
+  // TOP CATEGORIES KPI (declaración después de obtener granularity y endISO)
+
   const {
     mode,
     granularity,
@@ -29,6 +36,14 @@ function ChatbotByTagSectionInner() {
     clearRange,
     endISO,
   } = useTagTimeframe();
+
+  // TOP CATEGORIES KPI (declaración justo después de obtener granularity y endISO)
+  const topPatterns = CATEGORY_ID_ORDER.map((cat) => `root.${cat}`);
+  const { data: topCategories, isLoading: isTopLoading } = useTopCategories({
+    patterns: topPatterns,
+    granularity,
+    endTime: endISO,
+  });
 
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
@@ -103,6 +118,15 @@ function ChatbotByTagSectionInner() {
 
   return (
     <section className="max-w-[1560px]">
+      {/* TOP CATEGORIES KPI */}
+      <div>
+        {isTopLoading ? (
+          <div className="mb-6">Cargando KPIs...</div>
+        ) : topCategories && topCategories.length > 0 ? (
+          <TopCategoriesKPI items={topCategories} />
+        ) : null}
+      </div>
+
       <StickyHeaderSection
         title="Chatbot · Analíticas por categoría"
         subtitle="Totales, delta y drill por municipio (donut = último bucket)"

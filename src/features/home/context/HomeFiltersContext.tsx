@@ -10,7 +10,7 @@ import React, {
 import type { Granularity, SliceName } from "@/lib/types";
 import {
   deriveAutoRangeForGranularity,
-  rangeToPreset, // 👈 convertidor {start,end} -> {startTime,endTime}
+  rangeToPreset,
 } from "@/lib/utils/datetime";
 
 type Range = { startTime: string; endTime: string };
@@ -48,7 +48,7 @@ type ProviderProps = {
 
 export function HomeFiltersProvider({
   children,
-  initialGranularity = "m",
+  initialGranularity = "d",
   initialDateFrom,
   initialDateTo,
 }: ProviderProps) {
