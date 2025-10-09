@@ -2,8 +2,9 @@
 
 import HomeProviders from "@/features/home/providers/HomeProviders";
 import GeneralDataSection from "@/features/home/sections/GeneralDataSection";
-import SectorsByTagSection from "@/features/home/sectors/SectorsByTagSection";
-import SectorsByTownSection from "@/features/home/sectors/SectorsByTownSection";
+import SectorsByTagSection from "@/features/home/sections/SectorsByTagSection";
+import SectorsByTownSection from "@/features/home/sections/SectorsByTownSection";
+
 
 
 export default function Home() {

@@ -1,5 +1,6 @@
 "use client";
 
+import { useTownTimeframe } from "@/features/analytics/context/TownTimeContext";
 import { useTownDetails } from "@/features/home/hooks/useTownDetails";
 import { useTownsTotals } from "@/features/home/hooks/useTownsTotals";
 import SectorsGrid from "@/features/home/sectors/SectorsGrid";
@@ -8,13 +9,26 @@ import { TOWN_ID_ORDER } from "@/lib/taxonomy/towns";
 import type { Granularity } from "@/lib/types";
 import { useMemo, useState } from "react";
 
-const GRANULARITIES: Granularity[] = ["d", "w", "m", "y"];
+type Props = {
+  granularity: Granularity;
+};
 
-export default function SectorsByTownSection() {
-  const [granularity, setGranularity] = useState<Granularity>("m");
+export default function SectorsByTownSection({ granularity }: Props) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  const { state, ids, itemsById } = useTownsTotals(granularity);
+  // Obtener fechas del contexto
+  const { startDate, endDate, mode } = useTownTimeframe();
+
+  // Preparar parámetros de tiempo para los hooks
+  const timeParams =
+    mode === "range"
+      ? {
+          startISO: startDate.toISOString().split("T")[0],
+          endISO: endDate.toISOString().split("T")[0],
+        }
+      : { endISO: endDate.toISOString().split("T")[0] };
+
+  const { state, ids, itemsById } = useTownsTotals(granularity, timeParams);
   const displayedIds = useMemo<string[]>(
     () => (state.status === "ready" ? (ids as string[]) : [...TOWN_ID_ORDER]),
     [state.status, ids]
@@ -23,7 +37,8 @@ export default function SectorsByTownSection() {
   const townId = expandedId as TownId | null;
   const { series, donutData } = useTownDetails(
     townId ?? ("almonte" as TownId),
-    granularity
+    granularity,
+    timeParams
   );
 
   const getDeltaPctFor = (id: string) =>
@@ -37,39 +52,11 @@ export default function SectorsByTownSection() {
 
   return (
     <section className="max-w-[1560px]">
-      <h3 className="mb-3 flex items-center gap-2 text-xl font-semibold text-gray-900 dark:text-gray-100">
-        <span className="inline-grid h-7 w-7 place-items-center rounded-lg bg-sky-100 text-sky-700 ring-1 ring-black/5">
-          <span className="text-sm">🗺️</span>
-        </span>
-        Interacciones por municipios
-        <span className="ml-auto inline-flex gap-2 rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-[#0c1116] p-1">
-          {GRANULARITIES.map((g) => (
-            <button
-              key={g}
-              onClick={() => setGranularity(g)}
-              className={`px-3 py-1.5 text-sm rounded-lg ${
-                granularity === g
-                  ? "bg-gray-900 text-white dark:bg-white dark:text-gray-900"
-                  : "text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/5"
-              }`}
-            >
-              {g === "d"
-                ? "Día"
-                : g === "w"
-                ? "Semana"
-                : g === "m"
-                ? "Mes"
-                : "Año"}
-            </button>
-          ))}
-        </span>
-      </h3>
-
       <SectorsGrid
         mode="town"
         ids={displayedIds}
         granularity={granularity}
-        onGranularityChange={setGranularity}
+        onGranularityChange={() => {}} // No usado, controlado por el sticky header
         getDeltaPctFor={getDeltaPctFor}
         getSeriesFor={getSeriesFor}
         getDonutFor={getDonutFor}

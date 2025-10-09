@@ -1,5 +1,6 @@
 "use client";
 
+import { useTagTimeframe } from "@/features/analytics/context/TagTimeContext";
 import { useCategoriesTotals } from "@/features/home/hooks/useCategoriesTotals";
 import { useCategoryDetails } from "@/features/home/hooks/useCategoryDetails";
 import SectorsGrid from "@/features/home/sectors/SectorsGrid";
@@ -8,13 +9,29 @@ import { CATEGORY_ID_ORDER } from "@/lib/taxonomy/categories";
 import type { Granularity } from "@/lib/types";
 import { useMemo, useState } from "react";
 
-const GRANULARITIES: Granularity[] = ["d", "w", "m", "y"];
+type Props = {
+  granularity: Granularity;
+};
 
-export default function SectorsByTagSection() {
-  const [granularity, setGranularity] = useState<Granularity>("m");
+export default function SectorsByTagSection({ granularity }: Props) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  const { state, ids, itemsById } = useCategoriesTotals(granularity);
+  // Obtener fechas del contexto
+  const { startDate, endDate, mode } = useTagTimeframe();
+
+  // Preparar parámetros de tiempo para los hooks
+  const timeParams =
+    mode === "range"
+      ? {
+          startISO: startDate.toISOString().split("T")[0],
+          endISO: endDate.toISOString().split("T")[0],
+        }
+      : { endISO: endDate.toISOString().split("T")[0] };
+
+  const { state, ids, itemsById } = useCategoriesTotals(
+    granularity,
+    timeParams
+  );
   const displayedIds = useMemo<string[]>(
     () =>
       state.status === "ready" ? (ids as string[]) : [...CATEGORY_ID_ORDER],
@@ -24,7 +41,8 @@ export default function SectorsByTagSection() {
   const catId = expandedId as CategoryId | null;
   const { series, donutData } = useCategoryDetails(
     catId ?? ("naturaleza" as CategoryId),
-    granularity
+    granularity,
+    timeParams
   );
 
   const getDeltaPctFor = (id: string) =>
@@ -40,39 +58,11 @@ export default function SectorsByTagSection() {
 
   return (
     <section className="max-w-[1560px]">
-      <h3 className="mb-3 flex items-center gap-2 text-xl font-semibold text-gray-900 dark:text-gray-100">
-        <span className="inline-grid h-7 w-7 place-items-center rounded-lg bg-rose-100 text-rose-700 ring-1 ring-black/5">
-          <span className="text-sm">🔎</span>
-        </span>
-        Interacciones por sectores
-        <span className="ml-auto inline-flex gap-2 rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-[#0c1116] p-1">
-          {GRANULARITIES.map((g) => (
-            <button
-              key={g}
-              onClick={() => setGranularity(g)}
-              className={`px-3 py-1.5 text-sm rounded-lg ${
-                granularity === g
-                  ? "bg-gray-900 text-white dark:bg-white dark:text-gray-900"
-                  : "text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/5"
-              }`}
-            >
-              {g === "d"
-                ? "Día"
-                : g === "w"
-                ? "Semana"
-                : g === "m"
-                ? "Mes"
-                : "Año"}
-            </button>
-          ))}
-        </span>
-      </h3>
-
       <SectorsGrid
         mode="tag"
         ids={displayedIds}
         granularity={granularity}
-        onGranularityChange={setGranularity}
+        onGranularityChange={() => {}} // No usado, controlado por el sticky header
         getDeltaPctFor={getDeltaPctFor}
         getSeriesFor={getSeriesFor}
         getDonutFor={getDonutFor}

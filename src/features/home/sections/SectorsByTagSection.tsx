@@ -29,7 +29,7 @@ function InnerSectorsByTagSection() {
         onRangeChange={setRange}
         onClearRange={clearRange}
       />
-      <SectorsByTagSectionContent />
+      <SectorsByTagSectionContent granularity={granularity} />
     </section>
   );
 }

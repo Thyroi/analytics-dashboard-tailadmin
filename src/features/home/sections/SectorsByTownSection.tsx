@@ -29,7 +29,7 @@ function InnerSectorsByTownSection() {
         onRangeChange={setRange}
         onClearRange={clearRange}
       />
-      <SectorsByTownSectionContent />
+      <SectorsByTownSectionContent granularity={granularity} />
     </section>
   );
 }
