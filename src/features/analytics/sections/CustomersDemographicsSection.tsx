@@ -9,6 +9,7 @@ import {
   selectCountriesView,
   selectMapMarkers,
 } from "@/features/analytics/selectors/demographics";
+import { CustomersDemographicsSkeleton } from "@/features/analytics/skeletons";
 import { useMemo, useState } from "react";
 import { useHeaderAnalyticsTimeframe } from "../context/HeaderAnalyticsTimeContext";
 
@@ -74,9 +75,10 @@ export default function CustomersDemographicsSection() {
 
   if (isLoading) {
     return (
-      <div className={CARD_CLASS}>
-        <div className="card-body">Cargando…</div>
-      </div>
+      <CustomersDemographicsSkeleton
+        mapHeight={MAP_HEIGHT}
+        className={CARD_CLASS}
+      />
     );
   }
 
