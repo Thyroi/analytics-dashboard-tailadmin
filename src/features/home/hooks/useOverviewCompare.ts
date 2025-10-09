@@ -61,6 +61,34 @@ export default function useOverviewCompare(
 
   const { currentValue, deltaPct } = useMemo(() => {
     if (!currentData) return { currentValue: 0, deltaPct: 0 };
+
+    // Para granularidad diaria, usar el último punto de la serie en lugar del total
+    if (granularity === "d") {
+      const currSeries =
+        metric === "users" || metric === "visits"
+          ? currentData.series.usersByBucket
+          : currentData.series.interactionsByBucket;
+
+      const prevSeries =
+        metric === "users" || metric === "visits"
+          ? currentData.series.usersByBucketPrev
+          : currentData.series.interactionsByBucketPrev;
+
+      // Valor del último día (último punto de la serie actual)
+      const lastDayValue =
+        currSeries.length > 0 ? currSeries[currSeries.length - 1].value : 0;
+
+      // Para el delta, comparar con el último día del período anterior
+      const lastDayPrevValue =
+        prevSeries.length > 0 ? prevSeries[prevSeries.length - 1].value : 0;
+
+      return {
+        currentValue: lastDayValue,
+        deltaPct: Math.round(pctChange(lastDayValue, lastDayPrevValue)),
+      };
+    }
+
+    // Para otras granularidades (w, m, y), usar totales como antes
     const currTot =
       metric === "users" || metric === "visits"
         ? currentData.totals.users
@@ -73,7 +101,7 @@ export default function useOverviewCompare(
       currentValue: currTot,
       deltaPct: Math.round(pctChange(currTot, prevTot)),
     };
-  }, [currentData, metric]);
+  }, [currentData, metric, granularity]);
 
   // Ya no hay loading/error previos porque todo viene en el mismo payload
   return {
