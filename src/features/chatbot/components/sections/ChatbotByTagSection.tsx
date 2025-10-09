@@ -7,17 +7,15 @@ import {
 import { useMemo, useState } from "react";
 
 import StickyHeaderSection from "@/features/analytics/sectors/expanded/SectorExpandedCardDetailed/StickyHeaderSection";
-import SectorsGridDetailed from "@/features/analytics/sectors/SectorsGridDetailed";
 
 import { CATEGORY_ID_ORDER, type CategoryId } from "@/lib/taxonomy/categories";
 import type { TownId } from "@/lib/taxonomy/towns";
 import type { DonutDatum, Granularity, SeriesPoint } from "@/lib/types";
-import { labelToTownId } from "@/lib/utils/sector";
 
+// import { useCategoriesTotals } from "@/features/chatbot/hooks/useCategoriesTotals"; // TEMPORALMENTE DESACTIVADO
+// import { useCategoryDetailsChatbot } from "@/features/chatbot/hooks/useCategoryDetailsChatbot"; // TEMPORALMENTE DESACTIVADO
+import { useTopCategories } from "@/features/chatbot/hooks/useTopCategories";
 import TopCategoriesKPI from "../TopCategoriesKPI";
-import { useCategoriesTotals } from "@/features/chatbot/hooks/useCategoriesTotals";
-import { useCategoryDetailsChatbot } from "@/features/chatbot/hooks/useCategoryDetailsChatbot";
-import { useTopCategories } from "@/features/chatbot/hooks/useTopKategories";
 
 /* ============ sección interna ============ */
 function ChatbotByTagSectionInner() {
@@ -37,23 +35,32 @@ function ChatbotByTagSectionInner() {
     endISO,
   } = useTagTimeframe();
 
-  // TOP CATEGORIES KPI (declaración justo después de obtener granularity y endISO)
-  const topPatterns = CATEGORY_ID_ORDER.map((cat) => `root.${cat}`);
+  // TOP CATEGORIES KPI (declaración justo después de obtener granularidad y rango)
+  // Usamos un patrón amplio para obtener TODAS las categorías y sus variantes
+  const topPatterns = ["root.*"];
+  const startISO = startDate.toISOString().split("T")[0];
   const { data: topCategories, isLoading: isTopLoading } = useTopCategories({
     patterns: topPatterns,
-    granularity,
+    granularity: granularity as Granularity,
+    startTime: startISO,
     endTime: endISO,
   });
 
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  // DELTAS (independiente de analytics)
-  const {
-    state,
-    ids,
-    itemsById,
-    isFetching: isDeltaLoading,
-  } = useCategoriesTotals(granularity, endISO);
+  // DELTAS (independiente de analytics) - TEMPORALMENTE DESACTIVADO
+  // const {
+  //   state,
+  //   ids,
+  //   itemsById,
+  //   isFetching: isDeltaLoading,
+  // } = useCategoriesTotals(granularity, endISO);
+
+  // Mock data para evitar errores
+  const state = { status: "ready" as const };
+  const ids = CATEGORY_ID_ORDER;
+  const itemsById = {};
+  const isDeltaLoading = false;
 
   const displayedIds = useMemo<string[]>(
     () =>
@@ -69,64 +76,42 @@ function ChatbotByTagSectionInner() {
   const [drill, setDrill] = useState<Drill | null>(null);
   const catId = expandedId as CategoryId | null;
 
-  // Series & donut (independiente de analytics)
-  const catForDetails =
-    (drill?.kind === "category" ? drill.categoryId : catId) ??
-    ("naturaleza" as CategoryId);
-  const { data: details } = useCategoryDetailsChatbot(
-    catForDetails,
-    granularity as Granularity,
-    endISO
-  );
+  // Series & donut (independiente de analytics) - TEMPORALMENTE DESACTIVADO
+  // const catForDetails =
+  //   (drill?.kind === "category" ? drill.categoryId : catId) ??
+  //   ("naturaleza" as CategoryId);
+  // const { data: details } = useCategoryDetailsChatbot(
+  //   catForDetails,
+  //   granularity as Granularity,
+  //   endISO
+  // );
 
   const seriesCat = {
-    current: (details?.current ?? []) as SeriesPoint[],
-    previous: (details?.previous ?? []) as SeriesPoint[],
+    current: [] as SeriesPoint[], // (details?.current ?? []) as SeriesPoint[],
+    previous: [] as SeriesPoint[], // (details?.previous ?? []) as SeriesPoint[],
   };
-  const donutCat = (details?.donut ?? []) as DonutDatum[];
+  const donutCat = [] as DonutDatum[]; // (details?.donut ?? []) as DonutDatum[];
 
-  const getDeltaPctFor = (id: string) =>
-    state.status === "ready"
-      ? itemsById[id as CategoryId]?.deltaPct ?? null
-      : null;
+  const getDeltaPctFor = (_id: string) => null; // itemsById[id as CategoryId]?.deltaPct ?? null
 
   const getSeriesFor = (_id: string) => {
-    if (catId && _id === catId) return seriesCat;
     return { current: [], previous: [] };
   };
 
   const getDonutFor = (_id: string) => {
-    if (catId && _id === catId) return donutCat;
     return [];
   };
 
-  const handleOpen = (id: string) => {
-    setExpandedId(id);
-    setDrill({ kind: "category", categoryId: id as CategoryId });
+  const handleOpen = (_id: string) => {
+    // Temporalmente desactivado
   };
 
-  const handleSliceClick = (label: string) => {
-    const townId = labelToTownId(label);
-    if (townId && expandedId) {
-      setDrill({
-        kind: "town+cat",
-        townId,
-        categoryId: expandedId as CategoryId,
-      });
-    }
+  const handleSliceClick = (_label: string) => {
+    // Temporalmente desactivado
   };
 
   return (
     <section className="max-w-[1560px]">
-      {/* TOP CATEGORIES KPI */}
-      <div>
-        {isTopLoading ? (
-          <div className="mb-6">Cargando KPIs...</div>
-        ) : topCategories && topCategories.length > 0 ? (
-          <TopCategoriesKPI items={topCategories} />
-        ) : null}
-      </div>
-
       <StickyHeaderSection
         title="Chatbot · Analíticas por categoría"
         subtitle="Totales, delta y drill por municipio (donut = último bucket)"
@@ -138,7 +123,14 @@ function ChatbotByTagSectionInner() {
         onRangeChange={setRange}
         onClearRange={clearRange}
       />
-
+      <div>
+        {isTopLoading ? (
+          <div className="mb-6">Cargando KPIs...</div>
+        ) : topCategories && topCategories.length > 0 ? (
+          <TopCategoriesKPI items={topCategories} />
+        ) : null}
+      </div>
+      {/* TEMPORALMENTE DESACTIVADO - SectorsGridDetailed
       <SectorsGridDetailed
         mode="tag"
         ids={displayedIds}
@@ -164,6 +156,7 @@ function ChatbotByTagSectionInner() {
         startDate={startDate}
         endDate={endDate}
       />
+      */}
     </section>
   );
 }

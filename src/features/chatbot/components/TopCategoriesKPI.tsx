@@ -12,14 +12,13 @@ export default function TopCategoriesKPI({
     icon: ChartBarIcon,
     color: "from-blue-500 to-indigo-500",
   }));
+
   return (
-    <div className="w-full h-[350px]">
-      <KPIStatGrid
-        items={kpis}
-        infiniteRow={true}
-        itemsPerPage={4}
-        className="mb-6"
-      />
-    </div>
+    <KPIStatGrid
+      items={kpis}
+      infiniteRow={true}
+      itemsPerPage={4}
+      className="mb-6"
+    />
   );
 }

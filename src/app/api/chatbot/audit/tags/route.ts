@@ -153,3 +153,62 @@ export async function GET(req: Request) {
     return NextResponse.json({ code: 500, error: msg }, { status: 500 });
   }
 }
+
+export async function POST(req: Request) {
+  try {
+    const body = await req.json();
+    const { pattern, granularity, startTime, endTime, db } = body;
+
+    // Validación básica
+    if (!pattern || !granularity) {
+      return NextResponse.json(
+        { code: 400, error: "pattern y granularity son obligatorios" },
+        { status: 400 }
+      );
+    }
+
+    if (!["d", "w", "m", "y"].includes(granularity)) {
+      return NextResponse.json(
+        { code: 400, error: "granularity inválida. Usa d|w|m|y" },
+        { status: 400 }
+      );
+    }
+
+    // Llamada directa a la API de Mindsaic
+    const mindsaicUrl = "https://c01.mindsaic.com:2053/audit/tags";
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
+
+    const res = await fetch(mindsaicUrl, {
+      method: "POST",
+      signal: controller.signal,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        db: db || "project_huelva",
+        pattern,
+        granularity,
+        ...(startTime && { startTime }),
+        ...(endTime && { endTime }),
+      }),
+    }).finally(() => clearTimeout(timeout));
+
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      return NextResponse.json(
+        { code: res.status, error: text || res.statusText },
+        { status: 502 }
+      );
+    }
+
+    const json = await res.json();
+    return NextResponse.json(json, { status: 200 });
+  } catch (err: unknown) {
+    const msg =
+      err instanceof Error
+        ? err.name === "AbortError"
+          ? "Timeout al conectar con Mindsaic"
+          : err.message
+        : "Unknown error";
+    return NextResponse.json({ code: 500, error: msg }, { status: 500 });
+  }
+}

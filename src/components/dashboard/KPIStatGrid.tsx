@@ -34,27 +34,25 @@ export default function KPIStatGrid({
   const prev = () => setPage((p) => Math.max(0, p - 1));
 
   return (
-    <div
-      className={`grid items-stretch gap-6 ${colsClassName} ${className}`}
-      style={{
-        gridTemplateColumns: `repeat(auto-fit, minmax(${minItemWidth}px, 1fr))`,
-      }}
-    >
-      {slice.map((it, i) => (
-        <KPIStatCard
-          key={`${it.title}-${i + sliceStart}`}
-          {...it}
-          delay={it.delay ?? (i + sliceStart) * 0.1}
-        />
-      ))}
+    <div className={className}>
+      <div
+        className={`grid items-stretch gap-6 ${colsClassName}`}
+        style={{
+          gridTemplateColumns: `repeat(auto-fit, minmax(${minItemWidth}px, 1fr))`,
+        }}
+      >
+        {slice.map((it, i) => (
+          <KPIStatCard
+            key={`${it.title}-${i + sliceStart}`}
+            {...it}
+            delay={it.delay ?? (i + sliceStart) * 0.1}
+          />
+        ))}
+      </div>
       {infiniteRow && items.length > itemsPerPage && (
-        <PagerDots
-          className="mt-3"
-          page={page}
-          pages={pages}
-          onPrev={prev}
-          onNext={next}
-        />
+        <div className="flex justify-center mt-3">
+          <PagerDots page={page} pages={pages} onPrev={prev} onNext={next} />
+        </div>
       )}
     </div>
   );

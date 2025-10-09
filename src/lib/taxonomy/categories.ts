@@ -21,8 +21,8 @@ export type CategoryId =
 
 export type CategoryMeta = {
   id: CategoryId;
-  label: string;     // etiqueta UI exacta
-  iconSrc: string;   // ruta pública al icono (carpeta /public/tags)
+  label: string; // etiqueta UI exacta
+  iconSrc: string; // ruta pública al icono (carpeta /public/tags)
 };
 
 export const CATEGORY_ID_ORDER: readonly CategoryId[] = [
@@ -103,8 +103,9 @@ export const CATEGORY_META: Record<CategoryId, CategoryMeta> = {
   },
 };
 
-export const CATEGORIES: ReadonlyArray<CategoryMeta> =
-  CATEGORY_ID_ORDER.map((id) => CATEGORY_META[id]);
+export const CATEGORIES: ReadonlyArray<CategoryMeta> = CATEGORY_ID_ORDER.map(
+  (id) => CATEGORY_META[id]
+);
 
 export function getCategoryLabel(id: CategoryId): string {
   return CATEGORY_META[id].label;
@@ -114,41 +115,76 @@ export function getCategoryIconSrc(id: CategoryId): string {
   return CATEGORY_META[id].iconSrc;
 }
 
-// 👇 Añadir al final de lib/taxonomy/categories.ts
+/**
+ * Sinónimos y variantes frecuentes que deben mapear a cada categoría.
+ * Nota: aquí solo categorías raíz (no añadimos subtemas como “fauna”, “otros”, etc.)
+ */
 export const CATEGORY_SYNONYMS: Record<CategoryId, string[]> = {
-  naturaleza: ["naturaleza", "nature"],
+  naturaleza: ["naturaleza", "nature", "fauna"],
   fiestasTradiciones: [
-    "fiestas-tradiciones",
     "fiestas-y-tradiciones",
+    "fiestas_tradiciones",
+    "fiestas_y_tradiciones",
+    "fiestas-tradiciones",
+    "fiestas",
+    "fiestas y tradiciones",
     "festivals-and-traditions",
     "festivals_traditions",
-    "fiestas",
   ],
   playas: ["playas", "playa", "beaches", "beach"],
   espaciosMuseisticos: [
     "espacios-museisticos",
     "espacios_museisticos",
+    // variantes con acentos/errores comunes que vimos en datos
+    "espacios-museísticos",
+    "espacios_museísticos",
+    "espacios-museíticos",
+    "espacios_museíticos",
     "museos",
     "museums",
     "museum-spaces",
     "museum_spaces",
   ],
-  patrimonio: ["patrimonio", "heritage"],
-  rutasCulturales: ["rutas-culturales", "cultural-routes", "cultural_routes"],
+  patrimonio: [
+    "patrimonio",
+    "heritage",
+    "iglesias", // aparece en datos pero es subtema -> lo dejamos por robustez
+  ],
+  rutasCulturales: [
+    "rutas-culturales",
+    "rutas_culturales",
+    "cultural-routes",
+    "cultural_routes",
+    // en datos aparece “rutas” a secas; preferimos mapearlo aquí (no a senderismo)
+    "rutas",
+    "rutas culturales",
+  ],
   rutasSenderismo: [
     "rutas-senderismo",
+    "rutas_senderismo",
     "rutas-senderismo-y-cicloturistas",
-    "senderismo",
     "hiking",
     "hiking-and-cycling-routes",
     "hiking_and_cycling_routes",
+    "senderismo",
     "btt",
     "vias-verdes",
     "vias_verdes",
+    "vías",
+    "vias",
   ],
-  sabor: ["sabor", "taste", "gastronomia", "food"],
-  donana: ["donana", "doñana", "donana-2", "donana_2", "donana2"],
-  circuitoMonteblanco: ["circuito-monteblanco", "monteblanco"],
-  laRabida: ["la-rabida", "rabida", "la_rabida"],
-  lugaresColombinos: ["lugares-colombinos", "colombinos", "lugares_colombinos"],
+  sabor: ["sabor", "taste", "gastronomia", "gastronomía", "food"],
+  donana: ["donana", "doñana"],
+  circuitoMonteblanco: [
+    "circuito-monteblanco",
+    "circuito_monteblanco",
+    "monteblanco",
+  ],
+  laRabida: ["la-rabida", "la_rabida", "rabida"],
+  lugaresColombinos: [
+    "lugares-colombinos",
+    "lugares_colombinos",
+    "colombinos",
+    "lugares colombinos",
+  ],
 };
