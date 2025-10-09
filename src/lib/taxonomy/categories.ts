@@ -17,7 +17,9 @@ export type CategoryId =
   | "donana"
   | "circuitoMonteblanco"
   | "laRabida"
-  | "lugaresColombinos";
+  | "lugaresColombinos"
+  | "historia"
+  | "otros";
 
 export type CategoryMeta = {
   id: CategoryId;
@@ -38,6 +40,8 @@ export const CATEGORY_ID_ORDER: readonly CategoryId[] = [
   "circuitoMonteblanco",
   "laRabida",
   "lugaresColombinos",
+  "historia",
+  "otros",
 ] as const;
 
 export const CATEGORY_META: Record<CategoryId, CategoryMeta> = {
@@ -101,6 +105,16 @@ export const CATEGORY_META: Record<CategoryId, CategoryMeta> = {
     label: "LUGARES COLOMBINOS",
     iconSrc: "/tags/colombinos.png",
   },
+  historia: {
+    id: "historia",
+    label: "HISTORIA",
+    iconSrc: "/tags/patrimonio.png", // reutilizamos icono de patrimonio
+  },
+  otros: {
+    id: "otros",
+    label: "OTROS",
+    iconSrc: "/tags/patrimonio.png", // icono genérico
+  },
 };
 
 export const CATEGORIES: ReadonlyArray<CategoryMeta> = CATEGORY_ID_ORDER.map(
@@ -140,6 +154,12 @@ export const CATEGORY_SYNONYMS: Record<CategoryId, string[]> = {
     "espacios_museísticos",
     "espacios-museíticos",
     "espacios_museíticos",
+    // ERROR TIPOGRÁFICO común en API: "museiticos" (falta 's')
+    "espacios-museiticos",
+    "espacios_museiticos",
+    // Variantes exactas sin tildes que aparecen en los datos
+    "espacios_museiticos",
+    "espacios-museiticos",
     "museos",
     "museums",
     "museum-spaces",
@@ -174,17 +194,19 @@ export const CATEGORY_SYNONYMS: Record<CategoryId, string[]> = {
     "vias",
   ],
   sabor: ["sabor", "taste", "gastronomia", "gastronomía", "food"],
-  donana: ["donana", "doñana"],
+  donana: ["donana", "doñana", "donana", "doñana"],
   circuitoMonteblanco: [
     "circuito-monteblanco",
     "circuito_monteblanco",
     "monteblanco",
   ],
-  laRabida: ["la-rabida", "la_rabida", "rabida"],
+  laRabida: ["la-rabida", "la_rabida", "rabida", "larabida"],
   lugaresColombinos: [
     "lugares-colombinos",
     "lugares_colombinos",
     "colombinos",
     "lugares colombinos",
   ],
+  historia: ["historia", "history", "historico", "histórico"],
+  otros: ["otros", "other", "others", "varios", "miscelanea", "miscelánea"],
 };

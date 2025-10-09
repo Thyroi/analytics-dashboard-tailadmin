@@ -157,12 +157,12 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { pattern, granularity, startTime, endTime, db } = body;
+    const { patterns, granularity, startTime, endTime, db } = body;
 
     // Validación básica
-    if (!pattern || !granularity) {
+    if (!patterns || !granularity) {
       return NextResponse.json(
-        { code: 400, error: "pattern y granularity son obligatorios" },
+        { code: 400, error: "patterns y granularity son obligatorios" },
         { status: 400 }
       );
     }
@@ -185,7 +185,7 @@ export async function POST(req: Request) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         db: db || "project_huelva",
-        pattern,
+        patterns: patterns, // La API externa espera 'patterns'
         granularity,
         ...(startTime && { startTime }),
         ...(endTime && { endTime }),
