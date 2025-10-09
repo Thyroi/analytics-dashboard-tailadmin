@@ -1,10 +1,14 @@
 "use client";
 
-import { MapPinIcon } from "@heroicons/react/24/solid";
-import { useMemo, useState } from "react";
 import DeltaCard from "@/components/common/DeltaCard";
 import type { DonutDatum, Granularity, SeriesPoint } from "@/lib/types";
-import { orderIdsByTaxonomy, sectorIconSrc, sectorTitle } from "@/lib/utils/sector";
+import {
+  orderIdsByTaxonomy,
+  sectorIconSrc,
+  sectorTitle,
+} from "@/lib/utils/sector";
+import { MapPinIcon } from "@heroicons/react/24/solid";
+import { useMemo, useState } from "react";
 import SectorExpandedCard from "./SectorExpandedCard";
 
 type Mode = "tag" | "town";
@@ -15,7 +19,10 @@ type Props = {
   granularity: Granularity;
   onGranularityChange: (g: Granularity) => void;
 
-  getSeriesFor: (id: string) => { current: SeriesPoint[]; previous: SeriesPoint[] };
+  getSeriesFor: (id: string) => {
+    current: SeriesPoint[];
+    previous: SeriesPoint[];
+  };
   getDonutFor: (id: string) => DonutDatum[];
   getDeltaPctFor: (id: string) => number | null;
 
@@ -36,27 +43,27 @@ export default function SectorsGrid({
   mode,
   ids,
   granularity,
-  onGranularityChange,
+  // onGranularityChange, // No usado en la versión simplificada
   getSeriesFor,
   getDonutFor,
   getDeltaPctFor,
   expandedId: controlledExpandedId,
   onOpen,
   onClose,
-  startDate,
-  endDate,
+  // startDate, // No usado en la versión simplificada
+  // endDate, // No usado en la versión simplificada
   isDeltaLoading = false,
 }: Props) {
   const [uncontrolled, setUncontrolled] = useState<string | null>(null);
   const expandedId =
     controlledExpandedId !== undefined ? controlledExpandedId : uncontrolled;
 
-  const handleOpen = (id: string) => (onOpen ? onOpen(id) : setUncontrolled(id));
+  const handleOpen = (id: string) =>
+    onOpen ? onOpen(id) : setUncontrolled(id);
   const handleClose = () => (onClose ? onClose() : setUncontrolled(null));
 
   const orderedIds = useMemo(() => orderIdsByTaxonomy(mode, ids), [mode, ids]);
   const isTown = mode === "town";
-  const now = new Date();
 
   return (
     <div
@@ -69,7 +76,11 @@ export default function SectorsGrid({
         const variant =
           imgSrc !== undefined
             ? { imgSrc }
-            : { Icon: MapPinIcon as React.ComponentType<React.SVGProps<SVGSVGElement>> };
+            : {
+                Icon: MapPinIcon as React.ComponentType<
+                  React.SVGProps<SVGSVGElement>
+                >,
+              };
 
         const deltaPct = getDeltaPctFor(id);
 
@@ -84,18 +95,12 @@ export default function SectorsGrid({
               <SectorExpandedCard
                 title={title}
                 deltaPct={deltaPct ?? 0}
-                mode="granularity"
-                granularity={granularity}
-                onGranularityChange={onGranularityChange}
-                startDate={startDate ?? now}
-                endDate={endDate ?? now}
-                onRangeChange={() => {}}
-                onClearRange={() => {}}
                 current={s.current}
                 previous={s.previous}
                 donutData={donutData}
                 onClose={handleClose}
                 isTown={isTown}
+                granularity={granularity}
                 {...variant}
               />
             </div>

@@ -97,6 +97,13 @@ export default function DonutCard({
   );
   const isEmpty = items.length === 0 || sum <= 0;
 
+  // Calcular columnas automáticamente si no se especifica
+  const autoColumns = useMemo(() => {
+    if (legendColumns !== undefined) return legendColumns;
+    // Si hay más de 5 items, usar 2 columnas; si no, 1 columna
+    return items.length > 5 ? 2 : 1;
+  }, [legendColumns, items.length]);
+
   const centerValue = useMemo(() => {
     if (isEmpty) return 0;
     if (typeof centerValueOverride === "number") return centerValueOverride;
@@ -225,9 +232,9 @@ export default function DonutCard({
               ? {
                   selectedLabel,
                   onSelect: handleSelect,
-                  columns: legendColumns ?? 2,
+                  columns: autoColumns,
                 }
-              : { columns: legendColumns ?? 1 })}
+              : { columns: autoColumns })}
             className="mt-4"
           />
         )}

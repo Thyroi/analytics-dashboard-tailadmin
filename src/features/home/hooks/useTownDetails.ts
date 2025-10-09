@@ -33,14 +33,16 @@ function hasStringKey<K extends string>(
   x: unknown,
   key: K
 ): x is Record<K, string> {
-  return isRecord(x) && key in x && typeof (x as Record<string, unknown>)[key] === "string";
+  return (
+    isRecord(x) &&
+    key in x &&
+    typeof (x as Record<string, unknown>)[key] === "string"
+  );
 }
 
 function isFullRange(t: TimeParams): t is { startISO: string; endISO: string } {
   return (
-    isRecord(t) &&
-    hasStringKey(t, "startISO") &&
-    hasStringKey(t, "endISO")
+    isRecord(t) && hasStringKey(t, "startISO") && hasStringKey(t, "endISO")
   );
 }
 
@@ -58,7 +60,8 @@ function normalizeTime(time?: TimeParams | string): {
 } {
   if (typeof time === "string") return { endISO: time };
   if (!time) return {};
-  if (isFullRange(time)) return { startISO: time.startISO, endISO: time.endISO };
+  if (isFullRange(time))
+    return { startISO: time.startISO, endISO: time.endISO };
   return { endISO: time.endISO };
 }
 
@@ -99,6 +102,7 @@ function useTownDetailsImpl(
 
   useEffect(() => {
     if (!id) return;
+    
     abortRef.current?.abort();
     const ac = new AbortController();
     abortRef.current = ac;
@@ -120,7 +124,8 @@ function useTownDetailsImpl(
         if (ac.signal.aborted) return;
 
         const series =
-          raw.series ?? ({ current: [], previous: [] } as {
+          raw.series ??
+          ({ current: [], previous: [] } as {
             current: SeriesPoint[];
             previous: SeriesPoint[];
           });

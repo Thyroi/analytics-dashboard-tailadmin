@@ -80,7 +80,5 @@ export async function getTopCategories({
     }))
     .slice(0, 10);
 
-  console.log("📈 Resultado final con nueva función:", items);
-
   return items;
 }

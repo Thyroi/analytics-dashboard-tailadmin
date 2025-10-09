@@ -155,14 +155,21 @@ export async function GET(
       );
     }
 
-    // Serie → d usa dayAsWeek; Donut → si d, sólo el día final
+    // Serie → d usa dayAsWeek; Donut → si d, sólo el día final; si no, mismo rango
     const now = endISO ? parseISO(endISO) : todayUTC();
     const dayAsWeek = g === "d";
     const cur = deriveRangeEndingYesterday(g, now, dayAsWeek);
     const current: DateRange = { start: cur.startTime, end: cur.endTime };
     const previous: DateRange = shiftRangeByDays(current, -1);
+
+    // 🔧 FIX: Para granularidad diaria, donut usa current.end - 1 (día anterior); para otras, mismo rango que series
     const donutWindow: DateRange =
-      g === "d" ? { start: current.end, end: current.end } : current;
+      g === "d"
+        ? (() => {
+            const prevDay = toISO(addDaysUTC(parseISO(current.end), -1));
+            return { start: prevDay, end: prevDay }; // current.end - 1
+          })()
+        : current; // Mismo rango que las series
 
     // Eje
     const isYearly = g === "y";
@@ -252,10 +259,14 @@ export async function GET(
 
       const v = Number(mets[0]?.value ?? 0);
 
+      // 🔧 FIX: Parsear y filtrar por pueblo ANTES de acumular series
+      const parsed = parseTownCatSub(path);
+      if (parsed.townId !== townId) continue;
+
       const inCur = iso >= current.start && iso <= current.end;
       const inPrev = iso >= previous.start && iso <= previous.end;
 
-      // Serie total (por pueblo; si hay categoría, igual computa totales)
+      // Serie total (ahora ya filtrada por pueblo específico)
       if (inCur) {
         const k = isYearly ? keyMonth : keyDay;
         const idx = curIndex.get(k);
@@ -269,9 +280,6 @@ export async function GET(
 
       // Donut/seriesByUrl sólo dentro del donutWindow
       if (iso < donutWindow.start || iso > donutWindow.end) continue;
-
-      const parsed = parseTownCatSub(path);
-      if (parsed.townId !== townId) continue;
 
       if (!useCategoryMode) {
         // Nivel 1 dentro del pueblo: donut de CATEGORÍAS
@@ -340,22 +348,21 @@ export async function GET(
       );
     }
     return NextResponse.json(
-  {
-    granularity: g,
-    range: { current, previous },
-    property,
-    id: townId,
-    title: TOWN_META[townId].label,
-    series,
-    xLabels,
-    donutData: donut,
-    donut,
-    deltaPct,
-    seriesByUrl,
-  },
-  { status: 200 }
-);
-
+      {
+        granularity: g,
+        range: { current, previous },
+        property,
+        id: townId,
+        title: TOWN_META[townId].label,
+        series,
+        xLabels,
+        donutData: donut,
+        donut,
+        deltaPct,
+        seriesByUrl,
+      },
+      { status: 200 }
+    );
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : "Unknown error";
     return NextResponse.json({ error: msg }, { status: 500 });

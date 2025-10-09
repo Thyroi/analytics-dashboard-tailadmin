@@ -44,11 +44,13 @@ export default function SectorsByTownSection({ granularity }: Props) {
   const getDeltaPctFor = (id: string) =>
     state.status === "ready" ? itemsById[id as TownId]?.deltaPct ?? null : null;
 
-  const getSeriesFor = (_id: string) =>
-    townId && _id === townId ? series : { current: [], previous: [] };
+  const getSeriesFor = (_id: string) => {
+    return townId && _id === townId ? series : { current: [], previous: [] };
+  };
 
-  const getDonutFor = (_id: string) =>
-    townId && _id === townId ? donutData : [];
+  const getDonutFor = (_id: string) => {
+    return townId && _id === townId ? donutData : [];
+  };
 
   return (
     <section className="max-w-[1560px]">
