@@ -71,12 +71,11 @@ export async function getTopCategories({
   // Usar la nueva función de agregación que maneja correctamente las sumas
   const aggregatedCategories = aggregateCategoriesForUI(data.output);
 
-
   const items = aggregatedCategories
     .map((cat) => ({
       key: cat.id,
       value: cat.value,
-      time: "", 
+      time: "",
     }))
     .slice(0, 10);
 

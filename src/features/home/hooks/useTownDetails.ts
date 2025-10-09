@@ -102,7 +102,7 @@ function useTownDetailsImpl(
 
   useEffect(() => {
     if (!id) return;
-    
+
     abortRef.current?.abort();
     const ac = new AbortController();
     abortRef.current = ac;
