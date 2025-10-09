@@ -14,6 +14,7 @@ type DonutSectionProps = {
   actionButtonTarget?: string;
   title?: string;
   titleColor?: string;
+  showActivityButton?: boolean;
 };
 
 export default function DonutSection({
@@ -24,6 +25,7 @@ export default function DonutSection({
   actionButtonTarget,
   title = "Subcategorías",
   titleColor = "text-gray-700",
+  showActivityButton = true,
 }: DonutSectionProps) {
   const items = useMemo<DonutCardItem[]>(
     () =>
@@ -43,7 +45,7 @@ export default function DonutSection({
       titleClassName={titleColor}
       centerTitle={centerLabel}
       centerValueOverride={centerValueOverride}
-      actionHref={actionButtonTarget}
+      actionHref={showActivityButton ? actionButtonTarget : undefined}
       height={180}
     />
   );

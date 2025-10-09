@@ -39,6 +39,7 @@ type Base = {
   className?: string;
   donutCenterLabel?: string;
   actionButtonTarget?: string;
+  showActivityButton?: boolean;
   /** Para formatear el eje X en el modo "line" */
   granularity?: Granularity;
 };
@@ -87,6 +88,7 @@ export default function ChartPair(props: Props) {
         onSliceClick={props.onDonutSlice}
         centerLabel={props.donutCenterLabel}
         actionButtonTarget={props.actionButtonTarget}
+        showActivityButton={props.showActivityButton}
       />
     </div>
   );

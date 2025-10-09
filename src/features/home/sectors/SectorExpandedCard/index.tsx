@@ -46,11 +46,16 @@ export default function SectorExpandedCard(props: Props) {
 
   const Icon = "Icon" in props ? props.Icon : undefined;
 
+  // Subtítulo explicativo según el tipo de entidad
+  const subtitle = isTown
+    ? "Visualizaciones de página por categoría de interés turístico"
+    : "Visualizaciones de página distribuidas por pueblo";
 
   return (
     <div className="rounded-2xl border border-gray-200 dark:border-white/10 bg-[#fff7ed] dark:bg-[#0c1116] p-3 shadow-sm w-full">
       <Header
         title={title}
+        subtitle={subtitle}
         isTown={isTown}
         imgSrc={imgSrc}
         Icon={Icon}
@@ -62,8 +67,9 @@ export default function SectorExpandedCard(props: Props) {
         series={{ current, previous }}
         donutData={donutData}
         deltaPct={deltaPct}
-        donutCenterLabel={isTown ? "Categorías" : "Pueblos"}
+        donutCenterLabel="Interacciones"
         actionButtonTarget={isTown ? "categoría" : "pueblo"}
+        showActivityButton={false}
         className=""
         granularity={granularity}
       />
