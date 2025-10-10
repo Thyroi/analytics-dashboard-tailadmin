@@ -1,7 +1,7 @@
 "use client";
 
 import { useTagTimeframe } from "@/features/analytics/context/TagTimeContext";
-import { useCategoriesTotals } from "@/features/home/hooks/useCategoriesTotals";
+import { useCategoriesTotals } from "@/features/analytics/hooks/categorias";
 import { useCategoryDetails } from "@/features/home/hooks/useCategoryDetails";
 import SectorsGrid from "@/features/home/sectors/SectorsGrid";
 import type { CategoryId } from "@/lib/taxonomy/categories";

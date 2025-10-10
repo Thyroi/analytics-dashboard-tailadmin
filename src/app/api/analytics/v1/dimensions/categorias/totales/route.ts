@@ -1,57 +1,35 @@
-// src/app/api/analytics/v1/dimensions/categorias/totals/route.ts
-import type { Granularity } from "@/lib/types";
-import { google } from "googleapis";
-import { NextResponse } from "next/server";
+/**
+ * /api/analytics/v1/dimensions/categorias/totales/route.ts
+ * Endpoint EXACTO como el original pero usando taxonomía oficial
+ */
 
+import {
+  type CategoryId,
+  CATEGORY_ID_ORDER,
+  CATEGORY_SYNONYMS,
+  getCategoryLabel,
+} from "@/lib/taxonomy/categories";
+import type { Granularity } from "@/lib/types";
+import {
+  getAuth,
+  normalizePropertyId,
+  resolvePropertyId,
+} from "@/lib/utils/ga";
 import { buildUnionRunReportRequest } from "@/lib/utils/ga4Requests";
 import {
   computeDeltaPct,
   computeRangesFromQuery,
   safeUrlPathname,
 } from "@/lib/utils/timeWindows";
-import {
-  getAuth,
-  normalizePropertyId,
-  resolvePropertyId,
-} from "@/lib/utils/ga";
+import { google } from "googleapis";
+import { NextResponse } from "next/server";
 
-/** ========= Taxonomía mínima (id -> posibles slugs en URL) ========= */
-const CATEGORY_SLUGS: Record<string, string[]> = {
-  circuitoMonteblanco: ["circuito-monteblanco", "monteblanco"],
-  donana: ["donana", "doñana"],
-  espaciosMuseisticos: [
-    "espacios-museisticos",
-    "museos",
-    "museistics",
-    "museistics-es",
-  ],
-  fiestasTradiciones: [
-    "fiestas-tradiciones",
-    "festivals-and-traditions",
-    "fiestas",
-  ],
-  laRabida: ["la-rabida", "rabida"],
-  lugaresColombinos: ["lugares-colombinos", "colombinos"],
-  naturaleza: ["naturaleza", "nature"],
-  patrimonio: ["patrimonio", "heritage"],
-  playa: ["playa", "playas", "beaches", "beach"],
-  rutasCulturales: ["rutas-culturales", "cultural-routes"],
-  rutasSenderismo: [
-    "rutas-senderismo",
-    "senderismo",
-    "btt",
-    "vias-verdes",
-    "hiking",
-    "cicloturistas",
-  ],
-  sabor: ["sabor", "taste", "gastronomia", "food"],
-};
-type CategoryId = keyof typeof CATEGORY_SLUGS;
-
-/* -------- matching por path -------- */
+/* -------- matching por path (EXACTO como el original) -------- */
 function matchCategoryIdFromPath(path: string): CategoryId | null {
   const lc = path.toLowerCase();
-  for (const [catId, slugs] of Object.entries(CATEGORY_SLUGS)) {
+
+  for (const categoryId of CATEGORY_ID_ORDER) {
+    const slugs = CATEGORY_SYNONYMS[categoryId];
     if (
       slugs.some(
         (s) =>
@@ -61,13 +39,13 @@ function matchCategoryIdFromPath(path: string): CategoryId | null {
           lc.includes(`_${s}_`)
       )
     ) {
-      return catId as CategoryId;
+      return categoryId;
     }
   }
   return null;
 }
 
-/* -------- handler -------- */
+/* -------- handler (EXACTO como el original) -------- */
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
@@ -77,8 +55,40 @@ export async function GET(req: Request) {
     const startQ = searchParams.get("start");
     const endQ = searchParams.get("end");
 
+    // DEBUG: Log de parámetros recibidos
+    console.log("🔍 DEBUG /totales endpoint:", {
+      url: req.url,
+      granularity: g,
+      start: startQ,
+      end: endQ,
+    });
+
     // Rangos con política (desplazamiento con solape)
     const ranges = computeRangesFromQuery(g, startQ, endQ);
+
+    // DEBUG: Log de rangos calculados con explicación
+    console.log("📅 DEBUG rangos calculados:", {
+      granularity: g,
+      logic:
+        startQ && endQ
+          ? "Rango personalizado (start + end)"
+          : endQ
+          ? `Preset terminando en ${endQ}`
+          : "Preset terminando AYER",
+      current: ranges.current,
+      previous: ranges.previous,
+      currentDuration: getDurationDays(ranges.current),
+      previousDuration: getDurationDays(ranges.previous),
+    });
+
+    // Helper para calcular duración en días
+    function getDurationDays(range: { start: string; end: string }): number {
+      const start = new Date(range.start);
+      const end = new Date(range.end);
+      return (
+        Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1
+      );
+    }
 
     // GA
     const auth = getAuth();
@@ -113,13 +123,15 @@ export async function GET(req: Request) {
     });
     const rows = resp.data.rows ?? [];
 
+    // Inicializar totales usando las categorías de la taxonomía
     const currentTotals: Record<CategoryId, number> = Object.fromEntries(
-      (Object.keys(CATEGORY_SLUGS) as CategoryId[]).map((k) => [k, 0])
+      CATEGORY_ID_ORDER.map((k) => [k, 0])
     ) as Record<CategoryId, number>;
     const previousTotals: Record<CategoryId, number> = Object.fromEntries(
-      (Object.keys(CATEGORY_SLUGS) as CategoryId[]).map((k) => [k, 0])
+      CATEGORY_ID_ORDER.map((k) => [k, 0])
     ) as Record<CategoryId, number>;
 
+    // Procesar filas (EXACTO como el original)
     for (const r of rows) {
       const dateRaw = String(r.dimensionValues?.[0]?.value ?? ""); // YYYYMMDD
       if (dateRaw.length !== 8) continue;
@@ -142,12 +154,13 @@ export async function GET(req: Request) {
       }
     }
 
-    const items = (Object.keys(CATEGORY_SLUGS) as CategoryId[]).map((id) => {
+    // Crear items usando los títulos de la taxonomía
+    const items = CATEGORY_ID_ORDER.map((id) => {
       const curr = currentTotals[id] ?? 0;
       const prev = previousTotals[id] ?? 0;
       return {
         id,
-        title: id,
+        title: getCategoryLabel(id), // Usa el título oficial de la taxonomía
         total: curr,
         deltaPct: computeDeltaPct(curr, prev),
       };

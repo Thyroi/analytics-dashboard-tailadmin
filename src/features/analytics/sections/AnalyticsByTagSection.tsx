@@ -4,8 +4,8 @@ import {
   TagTimeProvider,
   useTagTimeframe,
 } from "@/features/analytics/context/TagTimeContext";
+import { useCategoriesTotals } from "@/features/analytics/hooks/categorias";
 import SectorsGridDetailed from "@/features/analytics/sectors/SectorsGridDetailed";
-import { useCategoriesTotals } from "@/features/home/hooks/useCategoriesTotals";
 import { useCategoryDetails } from "@/features/home/hooks/useCategoryDetails";
 import { CATEGORY_ID_ORDER, type CategoryId } from "@/lib/taxonomy/categories";
 import type { TownId } from "@/lib/taxonomy/towns";
@@ -27,7 +27,19 @@ function AnalyticsByTagSectionInner() {
 
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  const { state, ids, itemsById } = useCategoriesTotals(granularity, endISO);
+  // Usar la misma lógica que Home: siempre incluir endDate
+  const timeParams =
+    mode === "range"
+      ? {
+          startISO: startDate.toISOString().split("T")[0],
+          endISO: endDate.toISOString().split("T")[0],
+        }
+      : { endISO: endDate.toISOString().split("T")[0] };
+
+  const { state, ids, itemsById } = useCategoriesTotals(
+    granularity,
+    timeParams
+  );
 
   const displayedIds = useMemo<string[]>(
     () =>

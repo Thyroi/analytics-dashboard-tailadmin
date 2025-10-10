@@ -5,8 +5,8 @@ import {
   useTownTimeframe,
 } from "@/features/analytics/context/TownTimeContext";
 import SectorsGridDetailed from "@/features/analytics/sectors/SectorsGridDetailed";
+import { usePueblosTotals } from "@/features/analytics/hooks/pueblos";
 import { useTownDetails } from "@/features/home/hooks/useTownDetails";
-import { useTownsTotals } from "@/features/home/hooks/useTownsTotals";
 import { type CategoryId } from "@/lib/taxonomy/categories";
 import type { TownId } from "@/lib/taxonomy/towns";
 import { TOWN_ID_ORDER } from "@/lib/taxonomy/towns";
@@ -29,8 +29,16 @@ function AnalyticsByTownSectionInner() {
 
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
+  // Usar la misma lógica que categorías: siempre incluir endDate
+  const timeParams = mode === "range"
+    ? {
+        startISO: startDate.toISOString().split("T")[0],
+        endISO: endDate.toISOString().split("T")[0],
+      }
+    : { endISO: endDate.toISOString().split("T")[0] };
+
   const { state, ids, itemsById, isInitialLoading, isFetching } =
-    useTownsTotals(granularity, endISO);
+    usePueblosTotals(granularity, timeParams);
 
   const displayedIds = useMemo<string[]>(
     () => (state.status === "ready" ? (ids as string[]) : [...TOWN_ID_ORDER]),

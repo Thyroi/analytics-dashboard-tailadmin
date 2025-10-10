@@ -25,18 +25,20 @@ export function unwrapRange(r: MaybeLegacyRange): DateRange {
   };
 }
 
-/** Rango previo con **desplazamiento** (solapado), manteniendo shape {start,end}. */
+/** Rango previo con **overlay shifting** (desplazamiento de 1 día), manteniendo shape {start,end}. */
 export function shiftPrevRange(current: DateRange, g: Granularity): DateRange {
   if (g === "y") {
+    // Para años: desplazamiento de 1 año completo para comparación anual
     return {
       start: toISO(addYearsUTC(parseISO(current.start), -1)),
       end: toISO(addYearsUTC(parseISO(current.end), -1)),
     };
   }
-  const shiftDays = g === "d" ? 1 : g === "w" ? 7 : 30;
+
+  // Para d/w/m: overlay shifting de 1 día para comparación superpuesta
   return {
-    start: toISO(addDaysUTC(parseISO(current.start), -shiftDays)),
-    end: toISO(addDaysUTC(parseISO(current.end), -shiftDays)),
+    start: toISO(addDaysUTC(parseISO(current.start), -1)),
+    end: toISO(addDaysUTC(parseISO(current.end), -1)),
   };
 }
 

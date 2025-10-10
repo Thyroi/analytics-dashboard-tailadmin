@@ -2,7 +2,7 @@
 
 import { useTownTimeframe } from "@/features/analytics/context/TownTimeContext";
 import { useTownDetails } from "@/features/home/hooks/useTownDetails";
-import { useTownsTotals } from "@/features/home/hooks/useTownsTotals";
+import { usePueblosTotals } from "@/features/analytics/hooks/pueblos";
 import SectorsGrid from "@/features/home/sectors/SectorsGrid";
 import type { TownId } from "@/lib/taxonomy/towns";
 import { TOWN_ID_ORDER } from "@/lib/taxonomy/towns";
@@ -28,7 +28,7 @@ export default function SectorsByTownSection({ granularity }: Props) {
         }
       : { endISO: endDate.toISOString().split("T")[0] };
 
-  const { state, ids, itemsById } = useTownsTotals(granularity, timeParams);
+  const { state, ids, itemsById } = usePueblosTotals(granularity, timeParams);
   const displayedIds = useMemo<string[]>(
     () => (state.status === "ready" ? (ids as string[]) : [...TOWN_ID_ORDER]),
     [state.status, ids]
