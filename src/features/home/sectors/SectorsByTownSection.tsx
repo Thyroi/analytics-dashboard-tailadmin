@@ -1,8 +1,8 @@
 "use client";
 
 import { useTownTimeframe } from "@/features/analytics/context/TownTimeContext";
-import { useTownDetails } from "@/features/home/hooks/useTownDetails";
 import { usePueblosTotals } from "@/features/analytics/hooks/pueblos";
+import { useTownDetails } from "@/features/home/hooks/useTownDetails";
 import SectorsGrid from "@/features/home/sectors/SectorsGrid";
 import type { TownId } from "@/lib/taxonomy/towns";
 import { TOWN_ID_ORDER } from "@/lib/taxonomy/towns";

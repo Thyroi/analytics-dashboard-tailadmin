@@ -35,17 +35,19 @@ function getTokensForTown(id: TownId): string[] {
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase();
-  const kebabCase = normalized.replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+  const kebabCase = normalized
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
   const compactCase = normalized.replace(/[^a-z0-9]+/g, "");
   const idLower = id.toLowerCase();
-  
+
   return Array.from(new Set([kebabCase, compactCase, idLower].filter(Boolean)));
 }
 
 function buildTownRegex(towns: TownId[]): string {
   const hostPattern = "^https?://[^/]+";
   const alternatives: string[] = [];
-  
+
   for (const id of towns) {
     const tokens = getTokensForTown(id).map(escapeRegex);
     alternatives.push(
@@ -54,13 +56,13 @@ function buildTownRegex(towns: TownId[]): string {
       )})[-_]|${tokens.join("|")})`
     );
   }
-  
+
   return `${hostPattern}.*(?:${alternatives.join("|")}).*`;
 }
 
 function matchTownFromPath(path: string, towns: TownId[]): TownId | null {
   const lowerPath = path.toLowerCase();
-  
+
   for (const id of towns) {
     const tokens = getTokensForTown(id);
     const hasMatch = tokens.some(
@@ -71,10 +73,10 @@ function matchTownFromPath(path: string, towns: TownId[]): TownId | null {
         lowerPath.includes(`_${token}_`) ||
         lowerPath.includes(token)
     );
-    
+
     if (hasMatch) return id;
   }
-  
+
   return null;
 }
 
@@ -154,7 +156,10 @@ export async function GET(req: Request) {
       const dateRaw = String(row.dimensionValues?.[0]?.value ?? "");
       if (dateRaw.length !== 8) continue;
 
-      const iso = `${dateRaw.slice(0, 4)}-${dateRaw.slice(4, 6)}-${dateRaw.slice(6, 8)}`;
+      const iso = `${dateRaw.slice(0, 4)}-${dateRaw.slice(
+        4,
+        6
+      )}-${dateRaw.slice(6, 8)}`;
       const url = String(row.dimensionValues?.[1]?.value ?? "");
       const path = safeUrlPathname(url);
       const value = Number(row.metricValues?.[0]?.value ?? 0);

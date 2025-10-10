@@ -3,13 +3,13 @@
  * React Query hooks para totales de pueblos con wrapper de compatibilidad
  */
 
-import { useQuery } from "@tanstack/react-query";
 import {
   fetchPueblosTotals,
   type PueblosTotalsResponse,
 } from "@/lib/services/pueblos/totals";
 import type { TownId } from "@/lib/taxonomy/towns";
 import type { Granularity } from "@/lib/types";
+import { useQuery } from "@tanstack/react-query";
 
 export type UsePueblosTotalsOptions = {
   granularity?: Granularity;
@@ -23,7 +23,7 @@ export type UsePueblosTotalsOptions = {
 /**
  * Tipos para compatibilidad legacy
  */
-export type LegacyTimeParams = 
+export type LegacyTimeParams =
   | string // Solo endISO
   | { startISO: string; endISO: string } // Rango completo
   | { endISO: string }; // Solo endISO como objeto
@@ -32,14 +32,17 @@ export type ReadyState = {
   status: "ready";
   data: PueblosTotalsResponse;
   ids: TownId[];
-  itemsById: Record<TownId, {
-    title: string;
-    total: number;
-    deltaPct: number | null;
-  }>;
+  itemsById: Record<
+    TownId,
+    {
+      title: string;
+      total: number;
+      deltaPct: number | null;
+    }
+  >;
 };
 
-export type LoadingState = 
+export type LoadingState =
   | { status: "idle" }
   | { status: "loading" }
   | { status: "error"; error: string }
@@ -48,9 +51,7 @@ export type LoadingState =
 /**
  * Hook principal con React Query
  */
-export function usePueblosTotalsNew(
-  options: UsePueblosTotalsOptions = {}
-) {
+export function usePueblosTotalsNew(options: UsePueblosTotalsOptions = {}) {
   const {
     granularity = "d",
     startDate,
@@ -116,11 +117,14 @@ export function usePueblosTotals(
               deltaPct: item.deltaPct,
             },
           ])
-        ) as Record<TownId, {
-          title: string;
-          total: number;
-          deltaPct: number | null;
-        }>,
+        ) as Record<
+          TownId,
+          {
+            title: string;
+            total: number;
+            deltaPct: number | null;
+          }
+        >,
       }
     : null;
 
@@ -133,7 +137,12 @@ export function usePueblosTotals(
   return {
     state,
     ids: ready?.ids || [],
-    itemsById: ready?.itemsById || ({} as Record<TownId, { title: string; total: number; deltaPct: number | null; }>),
+    itemsById:
+      ready?.itemsById ||
+      ({} as Record<
+        TownId,
+        { title: string; total: number; deltaPct: number | null }
+      >),
     isInitialLoading: query.isLoading,
     isFetching: query.isFetching,
   };
@@ -142,9 +151,7 @@ export function usePueblosTotals(
 /**
  * Hook para solo datos actuales (preset con endDate)
  */
-export function usePueblosTotalsCurrent(
-  options: UsePueblosTotalsOptions = {}
-) {
+export function usePueblosTotalsCurrent(options: UsePueblosTotalsOptions = {}) {
   const query = usePueblosTotalsNew(options);
   return query.data?.items || [];
 }
@@ -166,7 +173,10 @@ export function usePueblosTotalsDateRange(
   granularity: Granularity,
   startDate: string,
   endDate: string,
-  options: Omit<UsePueblosTotalsOptions, "granularity" | "startDate" | "endDate"> = {}
+  options: Omit<
+    UsePueblosTotalsOptions,
+    "granularity" | "startDate" | "endDate"
+  > = {}
 ) {
   return usePueblosTotalsNew({
     granularity,
@@ -179,11 +189,9 @@ export function usePueblosTotalsDateRange(
 /**
  * Hook para datos de "hoy" (preset)
  */
-export function usePueblosTotalsToday(
-  options: UsePueblosTotalsOptions = {}
-) {
+export function usePueblosTotalsToday(options: UsePueblosTotalsOptions = {}) {
   const today = new Date().toISOString().split("T")[0];
-  
+
   return usePueblosTotalsNew({
     granularity: "d",
     endDate: today,
@@ -198,8 +206,12 @@ export function usePueblosTotalsLastMonth(
   options: UsePueblosTotalsOptions = {}
 ) {
   const today = new Date();
-  const lastMonth = new Date(today.getFullYear(), today.getMonth() - 1, today.getDate());
-  
+  const lastMonth = new Date(
+    today.getFullYear(),
+    today.getMonth() - 1,
+    today.getDate()
+  );
+
   return usePueblosTotalsNew({
     granularity: "m",
     endDate: lastMonth.toISOString().split("T")[0],
