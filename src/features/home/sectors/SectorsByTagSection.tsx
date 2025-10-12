@@ -1,8 +1,10 @@
 "use client";
 
 import { useTagTimeframe } from "@/features/analytics/context/TagTimeContext";
-import { useCategoriesTotals } from "@/features/analytics/hooks/categorias";
-import { useCategoryDetails } from "@/features/home/hooks/useCategoryDetails";
+import {
+  useCategoriesTotals,
+  useCategoryDetails,
+} from "@/features/analytics/hooks/categorias";
 import SectorsGrid from "@/features/home/sectors/SectorsGrid";
 import type { CategoryId } from "@/lib/taxonomy/categories";
 import { CATEGORY_ID_ORDER } from "@/lib/taxonomy/categories";
@@ -39,10 +41,13 @@ export default function SectorsByTagSection({ granularity }: Props) {
   );
 
   const catId = expandedId as CategoryId | null;
+
+  // Usar el nuevo hook con parámetros de fecha apropiados
   const { series, donutData } = useCategoryDetails(
     catId ?? ("naturaleza" as CategoryId),
     granularity,
-    timeParams
+    endDate.toISOString().split("T")[0], // endISO
+    mode === "range" ? startDate.toISOString().split("T")[0] : undefined // startISO
   );
 
   const getDeltaPctFor = (id: string) =>

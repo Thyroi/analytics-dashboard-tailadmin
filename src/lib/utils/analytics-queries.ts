@@ -18,10 +18,10 @@ import {
   validateGA4Config,
 } from "@/lib/utils/ga4-error-handler";
 import { buildUnionRunReportRequest } from "@/lib/utils/ga4Requests";
+import { safeUrlPathname } from "@/lib/utils/pathMatching";
 import {
   computeDeltaPct,
   computeRangesFromQuery,
-  safeUrlPathname,
 } from "@/lib/utils/timeWindows";
 import { google } from "googleapis";
 
@@ -138,15 +138,10 @@ export function processGA4Rows<T extends string>(
   let processedRows = 0;
   let skippedRows = 0;
 
-  console.log("=== processGA4Rows Debug ===");
-  console.log("Input rows count:", rows.length);
-  console.log("Date ranges:", ranges);
-
   for (const r of rows) {
     try {
       const dateRaw = String(r.dimensionValues?.[0]?.value ?? "");
       if (dateRaw.length !== 8) {
-        console.log("Invalid date format:", dateRaw);
         skippedRows++;
         continue;
       }
@@ -160,7 +155,6 @@ export function processGA4Rows<T extends string>(
       // Validar y sanitizar el path
       const pathValidation = validateAndSanitizeUrlPath(url);
       if (!pathValidation.success) {
-        console.log("Path validation failed for:", url, pathValidation.error);
         skippedRows++;
         continue;
       }
@@ -168,17 +162,13 @@ export function processGA4Rows<T extends string>(
       const path = safeUrlPathname(pathValidation.data);
       const value = Number(r.metricValues?.[0]?.value ?? 0);
 
-      console.log("Processing row:", { iso, url, path, value });
-
       // Validar que el valor sea un número válido
       if (isNaN(value) || value < 0) {
-        console.log("Invalid value:", value);
         skippedRows++;
         continue;
       }
 
       const matchedId = matchFunction(path);
-      console.log("Match result:", matchedId);
 
       if (!matchedId) {
         skippedRows++;
@@ -188,17 +178,10 @@ export function processGA4Rows<T extends string>(
       if (iso >= ranges.current.start && iso <= ranges.current.end) {
         currentTotals[matchedId] = (currentTotals[matchedId] || 0) + value;
         processedRows++;
-        console.log(
-          `Added ${value} to current[${matchedId}], total: ${currentTotals[matchedId]}`
-        );
       } else if (iso >= ranges.previous.start && iso <= ranges.previous.end) {
         previousTotals[matchedId] = (previousTotals[matchedId] || 0) + value;
         processedRows++;
-        console.log(
-          `Added ${value} to previous[${matchedId}], total: ${previousTotals[matchedId]}`
-        );
       } else {
-        console.log(`Date ${iso} outside ranges:`, ranges);
         skippedRows++;
       }
     } catch (error) {
@@ -206,13 +189,6 @@ export function processGA4Rows<T extends string>(
       skippedRows++;
     }
   }
-
-  console.log("Final totals:", {
-    currentTotals,
-    previousTotals,
-    processedRows,
-    skippedRows,
-  });
   return { currentTotals, previousTotals, processedRows, skippedRows };
 }
 

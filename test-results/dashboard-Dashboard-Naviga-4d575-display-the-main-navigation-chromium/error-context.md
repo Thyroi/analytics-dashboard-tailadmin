@@ -1,0 +1,303 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - complementary [ref=e3]:
+      - link "Dashboard" [ref=e5] [cursor=pointer]:
+        - /url: /
+      - navigation [ref=e6]:
+        - list [ref=e7]:
+          - listitem [ref=e8]:
+            - link "Resumen" [ref=e9] [cursor=pointer]:
+              - /url: /
+              - img [ref=e11]
+              - generic [ref=e13]: Resumen
+        - list [ref=e15]:
+          - listitem [ref=e16]:
+            - link "Analítica web" [ref=e17] [cursor=pointer]:
+              - /url: /analytics
+              - img [ref=e19]
+              - generic [ref=e21]: Analítica web
+          - listitem [ref=e22]:
+            - link "Analítica chatbot" [ref=e23] [cursor=pointer]:
+              - /url: /chatbot
+              - img [ref=e25]
+              - generic [ref=e27]: Analítica chatbot
+    - generic [ref=e28]:
+      - banner [ref=e29]:
+        - button "Cambiar tema" [ref=e31]:
+          - img [ref=e32]
+      - generic [ref=e35]:
+        - generic [ref=e38]:
+          - img "Condado de Huelva - Mancomunidad de Desarrollo" [ref=e41]
+          - generic [ref=e43]:
+            - img "Condado de Huelva - Mancomunidad de Desarrollo" [ref=e44]
+            - img "Mapa del Condado de Huelva" [ref=e46]
+        - main [ref=e47]:
+          - generic [ref=e48]:
+            - generic [ref=e50]:
+              - generic [ref=e51]:
+                - img [ref=e52]
+                - heading "Datos generales" [level=1] [ref=e55]
+              - generic [ref=e56]:
+                - tablist "Granularidad" [ref=e57]:
+                  - tab "Día" [selected] [ref=e58]: Día
+                  - tab "Semana" [ref=e60]
+                  - tab "Mes" [ref=e61]
+                  - tab "Año" [ref=e62]
+                - generic [ref=e64]:
+                  - generic:
+                    - img
+                  - textbox "Select date range" [ref=e66] [cursor=pointer]:
+                    - /placeholder: Selecciona un rango
+                    - text: Oct 10, 2025 - Oct 10, 2025
+            - generic [ref=e67]:
+              - generic [ref=e69]:
+                - generic [ref=e71]:
+                  - generic [ref=e72]:
+                    - img [ref=e74]
+                    - generic [ref=e80]: Usuarios totales
+                  - generic [ref=e81]:
+                    - generic [ref=e82]: "1"
+                    - generic "−89%" [ref=e83]
+                - generic [ref=e89]:
+                  - img [ref=e90]:
+                    - generic [ref=e93]:
+                      - generic "50" [ref=e94]
+                      - generic "40" [ref=e95]
+                      - generic "30" [ref=e96]
+                      - generic "20" [ref=e97]
+                      - generic "10" [ref=e98]
+                      - generic "0" [ref=e99]
+                    - generic [ref=e108]:
+                      - generic "2025-10-05" [ref=e109]: 2025...
+                      - generic "2025-10-06" [ref=e110]: 2025...
+                      - generic "2025-10-07" [ref=e111]: 2025...
+                      - generic "2025-10-08" [ref=e112]: 2025...
+                      - generic "2025-10-09" [ref=e113]: 2025...
+                      - generic "2025-10-10" [ref=e114]: 2025...
+                      - generic "2025-10-11" [ref=e115]: 2025...
+                  - generic: ● ●
+              - generic [ref=e117]:
+                - generic [ref=e119]:
+                  - generic [ref=e120]:
+                    - img [ref=e122]
+                    - generic [ref=e128]: Interacciones totales
+                  - generic [ref=e129]:
+                    - generic [ref=e130]: "77"
+                    - generic "−40%" [ref=e131]
+                - generic [ref=e137]:
+                  - img [ref=e138]:
+                    - generic [ref=e141]:
+                      - generic "600" [ref=e142]
+                      - generic "500" [ref=e143]
+                      - generic "400" [ref=e144]
+                      - generic "300" [ref=e145]
+                      - generic "200" [ref=e146]
+                      - generic "100" [ref=e147]
+                      - generic "0" [ref=e148]
+                    - generic [ref=e157]:
+                      - generic "2025-10-05" [ref=e158]: 2025...
+                      - generic "2025-10-06" [ref=e159]: 2025...
+                      - generic "2025-10-07" [ref=e160]: 2025...
+                      - generic "2025-10-08" [ref=e161]: 2025...
+                      - generic "2025-10-09" [ref=e162]: 2025...
+                      - generic "2025-10-10" [ref=e163]: 2025...
+                      - generic "2025-10-11" [ref=e164]: 2025...
+                  - generic: ● ●
+          - generic [ref=e165]:
+            - generic [ref=e167]:
+              - generic [ref=e168]:
+                - img [ref=e169]
+                - heading "Sectores por categoría" [level=1] [ref=e172]
+              - generic [ref=e173]:
+                - tablist "Granularidad" [ref=e174]:
+                  - tab "Día" [selected] [ref=e175]: Día
+                  - tab "Semana" [ref=e177]
+                  - tab "Mes" [ref=e178]
+                  - tab "Año" [ref=e179]
+                - generic [ref=e181]:
+                  - generic:
+                    - img
+                  - textbox "Select date range" [ref=e183] [cursor=pointer]:
+                    - /placeholder: Selecciona un rango
+                    - text: Oct 04, 2025 - Oct 10, 2025
+            - generic [ref=e185]:
+              - button "NATURALEZA" [ref=e187] [cursor=pointer]:
+                - generic [ref=e188]:
+                  - generic [ref=e189]: NATURALEZA
+                  - img "NATURALEZA" [ref=e193]
+                  - generic [ref=e194]: −92%
+              - button "FIESTAS Y TRADICIONES" [ref=e196] [cursor=pointer]:
+                - generic [ref=e197]:
+                  - generic [ref=e198]: FIESTAS Y TRADICIONES
+                  - img "FIESTAS Y TRADICIONES" [ref=e202]
+                  - generic [ref=e203]: −87%
+              - button "PLAYAS" [ref=e205] [cursor=pointer]:
+                - generic [ref=e206]:
+                  - generic [ref=e207]: PLAYAS
+                  - img "PLAYAS" [ref=e211]
+                  - generic [ref=e212]: −45%
+              - button "ESPACIOS MUSEÍSTICOS" [ref=e214] [cursor=pointer]:
+                - generic [ref=e215]:
+                  - generic [ref=e216]: ESPACIOS MUSEÍSTICOS
+                  - img "ESPACIOS MUSEÍSTICOS" [ref=e220]
+                  - generic [ref=e221]: −91%
+              - button "PATRIMONIO" [ref=e223] [cursor=pointer]:
+                - generic [ref=e224]:
+                  - generic [ref=e225]: PATRIMONIO
+                  - img "PATRIMONIO" [ref=e229]
+                  - generic [ref=e230]: −95%
+              - button "RUTAS CULTURALES" [ref=e232] [cursor=pointer]:
+                - generic [ref=e233]:
+                  - generic [ref=e234]: RUTAS CULTURALES
+                  - img "RUTAS CULTURALES" [ref=e238]
+                  - generic [ref=e239]: −98%
+              - button "RUTAS SENDERISMO Y CICLOTURISTAS" [ref=e241] [cursor=pointer]:
+                - generic [ref=e242]:
+                  - generic [ref=e243]: RUTAS SENDERISMO Y CICLOTURISTAS
+                  - img "RUTAS SENDERISMO Y CICLOTURISTAS" [ref=e247]
+                  - generic [ref=e248]: −59%
+              - button "SABOR" [ref=e250] [cursor=pointer]:
+                - generic [ref=e251]:
+                  - generic [ref=e252]: SABOR
+                  - img "SABOR" [ref=e256]
+                  - generic [ref=e257]: −92%
+              - button "DOÑANA" [ref=e259] [cursor=pointer]:
+                - generic [ref=e260]:
+                  - generic [ref=e261]: DOÑANA
+                  - img "DOÑANA" [ref=e265]
+                  - generic [ref=e266]: −96%
+              - button "CIRCUITO MONTEBLANCO" [ref=e268] [cursor=pointer]:
+                - generic [ref=e269]:
+                  - generic [ref=e270]: CIRCUITO MONTEBLANCO
+                  - img "CIRCUITO MONTEBLANCO" [ref=e274]
+                  - generic [ref=e275]: Sin datos suficientes
+              - button "LA RÁBIDA" [ref=e277] [cursor=pointer]:
+                - generic [ref=e278]:
+                  - generic [ref=e279]: LA RÁBIDA
+                  - img "LA RÁBIDA" [ref=e283]
+                  - generic [ref=e284]: −85%
+              - button "LUGARES COLOMBINOS" [ref=e286] [cursor=pointer]:
+                - generic [ref=e287]:
+                  - generic [ref=e288]: LUGARES COLOMBINOS
+                  - img "LUGARES COLOMBINOS" [ref=e292]
+                  - generic [ref=e293]: −81%
+              - button "HISTORIA" [ref=e295] [cursor=pointer]:
+                - generic [ref=e296]:
+                  - generic [ref=e297]: HISTORIA
+                  - img "HISTORIA" [ref=e301]
+                  - generic [ref=e302]: Sin datos suficientes
+              - button "OTROS" [ref=e304] [cursor=pointer]:
+                - generic [ref=e305]:
+                  - generic [ref=e306]: OTROS
+                  - img "OTROS" [ref=e310]
+                  - generic [ref=e311]: Sin datos suficientes
+          - generic [ref=e312]:
+            - generic [ref=e314]:
+              - generic [ref=e315]:
+                - img [ref=e316]
+                - heading "Sectores por municipio" [level=1] [ref=e319]
+              - generic [ref=e320]:
+                - tablist "Granularidad" [ref=e321]:
+                  - tab "Día" [selected] [ref=e322]: Día
+                  - tab "Semana" [ref=e324]
+                  - tab "Mes" [ref=e325]
+                  - tab "Año" [ref=e326]
+                - generic [ref=e328]:
+                  - generic:
+                    - img
+                  - textbox "Select date range" [ref=e330] [cursor=pointer]:
+                    - /placeholder: Selecciona un rango
+                    - text: Oct 04, 2025 - Oct 10, 2025
+            - generic [ref=e332]:
+              - button "Almonte" [ref=e334] [cursor=pointer]:
+                - generic [ref=e335]:
+                  - generic [ref=e336]: Almonte
+                  - img "Almonte" [ref=e340]
+                  - generic [ref=e341]: −87%
+              - button "Bollullos" [ref=e343] [cursor=pointer]:
+                - generic [ref=e344]:
+                  - generic [ref=e345]: Bollullos
+                  - img "Bollullos" [ref=e349]
+                  - generic [ref=e350]: −89%
+              - button "Bonares" [ref=e352] [cursor=pointer]:
+                - generic [ref=e353]:
+                  - generic [ref=e354]: Bonares
+                  - img "Bonares" [ref=e358]
+                  - generic [ref=e359]: −95%
+              - button "Chucena" [ref=e361] [cursor=pointer]:
+                - generic [ref=e362]:
+                  - generic [ref=e363]: Chucena
+                  - img "Chucena" [ref=e367]
+                  - generic [ref=e368]: −89%
+              - button "Cruces de mayo de Bonares" [ref=e370] [cursor=pointer]:
+                - generic [ref=e371]:
+                  - generic [ref=e372]: Cruces de mayo de Bonares
+                  - img "Cruces de mayo de Bonares" [ref=e376]
+                  - generic [ref=e377]: Sin datos suficientes
+              - button "Escacena" [ref=e379] [cursor=pointer]:
+                - generic [ref=e380]:
+                  - generic [ref=e381]: Escacena
+                  - img "Escacena" [ref=e385]
+                  - generic [ref=e386]: −88%
+              - button "Hinojos" [ref=e388] [cursor=pointer]:
+                - generic [ref=e389]:
+                  - generic [ref=e390]: Hinojos
+                  - img "Hinojos" [ref=e394]
+                  - generic [ref=e395]: −99%
+              - button "La Palma del Condado" [ref=e397] [cursor=pointer]:
+                - generic [ref=e398]:
+                  - generic [ref=e399]: La Palma del Condado
+                  - img "La Palma del Condado" [ref=e403]
+                  - generic [ref=e404]: −84%
+              - button "Lucena del Puerto" [ref=e406] [cursor=pointer]:
+                - generic [ref=e407]:
+                  - generic [ref=e408]: Lucena del Puerto
+                  - img "Lucena del Puerto" [ref=e412]
+                  - generic [ref=e413]: Sin datos suficientes
+              - button "Manzanilla" [ref=e415] [cursor=pointer]:
+                - generic [ref=e416]:
+                  - generic [ref=e417]: Manzanilla
+                  - img "Manzanilla" [ref=e421]
+                  - generic [ref=e422]: −90%
+              - button "Niebla" [ref=e424] [cursor=pointer]:
+                - generic [ref=e425]:
+                  - generic [ref=e426]: Niebla
+                  - img "Niebla" [ref=e430]
+                  - generic [ref=e431]: −80%
+              - button "Palos" [ref=e433] [cursor=pointer]:
+                - generic [ref=e434]:
+                  - generic [ref=e435]: Palos
+                  - img "Palos" [ref=e439]
+                  - generic [ref=e440]: −85%
+              - button "Paterna del Campo" [ref=e442] [cursor=pointer]:
+                - generic [ref=e443]:
+                  - generic [ref=e444]: Paterna del Campo
+                  - img "Paterna del Campo" [ref=e448]
+                  - generic [ref=e449]: Sin datos suficientes
+              - button "Puertas de la muralla de Niebla" [ref=e451] [cursor=pointer]:
+                - generic [ref=e452]:
+                  - generic [ref=e453]: Puertas de la muralla de Niebla
+                  - img "Puertas de la muralla de Niebla" [ref=e457]
+                  - generic [ref=e458]: Sin datos suficientes
+              - button "Rociana del Condado" [ref=e460] [cursor=pointer]:
+                - generic [ref=e461]:
+                  - generic [ref=e462]: Rociana del Condado
+                  - img "Rociana del Condado" [ref=e466]
+                  - generic [ref=e467]: Sin datos suficientes
+              - button "Villalba" [ref=e469] [cursor=pointer]:
+                - generic [ref=e470]:
+                  - generic [ref=e471]: Villalba
+                  - img "Villalba" [ref=e475]
+                  - generic [ref=e476]: −82%
+              - button "Villarrasa" [ref=e478] [cursor=pointer]:
+                - generic [ref=e479]:
+                  - generic [ref=e480]: Villarrasa
+                  - img "Villarrasa" [ref=e484]
+                  - generic [ref=e485]: −81%
+  - button "Open Next.js Dev Tools" [ref=e491] [cursor=pointer]:
+    - img [ref=e492]
+  - alert [ref=e495]
+```

@@ -57,13 +57,6 @@ export async function fetchCategoriesTotals(
 
   const url = `${ENDPOINT_URL}?${searchParams.toString()}`;
 
-  // DEBUG: Log de URL construida
-  console.log("🌐 DEBUG service URL:", {
-    params,
-    searchParams: Object.fromEntries(searchParams.entries()),
-    finalUrl: url,
-  });
-
   const response = await fetch(url);
 
   if (!response.ok) {

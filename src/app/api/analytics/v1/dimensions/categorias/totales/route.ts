@@ -6,7 +6,6 @@
 import {
   type CategoryId,
   CATEGORY_ID_ORDER,
-  CATEGORY_SYNONYMS,
   getCategoryLabel,
 } from "@/lib/taxonomy/categories";
 import type { Granularity } from "@/lib/types";
@@ -15,35 +14,17 @@ import {
   normalizePropertyId,
   resolvePropertyId,
 } from "@/lib/utils/ga";
-import { buildUnionRunReportRequest } from "@/lib/utils/ga4Requests";
+import { buildPageViewUnionRequest } from "@/lib/utils/ga4Requests";
+import {
+  matchCategoryIdFromPath,
+  safeUrlPathname,
+} from "@/lib/utils/pathMatching";
 import {
   computeDeltaPct,
   computeRangesFromQuery,
-  safeUrlPathname,
 } from "@/lib/utils/timeWindows";
 import { google } from "googleapis";
 import { NextResponse } from "next/server";
-
-/* -------- matching por path (EXACTO como el original) -------- */
-function matchCategoryIdFromPath(path: string): CategoryId | null {
-  const lc = path.toLowerCase();
-
-  for (const categoryId of CATEGORY_ID_ORDER) {
-    const slugs = CATEGORY_SYNONYMS[categoryId];
-    if (
-      slugs.some(
-        (s) =>
-          lc.includes(`/${s}/`) ||
-          lc.endsWith(`/${s}`) ||
-          lc.includes(`-${s}-`) ||
-          lc.includes(`_${s}_`)
-      )
-    ) {
-      return categoryId;
-    }
-  }
-  return null;
-}
 
 /* -------- handler (EXACTO como el original) -------- */
 export async function GET(req: Request) {
@@ -55,66 +36,19 @@ export async function GET(req: Request) {
     const startQ = searchParams.get("start");
     const endQ = searchParams.get("end");
 
-    // DEBUG: Log de parámetros recibidos
-    console.log("🔍 DEBUG /totales endpoint:", {
-      url: req.url,
-      granularity: g,
-      start: startQ,
-      end: endQ,
-    });
-
     // Rangos con política (desplazamiento con solape)
     const ranges = computeRangesFromQuery(g, startQ, endQ);
-
-    // DEBUG: Log de rangos calculados con explicación
-    console.log("📅 DEBUG rangos calculados:", {
-      granularity: g,
-      logic:
-        startQ && endQ
-          ? "Rango personalizado (start + end)"
-          : endQ
-          ? `Preset terminando en ${endQ}`
-          : "Preset terminando AYER",
-      current: ranges.current,
-      previous: ranges.previous,
-      currentDuration: getDurationDays(ranges.current),
-      previousDuration: getDurationDays(ranges.previous),
-    });
-
-    // Helper para calcular duración en días
-    function getDurationDays(range: { start: string; end: string }): number {
-      const start = new Date(range.start);
-      const end = new Date(range.end);
-      return (
-        Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1
-      );
-    }
 
     // GA
     const auth = getAuth();
     const analytics = google.analyticsdata({ version: "v1beta", auth });
     const property = normalizePropertyId(resolvePropertyId());
 
-    // Unión prev.start → curr.end + filtro page_view
-    const requestBody = buildUnionRunReportRequest({
+    // Usar helper común para page_view requests
+    const requestBody = buildPageViewUnionRequest({
       current: ranges.current,
       previous: ranges.previous,
       metrics: [{ name: "eventCount" }],
-      dimensions: [
-        { name: "date" },
-        { name: "pageLocation" },
-        { name: "eventName" },
-      ],
-      dimensionFilter: {
-        filter: {
-          fieldName: "eventName",
-          stringFilter: {
-            matchType: "EXACT",
-            value: "page_view",
-            caseSensitive: false,
-          },
-        },
-      },
     });
 
     const resp = await analytics.properties.runReport({

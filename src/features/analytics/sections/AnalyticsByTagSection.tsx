@@ -4,9 +4,11 @@ import {
   TagTimeProvider,
   useTagTimeframe,
 } from "@/features/analytics/context/TagTimeContext";
-import { useCategoriesTotals } from "@/features/analytics/hooks/categorias";
+import {
+  useCategoriesTotals,
+  useCategoryDetails,
+} from "@/features/analytics/hooks/categorias";
 import SectorsGridDetailed from "@/features/analytics/sectors/SectorsGridDetailed";
-import { useCategoryDetails } from "@/features/home/hooks/useCategoryDetails";
 import { CATEGORY_ID_ORDER, type CategoryId } from "@/lib/taxonomy/categories";
 import type { TownId } from "@/lib/taxonomy/towns";
 import { labelToTownId } from "@/lib/utils/sector";

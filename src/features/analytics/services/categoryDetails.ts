@@ -7,6 +7,7 @@ import type { DonutDatum, Granularity, SeriesPoint } from "@/lib/types";
 
 export type CategoryDetailsResponse = {
   granularity: Granularity;
+  actualGranularity?: Granularity; // Nueva granularidad efectiva usada (opcional para compatibilidad)
   range: {
     current: { start: string; end: string };
     previous: { start: string; end: string };
@@ -43,14 +44,7 @@ export async function getCategoryDetails(params: {
 
   signal?: AbortSignal;
 }): Promise<CategoryDetailsResponse> {
-  const {
-    categoryId,
-    granularity,
-    startISO,
-    endISO,
-    townId,
-    signal,
-  } = params;
+  const { categoryId, granularity, startISO, endISO, townId, signal } = params;
 
   // Regla global:
   // - g==='d'  -> seriesExpandDay=1 (línea 7d), donutCurrentDayOnly=1 (donut 1d)

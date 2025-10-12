@@ -4,9 +4,11 @@ import {
   TownTimeProvider,
   useTownTimeframe,
 } from "@/features/analytics/context/TownTimeContext";
-import { usePueblosTotals } from "@/features/analytics/hooks/pueblos";
+import {
+  usePueblosTotals,
+  useTownDetails,
+} from "@/features/analytics/hooks/pueblos";
 import SectorsGridDetailed from "@/features/analytics/sectors/SectorsGridDetailed";
-import { useTownDetails } from "@/features/home/hooks/useTownDetails";
 import { type CategoryId } from "@/lib/taxonomy/categories";
 import type { TownId } from "@/lib/taxonomy/towns";
 import { TOWN_ID_ORDER } from "@/lib/taxonomy/towns";
@@ -57,7 +59,8 @@ function AnalyticsByTownSectionInner() {
   const { series: seriesTown, donutData: donutTown } = useTownDetails(
     (drill?.kind === "town" ? drill.townId : townId) ?? ("almonte" as TownId),
     granularity,
-    endISO
+    endDate.toISOString().split("T")[0], // endISO
+    mode === "range" ? startDate.toISOString().split("T")[0] : undefined // startISO
   );
 
   // --- getters ---

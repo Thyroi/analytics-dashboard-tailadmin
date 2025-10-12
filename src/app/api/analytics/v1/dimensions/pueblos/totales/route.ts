@@ -15,11 +15,11 @@ import {
   normalizePropertyId,
   resolvePropertyId,
 } from "@/lib/utils/ga";
-import { buildUnionRunReportRequest } from "@/lib/utils/ga4Requests";
+import { buildPageViewWithFilterUnionRequest } from "@/lib/utils/ga4Requests";
+import { safeUrlPathname } from "@/lib/utils/pathMatching";
 import {
   computeDeltaPct,
   computeRangesFromQuery,
-  safeUrlPathname,
 } from "@/lib/utils/timeWindows";
 import { google } from "googleapis";
 import { NextResponse } from "next/server";
@@ -99,42 +99,21 @@ export async function GET(req: Request) {
     const analytics = google.analyticsdata({ version: "v1beta", auth });
     const property = normalizePropertyId(resolvePropertyId());
 
-    // Construir query con filtros combinados: page_view + towns regex
-    const requestBody = buildUnionRunReportRequest({
+    // Construir query usando helper con filtro combinado: page_view + towns regex
+    const requestBody = buildPageViewWithFilterUnionRequest({
       current: ranges.current,
       previous: ranges.previous,
-      metrics: [{ name: "eventCount" }],
-      dimensions: [
-        { name: "date" },
-        { name: "pageLocation" },
-        { name: "eventName" },
-      ],
-      dimensionFilter: {
-        andGroup: {
-          expressions: [
-            {
-              filter: {
-                fieldName: "eventName",
-                stringFilter: {
-                  matchType: "EXACT",
-                  value: "page_view",
-                  caseSensitive: false,
-                },
-              },
-            },
-            {
-              filter: {
-                fieldName: "pageLocation",
-                stringFilter: {
-                  matchType: "FULL_REGEXP",
-                  value: buildTownRegex(towns),
-                  caseSensitive: false,
-                },
-              },
-            },
-          ],
+      additionalFilter: {
+        filter: {
+          fieldName: "pageLocation",
+          stringFilter: {
+            matchType: "FULL_REGEXP",
+            value: buildTownRegex(towns),
+            caseSensitive: false,
+          },
         },
       },
+      metrics: [{ name: "eventCount" }],
     });
 
     const resp = await analytics.properties.runReport({

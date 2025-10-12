@@ -1,12 +1,13 @@
 "use client";
 
 import { buildQS, fetchJSON } from "@/lib/api/analytics";
-import type { DonutDatum, Granularity, SeriesPoint } from "@/lib/types";
-import type { TownId } from "@/lib/taxonomy/towns";
 import type { CategoryId } from "@/lib/taxonomy/categories";
+import type { TownId } from "@/lib/taxonomy/towns";
+import type { DonutDatum, Granularity, SeriesPoint } from "@/lib/types";
 
 export type TownDetailsResponse = {
   granularity: Granularity;
+  actualGranularity?: Granularity; // Nueva granularidad efectiva usada (opcional para compatibilidad)
   range: {
     current: { start: string; end: string };
     previous: { start: string; end: string };
@@ -31,7 +32,7 @@ export async function getTownDetails(params: {
   granularity: Granularity;
   endISO?: string;
   startISO?: string;
-  categoryId?: CategoryId;  // ⬅️ necesario para nivel 2
+  categoryId?: CategoryId; // ⬅️ necesario para nivel 2
   signal?: AbortSignal;
 }): Promise<TownDetailsResponse> {
   const { townId, granularity, endISO, startISO, categoryId, signal } = params;

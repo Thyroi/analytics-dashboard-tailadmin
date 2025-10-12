@@ -102,12 +102,6 @@ export function useCategoriesTotals(
     endDate,
   });
 
-  // DEBUG: Log de parámetros convertidos
-  console.log("🎯 DEBUG useCategoriesTotals legacy wrapper:", {
-    originalTime: time,
-    convertedParams: { granularity, startDate, endDate },
-  });
-
   // Transformar la respuesta al formato legacy
   const ready: ReadyState | null = query.data
     ? {

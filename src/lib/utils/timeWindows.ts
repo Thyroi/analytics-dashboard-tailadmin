@@ -2,7 +2,6 @@
 import type { Granularity } from "@/lib/types";
 import {
   addDaysUTC,
-  addYearsUTC,
   deriveRangeEndingYesterday,
   parseISO,
   todayUTC,
@@ -25,20 +24,44 @@ export function unwrapRange(r: MaybeLegacyRange): DateRange {
   };
 }
 
-/** Rango previo con **overlay shifting** (desplazamiento de 1 día), manteniendo shape {start,end}. */
-export function shiftPrevRange(current: DateRange, g: Granularity): DateRange {
-  if (g === "y") {
-    // Para años: desplazamiento de 1 año completo para comparación anual
+/** Rango previo con desplazamiento NO SUPERPUESTO (períodos consecutivos), manteniendo shape {start,end}. */
+export function shiftPrevRange(
+  current: DateRange,
+  granularity: Granularity
+): DateRange {
+  const currentStart = parseISO(current.start);
+  const currentEnd = parseISO(current.end);
+
+  // Calcular la duración del período actual
+  const durationDays =
+    Math.ceil(
+      (currentEnd.getTime() - currentStart.getTime()) / (1000 * 60 * 60 * 24)
+    ) + 1;
+
+  if (granularity === "y") {
+    // Para granularidad anual: período anterior de la misma duración, terminando 1 día antes del inicio actual
+    const prevEnd = addDaysUTC(currentStart, -1);
+    const prevStart = addDaysUTC(prevEnd, -(durationDays - 1));
     return {
-      start: toISO(addYearsUTC(parseISO(current.start), -1)),
-      end: toISO(addYearsUTC(parseISO(current.end), -1)),
+      start: toISO(prevStart),
+      end: toISO(prevEnd),
+    };
+  } else if (granularity === "m") {
+    // Para granularidad mensual: período anterior de la misma duración, terminando 1 día antes del inicio actual
+    const prevEnd = addDaysUTC(currentStart, -1);
+    const prevStart = addDaysUTC(prevEnd, -(durationDays - 1));
+    return {
+      start: toISO(prevStart),
+      end: toISO(prevEnd),
     };
   }
 
-  // Para d/w/m: overlay shifting de 1 día para comparación superpuesta
+  // Para otras granularidades (d, w): período anterior de la misma duración, terminando 1 día antes del inicio actual
+  const prevEnd = addDaysUTC(currentStart, -1);
+  const prevStart = addDaysUTC(prevEnd, -(durationDays - 1));
   return {
-    start: toISO(addDaysUTC(parseISO(current.start), -1)),
-    end: toISO(addDaysUTC(parseISO(current.end), -1)),
+    start: toISO(prevStart),
+    end: toISO(prevEnd),
   };
 }
 
@@ -48,6 +71,8 @@ export function shiftPrevRange(current: DateRange, g: Granularity): DateRange {
  *  - start+end: respeta rango y calcula previous con desplazamiento
  *  - end: preset terminando en `end`
  *  - nada: preset terminando AYER
+ *
+ * IMPORTANTE: Para granularidad "d", usa ventana de 7 días para que las gráficas sean útiles
  */
 export function computeRangesFromQuery(
   g: Granularity,
@@ -64,12 +89,40 @@ export function computeRangesFromQuery(
 
   if (endQ) {
     const base = parseISO(endQ);
-    const current = unwrapRange(deriveRangeEndingYesterday(g, base));
+
+    // Cuando se especifica endDate, el rango debe terminar en ese día, no en "yesterday"
+    // Recalcular el rango usando el endDate como final
+    let current: DateRange;
+
+    if (g === "d") {
+      if (true) {
+        // dayAsWeek siempre true para granularidad diaria
+        const start = addDaysUTC(base, -(7 - 1)); // 7 días hacia atrás
+        current = { start: toISO(start), end: toISO(base) };
+      } else {
+        current = { start: toISO(base), end: toISO(base) };
+      }
+    } else if (g === "w") {
+      const start = addDaysUTC(base, -(7 - 1)); // 7 días hacia atrás
+      current = { start: toISO(start), end: toISO(base) };
+    } else if (g === "m") {
+      const start = addDaysUTC(base, -(30 - 1)); // 30 días hacia atrás
+      current = { start: toISO(start), end: toISO(base) };
+    } else {
+      // g === "y"
+      const start = addDaysUTC(base, -(365 - 1)); // 365 días hacia atrás
+      current = { start: toISO(start), end: toISO(base) };
+    }
+
     const previous = shiftPrevRange(current, g);
     return { current, previous };
   }
 
-  const current = unwrapRange(deriveRangeEndingYesterday(g, todayUTC()));
+  // Para granularidad diaria, usar ventana de 7 días para gráficas útiles
+  const dayAsWeek = g === "d";
+  const current = unwrapRange(
+    deriveRangeEndingYesterday(g, todayUTC(), dayAsWeek)
+  );
   const previous = shiftPrevRange(current, g);
   return { current, previous };
 }
@@ -78,14 +131,4 @@ export function computeRangesFromQuery(
 export function computeDeltaPct(curr: number, prev: number): number | null {
   if (prev <= 0) return null;
   return ((curr - prev) / prev) * 100;
-}
-
-/** Utilidad simple para parsear pathname de una URL (o devolver algo razonable). */
-export function safeUrlPathname(raw: string): string {
-  try {
-    const u = new URL(raw);
-    return u.pathname || "/";
-  } catch {
-    return raw.startsWith("/") ? raw : `/${raw}`;
-  }
 }
