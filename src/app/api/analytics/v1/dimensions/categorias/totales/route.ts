@@ -13,16 +13,16 @@ import {
   getAuth,
   normalizePropertyId,
   resolvePropertyId,
-} from "@/lib/utils/ga";
-import { buildPageViewUnionRequest } from "@/lib/utils/ga4Requests";
+} from "@/lib/utils/analytics/ga";
+import { buildPageViewUnionRequest } from "@/lib/utils/analytics/ga4Requests";
 import {
   matchCategoryIdFromPath,
   safeUrlPathname,
-} from "@/lib/utils/pathMatching";
+} from "@/lib/utils/routing/pathMatching";
 import {
   computeDeltaPct,
   computeRangesFromQuery,
-} from "@/lib/utils/timeWindows";
+} from "@/lib/utils/time/timeWindows";
 import { google } from "googleapis";
 import { NextResponse } from "next/server";
 

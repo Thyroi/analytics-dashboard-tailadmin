@@ -1,10 +1,10 @@
 "use client";
 
+import StickyHeaderSection from "@/components/common/StickyHeaderSection";
 import {
   TownTimeProvider,
   useTownTimeframe,
 } from "@/features/analytics/context/TownTimeContext";
-import StickyHeaderSection from "@/features/analytics/sectors/expanded/SectorExpandedCardDetailed/StickyHeaderSection";
 import SectorsByTownSectionContent from "@/features/home/sectors/SectorsByTownSection";
 
 function InnerSectorsByTownSection() {

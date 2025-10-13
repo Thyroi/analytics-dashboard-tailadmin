@@ -1,6 +1,6 @@
 "use client";
 
-import { addDaysUTC, todayUTC } from "@/lib/utils/datetime";
+import { addDaysUTC, todayUTC } from "@/lib/utils/time/datetime";
 import { CalendarIcon } from "@heroicons/react/24/outline";
 import flatpickr from "flatpickr";
 import "flatpickr/dist/flatpickr.css";

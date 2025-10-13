@@ -1,0 +1,128 @@
+"use client";
+
+import { fetchJSON } from "@/lib/api/analytics";
+import type { CategoryId } from "@/lib/taxonomy/categories";
+import type { TownId } from "@/lib/taxonomy/towns";
+import type { DonutDatum, Granularity } from "@/lib/types";
+import { useQuery } from "@tanstack/react-query";
+
+// Base response structure that both endpoints share
+type DrilldownResponse = {
+  granularity: Granularity;
+  range: {
+    current: { start: string; end: string };
+    previous: { start: string; end: string };
+  };
+  property: string;
+  id: string;
+  title: string;
+  series: {
+    current: { label: string; value: number }[];
+    previous: { label: string; value: number }[];
+  };
+  donutData: { label: string; value: number }[];
+  deltaPct: number;
+};
+
+type Ready = {
+  loading: false;
+  response: DrilldownResponse;
+  donut: DonutDatum[];
+  deltaPct: number;
+};
+
+type Pending = { loading: true };
+
+type DrilldownConfig =
+  | {
+      type: "pueblo-category";
+      townId: TownId;
+      categoryId: CategoryId;
+    }
+  | {
+      type: "category-town";
+      categoryId: CategoryId;
+      townId: TownId;
+    };
+
+export function useDrilldownDetails(
+  config: DrilldownConfig & {
+    granularity: Granularity;
+    endISO?: string;
+  }
+) {
+  const { granularity, endISO, ...drilldownConfig } = config;
+
+  // Build query key and URL based on drilldown type
+  let url: string;
+  const qs = new URLSearchParams({ g: granularity });
+  if (endISO) qs.set("end", endISO);
+
+    // Build URL based on drilldown type
+    let url: string;
+    const qs = new URLSearchParams({ g: granularity });
+    if (endISO) qs.set("end", endISO);
+
+    if (drilldownConfig.type === "pueblo-category") {
+      // Query pueblo endpoint with category filter
+      qs.set("categoryId", drilldownConfig.categoryId);
+      url = `/api/analytics/v1/dimensions/pueblos/details/${
+        drilldownConfig.townId
+      }?${qs.toString()}`;
+    } else {
+      // Query categoria endpoint with town filter
+      qs.set("townId", drilldownConfig.townId);
+      url = `/api/analytics/v1/dimensions/categorias/details/${
+        drilldownConfig.categoryId
+      }?${qs.toString()}`;
+    }
+
+    fetchJSON<DrilldownResponse>(url)
+      .then((res: DrilldownResponse) => {
+        if (ac.signal.aborted) return;
+        const donut: DonutDatum[] = (res.donutData ?? []).map((d) => ({
+          label: d.label,
+          value: d.value,
+        }));
+        setState({
+          loading: false,
+          response: res,
+          donut,
+          deltaPct: res.deltaPct,
+        });
+      })
+      .catch((err) => {
+        if (ac.signal.aborted) return;
+        console.error("Error fetching drilldown details:", err);
+        // NO regresar a loading: true en error - esto causa bucles infinitos
+        // Crear un response vacío pero válido para evitar crashes
+        const emptyResponse: DrilldownResponse = {
+          range: { current: { start: "", end: "" }, previous: { start: "", end: "" } },
+          property: "",
+          id: "",
+          title: "Error loading data",
+          series: { current: [], previous: [] },
+          donutData: [],
+          deltaPct: 0,
+        };
+        setState({
+          loading: false,
+          response: emptyResponse,
+          donut: [],
+          deltaPct: 0,
+        });
+      });
+
+    return () => {
+      ac.abort();
+    };
+  }, [
+    drilldownConfig.type,
+    drilldownConfig.townId,
+    drilldownConfig.categoryId,
+    granularity,
+    endISO,
+  ]);
+
+  return state;
+}

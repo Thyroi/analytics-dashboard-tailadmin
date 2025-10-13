@@ -7,7 +7,7 @@ import {
   parseISO,
   toISO,
   todayUTC,
-} from "@/lib/utils/datetime";
+} from "@/lib/utils/time/datetime";
 
 /** ===================== Configuración ===================== **/
 export const TARGET_POINTS_DEFAULT = 24; // objetivo de puntos en series

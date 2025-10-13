@@ -1,10 +1,10 @@
 "use client";
 
+import StickyHeaderSection from "@/components/common/StickyHeaderSection";
 import {
   HeaderAnalyticsTimeProvider,
   useHeaderAnalyticsTimeframe,
 } from "@/features/analytics/context/HeaderAnalyticsTimeContext";
-import StickyHeaderSection from "@/features/analytics/sectors/expanded/SectorExpandedCardDetailed/StickyHeaderSection";
 import GeneralDataRow from "@/features/home/generalSection/GeneralDataRow";
 
 function InnerGeneralDataSection() {

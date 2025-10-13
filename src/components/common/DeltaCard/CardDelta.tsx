@@ -1,7 +1,7 @@
 "use client";
 
-import { coerceDelta } from "@/lib/utils/delta";
-import { formatPct } from "@/lib/utils/format";
+import { coerceDelta } from "@/lib/utils/core/delta";
+import { formatPct } from "@/lib/utils/formatting/format";
 
 type Props = { deltaPct: number | null; loading: boolean };
 

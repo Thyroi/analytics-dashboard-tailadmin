@@ -1,25 +1,17 @@
 "use client";
 
-import {
-  getTownCategoryDrilldown,
-  type SubSeries,
-  type TownCategoryDrilldownResponse,
-} from "@/features/analytics/services/drilldown";
 import type { CategoryId } from "@/lib/taxonomy/categories";
 import type { TownId } from "@/lib/taxonomy/towns";
-import type { DonutDatum, Granularity } from "@/lib/types";
-import { useEffect, useRef, useState } from "react";
+import type { Granularity } from "@/lib/types";
+import { useDrilldownDetails } from "./useDrilldownDetails";
 
-type Ready = {
-  loading: false;
-  xLabels: string[];
-  seriesByUrl: SubSeries[];
-  donut: DonutDatum[];
-  deltaPct: number;
-};
+// Keep the original interface for backward compatibility
+export type SubSeries = { name: string; data: number[]; path: string };
 
-type Pending = { loading: true };
-
+/**
+ * Backward-compatible wrapper around the new generic drilldown hook.
+ * Maintains the original interface while using the new endpoint architecture.
+ */
 export function useTownCategoryDrilldown(args: {
   townId: TownId;
   categoryId: CategoryId;
@@ -28,49 +20,46 @@ export function useTownCategoryDrilldown(args: {
 }) {
   const { townId, categoryId, granularity, endISO } = args;
 
-  const [state, setState] = useState<Ready | Pending>({ loading: true });
-  const abortRef = useRef<AbortController | null>(null);
+  // Use the new generic hook with pueblo-category configuration
+  const drilldown = useDrilldownDetails({
+    type: "pueblo-category",
+    townId,
+    categoryId,
+    granularity,
+    endISO,
+  });
 
-  useEffect(() => {
-    abortRef.current?.abort();
-    const ac = new AbortController();
-    abortRef.current = ac;
-    setState({ loading: true });
+  // Transform the new response format back to the expected legacy format
+  if (drilldown.loading) {
+    return {
+      loading: true,
+      xLabels: [],
+      seriesByUrl: [],
+      donut: [],
+      deltaPct: 0,
+    };
+  }
 
-    getTownCategoryDrilldown({ townId, categoryId, granularity, endISO })
-      .then((res: TownCategoryDrilldownResponse) => {
-        if (ac.signal.aborted) return;
-        const donut: DonutDatum[] = (res.donut ?? []).map((d) => ({
-          label: d.label,
-          value: d.value,
-        }));
-        setState({
-          loading: false,
-          xLabels: res.xLabels ?? [],
-          seriesByUrl: res.seriesByUrl ?? [],
-          donut,
-          deltaPct: Number.isFinite(res.deltaPct) ? res.deltaPct : 0,
-        });
-      })
-      .catch(() => {
-        if (ac.signal.aborted) return;
-        setState({
-          loading: false,
-          xLabels: [],
-          seriesByUrl: [],
-          donut: [],
-          deltaPct: 0,
-        });
-      });
+  // For drilldown scenarios, URLs in donut should be converted to seriesByUrl format
+  // Since the new endpoint returns URLs in the donut when drilling down,
+  // we need to convert them to the expected seriesByUrl format
+  const seriesByUrl: SubSeries[] = drilldown.donut.map((item) => ({
+    name: item.label,
+    data: [], // The new endpoint doesn't provide series data in donut format
+    path: item.label, // Assume the label is the URL/path
+  }));
 
-    return () => ac.abort();
-  }, [townId, categoryId, granularity, endISO]);
+  // For backward compatibility, create empty xLabels since the new endpoint
+  // doesn't provide this in the response (it's moved to series)
+  const xLabels: string[] = drilldown.response.series.current.map(
+    (item) => item.label
+  );
 
   return {
-    loading: state.loading,
-    xLabels: !state.loading ? state.xLabels : [],
-    seriesByUrl: !state.loading ? state.seriesByUrl : [],
-    donut: !state.loading ? state.donut : [],
-    deltaPct: !state.loading ? state.deltaPct : 0,
+    loading: false,
+    xLabels,
+    seriesByUrl,
+    donut: drilldown.donut,
+    deltaPct: drilldown.deltaPct,
   };
 }

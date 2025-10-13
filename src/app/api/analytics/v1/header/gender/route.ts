@@ -1,15 +1,15 @@
 // src/app/api/analytics/v1/header/gender/route.ts
 import type { DonutDatum, Granularity } from "@/lib/types";
 import {
-  deriveRangeEndingYesterday,
-  parseISO,
-  toISO,
-} from "@/lib/utils/datetime";
-import {
   getAuth,
   normalizePropertyId,
   resolvePropertyId,
-} from "@/lib/utils/ga";
+} from "@/lib/utils/analytics/ga";
+import {
+  deriveRangeEndingYesterday,
+  parseISO,
+  toISO,
+} from "@/lib/utils/time/datetime";
 import { analyticsdata_v1beta, google } from "googleapis";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -44,7 +44,7 @@ export async function GET(req: NextRequest) {
         ? { start, end }
         : (() => {
             const r = deriveRangeEndingYesterday(g);
-            return { start: r.startTime, end: r.endTime };
+            return r;
           })();
 
     // Auth + GA

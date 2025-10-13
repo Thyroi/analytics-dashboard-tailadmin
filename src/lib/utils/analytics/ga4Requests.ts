@@ -1,6 +1,6 @@
 // src/lib/analytics/ga4Requests.ts
 import type { analyticsdata_v1beta } from "googleapis";
-import type { DateRange } from "./timeWindows";
+import type { DateRange } from "../time/timeWindows";
 
 /**
  * Construye una RunReportRequest que consulta la **unión**

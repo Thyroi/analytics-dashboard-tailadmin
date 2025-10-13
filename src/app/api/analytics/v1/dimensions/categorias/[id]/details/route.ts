@@ -10,17 +10,17 @@ import { analyticsdata_v1beta, google } from "googleapis";
 import { NextResponse } from "next/server";
 
 import {
+  getAuth,
+  normalizePropertyId,
+  resolvePropertyId,
+} from "@/lib/utils/analytics/ga";
+import {
   addDaysUTC,
   deriveRangeEndingYesterday,
   parseISO,
   todayUTC,
   toISO,
-} from "@/lib/utils/datetime";
-import {
-  getAuth,
-  normalizePropertyId,
-  resolvePropertyId,
-} from "@/lib/utils/ga";
+} from "@/lib/utils/time/datetime";
 
 /* ====================== tipos / helpers ====================== */
 type DateRange = { start: string; end: string };
@@ -176,10 +176,7 @@ export async function GET(req: Request, ctx: { params: Promise<RouteParams> }) {
     const now = endISO ? parseISO(endISO) : todayUTC();
     const dayAsWeek = g === "d";
     const currPreset = deriveRangeEndingYesterday(g, now, dayAsWeek);
-    const current: DateRange = {
-      start: currPreset.startTime,
-      end: currPreset.endTime,
-    };
+    const current: DateRange = currPreset;
     const previous: DateRange = shiftRangeByDays(current, -1);
 
     // ✅ donutWindow: si g==='d' → SOLO EL DÍA FINAL; si no → el mismo current

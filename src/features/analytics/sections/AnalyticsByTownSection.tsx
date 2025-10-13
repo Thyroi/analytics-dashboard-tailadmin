@@ -1,5 +1,7 @@
 "use client";
 
+import SectorsGrid from "@/components/common/SectorsGrid";
+import StickyHeaderSection from "@/components/common/StickyHeaderSection";
 import {
   TownTimeProvider,
   useTownTimeframe,
@@ -8,14 +10,12 @@ import {
   usePueblosTotals,
   useTownDetails,
 } from "@/features/analytics/hooks/pueblos";
-import SectorsGridDetailed from "@/features/analytics/sectors/SectorsGridDetailed";
 import { type CategoryId } from "@/lib/taxonomy/categories";
 import type { TownId } from "@/lib/taxonomy/towns";
 import { TOWN_ID_ORDER } from "@/lib/taxonomy/towns";
 import type { SeriesPoint } from "@/lib/types";
-import { labelToCategoryId } from "@/lib/utils/sector";
+import { labelToCategoryId } from "@/lib/utils/core/sector";
 import { useCallback, useMemo, useState } from "react";
-import StickyHeaderSection from "../sectors/expanded/SectorExpandedCardDetailed/StickyHeaderSection";
 
 function AnalyticsByTownSectionInner() {
   const {
@@ -107,11 +107,12 @@ function AnalyticsByTownSectionInner() {
       // En nivel 1 (pueblo) las etiquetas son CATEGORÍAS
       const categoryId = labelToCategoryId(label);
       if (categoryId && expandedId) {
-        setDrill({
-          kind: "town+cat",
+        const newDrill = {
+          kind: "town+cat" as const,
           townId: expandedId as TownId,
           categoryId,
-        });
+        };
+        setDrill(newDrill);
       }
     },
     [expandedId]
@@ -145,8 +146,9 @@ function AnalyticsByTownSectionInner() {
         onClearRange={clearRange}
       />
 
-      <SectorsGridDetailed
+      <SectorsGrid
         key={gridKey}
+        variant="detailed"
         mode="town"
         ids={displayedIds}
         granularity={granularity}
@@ -159,12 +161,17 @@ function AnalyticsByTownSectionInner() {
         onClose={handleClose}
         onSliceClick={handleSliceClick}
         isDeltaLoading={isInitialLoading || isFetching}
-        // Nivel 2 (drill) — el panel interno calcula su propia data
-        forceDrillTownId={drill?.kind === "town+cat" ? drill.townId : undefined}
-        fixedCategoryId={
-          drill?.kind === "town+cat" ? drill.categoryId : undefined
+        // Nivel 2 (drill)
+        level2Data={
+          drill?.kind === "town+cat"
+            ? {
+                townId: drill.townId,
+                categoryId: drill.categoryId,
+                granularity,
+                endISO,
+              }
+            : undefined
         }
-        endISO={endISO}
         startDate={startDate}
         endDate={endDate}
       />

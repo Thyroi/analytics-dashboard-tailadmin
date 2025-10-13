@@ -1,6 +1,6 @@
 "use client";
 
-import { brandAreaFill } from "@/lib/utils/colors";
+import { brandAreaFill } from "@/lib/utils/formatting/colors";
 import type { ApexOptions } from "apexcharts";
 import { useTheme } from "next-themes";
 import dynamic from "next/dynamic";

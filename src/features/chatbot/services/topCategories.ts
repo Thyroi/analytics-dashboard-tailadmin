@@ -1,5 +1,5 @@
 import type { Granularity } from "@/lib/types";
-import { aggregateCategoriesForUI } from "@/lib/utils/aggregateCategories";
+import { aggregateCategoriesForUI } from "@/lib/utils/data/aggregateCategories";
 
 function formatDateForGranularity(
   date: string,

@@ -1,13 +1,13 @@
 import { fetchChatbotTags, type ChatbotGranularity } from "@/lib/api/chatbot";
 import { TOWN_ID_ORDER, type TownId } from "@/lib/taxonomy/towns";
 import type { Granularity } from "@/lib/types";
-import { parseISO } from "@/lib/utils/datetime";
-import { buildAxisFromChatbot } from "@/lib/utils/timeAxisChatbot";
+import { parseISO } from "@/lib/utils/time/datetime";
+import { buildAxisFromChatbot } from "@/lib/utils/time/timeAxisChatbot";
 import {
   deriveRangeEndingYesterday,
   getDonutWindow,
   shiftRangeByDays,
-} from "@/lib/utils/windowPolicyAnalytics";
+} from "@/lib/utils/core/windowPolicyAnalytics";
 
 export type TownTotalsItem = {
   id: TownId;

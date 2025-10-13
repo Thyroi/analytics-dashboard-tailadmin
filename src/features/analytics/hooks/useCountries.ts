@@ -1,10 +1,10 @@
 // src/features/analytics/hooks/useCountries.ts
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { fetchCountries } from "@/features/analytics/services/countries";
 import type { CountriesPayload } from "@/lib/api/analytics";
 import type { Granularity } from "@/lib/types";
-import { fetchCountries } from "@/features/analytics/services/countries";
+import { useQuery } from "@tanstack/react-query";
 
 export type UseCountriesParams = {
   start?: string;
@@ -13,34 +13,28 @@ export type UseCountriesParams = {
   limit?: number;
 };
 
-export function useCountries({ start, end, granularity = "d", limit = 100 }: UseCountriesParams) {
-  const [data, setData] = useState<CountriesPayload | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
-  const lastKey = useRef("");
+export function useCountries({
+  start,
+  end,
+  granularity = "d",
+  limit = 100,
+}: UseCountriesParams) {
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["countries", start, end, granularity, limit],
+    queryFn: async (): Promise<CountriesPayload> => {
+      return fetchCountries({ start, end, granularity, limit });
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutos
+    retry: (failureCount, error) => {
+      if (error instanceof DOMException && error.name === "AbortError")
+        return false;
+      return failureCount < 2;
+    },
+  });
 
-  useEffect(() => {
-    const key = `${start ?? "auto"}_${end ?? "auto"}_${granularity}_${limit}`;
-    if (lastKey.current === key) return;
-    lastKey.current = key;
-
-    const controller = new AbortController();
-    setIsLoading(true);
-    setError(null);
-
-    (async () => {
-      try {
-        const resp = await fetchCountries({ start, end, granularity, limit, signal: controller.signal });
-        setData(resp);
-      } catch (e) {
-        if (!(e instanceof DOMException && e.name === "AbortError")) setError(e as Error);
-      } finally {
-        setIsLoading(false);
-      }
-    })();
-
-    return () => controller.abort();
-  }, [start, end, granularity, limit]);
-
-  return { data, isLoading, error };
+  return {
+    data: data || null,
+    isLoading,
+    error: error as Error | null,
+  };
 }

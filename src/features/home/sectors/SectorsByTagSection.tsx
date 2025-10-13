@@ -1,11 +1,11 @@
 "use client";
 
+import SectorsGrid from "@/components/common/SectorsGrid";
 import { useTagTimeframe } from "@/features/analytics/context/TagTimeContext";
 import {
   useCategoriesTotals,
   useCategoryDetails,
 } from "@/features/analytics/hooks/categorias";
-import SectorsGrid from "@/features/home/sectors/SectorsGrid";
 import type { CategoryId } from "@/lib/taxonomy/categories";
 import { CATEGORY_ID_ORDER } from "@/lib/taxonomy/categories";
 import type { Granularity } from "@/lib/types";
@@ -64,6 +64,7 @@ export default function SectorsByTagSection({ granularity }: Props) {
   return (
     <section className="max-w-[1560px]">
       <SectorsGrid
+        variant="simple"
         mode="tag"
         ids={displayedIds}
         granularity={granularity}

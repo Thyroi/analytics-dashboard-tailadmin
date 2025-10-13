@@ -1,10 +1,10 @@
 // features/analytics/hooks/useKpis.ts
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import type { Granularity } from "@/lib/types";
 import { fetchKpis } from "@/features/analytics/services/kpis";
 import type { KpiPayload } from "@/lib/api/analytics";
+import type { Granularity } from "@/lib/types";
+import { useQuery } from "@tanstack/react-query";
 
 export type UseKpisParams = {
   start?: string;
@@ -13,46 +13,22 @@ export type UseKpisParams = {
 };
 
 export function useKpis({ start, end, granularity = "d" }: UseKpisParams) {
-  const [data, setData] = useState<KpiPayload | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
-  const lastKey = useRef("");
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["kpis", start, end, granularity],
+    queryFn: async (): Promise<KpiPayload> => {
+      return fetchKpis({ start, end, granularity });
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutos
+    retry: (failureCount, error) => {
+      if (error instanceof DOMException && error.name === "AbortError")
+        return false;
+      return failureCount < 2;
+    },
+  });
 
-  const key = useMemo(
-    () => `${start ?? "auto"}|${end ?? "auto"}|${granularity}`,
-    [start, end, granularity]
-  );
-
-  useEffect(() => {
-    if (lastKey.current === key) return;
-    lastKey.current = key;
-
-    const controller = new AbortController();
-    setIsLoading(true);
-    setError(null);
-
-    // DEBUG: log de la request
-    const sp = new URLSearchParams();
-    if (start) sp.set("start", start);
-    if (end) sp.set("end", end);
-    if (granularity) sp.set("granularity", granularity);
-
-    (async () => {
-      try {
-        const payload = await fetchKpis({ start, end, granularity, signal: controller.signal });
-        setData(payload);
-      } catch (e) {
-        if (!(e instanceof DOMException && e.name === "AbortError")) {
-          setError(e as Error);
-          setData(null);
-        }
-      } finally {
-        setIsLoading(false);
-      }
-    })();
-
-    return () => controller.abort();
-  }, [key, start, end, granularity]);
-
-  return { data, isLoading, error };
+  return {
+    data: data || null,
+    isLoading,
+    error: error as Error | null,
+  };
 }

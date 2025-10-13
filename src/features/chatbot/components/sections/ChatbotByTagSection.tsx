@@ -6,7 +6,7 @@ import {
 } from "@/features/analytics/context/TagTimeContext";
 import { useMemo, useState } from "react";
 
-import StickyHeaderSection from "@/features/analytics/sectors/expanded/SectorExpandedCardDetailed/StickyHeaderSection";
+import StickyHeaderSection from "@/components/common/StickyHeaderSection";
 
 import { CATEGORY_ID_ORDER, type CategoryId } from "@/lib/taxonomy/categories";
 import type { TownId } from "@/lib/taxonomy/towns";

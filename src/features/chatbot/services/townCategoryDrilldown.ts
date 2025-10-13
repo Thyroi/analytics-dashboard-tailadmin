@@ -1,5 +1,5 @@
 import { fetchChatbotTags, type ChatbotGranularity } from "@/lib/api/chatbot";
-import { buildAxisFromChatbot } from "@/lib/utils/timeAxisChatbot";
+import { buildAxisFromChatbot } from "@/lib/utils/time/timeAxisChatbot";
 
 type SubLine = { name: string; data: number[]; path: string };
 

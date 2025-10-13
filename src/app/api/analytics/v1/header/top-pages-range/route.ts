@@ -4,12 +4,12 @@ import {
   deriveAutoRangeForGranularity,
   parseISO,
   toISO,
-} from "@/lib/utils/datetime";
+} from "@/lib/utils/time/datetime";
 import {
   getAuth,
   normalizePropertyId,
   resolvePropertyId,
-} from "@/lib/utils/ga";
+} from "@/lib/utils/analytics/ga";
 import { analyticsdata_v1beta, google } from "googleapis";
 import { NextResponse } from "next/server";
 

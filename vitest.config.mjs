@@ -8,6 +8,7 @@ export default defineConfig({
     include: ["src/**/*.{test,spec}.{ts,tsx}"],
     exclude: ["node_modules", "dist", ".next", "e2e", "tests-old"],
   },
+  envDir: ".",
   resolve: {
     alias: {
       "@": new URL("./src", import.meta.url).pathname,

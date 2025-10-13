@@ -3,7 +3,7 @@
 import LineChart from "@/components/charts/LineChart";
 import Header from "@/components/common/Header";
 import { useTopPagesRange } from "@/features/analytics/hooks/useTopPagesRange";
-import { buildSeriesColorMap } from "@/lib/utils/colors";
+import { buildSeriesColorMap } from "@/lib/utils/formatting/colors";
 import { BarChart3 } from "lucide-react";
 import { useHeaderAnalyticsTimeframe } from "../context/HeaderAnalyticsTimeContext";
 

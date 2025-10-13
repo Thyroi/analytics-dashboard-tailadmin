@@ -4,12 +4,12 @@ import DeltaCard from "@/components/common/DeltaCard";
 import type { CategoryId } from "@/lib/taxonomy/categories";
 import type { TownId } from "@/lib/taxonomy/towns";
 import type { DonutDatum, Granularity, SeriesPoint } from "@/lib/types";
-import type { IconOrImage } from "@/lib/utils/images";
+import type { IconOrImage } from "@/lib/utils/core/images";
 import {
   orderIdsByTaxonomy,
   sectorIconSrc,
   sectorTitle,
-} from "@/lib/utils/sector";
+} from "@/lib/utils/core/sector";
 import { MapPinIcon } from "@heroicons/react/24/solid";
 import { useEffect, useMemo, useRef, useState } from "react";
 import SectorExpandedCardDetailed from "../sectors/expanded/SectorExpandedCardDetailed";
@@ -40,12 +40,13 @@ type Props = {
   startDate?: Date;
   endDate?: Date;
 
-  /** endISO del contexto (YYYY-MM-DD) cuando mode === "range"; si no, undefined */
-  endISO?: string;
-
-  /** para modo "tag" con drilldown forzado */
-  forceDrillTownId?: TownId;
-  fixedCategoryId?: CategoryId;
+  /** Nivel 2 data - si se pasa, se renderiza el drilldown */
+  level2Data?: {
+    townId: TownId;
+    categoryId: CategoryId;
+    granularity: Granularity;
+    endISO?: string;
+  };
 
   /** Loader en aro + delta oculto */
   isDeltaLoading?: boolean;
@@ -81,9 +82,7 @@ export default function SectorsGridDetailed({
   onSliceClick,
   startDate,
   endDate,
-  endISO,
-  forceDrillTownId,
-  fixedCategoryId,
+  level2Data,
   isDeltaLoading = false,
 }: Props) {
   const [uncontrolled, setUncontrolled] = useState<string | null>(null);
@@ -155,11 +154,8 @@ export default function SectorsGridDetailed({
                 previous={s.previous}
                 donutData={donutData}
                 onClose={handleClose}
-                isTown={isTown}
                 onSliceClick={onSliceClick}
-                forceDrillTownId={forceDrillTownId}
-                fixedCategoryId={fixedCategoryId}
-                endISO={endISO} // ← propagado al expandido
+                level2={level2Data}
                 {...expandedVariant}
               />
             </div>

@@ -7,35 +7,34 @@ import type { Granularity } from "@/lib/types";
 import {
   validateAndSanitizeUrlPath,
   type ValidationResult,
-} from "@/lib/utils/analytics-validators";
+} from "@/lib/utils/analytics/analytics-validators";
+import { withRetry } from "@/lib/utils/analytics/error-handler";
 import {
   getAuth,
   normalizePropertyId,
   resolvePropertyId,
-} from "@/lib/utils/ga";
-import {
-  executeWithRetry,
-  validateGA4Config,
-} from "@/lib/utils/ga4-error-handler";
-import { buildUnionRunReportRequest } from "@/lib/utils/ga4Requests";
-import { safeUrlPathname } from "@/lib/utils/pathMatching";
+} from "@/lib/utils/analytics/ga";
+import { buildUnionRunReportRequest } from "@/lib/utils/analytics/ga4Requests";
+import { safeUrlPathname } from "@/lib/utils/routing/pathMatching";
 import {
   computeDeltaPct,
   computeRangesFromQuery,
-} from "@/lib/utils/timeWindows";
+} from "@/lib/utils/time/timeWindows";
 import { google } from "googleapis";
 
 /** Configuración común de GA4 con validación */
-export function setupGA4Client(): ValidationResult<{
-  analytics: ReturnType<typeof google.analyticsdata>;
-  property: string;
-}> {
-  // Validar configuración de GA4
-  const configValidation = validateGA4Config();
-  if (!configValidation.isValid) {
+export async function setupGA4Client(): Promise<
+  ValidationResult<{
+    analytics: ReturnType<typeof google.analyticsdata>;
+    property: string;
+  }>
+> {
+  // Validar que tenemos autenticación
+  const auth = await getAuth();
+  if (!auth) {
     return {
       success: false,
-      error: `GA4 configuration error: ${configValidation.errors.join(", ")}`,
+      error: "GA4 authentication not configured",
       code: "GA4_CONFIG_ERROR",
     };
   }
@@ -77,7 +76,7 @@ export async function executeGA4Query(
 ) {
   const unionRequest = createPageViewRequest(request);
 
-  return executeWithRetry(async () => {
+  return withRetry(async () => {
     const response = await analytics.properties.runReport({
       property,
       requestBody: unionRequest,
@@ -116,8 +115,8 @@ export function createPageViewRequest(
 /* =================== RE-EXPORTS DE UTILIDADES =================== */
 
 // Re-exportar utilidades útiles para las rutas
-export { validateAnalyticsParams } from "@/lib/utils/analytics-validators";
-export { createGA4ErrorResponse } from "@/lib/utils/ga4-error-handler";
+export { validateAnalyticsParams } from "./analytics-validators";
+export { createErrorResponse as createGA4ErrorResponse } from "./error-handler";
 
 /** Procesa filas de GA4 y agrupa por período de tiempo con validación */
 export function processGA4Rows<T extends string>(

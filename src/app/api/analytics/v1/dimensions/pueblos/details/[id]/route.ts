@@ -9,25 +9,28 @@ import {
   getAuth,
   normalizePropertyId,
   resolvePropertyId,
-} from "@/lib/utils/ga";
-import { buildPageViewUnionRequest } from "@/lib/utils/ga4Requests";
+} from "@/lib/utils/analytics/ga";
+import { buildPageViewUnionRequest } from "@/lib/utils/analytics/ga4Requests";
 import {
   formatSeriesWithGranularity,
   mapDataByGranularity,
   type GA4Row,
-} from "@/lib/utils/granularityMapping";
+} from "@/lib/utils/core/granularityMapping";
 import {
-  computeCustomRanges,
-  computeRangesByGranularity,
-  debugRanges,
-} from "@/lib/utils/granularityRanges";
+  buildCategoriesDonutForTown,
+  buildUrlsDonutForTownCategory,
+} from "@/lib/utils/data/seriesAndDonuts";
 import {
   matchCategoryIdFromPath,
   matchTownIdFromPath,
   safeUrlPathname,
-} from "@/lib/utils/pathMatching";
-import { buildCategoriesDonutForTown } from "@/lib/utils/seriesAndDonuts";
-import { computeDeltaPct } from "@/lib/utils/timeWindows";
+} from "@/lib/utils/routing/pathMatching";
+import {
+  computeCustomRanges,
+  computeRangesByGranularity,
+  debugRanges,
+} from "@/lib/utils/time/granularityRanges";
+import { computeDeltaPct } from "@/lib/utils/time/timeWindows";
 import { google } from "googleapis";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -54,10 +57,12 @@ export async function GET(
       .toLowerCase() as Granularity;
     const startQ = searchParams.get("start");
     const endQ = searchParams.get("end");
+    const categoryFilter = searchParams.get("categoryId"); // Filtro opcional para drilldown
 
     // DEBUG: Log de parámetros recibidos
     console.log("🔍 DEBUG pueblos/details endpoint:", {
       townId,
+      categoryFilter,
       url: req.url,
       granularity: g,
       start: startQ,
@@ -121,6 +126,16 @@ export async function GET(
     });
     const rows = resp.data.rows ?? [];
 
+    // Si hay filtro de categoría, pre-filtrar las filas para drilldown
+    const filteredRows = categoryFilter
+      ? rows.filter((r) => {
+          const url = String(r.dimensionValues?.[1]?.value ?? "");
+          const path = safeUrlPathname(url);
+          const categoryId = matchCategoryIdFromPath(path);
+          return categoryId === categoryFilter;
+        })
+      : rows;
+
     // Procesar datos usando función genérica por granularidad
     const {
       currentSeries,
@@ -131,7 +146,7 @@ export async function GET(
       previousLabels,
     } = mapDataByGranularity(
       actualGranularity,
-      rows as GA4Row[],
+      filteredRows as GA4Row[],
       matchTownIdFromPath,
       townId,
       ranges
@@ -169,15 +184,27 @@ export async function GET(
     }
 
     // Generar donut de categorías para este pueblo usando función utilitaria
-    const donutData = buildCategoriesDonutForTown(
-      rows as GA4Row[],
-      matchTownIdFromPath,
-      townId,
-      matchCategoryIdFromPath,
-      donutRanges.current.start,
-      donutRanges.current.end,
-      actualGranularity
-    );
+    // Si hay filtro de categoría, el donut mostrará URLs; sino, mostrará categorías
+    const donutData = categoryFilter
+      ? buildUrlsDonutForTownCategory(
+          filteredRows as GA4Row[],
+          matchTownIdFromPath,
+          townId,
+          matchCategoryIdFromPath,
+          categoryFilter,
+          donutRanges.current.start,
+          donutRanges.current.end,
+          actualGranularity
+        )
+      : buildCategoriesDonutForTown(
+          rows as GA4Row[],
+          matchTownIdFromPath,
+          townId,
+          matchCategoryIdFromPath,
+          donutRanges.current.start,
+          donutRanges.current.end,
+          actualGranularity
+        );
 
     // Calcular delta
     const deltaPct = computeDeltaPct(totalCurrent, totalPrevious);

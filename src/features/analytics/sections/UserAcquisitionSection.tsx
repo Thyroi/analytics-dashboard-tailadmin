@@ -3,7 +3,7 @@
 import LineChart from "@/components/charts/LineChart";
 import Header from "@/components/common/Header";
 import { useUserAcquisitionRange } from "@/features/analytics/hooks/useUserAcquisitionRange";
-import { buildSeriesColorMap } from "@/lib/utils/colors";
+import { buildSeriesColorMap } from "@/lib/utils/formatting/colors";
 import { UserPlus } from "lucide-react";
 import { useHeaderAnalyticsTimeframe } from "../context/HeaderAnalyticsTimeContext";
 import { ChartSectionSkeleton } from "../skeletons";

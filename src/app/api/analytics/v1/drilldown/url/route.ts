@@ -1,13 +1,13 @@
 // src/app/api/analytics/v1/drilldown/url/route.ts
 import type { DonutDatum, Granularity, SeriesPoint } from "@/lib/types";
-import { addDaysUTC, todayUTC } from "@/lib/utils/datetime";
+import { addDaysUTC, todayUTC } from "@/lib/utils/time/datetime";
 import {
   getAuth,
   normalizePropertyId,
   resolvePropertyId,
-} from "@/lib/utils/ga";
-import { buildLaggedAxisForGranularity } from "@/lib/utils/timeAxis";
-import { normalizePath, safePathname, stripLangPrefix } from "@/lib/utils/url";
+} from "@/lib/utils/analytics/ga";
+import { buildLaggedAxisForGranularity } from "@/lib/utils/time/timeAxis";
+import { normalizePath, safePathname, stripLangPrefix } from "@/lib/utils/routing/url";
 import type { GoogleAuth } from "google-auth-library";
 import { analyticsdata_v1beta, google } from "googleapis";
 import { NextResponse } from "next/server";

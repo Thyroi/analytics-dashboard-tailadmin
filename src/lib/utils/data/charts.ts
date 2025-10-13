@@ -1,14 +1,14 @@
-// lib/utils/charts.ts
-import type { DonutDatum, Granularity, SeriesPoint,  } from "@/lib/types";
+// lib/utils/data/charts.ts
+import type { DonutDatum, Granularity, SeriesPoint } from "@/lib/types";
 import {
-  parseISO,
-  toISO,
   addDaysUTC,
-  startOfMonthUTC,
   endOfMonthUTC,
-  startOfYearUTC,
   endOfYearUTC,
-} from "@/lib/utils/datetime";
+  parseISO,
+  startOfMonthUTC,
+  startOfYearUTC,
+  toISO,
+} from "../time/datetime";
 /**
  * Obtiene el delta porcentual de una categoría de forma segura.
  * Retorna 0 si el estado no está listo o el valor no existe.
@@ -26,7 +26,10 @@ export function getDeltaPctForCategory(
  * Retorna una estructura vacía para series actuales y previas.
  * Útil como valor inicial antes de que lleguen datos reales.
  */
-export function getEmptySeries(): { current: SeriesPoint[]; previous: SeriesPoint[] } {
+export function getEmptySeries(): {
+  current: SeriesPoint[];
+  previous: SeriesPoint[];
+} {
   return { current: [], previous: [] };
 }
 
@@ -39,9 +42,9 @@ export function getEmptyDonut(): DonutDatum[] {
 }
 
 export type Bucket = {
-  id: string;    // ej. "2025-09-01", "W0_2025-09-01", "2025-09", "2025"
+  id: string; // ej. "2025-09-01", "W0_2025-09-01", "2025-09", "2025"
   start: string; // YYYY-MM-DD
-  end: string;   // YYYY-MM-DD
+  end: string; // YYYY-MM-DD
   label: string; // lo que muestra el eje X; puedes re-formatear en UI
 };
 
@@ -124,7 +127,9 @@ export function makeBuckets(
       out.push({ id, start, end, label });
 
       // avanza un mes
-      const next = new Date(Date.UTC(monthStart.getUTCFullYear(), monthStart.getUTCMonth() + 1, 1));
+      const next = new Date(
+        Date.UTC(monthStart.getUTCFullYear(), monthStart.getUTCMonth() + 1, 1)
+      );
       cursor = next;
     }
     return out;
@@ -186,8 +191,8 @@ export function groupFromDailyMaps(
   const bCur = makeBuckets(g, ranges.current.start, ranges.current.end);
   const bPrev = makeBuckets(g, ranges.previous.start, ranges.previous.end);
 
-  const accCur = new Map<string, number>(bCur.map(b => [b.id, 0]));
-  const accPrev = new Map<string, number>(bPrev.map(b => [b.id, 0]));
+  const accCur = new Map<string, number>(bCur.map((b) => [b.id, 0]));
+  const accPrev = new Map<string, number>(bPrev.map((b) => [b.id, 0]));
 
   let totalCur = 0;
   let totalPrev = 0;
@@ -206,8 +211,14 @@ export function groupFromDailyMaps(
   }
 
   const series = {
-    current: bCur.map(b => ({ label: b.label, value: accCur.get(b.id) ?? 0 })),
-    previous: bPrev.map(b => ({ label: b.label, value: accPrev.get(b.id) ?? 0 })),
+    current: bCur.map((b) => ({
+      label: b.label,
+      value: accCur.get(b.id) ?? 0,
+    })),
+    previous: bPrev.map((b) => ({
+      label: b.label,
+      value: accPrev.get(b.id) ?? 0,
+    })),
   };
 
   return { series, totals: { current: totalCur, previous: totalPrev } };

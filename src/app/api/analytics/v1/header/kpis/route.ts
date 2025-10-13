@@ -5,11 +5,11 @@ import {
   getAuth,
   normalizePropertyId,
   resolvePropertyId,
-} from "@/lib/utils/ga";
+} from "@/lib/utils/analytics/ga";
 import { analyticsdata_v1beta, google } from "googleapis";
 import { NextRequest, NextResponse } from "next/server";
 
-import { computeRangesFromQuery } from "@/lib/utils/timeWindows";
+import { computeRangesFromQuery } from "@/lib/utils/time/timeWindows";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";

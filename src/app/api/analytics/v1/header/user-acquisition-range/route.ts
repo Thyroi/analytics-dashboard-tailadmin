@@ -1,16 +1,16 @@
 // src/app/api/analytics/v1/series/user-acquisition-range/route.ts
 import type { Granularity } from "@/lib/types";
 import {
+  getAuth,
+  normalizePropertyId,
+  resolvePropertyId,
+} from "@/lib/utils/analytics/ga";
+import {
   deriveRangeEndingYesterday,
   parseISO,
   toISO,
   todayUTC,
-} from "@/lib/utils/datetime";
-import {
-  getAuth,
-  normalizePropertyId,
-  resolvePropertyId,
-} from "@/lib/utils/ga";
+} from "@/lib/utils/time/datetime";
 import { analyticsdata_v1beta, google } from "googleapis";
 import { NextResponse } from "next/server";
 
@@ -92,7 +92,7 @@ export async function GET(req: Request) {
         : (() => {
             const dayAsWeek = g === "d";
             const r = deriveRangeEndingYesterday(g, todayUTC(), dayAsWeek);
-            return { start: r.startTime, end: r.endTime };
+            return r;
           })();
 
     // Auth + GA4

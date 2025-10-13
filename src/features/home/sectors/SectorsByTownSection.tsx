@@ -1,9 +1,9 @@
 "use client";
 
+import SectorsGrid from "@/components/common/SectorsGrid";
 import { useTownTimeframe } from "@/features/analytics/context/TownTimeContext";
 import { usePueblosTotals } from "@/features/analytics/hooks/pueblos";
 import { useTownDetails } from "@/features/home/hooks/useTownDetails";
-import SectorsGrid from "@/features/home/sectors/SectorsGrid";
 import type { TownId } from "@/lib/taxonomy/towns";
 import { TOWN_ID_ORDER } from "@/lib/taxonomy/towns";
 import type { Granularity } from "@/lib/types";
@@ -55,6 +55,7 @@ export default function SectorsByTownSection({ granularity }: Props) {
   return (
     <section className="max-w-[1560px]">
       <SectorsGrid
+        variant="simple"
         mode="town"
         ids={displayedIds}
         granularity={granularity}

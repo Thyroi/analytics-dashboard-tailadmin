@@ -3,13 +3,13 @@ import type { Granularity } from "@/lib/types";
 import { analyticsdata_v1beta, google } from "googleapis";
 import { NextResponse } from "next/server";
 
-import { addDaysUTC, parseISO, toISO, todayUTC } from "@/lib/utils/datetime";
+import { addDaysUTC, parseISO, toISO, todayUTC } from "@/lib/utils/time/datetime";
 import {
   getAuth,
   normalizePropertyId,
   resolvePropertyId,
-} from "@/lib/utils/ga";
-import { buildLaggedAxisForGranularity } from "@/lib/utils/timeAxis";
+} from "@/lib/utils/analytics/ga";
+import { buildLaggedAxisForGranularity } from "@/lib/utils/time/timeAxis";
 
 /* ================= Tipos ================= */
 type Point = { label: string; value: number };

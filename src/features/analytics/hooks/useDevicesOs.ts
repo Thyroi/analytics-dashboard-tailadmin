@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, useCallback } from "react";
-import type { Granularity, DonutDatum } from "@/lib/types";
 import type { DevicesOsResponse } from "@/lib/api/analytics";
+import type { DonutDatum, Granularity } from "@/lib/types";
+import { useQuery } from "@tanstack/react-query";
 import { getDevicesOs } from "../services/devicesOs";
 
 type UseDevicesOsOk = {
@@ -23,61 +23,37 @@ type UseDevicesOsError = {
   error: Error;
   refetch: () => void;
 };
-export type UseDevicesOsResult = UseDevicesOsOk | UseDevicesOsLoading | UseDevicesOsError;
+export type UseDevicesOsResult =
+  | UseDevicesOsOk
+  | UseDevicesOsLoading
+  | UseDevicesOsError;
 
 export function useDevicesOs(input?: {
   start?: string;
   end?: string;
   granularity?: Granularity;
 }): UseDevicesOsResult {
-  const [data, setData] = useState<DevicesOsResponse | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [error, setError] = useState<Error | null>(null);
-  const abortRef = useRef<AbortController | null>(null);
-
-  // clave de dependencias estable
-  const key = useMemo(
-    () => `${input?.start ?? ""}:${input?.end ?? ""}:${input?.granularity ?? ""}`,
-    [input?.start, input?.end, input?.granularity]
-  );
-
-  const run = useCallback(() => {
-    abortRef.current?.abort();
-    const ac = new AbortController();
-    abortRef.current = ac;
-
-    setIsLoading(true);
-    setError(null);
-
-    getDevicesOs({
-      start: input?.start,
-      end: input?.end,
-      granularity: input?.granularity,
-      signal: ac.signal,
-    })
-      .then((res) => {
-        if (ac.signal.aborted) return;
-        setData(res);
-      })
-      .catch((err) => {
-        if (ac.signal.aborted) return;
-        setError(err instanceof Error ? err : new Error(String(err)));
-        setData(null);
-      })
-      .finally(() => {
-        if (!ac.signal.aborted) setIsLoading(false);
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: ["devices-os", input?.start, input?.end, input?.granularity],
+    queryFn: async (): Promise<DevicesOsResponse> => {
+      return getDevicesOs({
+        start: input?.start,
+        end: input?.end,
+        granularity: input?.granularity,
       });
-  }, [input?.start, input?.end, input?.granularity]);
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutos
+    retry: (failureCount, error) => {
+      if (error instanceof DOMException && error.name === "AbortError")
+        return false;
+      return failureCount < 2;
+    },
+  });
 
-  useEffect(() => {
-    run();
-    return () => abortRef.current?.abort();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key]);
-
-  if (data && !isLoading && !error) return { data, isLoading: false, error: null, refetch: run };
-  if (isLoading) return { data: null, isLoading: true, error: null, refetch: run };
-  return { data: null, isLoading: false, error: error as Error, refetch: run };
+  if (data && !isLoading && !error)
+    return { data, isLoading: false, error: null, refetch };
+  if (isLoading) return { data: null, isLoading: true, error: null, refetch };
+  return { data: null, isLoading: false, error: error as Error, refetch };
 }
 
 // Helper para colorear (sin mutar la respuesta)

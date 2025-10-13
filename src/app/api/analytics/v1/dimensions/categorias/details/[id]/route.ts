@@ -4,29 +4,33 @@ import {
   type CategoryId,
 } from "@/lib/taxonomy/categories";
 import type { Granularity } from "@/lib/types";
+
 import {
   getAuth,
   normalizePropertyId,
   resolvePropertyId,
-} from "@/lib/utils/ga";
-import { buildPageViewUnionRequest } from "@/lib/utils/ga4Requests";
+} from "@/lib/utils/analytics/ga";
+import { buildPageViewUnionRequest } from "@/lib/utils/analytics/ga4Requests";
 import {
   formatSeriesWithGranularity,
   mapDataByGranularity,
   type GA4Row,
-} from "@/lib/utils/granularityMapping";
+} from "@/lib/utils/core/granularityMapping";
 import {
-  computeCustomRanges,
-  computeRangesByGranularity,
-  debugRanges,
-} from "@/lib/utils/granularityRanges";
+  buildTownsDonutForCategory,
+  buildUrlsDonutForCategoryTown,
+} from "@/lib/utils/data/seriesAndDonuts";
 import {
   matchCategoryIdFromPath,
   matchTownIdFromPath,
   safeUrlPathname,
-} from "@/lib/utils/pathMatching";
-import { buildTownsDonutForCategory } from "@/lib/utils/seriesAndDonuts";
-import { computeDeltaPct } from "@/lib/utils/timeWindows";
+} from "@/lib/utils/routing/pathMatching";
+import {
+  computeCustomRanges,
+  computeRangesByGranularity,
+  debugRanges,
+} from "@/lib/utils/time/granularityRanges";
+import { computeDeltaPct } from "@/lib/utils/time/timeWindows";
 import { google } from "googleapis";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -53,6 +57,7 @@ export async function GET(
       .toLowerCase() as Granularity;
     const startQ = searchParams.get("start");
     const endQ = searchParams.get("end");
+    const townFilter = searchParams.get("townId"); // Filter by specific town for drilldown
 
     // DEBUG: Log de parámetros recibidos
     console.log("🔍 DEBUG nueva versión /details endpoint:", {
@@ -61,6 +66,7 @@ export async function GET(
       granularity: g,
       start: startQ,
       end: endQ,
+      townFilter,
     });
 
     // Calcular rangos usando función específica por granularidad
@@ -120,6 +126,15 @@ export async function GET(
     });
     const rows = resp.data.rows ?? [];
 
+    // Apply town filter if provided for drilldown scenarios
+    const filteredRows = townFilter
+      ? rows.filter((r) => {
+          const url = String(r.dimensionValues?.[1]?.value ?? "");
+          const path = safeUrlPathname(url);
+          return matchTownIdFromPath(path) === townFilter;
+        })
+      : rows;
+
     // Procesar datos usando función genérica por granularidad
     const {
       currentSeries,
@@ -130,7 +145,7 @@ export async function GET(
       previousLabels,
     } = mapDataByGranularity(
       actualGranularity,
-      rows as GA4Row[],
+      filteredRows as GA4Row[],
       matchCategoryIdFromPath,
       categoryId,
       ranges
@@ -168,15 +183,27 @@ export async function GET(
     }
 
     // Generar donut usando función utilitaria con rangos específicos
-    const donutData = buildTownsDonutForCategory(
-      rows as GA4Row[],
-      matchCategoryIdFromPath,
-      categoryId,
-      matchTownIdFromPath,
-      donutRanges.current.start,
-      donutRanges.current.end,
-      actualGranularity
-    );
+    // Si hay filtro de pueblo, el donut mostrará URLs; sino, mostrará pueblos
+    const donutData = townFilter
+      ? buildUrlsDonutForCategoryTown(
+          filteredRows as GA4Row[],
+          matchCategoryIdFromPath,
+          categoryId,
+          matchTownIdFromPath,
+          townFilter,
+          donutRanges.current.start,
+          donutRanges.current.end,
+          actualGranularity
+        )
+      : buildTownsDonutForCategory(
+          rows as GA4Row[],
+          matchCategoryIdFromPath,
+          categoryId,
+          matchTownIdFromPath,
+          donutRanges.current.start,
+          donutRanges.current.end,
+          actualGranularity
+        );
 
     // Calcular delta
     const deltaPct = computeDeltaPct(totalCurrent, totalPrevious);
@@ -194,7 +221,9 @@ export async function GET(
         deltaPct,
         debug: {
           totalRows: rows.length,
-          matchedRows: rows.filter((r) => {
+          filteredRows: filteredRows.length,
+          townFilter,
+          matchedRows: filteredRows.filter((r) => {
             const url = String(r.dimensionValues?.[1]?.value ?? "");
             const path = safeUrlPathname(url);
             return matchCategoryIdFromPath(path) === categoryId;
