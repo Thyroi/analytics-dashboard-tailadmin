@@ -199,7 +199,7 @@ describe("useDrilldownDetails", () => {
     rerender({
       type: "pueblo-category",
       townId: "almonte",
-      categoryId: "naturaleza", // Different category to trigger new query
+      categoryId: "gastronomia", // Different category to trigger new query
       granularity: "d",
     });
 
