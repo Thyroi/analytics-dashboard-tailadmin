@@ -180,13 +180,13 @@ describe("useDrilldownDetails", () => {
 
   test("aborts requests when config changes", async () => {
     const { result, rerender } = renderHook(
-      (props) => useDrilldownDetails(props),
+      (props: Parameters<typeof useDrilldownDetails>[0]) => useDrilldownDetails(props),
       {
         initialProps: {
-          type: "pueblo-category" as const,
-          townId: "almonte" as const,
-          categoryId: "naturaleza" as const,
-          granularity: "d" as const,
+          type: "pueblo-category",
+          townId: "almonte",
+          categoryId: "naturaleza",
+          granularity: "d",
         },
       }
     );
@@ -199,7 +199,7 @@ describe("useDrilldownDetails", () => {
     rerender({
       type: "pueblo-category",
       townId: "almonte",
-      categoryId: "gastronomia", // Different category to trigger new query
+      categoryId: "playas", // Different category to trigger new query
       granularity: "d",
     });
 
@@ -217,7 +217,7 @@ describe("useDrilldownDetails", () => {
     );
     expect(mockFetchJSON).toHaveBeenNthCalledWith(
       2,
-      "/api/analytics/v1/dimensions/pueblos/details/almonte?g=d&categoryId=gastronomia"
+      "/api/analytics/v1/dimensions/pueblos/details/almonte?g=d&categoryId=playas"
     );
   });
 
