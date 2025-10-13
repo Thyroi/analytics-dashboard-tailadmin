@@ -3,7 +3,7 @@
 import type { DonutDatum, Granularity, SeriesPoint } from "@/lib/types";
 import React from "react";
 
-import ChartPair from "@/features/analytics/sectors/expanded/SectorExpandedCardDetailed/ChartPair";
+import ChartPair from "@/components/common/ChartPair";
 import Header from "./Header";
 
 type BaseProps = {

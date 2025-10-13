@@ -1,10 +1,10 @@
 "use client";
 
+import StickyHeaderSection from "@/components/common/StickyHeaderSection";
 import {
   TagTimeProvider,
   useTagTimeframe,
 } from "@/features/analytics/context/TagTimeContext";
-import StickyHeaderSection from "@/features/analytics/sectors/expanded/SectorExpandedCardDetailed/StickyHeaderSection";
 import SectorsByTagSectionContent from "@/features/home/sectors/SectorsByTagSection";
 
 function InnerSectorsByTagSection() {

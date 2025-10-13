@@ -1,6 +1,6 @@
 "use client";
 
-import { ringVisuals } from "@/lib/utils/delta";
+import { ringVisuals } from "@/lib/utils/core/delta";
 import { motion } from "framer-motion";
 import React, { useMemo } from "react";
 import CardDelta from "./CardDelta";

@@ -1,6 +1,10 @@
 import type { Granularity } from "@/lib/types";
-import { deriveRangeEndingYesterday } from "@/lib/utils/datetime";
-import { getAuth, normalizePropertyId, resolvePropertyId } from "@/lib/utils/ga";
+import {
+  getAuth,
+  normalizePropertyId,
+  resolvePropertyId,
+} from "@/lib/utils/analytics/ga";
+import { deriveRangeEndingYesterday } from "@/lib/utils/time/datetime";
 import { analyticsdata_v1beta, google } from "googleapis";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -41,7 +45,7 @@ export async function GET(req: NextRequest) {
         ? { start, end }
         : (() => {
             const r = deriveRangeEndingYesterday(granularity);
-            return { start: r.startTime, end: r.endTime };
+            return r;
           })();
 
     // Auth + GA4
@@ -95,7 +99,8 @@ export async function GET(req: NextRequest) {
         country: x.country,
         code: x.code,
         customers: x.customers,
-        pct: globalTotal > 0 ? Math.round((x.customers / globalTotal) * 100) : 0,
+        pct:
+          globalTotal > 0 ? Math.round((x.customers / globalTotal) * 100) : 0,
       }));
 
     const payload: CountriesPayload = {

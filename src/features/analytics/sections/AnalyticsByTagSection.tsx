@@ -1,5 +1,7 @@
 "use client";
 
+import SectorsGrid from "@/components/common/SectorsGrid";
+import StickyHeaderSection from "@/components/common/StickyHeaderSection";
 import {
   TagTimeProvider,
   useTagTimeframe,
@@ -8,12 +10,10 @@ import {
   useCategoriesTotals,
   useCategoryDetails,
 } from "@/features/analytics/hooks/categorias";
-import SectorsGridDetailed from "@/features/analytics/sectors/SectorsGridDetailed";
 import { CATEGORY_ID_ORDER, type CategoryId } from "@/lib/taxonomy/categories";
 import type { TownId } from "@/lib/taxonomy/towns";
-import { labelToTownId } from "@/lib/utils/sector";
+import { labelToTownId } from "@/lib/utils/core/sector";
 import { useMemo, useState } from "react";
-import StickyHeaderSection from "../sectors/expanded/SectorExpandedCardDetailed/StickyHeaderSection";
 
 function AnalyticsByTagSectionInner() {
   const {
@@ -87,11 +87,12 @@ function AnalyticsByTagSectionInner() {
   const handleSliceClick = (label: string) => {
     const townId = labelToTownId(label);
     if (townId && expandedId) {
-      setDrill({
-        kind: "town+cat",
+      const newDrill = {
+        kind: "town+cat" as const,
         townId,
         categoryId: expandedId as CategoryId,
-      });
+      };
+      setDrill(newDrill);
     }
   };
 
@@ -109,7 +110,8 @@ function AnalyticsByTagSectionInner() {
         onClearRange={clearRange}
       />
 
-      <SectorsGridDetailed
+      <SectorsGrid
+        variant="detailed"
         mode="tag"
         ids={displayedIds}
         granularity={granularity}
@@ -126,11 +128,18 @@ function AnalyticsByTagSectionInner() {
         onSliceClick={handleSliceClick}
         isDeltaLoading={state.status !== "ready"}
         // NIVEL 2 (drill)
-        forceDrillTownId={drill?.kind === "town+cat" ? drill.townId : undefined}
-        fixedCategoryId={
-          drill?.kind === "town+cat" ? drill.categoryId : undefined
-        }
-        endISO={endISO}
+        level2Data={(() => {
+          const result =
+            drill?.kind === "town+cat"
+              ? {
+                  townId: drill.townId,
+                  categoryId: drill.categoryId,
+                  granularity,
+                  endISO,
+                }
+              : undefined;
+          return result;
+        })()}
         startDate={startDate}
         endDate={endDate}
       />

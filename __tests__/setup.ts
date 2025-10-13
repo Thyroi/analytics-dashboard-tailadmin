@@ -1,6 +1,11 @@
 import "@testing-library/jest-dom";
+import { loadEnv } from "vite";
 import { beforeEach, vi } from "vitest";
 import createFetchMock from "vitest-fetch-mock";
+
+// Load environment variables
+const env = loadEnv("", process.cwd(), "");
+Object.assign(process.env, env);
 
 // Setup fetch mock
 const fetchMocker = createFetchMock(vi);

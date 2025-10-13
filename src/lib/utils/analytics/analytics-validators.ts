@@ -5,7 +5,7 @@
  */
 
 import type { Granularity } from "@/lib/types";
-import { parseISO, toISO } from "@/lib/utils/datetime";
+import { parseISO, toISO } from "@/lib/utils/time/datetime";
 
 /* =================== TIPOS PARA VALIDACIÓN =================== */
 

@@ -1,7 +1,7 @@
 "use client";
 
 import type { DonutDatum, Granularity, SeriesPoint } from "@/lib/types";
-import { useEffect, useRef, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import {
   getUrlDrilldown,
   UrlDrilldownResponse,
@@ -57,58 +57,57 @@ type State =
     };
 
 export function useUrlDrilldown({ path, granularity, endISO }: Args) {
-  const [state, setState] = useState<State>({
-    loading: true,
-    selectedPath: null,
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["url-drilldown", path, granularity, endISO],
+    queryFn: async (): Promise<UrlDrilldownResponse> => {
+      if (!path) throw new Error("Path is required");
+      return getUrlDrilldown({ path, granularity, endISO });
+    },
+    enabled: Boolean(path),
+    staleTime: 5 * 60 * 1000, // 5 minutos
+    retry: (failureCount, error) => {
+      if (error instanceof DOMException && error.name === "AbortError")
+        return false;
+      return failureCount < 2;
+    },
   });
-  const abortRef = useRef<AbortController | null>(null);
 
-  useEffect(() => {
-    // Si no hay path aún, resetea a idle rápido y no llames al backend
-    if (!path) {
-      abortRef.current?.abort();
-      setState({ loading: true, selectedPath: null });
-      // opcional: podrías devolver un estado loading:false vacío si prefieres no mostrar skeleton
-      return;
-    }
+  if (!path) {
+    return {
+      loading: true,
+      selectedPath: null,
+    } as State;
+  }
 
-    abortRef.current?.abort();
-    const ac = new AbortController();
-    abortRef.current = ac;
-    setState({ loading: true, selectedPath: path });
+  if (isLoading) {
+    return {
+      loading: true,
+      selectedPath: path,
+    } as State;
+  }
 
-    getUrlDrilldown({ path, granularity, endISO })
-      .then((payload: UrlDrilldownResponse) => {
-        if (ac.signal.aborted) return;
+  if (error || !data) {
+    // En error devolvemos estructura vacía pero válida
+    return {
+      loading: false,
+      selectedPath: path,
+      seriesAvgEngagement: { current: [], previous: [] },
+      kpis: null,
+      operatingSystems: [],
+      genders: [],
+      countries: [],
+      deltaPct: 0,
+    } as State;
+  }
 
-        setState({
-          loading: false,
-          selectedPath: payload.context?.path ?? path,
-          seriesAvgEngagement: payload.seriesAvgEngagement,
-          kpis: payload.kpis ?? null,
-          operatingSystems: payload.operatingSystems ?? [],
-          genders: payload.genders ?? [],
-          countries: payload.countries ?? [],
-          deltaPct: Number.isFinite(payload.deltaPct) ? payload.deltaPct : 0,
-        });
-      })
-      .catch(() => {
-        if (ac.signal.aborted) return;
-        // En error devolvemos estructura vacía pero válida
-        setState({
-          loading: false,
-          selectedPath: path,
-          seriesAvgEngagement: { current: [], previous: [] },
-          kpis: null,
-          operatingSystems: [],
-          genders: [],
-          countries: [],
-          deltaPct: 0,
-        });
-      });
-
-    return () => ac.abort();
-  }, [path, granularity, endISO]);
-
-  return state;
+  return {
+    loading: false,
+    selectedPath: data.context?.path ?? path,
+    seriesAvgEngagement: data.seriesAvgEngagement,
+    kpis: data.kpis ?? null,
+    operatingSystems: data.operatingSystems ?? [],
+    genders: data.genders ?? [],
+    countries: data.countries ?? [],
+    deltaPct: Number.isFinite(data.deltaPct) ? data.deltaPct : 0,
+  } as State;
 }

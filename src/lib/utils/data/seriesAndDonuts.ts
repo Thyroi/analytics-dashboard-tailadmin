@@ -4,7 +4,7 @@
  */
 
 import type { Granularity } from "@/lib/types";
-import { safeUrlPathname } from "./pathMatching";
+import { safeUrlPathname } from "../routing/pathMatching";
 
 // Tipo para filas de GA4
 export type GA4Row = {
@@ -309,6 +309,49 @@ export function buildCategoriesDonutForTown<T>(
 }
 
 /**
+ * Construye datos para donut de URLs para un pueblo y categoría específicos
+ */
+export function buildUrlsDonutForTownCategory<T>(
+  rows: GA4Row[],
+  townMatcher: (path: string) => T | null,
+  targetTown: T,
+  categoryMatcher: (path: string) => string | null,
+  targetCategory: string,
+  donutStart: string,
+  donutEnd: string,
+  granularity: string
+): Array<{ label: string; value: number }> {
+  const urlCounts: Record<string, number> = {};
+
+  for (const r of rows) {
+    const dateRaw = String(r.dimensionValues?.[0]?.value ?? "");
+    if (!dateRaw) continue;
+
+    const iso = parseGA4Date(dateRaw, granularity);
+    const url = String(r.dimensionValues?.[1]?.value ?? "");
+    const path = safeUrlPathname(url);
+    const value = Number(r.metricValues?.[0]?.value ?? 0);
+
+    // Filtrar por pueblo, categoría y rango de fechas
+    const matchedTown = townMatcher(path);
+    if (matchedTown !== targetTown) continue;
+    if (iso < donutStart || iso > donutEnd) continue;
+
+    const category = categoryMatcher(path);
+    if (category !== targetCategory) continue;
+
+    // Usar la URL completa como etiqueta
+    if (url) {
+      urlCounts[url] = (urlCounts[url] || 0) + value;
+    }
+  }
+
+  return Object.entries(urlCounts)
+    .map(([label, value]) => ({ label, value }))
+    .sort((a, b) => b.value - a.value);
+}
+
+/**
  * Formatea series para respuesta API
  */
 export function formatSeries(
@@ -345,4 +388,47 @@ export function formatSeries(
       value,
     })),
   };
+}
+
+/**
+ * Construye datos para donut de URLs para una categoría y pueblo específicos
+ */
+export function buildUrlsDonutForCategoryTown<T>(
+  rows: GA4Row[],
+  categoryMatcher: (path: string) => string | null,
+  targetCategory: string,
+  townMatcher: (path: string) => T | null,
+  targetTown: T,
+  donutStart: string,
+  donutEnd: string,
+  granularity: string
+): Array<{ label: string; value: number }> {
+  const urlCounts: Record<string, number> = {};
+
+  for (const r of rows) {
+    const dateRaw = String(r.dimensionValues?.[0]?.value ?? "");
+    if (!dateRaw) continue;
+
+    const iso = parseGA4Date(dateRaw, granularity);
+    const url = String(r.dimensionValues?.[1]?.value ?? "");
+    const path = safeUrlPathname(url);
+    const value = Number(r.metricValues?.[0]?.value ?? 0);
+
+    // Filtrar por categoría, pueblo y rango de fechas
+    const category = categoryMatcher(path);
+    if (category !== targetCategory) continue;
+    if (iso < donutStart || iso > donutEnd) continue;
+
+    const matchedTown = townMatcher(path);
+    if (matchedTown !== targetTown) continue;
+
+    // Usar la URL completa como etiqueta
+    if (url) {
+      urlCounts[url] = (urlCounts[url] || 0) + value;
+    }
+  }
+
+  return Object.entries(urlCounts)
+    .map(([label, value]) => ({ label, value }))
+    .sort((a, b) => b.value - a.value);
 }

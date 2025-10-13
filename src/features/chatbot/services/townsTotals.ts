@@ -1,6 +1,6 @@
 import { fetchChatbotTags, type ChatbotGranularity } from "@/lib/api/chatbot";
 import { TOWN_ID_ORDER, TOWN_META } from "@/lib/taxonomy/towns";
-import { buildAxisFromChatbot } from "@/lib/utils/timeAxisChatbot";
+import { buildAxisFromChatbot } from "@/lib/utils/time/timeAxisChatbot";
 
 type Point = { time: string; value: number };
 type Series = { name: string; data: number[] };

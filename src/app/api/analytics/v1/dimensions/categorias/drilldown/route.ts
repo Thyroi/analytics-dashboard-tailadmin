@@ -11,18 +11,18 @@ import {
 import { TOWN_ID_ORDER, TOWN_META, type TownId } from "@/lib/taxonomy/towns";
 
 import {
+  getAuth,
+  normalizePropertyId,
+  resolvePropertyId,
+} from "@/lib/utils/analytics/ga";
+import { normalizePath, stripLangPrefix } from "@/lib/utils/routing/url";
+import {
   addDaysUTC,
   deriveRangeEndingYesterday,
   parseISO,
   todayUTC,
   toISO,
-} from "@/lib/utils/datetime";
-import {
-  getAuth,
-  normalizePropertyId,
-  resolvePropertyId,
-} from "@/lib/utils/ga";
-import { normalizePath, stripLangPrefix } from "@/lib/utils/url";
+} from "@/lib/utils/time/datetime";
 
 /* ---------------- tipos/helpers comunes ---------------- */
 type DateRange = { start: string; end: string };
@@ -152,7 +152,7 @@ export async function GET(req: Request) {
     const now = endISO ? parseISO(endISO) : todayUTC();
     const dayAsWeek = g === "d";
     const cur = deriveRangeEndingYesterday(g, now, dayAsWeek);
-    const current: DateRange = { start: cur.startTime, end: cur.endTime };
+    const current: DateRange = cur;
     // previous = current - 1 día
     const previous: DateRange = shiftRangeByDays(current, -1);
 

@@ -1,11 +1,11 @@
 "use client";
 
+import StickyHeaderSection from "@/components/common/StickyHeaderSection";
 import {
   HeaderAnalyticsTimeProvider,
   useHeaderAnalyticsTimeframe,
 } from "@/features/analytics/context/HeaderAnalyticsTimeContext";
 import AnalyticsProviders from "@/features/analytics/providers/AnalyticsProviders";
-import StickyHeaderSection from "@/features/analytics/sectors/expanded/SectorExpandedCardDetailed/StickyHeaderSection";
 
 import AnalyticsByTagSection from "@/features/analytics/sections/AnalyticsByTagSection";
 import AnalyticsByTownSection from "@/features/analytics/sections/AnalyticsByTownSection";

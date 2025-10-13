@@ -4,7 +4,7 @@ import PieChart from "@/components/charts/PieChart";
 import ActivityButton from "@/components/common/ActivityButton";
 import Header from "@/components/common/Header";
 import LegendList, { type LegendItem } from "@/components/dashboard/LegendList";
-import { BRAND_STOPS, generateBrandGradient } from "@/lib/utils/colors";
+import { BRAND_STOPS, generateBrandGradient } from "@/lib/utils/formatting/colors";
 import type { LucideIcon } from "lucide-react";
 import { CircleSlash } from "lucide-react";
 import { motion } from "motion/react";

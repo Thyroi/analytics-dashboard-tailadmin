@@ -36,10 +36,42 @@ export function sectorIconSrc(
 
 /** Útiles para drilldowns por label → id */
 export function labelToTownId(label: string): TownId | undefined {
-  const entry = Object.entries(TOWN_META).find(([, m]) => m.label === label);
+  const cleanLabel = label?.trim();
+  if (!cleanLabel) return undefined;
+
+  // Si es una URL, extraer el nombre del pueblo
+  if (cleanLabel.startsWith("http")) {
+    try {
+      const url = new URL(cleanLabel);
+      const pathParts = url.pathname.split("/").filter(Boolean);
+      // URL formato: /bollullos/naturaleza/ -> pathParts = ['bollullos', 'naturaleza']
+      const townName = pathParts[0]; // primer segmento es el pueblo
+      if (townName && TOWN_ID_ORDER.includes(townName as TownId)) {
+        return townName as TownId;
+      }
+    } catch {
+      console.warn("Failed to parse URL:", cleanLabel);
+    }
+  }
+
+  // Primero intenta como ID directo
+  if (TOWN_ID_ORDER.includes(cleanLabel as TownId)) {
+    return cleanLabel as TownId;
+  }
+
+  // Luego intenta matchear por label (case-insensitive)
+  const entry = Object.entries(TOWN_META).find(
+    ([, m]) => m.label.toLowerCase() === cleanLabel.toLowerCase()
+  );
   return entry?.[0] as TownId | undefined;
 }
 export function labelToCategoryId(label: string): CategoryId | undefined {
+  // Primero intenta como ID directo (ej: "playas" -> "playas")
+  if (CATEGORY_ID_ORDER.includes(label as CategoryId)) {
+    return label as CategoryId;
+  }
+
+  // Luego intenta como label UI (ej: "PLAYAS" -> "playas")
   const entry = Object.entries(CATEGORY_META).find(
     ([, m]) => m.label === label
   );

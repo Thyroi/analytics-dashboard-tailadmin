@@ -11,7 +11,7 @@ import type { Granularity, SliceName } from "@/lib/types";
 import {
   deriveAutoRangeForGranularity,
   rangeToPreset,
-} from "@/lib/utils/datetime";
+} from "@/lib/utils/time/datetime";
 
 type Range = { startTime: string; endTime: string };
 

@@ -10,18 +10,18 @@ import { analyticsdata_v1beta, google } from "googleapis";
 import { NextResponse, type NextRequest } from "next/server";
 
 import {
+  getAuth,
+  normalizePropertyId,
+  resolvePropertyId,
+} from "@/lib/utils/analytics/ga";
+import { normalizePath, stripLangPrefix } from "@/lib/utils/routing/url";
+import {
   addDaysUTC,
   deriveRangeEndingYesterday,
   parseISO,
   todayUTC,
   toISO,
-} from "@/lib/utils/datetime";
-import {
-  getAuth,
-  normalizePropertyId,
-  resolvePropertyId,
-} from "@/lib/utils/ga";
-import { normalizePath, stripLangPrefix } from "@/lib/utils/url";
+} from "@/lib/utils/time/datetime";
 
 /* ====================== tipos/ayudas ====================== */
 type DateRange = { start: string; end: string };
@@ -159,7 +159,7 @@ export async function GET(
     const now = endISO ? parseISO(endISO) : todayUTC();
     const dayAsWeek = g === "d";
     const cur = deriveRangeEndingYesterday(g, now, dayAsWeek);
-    const current: DateRange = { start: cur.startTime, end: cur.endTime };
+    const current: DateRange = cur;
     const previous: DateRange = shiftRangeByDays(current, -1);
 
     // 🔧 FIX: Para granularidad diaria, donut usa current.end - 1 (día anterior); para otras, mismo rango que series
@@ -294,7 +294,7 @@ export async function GET(
         // sub = segmento siguiente o fallback /town/category
         const clean = path.replace(/^\/+|\/+$/g, "");
         const segs = clean.split("/");
-        const townIdx = segs.findIndex((s) => normToken(s) === townId);
+        const townIdx = segs.findIndex((s: string) => normToken(s) === townId);
         const sub = segs[townIdx + 2] ? segs[townIdx + 2] : `${townId}/${cid}`;
         bySubCurrent.set(sub, (bySubCurrent.get(sub) ?? 0) + v);
 

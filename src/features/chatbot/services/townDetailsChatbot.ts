@@ -1,13 +1,13 @@
 import { fetchChatbotTags, type ChatbotGranularity } from "@/lib/api/chatbot";
 import type { TownId } from "@/lib/taxonomy/towns";
 import type { DonutDatum, Granularity, SeriesPoint } from "@/lib/types";
-import { parseISO } from "@/lib/utils/datetime";
+import { parseISO } from "@/lib/utils/time/datetime";
 import {
   deriveRangeEndingYesterday,
   enumerateDaysUTC,
   getDonutWindow,
   shiftRangeByDays,
-} from "@/lib/utils/windowPolicyAnalytics";
+} from "@/lib/utils/core/windowPolicyAnalytics";
 
 function sumPointsInRange(
   output: Record<string, { time: string; value: number }[]>,

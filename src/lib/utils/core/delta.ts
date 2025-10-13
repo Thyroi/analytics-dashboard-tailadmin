@@ -1,4 +1,4 @@
-import { isFiniteNumber } from "./format";
+import { isFiniteNumber } from "../formatting/format";
 
 export const DELTA_COLORS = {
   pos: "#35C759",

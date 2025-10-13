@@ -1,6 +1,10 @@
 import type { Granularity } from "@/lib/types";
-import { deriveRangeEndingYesterday } from "@/lib/utils/datetime";
-import { getAuth, normalizePropertyId, resolvePropertyId } from "@/lib/utils/ga";
+import {
+  getAuth,
+  normalizePropertyId,
+  resolvePropertyId,
+} from "@/lib/utils/analytics/ga";
+import { deriveRangeEndingYesterday } from "@/lib/utils/time/datetime";
 import { analyticsdata_v1beta, google } from "googleapis";
 import { NextResponse } from "next/server";
 
@@ -54,7 +58,7 @@ export async function GET(req: Request) {
         ? { start, end }
         : (() => {
             const r = deriveRangeEndingYesterday(granularity);
-            return { start: r.startTime, end: r.endTime };
+            return r;
           })();
 
     // Auth + GA4
@@ -70,8 +74,15 @@ export async function GET(req: Request) {
       dimensionFilter: {
         andGroup: {
           expressions: [
-            { filter: { fieldName: "countryId", stringFilter: { value: country } } },
-            { filter: { fieldName: "region", stringFilter: { value: region } } },
+            {
+              filter: {
+                fieldName: "countryId",
+                stringFilter: { value: country },
+              },
+            },
+            {
+              filter: { fieldName: "region", stringFilter: { value: region } },
+            },
           ],
         },
       },
@@ -83,7 +94,8 @@ export async function GET(req: Request) {
       requestBody: regionTotalReq,
     });
     const totalRegion =
-      Number(regionTotalResp.data.rows?.[0]?.metricValues?.[0]?.value ?? 0) || 0;
+      Number(regionTotalResp.data.rows?.[0]?.metricValues?.[0]?.value ?? 0) ||
+      0;
 
     // 2) Ciudades dentro de la región
     const citiesReq: analyticsdata_v1beta.Schema$RunReportRequest = {
@@ -93,8 +105,15 @@ export async function GET(req: Request) {
       dimensionFilter: {
         andGroup: {
           expressions: [
-            { filter: { fieldName: "countryId", stringFilter: { value: country } } },
-            { filter: { fieldName: "region", stringFilter: { value: region } } },
+            {
+              filter: {
+                fieldName: "countryId",
+                stringFilter: { value: country },
+              },
+            },
+            {
+              filter: { fieldName: "region", stringFilter: { value: region } },
+            },
           ],
         },
       },

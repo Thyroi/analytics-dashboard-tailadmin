@@ -4,7 +4,7 @@ import type { ApexOptions } from "apexcharts";
 import dynamic from "next/dynamic";
 import { useTheme } from "next-themes";
 import { useMemo } from "react";
-import { generateBrandGradient, BRAND_STOPS } from "@/lib/utils/colors";
+import { generateBrandGradient, BRAND_STOPS } from "@/lib/utils/formatting/colors";
 import { RouteOff as NoDataIcon } from "lucide-react"; // ⬅️ icono por defecto
 
 const ReactApexChart = dynamic(() => import("react-apexcharts"), { ssr: false });

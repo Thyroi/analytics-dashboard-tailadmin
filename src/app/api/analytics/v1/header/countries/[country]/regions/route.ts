@@ -1,7 +1,11 @@
 // src/app/api/analytics/v1/header/countries/[country]/regions/route.ts
 import type { Granularity } from "@/lib/types";
-import { deriveRangeEndingYesterday } from "@/lib/utils/datetime";
-import { getAuth, normalizePropertyId, resolvePropertyId } from "@/lib/utils/ga";
+import {
+  getAuth,
+  normalizePropertyId,
+  resolvePropertyId,
+} from "@/lib/utils/analytics/ga";
+import { deriveRangeEndingYesterday } from "@/lib/utils/time/datetime";
 import { analyticsdata_v1beta, google } from "googleapis";
 import { NextResponse } from "next/server";
 
@@ -54,7 +58,7 @@ export async function GET(req: Request) {
         ? { start, end }
         : (() => {
             const r = deriveRangeEndingYesterday(granularity);
-            return { start: r.startTime, end: r.endTime };
+            return r;
           })();
 
     // Auth + GA4

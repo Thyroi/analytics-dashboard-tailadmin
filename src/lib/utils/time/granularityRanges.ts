@@ -4,7 +4,7 @@
  * Cada función tiene comportamiento específico y predecible
  */
 
-import { addDaysUTC, parseISO, toISO } from "@/lib/utils/datetime";
+import { addDaysUTC, parseISO, toISO } from "@/lib/utils/time/datetime";
 
 export type DateRange = { start: string; end: string };
 export type RangesPair = { current: DateRange; previous: DateRange };

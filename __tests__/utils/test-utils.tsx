@@ -1,6 +1,11 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, type RenderOptions } from "@testing-library/react";
-import React from "react";
+import {
+  renderHook as originalRenderHook,
+  render,
+  type RenderHookOptions,
+  type RenderOptions,
+} from "@testing-library/react";
+import * as React from "react";
 
 // Mock user data for testing
 export const mockUser = {
@@ -49,9 +54,15 @@ const customRender = (
   options?: Omit<RenderOptions, "wrapper">
 ) => render(ui, { wrapper: AllTheProviders, ...options });
 
+// Custom renderHook function that includes providers
+const customRenderHook = <Result, Props = undefined>(
+  hook: (initialProps: Props) => Result,
+  options?: RenderHookOptions<Props>
+) => originalRenderHook(hook, { wrapper: AllTheProviders, ...options });
+
 // Re-export everything from testing library
 export * from "@testing-library/react";
 export { default as userEvent } from "@testing-library/user-event";
 
-// Override render method
-export { customRender as render };
+// Override render and renderHook methods
+export { customRender as render, customRenderHook as renderHook };

@@ -11,18 +11,18 @@ import {
 import { TOWN_ID_ORDER, type TownId } from "@/lib/taxonomy/towns";
 
 import {
+  getAuth,
+  normalizePropertyId,
+  resolvePropertyId,
+} from "@/lib/utils/analytics/ga";
+import { normalizePath, stripLangPrefix } from "@/lib/utils/routing/url";
+import {
   addDaysUTC,
   deriveRangeEndingYesterday,
   parseISO,
   todayUTC,
   toISO,
-} from "@/lib/utils/datetime";
-import {
-  getAuth,
-  normalizePropertyId,
-  resolvePropertyId,
-} from "@/lib/utils/ga";
-import { normalizePath, stripLangPrefix } from "@/lib/utils/url";
+} from "@/lib/utils/time/datetime";
 
 /* -------- tipos/helpers -------- */
 type DateRange = { start: string; end: string };
@@ -153,7 +153,7 @@ export async function GET(req: NextRequest, ctx: unknown) {
     const now = endISO ? parseISO(endISO) : todayUTC();
     const dayAsWeek = g === "d";
     const cur = deriveRangeEndingYesterday(g, now, dayAsWeek);
-    const current: DateRange = { start: cur.startTime, end: cur.endTime };
+    const current: DateRange = cur;
     const previous: DateRange = shiftRangeByDays(current, -1);
 
     const isYearly = g === "y";
@@ -270,7 +270,7 @@ export async function GET(req: NextRequest, ctx: unknown) {
 
         const clean = path.replace(/^\/+|\/+$/g, "");
         const segs = clean.split("/");
-        const townIdx = segs.findIndex((s) => normToken(s) === townId);
+        const townIdx = segs.findIndex((s: string) => normToken(s) === townId);
         const sub = segs[townIdx + 2] ? segs[townIdx + 2] : `${townId}/${cid}`;
 
         bySubCurrent.set(sub, (bySubCurrent.get(sub) ?? 0) + v);

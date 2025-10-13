@@ -1,17 +1,17 @@
 "use client";
 
+import SectorsGrid from "@/components/common/SectorsGrid";
+import StickyHeaderSection from "@/components/common/StickyHeaderSection";
 import {
   TownTimeProvider,
   useTownTimeframe,
 } from "@/features/analytics/context/TownTimeContext";
-import StickyHeaderSection from "@/features/analytics/sectors/expanded/SectorExpandedCardDetailed/StickyHeaderSection";
-import SectorsGridDetailed from "@/features/analytics/sectors/SectorsGridDetailed";
 import { useTownDetailsChatbot } from "@/features/chatbot/hooks/useTownDetailsChatbot";
 import { useTownsTotalsChatbot } from "@/features/chatbot/hooks/useTownsTotalsChatbot";
 import type { CategoryId } from "@/lib/taxonomy/categories";
 import { TOWN_ID_ORDER, type TownId } from "@/lib/taxonomy/towns";
 import type { DonutDatum, Granularity, SeriesPoint } from "@/lib/types";
-import { labelToCategoryId } from "@/lib/utils/sector";
+import { labelToCategoryId } from "@/lib/utils/core/sector";
 import { useMemo, useState } from "react";
 
 function ChatbotByTownSectionInner() {
@@ -122,7 +122,8 @@ function ChatbotByTownSectionInner() {
         onRangeChange={setRange}
         onClearRange={clearRange}
       />
-      <SectorsGridDetailed
+      <SectorsGrid
+        variant="detailed"
         mode="town"
         ids={displayedIds}
         granularity={granularity as Granularity}
@@ -139,11 +140,16 @@ function ChatbotByTownSectionInner() {
         onSliceClick={handleSliceClick}
         isDeltaLoading={isDeltaLoading}
         // Nivel 2 (drill)
-        forceDrillTownId={drill?.kind === "town+cat" ? drill.townId : undefined}
-        fixedCategoryId={
-          drill?.kind === "town+cat" ? drill.categoryId : undefined
+        level2Data={
+          drill?.kind === "town+cat"
+            ? {
+                townId: drill.townId,
+                categoryId: drill.categoryId,
+                granularity,
+                endISO,
+              }
+            : undefined
         }
-        endISO={endISO}
         startDate={startDate}
         endDate={endDate}
       />

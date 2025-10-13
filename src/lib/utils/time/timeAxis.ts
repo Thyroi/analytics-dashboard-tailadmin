@@ -1,6 +1,6 @@
 // src/lib/utils/timeAxis.ts
 import type { Granularity } from "@/lib/types";
-import { addDaysUTC, parseISO, toISO, todayUTC } from "@/lib/utils/datetime";
+import { addDaysUTC, parseISO, toISO, todayUTC } from "@/lib/utils/time/datetime";
 
 /** Eje y ventanas “lagged”:
  * - d/w → 7 días terminando ayer (o endISO) y previous = esos mismos 7 días pero -1 día

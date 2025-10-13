@@ -6,7 +6,7 @@ import {
   orderIdsByTaxonomy,
   sectorIconSrc,
   sectorTitle,
-} from "@/lib/utils/sector";
+} from "@/lib/utils/core/sector";
 import { MapPinIcon } from "@heroicons/react/24/solid";
 import { useMemo, useState } from "react";
 import SectorExpandedCard from "./SectorExpandedCard";

@@ -5,7 +5,7 @@ import { fetchChatbotTags, type ChatbotGranularity } from "@/lib/api/chatbot";
 import type { CategoryId } from "@/lib/taxonomy/categories";
 import { TOWN_ID_ORDER, TOWN_META, type TownId } from "@/lib/taxonomy/towns";
 import type { DonutDatum, Granularity, SeriesPoint } from "@/lib/types";
-import { buildWindowSets } from "@/lib/utils/windowPolicy";
+import { buildWindowSets } from "@/lib/utils/core/windowPolicy";
 import { useQuery } from "@tanstack/react-query";
 
 /* ---------- helpers ---------- */

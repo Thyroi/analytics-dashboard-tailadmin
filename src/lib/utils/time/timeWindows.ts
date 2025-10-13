@@ -6,7 +6,7 @@ import {
   parseISO,
   todayUTC,
   toISO,
-} from "@/lib/utils/datetime";
+} from "@/lib/utils/time/datetime";
 
 /** Rango canónico usado en api: YYYY-MM-DD */
 export type DateRange = { start: string; end: string };

@@ -1,8 +1,8 @@
 // src/features/analytics/hooks/useUserAcquisitionRange.ts
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
 import type { Granularity } from "@/lib/types";
+import { useQuery } from "@tanstack/react-query";
 
 import { fetchUserAcquisitionRange } from "@/features/analytics/services/userAcquisitionRange";
 import { AcquisitionRangePayload } from "@/lib/api/analytics";
@@ -11,7 +11,7 @@ export type UseUserAcquisitionRangeParams = {
   start?: string;
   end?: string;
   granularity?: Granularity; // "d" | "w" | "m" | "y" (se usa si no pasas start/end)
-  includeTotal?: boolean;    // default: true
+  includeTotal?: boolean; // default: true
 };
 
 export function useUserAcquisitionRange({
@@ -20,47 +20,23 @@ export function useUserAcquisitionRange({
   granularity = "d",
   includeTotal = true,
 }: UseUserAcquisitionRangeParams) {
-  const [data, setData] = useState<AcquisitionRangePayload | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [error, setError] = useState<Error | null>(null);
-
-  // Evita fetch duplicados con la misma key
-  const lastKey = useRef<string>("");
-
-  const load = useCallback(
-    async (signal?: AbortSignal) => {
-      setIsLoading(true);
-      setError(null);
-      try {
-        const resp = await fetchUserAcquisitionRange({
-          start,
-          end,
-          granularity,
-          includeTotal,
-          signal,
-        });
-        setData(resp);
-      } catch (e) {
-        if (!(e instanceof DOMException && e.name === "AbortError")) {
-          setError(e as Error);
-          setData(null);
-        }
-      } finally {
-        setIsLoading(false);
-      }
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: ["user-acquisition-range", start, end, granularity, includeTotal],
+    queryFn: async (): Promise<AcquisitionRangePayload> => {
+      return fetchUserAcquisitionRange({
+        start,
+        end,
+        granularity,
+        includeTotal,
+      });
     },
-    [start, end, granularity, includeTotal]
-  );
-
-  useEffect(() => {
-    const key = `${start ?? "auto"}_${end ?? "auto"}_${granularity}_${includeTotal ? 1 : 0}`;
-    if (lastKey.current === key) return;
-    lastKey.current = key;
-
-    const controller = new AbortController();
-    void load(controller.signal);
-    return () => controller.abort();
-  }, [load, start, end, granularity, includeTotal]);
+    staleTime: 5 * 60 * 1000, // 5 minutos
+    retry: (failureCount, error) => {
+      if (error instanceof DOMException && error.name === "AbortError")
+        return false;
+      return failureCount < 2;
+    },
+  });
 
   const hasData =
     !!data &&
@@ -68,10 +44,10 @@ export function useUserAcquisitionRange({
     data.series.some((s) => s.data.some((v) => v > 0));
 
   return {
-    data,
+    data: data || null,
     isLoading,
-    error,
+    error: error as Error | null,
     hasData,
-    refetch: () => load(),
+    refetch,
   };
 }

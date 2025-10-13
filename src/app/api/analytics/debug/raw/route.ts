@@ -7,9 +7,9 @@ import {
   getAuth,
   normalizePropertyId,
   resolvePropertyId,
-} from "@/lib/utils/ga";
-import { buildPageViewUnionRequest } from "@/lib/utils/ga4Requests";
-import { computeRangesFromQuery } from "@/lib/utils/timeWindows";
+} from "@/lib/utils/analytics/ga";
+import { buildPageViewUnionRequest } from "@/lib/utils/analytics/ga4Requests";
+import { computeRangesFromQuery } from "@/lib/utils/time/timeWindows";
 import { google } from "googleapis";
 import { NextRequest, NextResponse } from "next/server";
 

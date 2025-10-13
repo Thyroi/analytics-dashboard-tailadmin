@@ -5,8 +5,8 @@
  */
 
 import type { Granularity } from "@/lib/types";
-import { safeUrlPathname } from "@/lib/utils/pathMatching";
-import type { DateRange } from "./granularityRanges";
+import { safeUrlPathname } from "@/lib/utils/routing/pathMatching";
+import type { DateRange } from "../time/granularityRanges";
 
 // Función parseGA4Date copiada de seriesAndDonuts.ts para evitar dependencias circulares
 function parseGA4Date(dateRaw: string, granularity: string): string {
