@@ -180,13 +180,13 @@ describe("useDrilldownDetails", () => {
 
   test("aborts requests when config changes", async () => {
     const { result, rerender } = renderHook(
-      (props: Parameters<typeof useDrilldownDetails>[0]) => useDrilldownDetails(props),
+      (props) => useDrilldownDetails(props),
       {
         initialProps: {
-          type: "pueblo-category",
-          townId: "almonte",
-          categoryId: "naturaleza",
-          granularity: "d",
+          type: "pueblo-category" as const,
+          townId: "almonte" as const,
+          categoryId: "naturaleza" as const,
+          granularity: "d" as const,
         },
       }
     );
@@ -195,15 +195,16 @@ describe("useDrilldownDetails", () => {
       expect(result.current.loading).toBe(false);
     });
 
-    // Change configuration to different parameters  
+    // Change configuration to different parameters
     rerender({
       type: "pueblo-category",
       townId: "almonte",
-      categoryId: "playas", // Different category to trigger new query
+      categoryId: "naturaleza", // Different category to trigger new query
       granularity: "d",
     });
 
-    // React Query may not immediately set loading=true on rerender, so we wait for the call
+    // Should start loading again
+    expect(result.current.loading).toBe(true);
 
     await waitFor(() => {
       expect(result.current.loading).toBe(false);
@@ -217,7 +218,7 @@ describe("useDrilldownDetails", () => {
     );
     expect(mockFetchJSON).toHaveBeenNthCalledWith(
       2,
-      "/api/analytics/v1/dimensions/pueblos/details/almonte?g=d&categoryId=playas"
+      "/api/analytics/v1/dimensions/pueblos/details/almonte?g=d&categoryId=gastronomia"
     );
   });
 

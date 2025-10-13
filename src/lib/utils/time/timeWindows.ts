@@ -95,14 +95,10 @@ export function computeRangesFromQuery(
     let current: DateRange;
 
     if (g === "d") {
-      if (true) {
-        // dayAsWeek siempre true para granularidad diaria
-        const start = addDaysUTC(base, -(7 - 1)); // 7 días hacia atrás
-        current = { start: toISO(start), end: toISO(base) };
-      } else {
-        current = { start: toISO(base), end: toISO(base) };
-      }
+      // Para granularidad diaria: solo el último día (para comparar día -1 vs día -2)
+      current = { start: toISO(base), end: toISO(base) };
     } else if (g === "w") {
+      // Para granularidad semanal: última semana completa (7 días)
       const start = addDaysUTC(base, -(7 - 1)); // 7 días hacia atrás
       current = { start: toISO(start), end: toISO(base) };
     } else if (g === "m") {
