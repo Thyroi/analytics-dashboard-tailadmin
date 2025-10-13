@@ -1,4 +1,5 @@
 import { useDrilldownDetails } from "@/features/analytics/hooks/useDrilldownDetails";
+import { CATEGORY_ID_ORDER, type CategoryId } from "@/lib/taxonomy/categories";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import { renderHook, waitFor } from "../../../../__tests__/utils/test-utils";
 
@@ -6,6 +7,12 @@ import { renderHook, waitFor } from "../../../../__tests__/utils/test-utils";
 vi.mock("@/lib/api/analytics", () => ({
   fetchJSON: vi.fn(),
 }));
+
+// Helper function to get a different category for testing
+function getDifferentCategory(currentCategory: CategoryId): CategoryId {
+  const availableCategories = CATEGORY_ID_ORDER.filter(id => id !== currentCategory);
+  return availableCategories[0] || "fiestasTradiciones"; // fallback
+}
 
 // Import the mocked module to get access to the mock
 import { fetchJSON } from "@/lib/api/analytics";
@@ -179,13 +186,25 @@ describe("useDrilldownDetails", () => {
   });
 
   test("aborts requests when config changes", async () => {
-    const { result, rerender } = renderHook(
-      (props: Parameters<typeof useDrilldownDetails>[0]) => useDrilldownDetails(props),
+    const initialCategory: CategoryId = "naturaleza";
+    
+    type TestConfig = {
+      type: "pueblo-category";
+      townId: "almonte";
+      categoryId: CategoryId;
+      granularity: "d";
+    };
+    
+    const { result, rerender } = renderHook<
+      ReturnType<typeof useDrilldownDetails>,
+      TestConfig
+    >(
+      (props) => useDrilldownDetails(props),
       {
         initialProps: {
           type: "pueblo-category",
           townId: "almonte",
-          categoryId: "naturaleza",
+          categoryId: initialCategory,
           granularity: "d",
         },
       }
@@ -195,11 +214,12 @@ describe("useDrilldownDetails", () => {
       expect(result.current.loading).toBe(false);
     });
 
-    // Change configuration to different parameters  
+    // Change configuration to different parameters using real category from taxonomy
+    const differentCategory = getDifferentCategory(initialCategory);
     rerender({
       type: "pueblo-category",
       townId: "almonte",
-      categoryId: "playas", // Different category to trigger new query
+      categoryId: differentCategory, // Different category to trigger new query
       granularity: "d",
     });
 
@@ -213,11 +233,11 @@ describe("useDrilldownDetails", () => {
     expect(mockFetchJSON).toHaveBeenCalledTimes(2);
     expect(mockFetchJSON).toHaveBeenNthCalledWith(
       1,
-      "/api/analytics/v1/dimensions/pueblos/details/almonte?g=d&categoryId=naturaleza"
+      `/api/analytics/v1/dimensions/pueblos/details/almonte?g=d&categoryId=${initialCategory}`
     );
     expect(mockFetchJSON).toHaveBeenNthCalledWith(
       2,
-      "/api/analytics/v1/dimensions/pueblos/details/almonte?g=d&categoryId=playas"
+      `/api/analytics/v1/dimensions/pueblos/details/almonte?g=d&categoryId=${differentCategory}`
     );
   });
 
