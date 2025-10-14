@@ -28,6 +28,7 @@ import {
 import {
   computeCustomRanges,
   computeRangesByGranularity,
+  computeRangesByGranularityForSeries,
   debugRanges,
 } from "@/lib/utils/time/granularityRanges";
 import { computeDeltaPct } from "@/lib/utils/time/timeWindows";
@@ -60,7 +61,8 @@ export async function GET(
     const townFilter = searchParams.get("townId"); // Filter by specific town for drilldown
 
     // Calcular rangos usando función específica por granularidad
-    let ranges;
+    let ranges; // Rangos para SERIES (7 días en g='d')
+    let donutRanges; // Rangos para DONUTS (1 día en g='d')
     let actualGranularity = g; // Granularidad efectiva que se usará
 
     if (startQ && endQ) {
@@ -72,12 +74,18 @@ export async function GET(
         current: { start: startQ, end: endQ },
         previous: { start: startQ, end: endQ }, // Para rangos personalizados, no hay previous
       };
+      donutRanges = ranges; // En rangos custom, donut usa lo mismo
     } else {
       // Usar función específica por granularidad
       const endDate =
         endQ ||
         new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split("T")[0]; // ayer por defecto
-      ranges = computeRangesByGranularity(actualGranularity, endDate);
+
+      // SERIES: usar 7 días para granularidad 'd'
+      ranges = computeRangesByGranularityForSeries(actualGranularity, endDate);
+
+      // DONUTS: usar 1 día para granularidad 'd'
+      donutRanges = computeRangesByGranularity(actualGranularity, endDate);
     }
 
     // DEBUG: Log de rangos calculados
@@ -137,20 +145,9 @@ export async function GET(
       previousLabels,
     });
 
-    // Definir ventana del donut - DEBE SER CONSISTENTE CON LAS SERIES
-    let donutRanges;
-    if (actualGranularity === "d") {
-      // Para granularidad diaria: donut usa LOS MISMOS rangos que las series
-      // Si las series usan 1 día, el donut también debe usar 1 día
-      // Si las series usan 7 días, el donut también debe usar 7 días
-      donutRanges = ranges; // Usar los mismos rangos que series para consistencia
-    } else if (actualGranularity === "w") {
-      // Para granularidad semanal: donut usa sumatoria de toda la semana
-      donutRanges = ranges; // Usar los mismos rangos que series (semana completa)
-    } else {
-      // Para otras granularidades (m, y): donut usa los mismos rangos que series
-      donutRanges = ranges;
-    }
+    // IMPORTANTE: donutRanges ya está definido arriba con la lógica correcta:
+    // - Para g='d': donut usa 1 día (ayer), series usa 7 días
+    // - Para otras granularidades: donut y series usan lo mismo
 
     // Generar donut usando función utilitaria con rangos específicos
     // Si hay filtro de pueblo, el donut mostrará URLs; sino, mostrará pueblos

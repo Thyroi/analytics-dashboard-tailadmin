@@ -11,13 +11,15 @@ export type RangesPair = { current: DateRange; previous: DateRange };
 
 /**
  * GRANULARIDAD DIARIA (d)
- * - Current: Último día (endDate)
+ * - Current: Último día (endDate) - SOLO para donuts/KPIs
  * - Previous: Día anterior (endDate - 1)
+ *
+ * IMPORTANTE: Para SERIES usar computeDailyRangesForSeries() que devuelve 7 días
  */
 export function computeDailyRanges(endDate: string): RangesPair {
   const end = parseISO(endDate);
 
-  // Current: último día solamente
+  // Current: último día solamente (para donuts/KPIs)
   const current: DateRange = {
     start: toISO(end),
     end: toISO(end),
@@ -28,6 +30,35 @@ export function computeDailyRanges(endDate: string): RangesPair {
   const previous: DateRange = {
     start: toISO(previousDay),
     end: toISO(previousDay),
+  };
+
+  return { current, previous };
+}
+
+/**
+ * GRANULARIDAD DIARIA PARA SERIES (d)
+ * - Current: Últimos 7 días terminando en endDate
+ * - Previous: Misma ventana de 7 días CON SHIFT DE 1 DÍA (mismo comportamiento que semanal)
+ *
+ * IMPORTANTE: El shift es de 1 DÍA, no 7 días.
+ * Si current es Oct 7-13, previous es Oct 6-12 (mismo rango, desplazado 1 día)
+ */
+export function computeDailyRangesForSeries(endDate: string): RangesPair {
+  const end = parseISO(endDate);
+
+  // Current: últimos 7 días
+  const currentStart = addDaysUTC(end, -6); // 7 días incluyendo endDate
+  const current: DateRange = {
+    start: toISO(currentStart),
+    end: toISO(end),
+  };
+
+  // Previous: SHIFT DE 1 DÍA - misma ventana de 7 días, un día antes
+  const previousEnd = addDaysUTC(end, -1); // día anterior al final
+  const previousStart = addDaysUTC(currentStart, -1); // día anterior al inicio
+  const previous: DateRange = {
+    start: toISO(previousStart),
+    end: toISO(previousEnd),
   };
 
   return { current, previous };
@@ -121,6 +152,7 @@ export function computeYearlyRanges(endDate: string): RangesPair {
 
 /**
  * FUNCIÓN DISPATCHER - Elige la función correcta según granularidad
+ * USA ESTO PARA DONUTS/KPIs (granularidad d = 1 día)
  */
 export function computeRangesByGranularity(
   granularity: "d" | "w" | "m" | "y",
@@ -129,6 +161,28 @@ export function computeRangesByGranularity(
   switch (granularity) {
     case "d":
       return computeDailyRanges(endDate);
+    case "w":
+      return computeWeeklyRanges(endDate);
+    case "m":
+      return computeMonthlyRanges(endDate);
+    case "y":
+      return computeYearlyRanges(endDate);
+    default:
+      throw new Error(`Unsupported granularity: ${granularity}`);
+  }
+}
+
+/**
+ * FUNCIÓN DISPATCHER PARA SERIES - Elige la función correcta según granularidad
+ * USA ESTO PARA SERIES/GRÁFICAS (granularidad d = 7 días)
+ */
+export function computeRangesByGranularityForSeries(
+  granularity: "d" | "w" | "m" | "y",
+  endDate: string
+): RangesPair {
+  switch (granularity) {
+    case "d":
+      return computeDailyRangesForSeries(endDate); // 7 días para series
     case "w":
       return computeWeeklyRanges(endDate);
     case "m":

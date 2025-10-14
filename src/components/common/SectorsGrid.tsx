@@ -134,6 +134,11 @@ export default function SectorsGrid(props: Props) {
               <div ref={expandedRef}>
                 {props.variant === "detailed" ? (
                   <SectorExpandedCardDetailed
+                    key={
+                      props.level2Data
+                        ? `${id}-${props.level2Data.townId}-${props.level2Data.categoryId}-${props.level2Data.granularity}`
+                        : id
+                    }
                     title={title}
                     deltaPct={deltaPct}
                     current={getSeriesFor(id).current}

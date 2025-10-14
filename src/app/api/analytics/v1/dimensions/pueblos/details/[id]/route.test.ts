@@ -85,6 +85,10 @@ vi.mock("@/lib/utils/time/granularityRanges", () => ({
     current: { start: "2025-10-08", end: "2025-10-10" },
     previous: { start: "2025-10-01", end: "2025-10-03" },
   })),
+  computeRangesByGranularityForSeries: vi.fn(() => ({
+    current: { start: "2025-10-04", end: "2025-10-10" }, // 7 días para series
+    previous: { start: "2025-09-27", end: "2025-10-03" },
+  })),
   computeCustomRanges: vi.fn(() => ({
     optimalGranularity: "d",
     durationDays: 3,

@@ -72,6 +72,28 @@ export function useUrlDrilldown({ path, granularity, endISO }: Args) {
     },
   });
 
+  // DEBUG TRACE
+  console.debug("[useUrlDrilldown] queryKey:", [
+    "url-drilldown",
+    path,
+    granularity,
+    endISO,
+  ]);
+  console.debug("[useUrlDrilldown] enabled:", Boolean(path), "path:", path);
+  if (isLoading) console.debug("[useUrlDrilldown] loading...");
+  if (error) console.debug("[useUrlDrilldown] error:", error);
+  if (data)
+    console.debug(
+      "[useUrlDrilldown] kpis:",
+      data.kpis ? Object.keys(data.kpis.current || {}).length : 0,
+      "seriesAvgEngagement curr len:",
+      data.seriesAvgEngagement?.current?.length,
+      "devices:",
+      data.devices?.length,
+      "countries:",
+      data.countries?.length
+    );
+
   if (!path) {
     return {
       loading: true,

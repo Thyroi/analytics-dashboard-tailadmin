@@ -89,6 +89,23 @@ export function usePuebloDetails(
     gcTime: 1000 * 60 * 10, // 10 minutos
   });
 
+  // DEBUG TRACE
+  console.debug("[usePuebloDetails] queryKey:", queryKey);
+  console.debug(
+    "[usePuebloDetails] params:",
+    queryParams,
+    "enabled:",
+    enabled && !!townId
+  );
+  if (query.isFetching) console.debug("[usePuebloDetails] fetching...");
+  if (query.isSuccess)
+    console.debug(
+      "[usePuebloDetails] success, series len:",
+      query.data?.series.current.length,
+      "donut len:",
+      query.data?.donutData.length
+    );
+
   if (query.isLoading) {
     return {
       status: "loading",
@@ -100,6 +117,7 @@ export function usePuebloDetails(
   }
 
   if (query.isError) {
+    console.debug("[usePuebloDetails] error:", query.error);
     return {
       status: "error",
       error: query.error as Error,

@@ -2,7 +2,7 @@
 
 import ChartPair from "@/components/common/ChartPair";
 import ChartPairSkeleton from "@/components/skeletons/ChartPairSkeleton";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import UrlDetailsPanel from "./UrlDetailsPanel";
 
 import { useDrilldownDetails } from "@/features/analytics/hooks/useDrilldownDetails";
@@ -14,6 +14,7 @@ import type { UrlSeries } from "@/features/analytics/services/drilldown";
 import { CATEGORY_META, type CategoryId } from "@/lib/taxonomy/categories";
 import { TOWN_META, type TownId } from "@/lib/taxonomy/towns";
 import type { Granularity, SeriesPoint } from "@/lib/types";
+import { useQueryClient } from "@tanstack/react-query";
 import DrilldownTitle from "./DrilldownTitle";
 
 type Props = {
@@ -36,6 +37,8 @@ export default function TownCategoryDrilldownPanel({
   color = "dark",
   endISO,
 }: Props) {
+  const queryClient = useQueryClient();
+
   // Nivel 2: sub-actividades (series por URL + donut)
   const drilldown = useDrilldownDetails({
     type: "pueblo-category",
@@ -135,27 +138,48 @@ export default function TownCategoryDrilldownPanel({
     return result;
   }, [drilldown, urlSeries]);
 
-  // Nivel 3: URL seleccionada
+  // Nivel 3: URL seleccionada - KEY es crítico para forzar re-render
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
-  const url = useUrlDrilldown({ path: selectedPath, granularity, endISO });
 
-  // reset selección al cambiar town/cat
-  useEffect(() => {
-    setSelectedPath(null);
-  }, [townId, categoryId]);
+  // Generar key único basado en townId + categoryId + selectedPath
+  const level3Key = useMemo(
+    () => `${townId}-${categoryId}-${selectedPath || "none"}`,
+    [townId, categoryId, selectedPath]
+  );
+
+  const url = useUrlDrilldown({ path: selectedPath, granularity, endISO });
 
   // auto-scroll cuando hay selección
   const detailsRef = useRef<HTMLDivElement | null>(null);
-  useEffect(() => {
-    if (!selectedPath) return;
-    const t = setTimeout(() => {
-      detailsRef.current?.scrollIntoView({
-        behavior: "smooth",
-        block: "start",
+
+  // Handler para click en dona - actualiza estado e invalida queries
+  const handleDonutSliceClick = (sub: string) => {
+    const candidate = pickPathForSubActivity(
+      sub,
+      dd.seriesByUrl as UrlSeries[]
+    );
+
+    if (candidate) {
+      // Si es el mismo path, no hacer nada
+      if (candidate === selectedPath) return;
+
+      // Actualizar estado
+      setSelectedPath(candidate);
+
+      // Invalidar queries por prefijo para forzar refetch inmediato
+      queryClient.invalidateQueries({
+        queryKey: ["url-drilldown"],
       });
-    }, 0);
-    return () => clearTimeout(t);
-  }, [selectedPath]);
+
+      // Hacer scroll al nivel 3
+      setTimeout(() => {
+        detailsRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+      }, 100);
+    }
+  };
 
   const name = useMemo(() => {
     return headline === "town"
@@ -239,15 +263,7 @@ export default function TownCategoryDrilldownPanel({
             loading={dd.loading}
             donutData={dd.donut}
             deltaPct={dd.deltaPct}
-            onDonutSlice={(sub) => {
-              const candidate = pickPathForSubActivity(
-                sub,
-                dd.seriesByUrl as UrlSeries[]
-              );
-              if (candidate) {
-                setSelectedPath(candidate);
-              }
-            }}
+            onDonutSlice={handleDonutSliceClick}
             donutCenterLabel="Actividades"
             actionButtonTarget="actividad"
           />
@@ -257,6 +273,7 @@ export default function TownCategoryDrilldownPanel({
         {selectedPath && (
           <div ref={detailsRef} className="scroll-mt-24">
             <UrlDetailsPanel
+              key={level3Key}
               path={selectedPath}
               granularity={granularity}
               endISO={endISO}

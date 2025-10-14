@@ -16,19 +16,19 @@ Para visualizaciones que muestran evolución temporal con puntos de datos indivi
 
 **Lógica por granularidad:**
 
-| Granularidad   | Current (Actual)  | Previous (Comparación)     | Shift   |
-| -------------- | ----------------- | -------------------------- | ------- |
-| **d** (día)    | Último día (ayer) | Día anterior (hace 2 días) | 1 día   |
-| **w** (semana) | Últimos 7 días    | 7 días anteriores          | 7 días  |
-| **m** (mes)    | Últimos 30 días   | 30 días anteriores         | 30 días |
-| **y** (año)    | Últimos 365 días  | 365 días anteriores        | 1 año   |
+| Granularidad   | Current (Actual) | Previous (Comparación) | Shift | Puntos en gráfica     |
+| -------------- | ---------------- | ---------------------- | ----- | --------------------- |
+| **d** (día)    | Últimos 7 días   | 7 días anteriores      | 1 día | 7 puntos (diarios)    |
+| **w** (semana) | Últimos 7 días   | 7 días anteriores      | 1 día | 1 punto (agregado)    |
+| **m** (mes)    | Últimos 30 días  | 30 días anteriores     | 1 día | 30 puntos (diarios)   |
+| **y** (año)    | Últimos 365 días | 365 días anteriores    | 1 mes | 12 puntos (mensuales) |
 
 **Ejemplo (d):**
 
 ```
 Hoy: 2025-10-14
-Current:  2025-10-13 → 2025-10-13 (1 día)
-Previous: 2025-10-12 → 2025-10-12 (1 día)
+Current:  2025-10-07 → 2025-10-13 (7 días)
+Previous: 2025-10-06 → 2025-10-12 (7 días, SHIFT 1 día)
 ```
 
 **Ejemplo (w):**
@@ -36,7 +36,7 @@ Previous: 2025-10-12 → 2025-10-12 (1 día)
 ```
 Hoy: 2025-10-14
 Current:  2025-10-07 → 2025-10-13 (7 días)
-Previous: 2025-09-30 → 2025-10-06 (7 días)
+Previous: 2025-10-06 → 2025-10-12 (7 días, SHIFT 1 día)
 ```
 
 ### 2. **COMPORTAMIENTO DONUT/KPI (Agregación)**

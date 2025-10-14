@@ -124,7 +124,8 @@ export function mapDailyData<T>(
 
 /**
  * GRANULARIDAD SEMANAL (w)
- * Labels: YYYY-MM-DD para cada día (mismo que daily)
+ * Labels: UN SOLO PUNTO que representa toda la semana (agregado)
+ * La etiqueta es el rango de fechas de la semana
  */
 export function mapWeeklyData<T>(
   rows: GA4Row[],
@@ -132,8 +133,52 @@ export function mapWeeklyData<T>(
   targetCategory: T,
   ranges: { current: DateRange; previous: DateRange }
 ): MappingResult {
-  // Para semanal, usar la misma lógica que daily
-  return mapDailyData(rows, categoryMatcher, targetCategory, ranges);
+  // Para weekly: UN SOLO punto por período (agregado de toda la semana)
+  const xLabels = [`${ranges.current.start} to ${ranges.current.end}`];
+  const previousLabels = [`${ranges.previous.start} to ${ranges.previous.end}`];
+
+  // Inicializar series con 1 punto cada una
+  const currentSeries = [0];
+  const previousSeries = [0];
+
+  let totalCurrent = 0;
+  let totalPrevious = 0;
+
+  // Procesar filas
+  for (const r of rows) {
+    const dateRaw = String(r.dimensionValues?.[0]?.value ?? "");
+    if (!dateRaw) continue;
+
+    const iso = parseGA4Date(dateRaw, "w");
+    const url = String(r.dimensionValues?.[1]?.value ?? "");
+    const path = safeUrlPathname(url);
+    const value = Number(r.metricValues?.[0]?.value ?? 0);
+
+    // Verificar que la URL corresponde a nuestra categoría
+    const matchedCategory = categoryMatcher(path);
+    if (matchedCategory !== targetCategory) continue;
+
+    // Agregar a current (TODO el rango)
+    if (iso >= ranges.current.start && iso <= ranges.current.end) {
+      currentSeries[0] += value;
+      totalCurrent += value;
+    }
+
+    // Agregar a previous (TODO el rango)
+    if (iso >= ranges.previous.start && iso <= ranges.previous.end) {
+      previousSeries[0] += value;
+      totalPrevious += value;
+    }
+  }
+
+  return {
+    currentSeries,
+    previousSeries,
+    totalCurrent,
+    totalPrevious,
+    xLabels,
+    previousLabels,
+  };
 }
 
 /**

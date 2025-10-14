@@ -15,9 +15,12 @@ import type { TownId } from "@/lib/taxonomy/towns";
 import { TOWN_ID_ORDER } from "@/lib/taxonomy/towns";
 import type { SeriesPoint } from "@/lib/types";
 import { labelToCategoryId } from "@/lib/utils/core/sector";
+import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useMemo, useState } from "react";
 
 function AnalyticsByTownSectionInner() {
+  const queryClient = useQueryClient();
+
   const {
     mode,
     granularity,
@@ -112,10 +115,18 @@ function AnalyticsByTownSectionInner() {
           townId: expandedId as TownId,
           categoryId,
         };
+
+        // Invalidar queries anteriores antes de actualizar el drill
+        if (drill?.kind === "town+cat") {
+          queryClient.invalidateQueries({
+            queryKey: ["drilldown-details"],
+          });
+        }
+
         setDrill(newDrill);
       }
     },
-    [expandedId]
+    [expandedId, drill, queryClient]
   );
 
   const handleClose = useCallback(() => {

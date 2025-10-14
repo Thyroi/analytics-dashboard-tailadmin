@@ -95,8 +95,9 @@ export function computeRangesFromQuery(
     let current: DateRange;
 
     if (g === "d") {
-      // Para granularidad diaria: solo el último día (para comparar día -1 vs día -2)
-      current = { start: toISO(base), end: toISO(base) };
+      // Series (g='d'): usamos ventana de 7 días terminando en "base"
+      const start = addDaysUTC(base, -(7 - 1));
+      current = { start: toISO(start), end: toISO(base) };
     } else if (g === "w") {
       const start = addDaysUTC(base, -(7 - 1)); // 7 días hacia atrás
       current = { start: toISO(start), end: toISO(base) };

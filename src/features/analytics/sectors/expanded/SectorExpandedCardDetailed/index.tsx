@@ -68,13 +68,9 @@ export default function SectorExpandedCardDetailed(props: Props) {
 
   // Click en dona - simplemente delegar al parent
   const handleDonutTopClick = (label: string) => {
-    if (onSliceClick) {
-      onSliceClick(label);
-      // Hacer scroll si hay nivel 2
-      if (level2) {
-        scrollToLevel2();
-      }
-    }
+    onSliceClick ? onSliceClick(label) : null;
+    // Hacer scroll al nivel 2 tras el click (el prop level2 puede llegar en el siguiente render)
+    scrollToLevel2();
   };
 
   return (
@@ -102,6 +98,7 @@ export default function SectorExpandedCardDetailed(props: Props) {
       {level2 && (
         <div ref={level2Ref} className="scroll-mt-24">
           <TownCategoryDrilldownPanel
+            key={`${level2.townId}-${level2.categoryId}-${level2.granularity}`}
             townId={level2.townId}
             categoryId={level2.categoryId}
             granularity={level2.granularity}

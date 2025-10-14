@@ -75,6 +75,24 @@ export function useUrlSeries({
     },
   });
 
+  // DEBUG TRACE
+  console.debug("[useUrlSeries] queryKey:", [
+    "url-series",
+    url,
+    granularity,
+    endISO,
+  ]);
+  console.debug("[useUrlSeries] enabled:", Boolean(url), "url:", url);
+  if (isLoading) console.debug("[useUrlSeries] loading...");
+  if (error) console.debug("[useUrlSeries] error:", error);
+  if (data)
+    console.debug(
+      "[useUrlSeries] xLabels:",
+      data.xLabels?.length,
+      "avgEngagement curr len:",
+      data.seriesAvgEngagement?.current?.length
+    );
+
   // Si no hay URLs o está cargando
   if (!url || isLoading) {
     return { loading: true };
