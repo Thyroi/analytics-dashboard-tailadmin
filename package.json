@@ -21,9 +21,17 @@
     "validate:types": "tsc --noEmit",
     "validate:tests": "npm run test:run",
     "validate:lint": "npm run lint",
-    "validate:build": "npm run build",
-    "pre-push": "npm run validate && npm run validate:build",
-    "prepare": "husky install || true"
+    "validate:build": "npm run db:ensure && npm run build",
+    "pre-push": "npm run db:ensure && npm run validate && npm run validate:build",
+    "prepare": "husky install || true",
+    "db:generate": "prisma generate",
+    "db:push": "prisma db push",
+    "db:migrate": "prisma migrate dev",
+    "db:reset": "prisma migrate reset",
+    "db:studio": "prisma studio",
+    "db:seed": "tsx prisma/seed.ts",
+    "db:ensure": "node scripts/ensure-prisma.js",
+    "fix:prisma": "powershell -ExecutionPolicy Bypass -File fix-prisma-windows.ps1"
   },
   "dependencies": {
     "@auth0/nextjs-auth0": "^4.9.0",

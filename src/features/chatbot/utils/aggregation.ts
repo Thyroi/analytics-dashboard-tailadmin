@@ -23,6 +23,104 @@ export type CategoryAggUI = {
   delta: number;
 };
 
+// Helpers de normalización y fuzzy match (sin dependencias)
+function removeDiacritics(s: string): string {
+  return s.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+}
+
+function collapseRepeats(s: string): string {
+  // colapsa repeticiones de la misma letra: "plaaya" -> "playa"
+  return s.replace(/([a-z0-9])\1+/gi, "$1");
+}
+
+function normalizeToken(s: string): string {
+  const noDiac = removeDiacritics(s.toLowerCase());
+  // quitar separadores comunes y espacios
+  const compact = noDiac.replace(/[-_\s]+/g, "");
+  return collapseRepeats(compact);
+}
+
+function editDistance(a: string, b: string): number {
+  const m = a.length;
+  const n = b.length;
+  const dp: number[][] = Array.from({ length: m + 1 }, () =>
+    Array(n + 1).fill(0),
+  );
+  for (let i = 0; i <= m; i++) dp[i][0] = i;
+  for (let j = 0; j <= n; j++) dp[0][j] = j;
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      dp[i][j] = Math.min(
+        dp[i - 1][j] + 1,      // delete
+        dp[i][j - 1] + 1,      // insert
+        dp[i - 1][j - 1] + cost, // substitute
+      );
+    }
+  }
+  return dp[m][n];
+}
+
+function sameLettersLoose(a: string, b: string, slack: number): boolean {
+  // compara multiconjuntos de letras (orden no importa) con tolerancia `slack`
+  const count = (s: string): Map<string, number> => {
+    const m = new Map<string, number>();
+    for (const ch of s) m.set(ch, (m.get(ch) ?? 0) + 1);
+    return m;
+  };
+  const ca = count(a);
+  const cb = count(b);
+  const allKeys = new Set([...ca.keys(), ...cb.keys()]);
+  let diff = 0;
+  for (const k of allKeys) {
+    diff += Math.abs((ca.get(k) ?? 0) - (cb.get(k) ?? 0));
+    if (diff > slack) return false;
+  }
+  return true;
+}
+
+function approxEquals(aRaw: string, bRaw: string): boolean {
+  const a = normalizeToken(aRaw);
+  const b = normalizeToken(bRaw);
+  if (!a || !b) return false;
+  if (a === b) return true;
+
+  // umbral según longitud
+  const len = Math.max(a.length, b.length);
+  const thr = len <= 5 ? 1 : len <= 9 ? 2 : 3;
+
+  // distancia de edición
+  if (editDistance(a, b) <= thr) return true;
+
+  // igualdad por multiconjunto de letras con pequeña holgura
+  if (sameLettersLoose(a, b, Math.min(2, thr))) return true;
+
+  // contención (para casos como "museo" vs "museos")
+  if (a.includes(b) || b.includes(a)) return true;
+
+  return false;
+}
+
+// Construye índice de sinónimos normalizados por categoría
+function buildSynonymIndex(
+  SYNONYMS: Record<CategoryId, string[]>,
+): Array<{ cid: CategoryId; syn: string }> {
+  const out: Array<{ cid: CategoryId; syn: string }> = [];
+  (Object.keys(SYNONYMS) as CategoryId[]).forEach((cid) => {
+    SYNONYMS[cid].forEach((s) => out.push({ cid, syn: normalizeToken(s) }));
+  });
+  return out;
+}
+
+// Extrae los 2 primeros segmentos tras "root."
+function firstTwoSegments(rawKey: string): { seg1: string; seg2: string } {
+  const keyNoRoot = rawKey.startsWith("root.") ? rawKey.slice(5) : rawKey;
+  const parts = keyNoRoot.split(".");
+  return { seg1: parts[0] ?? "", seg2: parts[1] ?? "" };
+}
+
+
+
 /** Normaliza y tokeniza para matching robusto (sin acentos, minúsculas) */
 function norm(s: string): string {
   return s
@@ -106,26 +204,33 @@ function seriesDelta(points: APIPoint[]): number {
 export function aggregateCategoriesForUI(
   apiOutput: APIOutput
 ): CategoryAggUI[] {
-  const tokenMap = buildCategoryTokenMap();
-
-  // acumuladores por categoría
   const totals = new Map<CategoryId, { value: number; delta: number }>();
+  const idx = buildSynonymIndex(CATEGORY_SYNONYMS);
 
-  // Recorremos cada clave del API (p.ej. "root.playas", "root.Playas", etc.)
+  // Recorremos cada clave del API usando la nueva lógica de matching
   for (const [rawKey, points] of Object.entries(apiOutput)) {
-    // recorta prefijo "root." si viene
-    const keyNoRoot = rawKey.startsWith("root.") ? rawKey.slice(5) : rawKey;
+    const { seg1, seg2 } = firstTwoSegments(rawKey);
+    const s1 = normalizeToken(seg1);
+    const s2 = normalizeToken(seg2);
 
-    // generamos tokens y buscamos el primer match con alguna categoría
-    const tokens = toTokens(keyNoRoot);
     let matched: CategoryId | null = null;
-    for (const t of tokens) {
-      const cid = tokenMap.get(t);
-      if (cid) {
+
+    // Prioriza match en seg1; si no, intenta en seg2
+    for (const { cid, syn } of idx) {
+      if (approxEquals(s1, syn)) {
         matched = cid;
         break;
       }
     }
+    if (!matched) {
+      for (const { cid, syn } of idx) {
+        if (approxEquals(s2, syn)) {
+          matched = cid;
+          break;
+        }
+      }
+    }
+
     if (!matched) continue; // no es una categoría conocida → ignorar (evita pueblos)
 
     // suma de la serie y delta de la serie
@@ -155,63 +260,84 @@ export function aggregateCategoriesForUI(
 /**
  * Versión con debug de aggregateCategoriesForUI para troubleshooting
  */
-export function aggregateCategoriesForUIWithDebug(apiOutput: APIOutput): {
+export function aggregateCategoriesForUIWithDebug(
+  apiOutput: APIOutput,
+): {
   result: CategoryAggUI[];
   debug: {
     rawKeys: string[];
-    tokenMapSize: number;
     matchedKeys: string[];
     unmatchedKeys: string[];
     tokenMatches: Array<{
       key: string;
-      tokens: string[];
+      seg1: string;
+      seg2: string;
       matched: CategoryId | null;
+      matchedOn: "seg1" | "seg2" | null;
+      matchedSynonym?: string;
     }>;
   };
 } {
-  const tokenMap = buildCategoryTokenMap();
   const debug = {
     rawKeys: Object.keys(apiOutput),
-    tokenMapSize: tokenMap.size,
     matchedKeys: [] as string[],
     unmatchedKeys: [] as string[],
     tokenMatches: [] as Array<{
       key: string;
-      tokens: string[];
+      seg1: string;
+      seg2: string;
       matched: CategoryId | null;
+      matchedOn: "seg1" | "seg2" | null;
+      matchedSynonym?: string;
     }>,
   };
 
-  // acumuladores por categoría
   const totals = new Map<CategoryId, { value: number; delta: number }>();
+  const idx = buildSynonymIndex(CATEGORY_SYNONYMS);
 
-  // Recorremos cada clave del API (p.ej. "root.playas", "root.Playas", etc.)
   for (const [rawKey, points] of Object.entries(apiOutput)) {
-    // recorta prefijo "root." si viene
-    const keyNoRoot = rawKey.startsWith("root.") ? rawKey.slice(5) : rawKey;
+    const { seg1, seg2 } = firstTwoSegments(rawKey);
+    const s1 = normalizeToken(seg1);
+    const s2 = normalizeToken(seg2);
 
-    // generamos tokens y buscamos el primer match con alguna categoría
-    const tokens = toTokens(keyNoRoot);
     let matched: CategoryId | null = null;
-    for (const t of tokens) {
-      const cid = tokenMap.get(t);
-      if (cid) {
+    let matchedOn: "seg1" | "seg2" | null = null;
+    let matchedSynonym: string | undefined;
+
+    for (const { cid, syn } of idx) {
+      if (approxEquals(s1, syn)) {
         matched = cid;
+        matchedOn = "seg1";
+        matchedSynonym = syn;
         break;
       }
     }
+    if (!matched) {
+      for (const { cid, syn } of idx) {
+        if (approxEquals(s2, syn)) {
+          matched = cid;
+          matchedOn = "seg2";
+          matchedSynonym = syn;
+          break;
+        }
+      }
+    }
 
-    // Guardar info de debug
-    debug.tokenMatches.push({ key: rawKey, tokens, matched });
+    debug.tokenMatches.push({
+      key: rawKey,
+      seg1,
+      seg2,
+      matched,
+      matchedOn,
+      matchedSynonym,
+    });
 
     if (!matched) {
       debug.unmatchedKeys.push(rawKey);
-      continue; // no es una categoría conocida → ignorar (evita pueblos)
+      continue;
     }
-
     debug.matchedKeys.push(rawKey);
 
-    // suma de la serie y delta de la serie
     const valueSum = sum(points.map((p) => Number(p.value) || 0));
     const dlt = seriesDelta(points);
 
@@ -222,14 +348,11 @@ export function aggregateCategoriesForUIWithDebug(apiOutput: APIOutput): {
     });
   }
 
-  // construimos salida UI
   const result: CategoryAggUI[] = [];
   for (const [cid, agg] of totals.entries()) {
     const { label } = CATEGORY_META[cid];
     result.push({ id: cid, label, value: agg.value, delta: agg.delta });
   }
-
-  // opcional: ordenar por value desc
   result.sort((a, b) => b.value - a.value);
 
   return { result, debug };

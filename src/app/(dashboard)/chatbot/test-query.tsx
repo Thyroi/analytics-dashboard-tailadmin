@@ -50,13 +50,15 @@ export default function TestQuery() {
   >([]);
   const [debugInfo, setDebugInfo] = useState<{
     rawKeys: string[];
-    tokenMapSize: number;
     matchedKeys: string[];
     unmatchedKeys: string[];
     tokenMatches: Array<{
       key: string;
-      tokens: string[];
+      seg1: string;
+      seg2: string;
       matched: CategoryId | null;
+      matchedOn: "seg1" | "seg2" | null;
+      matchedSynonym?: string;
     }>;
   } | null>(null);
   const [rawApiResponse, setRawApiResponse] = useState<Record<
@@ -585,7 +587,7 @@ export default function TestQuery() {
                   Tokens Mapa
                 </div>
                 <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">
-                  {debugInfo.tokenMapSize}
+                  {tokenMapDebug?.totalTokens ?? "N/A"}
                 </div>
               </div>
               <div className="p-3 bg-white dark:bg-gray-800 rounded border">
@@ -606,43 +608,54 @@ export default function TestQuery() {
               </div>
             </div>
 
-            {/* Keys no matcheadas */}
-            {debugInfo.unmatchedKeys.length > 0 && (
-              <div className="mb-4">
-                <h4 className="text-sm font-medium text-red-700 dark:text-red-300 mb-2">
-                  ❌ Keys no matcheadas ({debugInfo.unmatchedKeys.length}):
+            {/* DOS COLUMNAS: Keys Matcheadas vs No Matcheadas */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+              {/* COLUMNA IZQUIERDA: Keys matcheadas */}
+              <div className="bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-300 dark:border-green-700 p-4">
+                <h4 className="text-lg font-semibold text-green-800 dark:text-green-200 mb-3">
+                  ✅ Keys Matcheadas ({debugInfo.matchedKeys.length})
                 </h4>
-                <div className="bg-red-50 dark:bg-red-900/20 p-3 rounded max-h-32 overflow-auto">
-                  {debugInfo.unmatchedKeys.map((key, i) => (
-                    <div
-                      key={i}
-                      className="font-mono text-sm text-red-700 dark:text-red-300 mb-1"
-                    >
-                      {key}
+                <div className="bg-white dark:bg-gray-800 p-3 rounded max-h-[500px] overflow-auto">
+                  {debugInfo.matchedKeys.length > 0 ? (
+                    debugInfo.matchedKeys.map((key, i) => (
+                      <div
+                        key={i}
+                        className="font-mono text-xs text-green-700 dark:text-green-300 mb-1 break-all"
+                      >
+                        {key}
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-sm text-gray-500 italic">
+                      No hay keys matcheadas
                     </div>
-                  ))}
+                  )}
                 </div>
               </div>
-            )}
 
-            {/* Keys matcheadas */}
-            {debugInfo.matchedKeys.length > 0 && (
-              <div className="mb-4">
-                <h4 className="text-sm font-medium text-green-700 dark:text-green-300 mb-2">
-                  ✅ Keys matcheadas ({debugInfo.matchedKeys.length}):
+              {/* COLUMNA DERECHA: Keys NO matcheadas */}
+              <div className="bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-300 dark:border-red-700 p-4">
+                <h4 className="text-lg font-semibold text-red-800 dark:text-red-200 mb-3">
+                  ❌ Keys NO Matcheadas ({debugInfo.unmatchedKeys.length})
                 </h4>
-                <div className="bg-green-50 dark:bg-green-900/20 p-3 rounded max-h-32 overflow-auto">
-                  {debugInfo.matchedKeys.map((key, i) => (
-                    <div
-                      key={i}
-                      className="font-mono text-sm text-green-700 dark:text-green-300 mb-1"
-                    >
-                      {key}
+                <div className="bg-white dark:bg-gray-800 p-3 rounded max-h-[500px] overflow-auto">
+                  {debugInfo.unmatchedKeys.length > 0 ? (
+                    debugInfo.unmatchedKeys.map((key, i) => (
+                      <div
+                        key={i}
+                        className="font-mono text-xs text-red-700 dark:text-red-300 mb-1 break-all"
+                      >
+                        {key}
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-sm text-gray-500 italic">
+                      ¡Todas las keys fueron matcheadas!
                     </div>
-                  ))}
+                  )}
                 </div>
               </div>
-            )}
+            </div>
 
             {/* Detalle de matching de tokens */}
             <div>
