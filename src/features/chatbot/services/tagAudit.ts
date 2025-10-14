@@ -130,6 +130,8 @@ async function performRequest(
   };
 
   try {
+    console.log("🔍 Llamada a API de auditoría:", body);
+
     const response = await fetch(API_BASE_URL, {
       method: "POST",
       headers: {
@@ -155,6 +157,12 @@ async function performRequest(
         details: data,
       });
     }
+
+    console.log("✅ Respuesta de API de auditoría:", {
+      code: data.code,
+      outputKeys: Object.keys(data.output || {}),
+      totalSeries: Object.keys(data.output || {}).length,
+    });
 
     return data;
   } catch (error) {
