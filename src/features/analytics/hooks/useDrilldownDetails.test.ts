@@ -10,7 +10,9 @@ vi.mock("@/lib/api/analytics", () => ({
 
 // Helper function to get a different category for testing
 function getDifferentCategory(currentCategory: CategoryId): CategoryId {
-  const availableCategories = CATEGORY_ID_ORDER.filter(id => id !== currentCategory);
+  const availableCategories = CATEGORY_ID_ORDER.filter(
+    (id) => id !== currentCategory
+  );
   return availableCategories[0] || "fiestasTradiciones"; // fallback
 }
 
@@ -187,28 +189,25 @@ describe("useDrilldownDetails", () => {
 
   test("aborts requests when config changes", async () => {
     const initialCategory: CategoryId = "naturaleza";
-    
+
     type TestConfig = {
       type: "pueblo-category";
       townId: "almonte";
       categoryId: CategoryId;
       granularity: "d";
     };
-    
+
     const { result, rerender } = renderHook<
       ReturnType<typeof useDrilldownDetails>,
       TestConfig
-    >(
-      (props) => useDrilldownDetails(props),
-      {
-        initialProps: {
-          type: "pueblo-category",
-          townId: "almonte",
-          categoryId: initialCategory,
-          granularity: "d",
-        },
-      }
-    );
+    >((props) => useDrilldownDetails(props), {
+      initialProps: {
+        type: "pueblo-category",
+        townId: "almonte",
+        categoryId: initialCategory,
+        granularity: "d",
+      },
+    });
 
     await waitFor(() => {
       expect(result.current.loading).toBe(false);

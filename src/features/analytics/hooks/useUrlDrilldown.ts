@@ -51,7 +51,7 @@ type State =
         };
       } | null;
       operatingSystems: DonutDatum[];
-      genders: DonutDatum[];
+      devices: DonutDatum[];
       countries: DonutDatum[];
       deltaPct: number;
     };
@@ -94,7 +94,7 @@ export function useUrlDrilldown({ path, granularity, endISO }: Args) {
       seriesAvgEngagement: { current: [], previous: [] },
       kpis: null,
       operatingSystems: [],
-      genders: [],
+      devices: [],
       countries: [],
       deltaPct: 0,
     } as State;
@@ -106,7 +106,7 @@ export function useUrlDrilldown({ path, granularity, endISO }: Args) {
     seriesAvgEngagement: data.seriesAvgEngagement,
     kpis: data.kpis ?? null,
     operatingSystems: data.operatingSystems ?? [],
-    genders: data.genders ?? [],
+    devices: data.devices ?? [],
     countries: data.countries ?? [],
     deltaPct: Number.isFinite(data.deltaPct) ? data.deltaPct : 0,
   } as State;

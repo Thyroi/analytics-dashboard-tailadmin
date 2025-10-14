@@ -59,16 +59,6 @@ export async function GET(
     const endQ = searchParams.get("end");
     const townFilter = searchParams.get("townId"); // Filter by specific town for drilldown
 
-    // DEBUG: Log de parámetros recibidos
-    console.log("🔍 DEBUG nueva versión /details endpoint:", {
-      categoryId,
-      url: req.url,
-      granularity: g,
-      start: startQ,
-      end: endQ,
-      townFilter,
-    });
-
     // Calcular rangos usando función específica por granularidad
     let ranges;
     let actualGranularity = g; // Granularidad efectiva que se usará
@@ -82,13 +72,6 @@ export async function GET(
         current: { start: startQ, end: endQ },
         previous: { start: startQ, end: endQ }, // Para rangos personalizados, no hay previous
       };
-
-      console.log("🔄 RANGO PERSONALIZADO detectado:", {
-        originalGranularity: g,
-        optimalGranularity: actualGranularity,
-        durationDays: customRangeInfo.durationDays,
-        range: `${startQ} → ${endQ}`,
-      });
     } else {
       // Usar función específica por granularidad
       const endDate =
@@ -99,13 +82,6 @@ export async function GET(
 
     // DEBUG: Log de rangos calculados
     debugRanges(actualGranularity, ranges);
-    console.log("📅 DEBUG rangos calculados:", {
-      originalGranularity: g,
-      actualGranularity: actualGranularity,
-      categoryId,
-      current: ranges.current,
-      previous: ranges.previous,
-    });
 
     // GA
     const auth = getAuth();
@@ -161,19 +137,13 @@ export async function GET(
       previousLabels,
     });
 
-    // Definir ventana del donut - COMPORTAMIENTO ESPECIAL POR GRANULARIDAD
+    // Definir ventana del donut - DEBE SER CONSISTENTE CON LAS SERIES
     let donutRanges;
     if (actualGranularity === "d") {
-      // Para granularidad diaria: donut usa solo día actual vs día inmediatamente anterior
-      const currentDay = ranges.current.end; // 2025-10-11
-      const previousDay = new Date(currentDay);
-      previousDay.setDate(previousDay.getDate() - 1);
-      const prevDayISO = previousDay.toISOString().split("T")[0]; // 2025-10-10
-
-      donutRanges = {
-        current: { start: currentDay, end: currentDay },
-        previous: { start: prevDayISO, end: prevDayISO },
-      };
+      // Para granularidad diaria: donut usa LOS MISMOS rangos que las series
+      // Si las series usan 1 día, el donut también debe usar 1 día
+      // Si las series usan 7 días, el donut también debe usar 7 días
+      donutRanges = ranges; // Usar los mismos rangos que series para consistencia
     } else if (actualGranularity === "w") {
       // Para granularidad semanal: donut usa sumatoria de toda la semana
       donutRanges = ranges; // Usar los mismos rangos que series (semana completa)

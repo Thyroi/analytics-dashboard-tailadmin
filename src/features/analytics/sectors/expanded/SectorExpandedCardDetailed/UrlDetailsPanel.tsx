@@ -84,7 +84,7 @@ type Props = {
   seriesAvgEngagement?: { current: SeriesPoint[]; previous: SeriesPoint[] };
   kpis: KpisBlock;
   operatingSystems: DonutDatum[];
-  genders: DonutDatum[];
+  devices: DonutDatum[];
   countries: DonutDatum[];
   deltaPct: number;
   granularity: Granularity;
@@ -101,7 +101,7 @@ export default function UrlDetailsPanel({
   seriesAvgEngagement,
   kpis,
   operatingSystems,
-  genders,
+  devices,
   countries,
   deltaPct,
   granularity,
@@ -158,12 +158,12 @@ export default function UrlDetailsPanel({
   }, [kpis]);
 
   // === Serie de engagement promedio (seg) — tolerante a undefined
-  const safeSeries: { current: SeriesPoint[]; previous: SeriesPoint[] } = {
-    current: seriesAvgEngagement?.current ?? [],
-    previous: seriesAvgEngagement?.previous ?? [],
-  };
-
   const { categories, currData, prevData } = useMemo(() => {
+    const safeSeries: { current: SeriesPoint[]; previous: SeriesPoint[] } = {
+      current: seriesAvgEngagement?.current ?? [],
+      previous: seriesAvgEngagement?.previous ?? [],
+    };
+
     const n = Math.min(safeSeries.current.length, safeSeries.previous.length);
     const cur = safeSeries.current.slice(-n);
     const prev = safeSeries.previous.slice(-n);
@@ -172,10 +172,9 @@ export default function UrlDetailsPanel({
       currData: cur.map((p) => p.value),
       prevData: prev.map((p) => p.value),
     };
-  }, [safeSeries.current, safeSeries.previous]);
+  }, [seriesAvgEngagement]);
 
   if (loading) {
-
     return <UrlDetailsPanelSkeleton chartHeight={260} />;
   }
 
@@ -246,8 +245,8 @@ export default function UrlDetailsPanel({
             titleColor="text-[#c10007]"
           />
           <DonutSection
-            donutData={genders ?? []}
-            title="GÉNERO DE USUARIOS"
+            donutData={devices ?? []}
+            title="TIPO DE DISPOSITIVO"
             titleColor="text-[#c10007]"
           />
           <DonutSection

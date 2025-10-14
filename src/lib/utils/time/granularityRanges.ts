@@ -11,27 +11,23 @@ export type RangesPair = { current: DateRange; previous: DateRange };
 
 /**
  * GRANULARIDAD DIARIA (d)
- * - Current: Últimos 7 días terminando en endDate
- * - Previous: 7 días anteriores CON SHIFT DE 1 DÍA (cada día vs día anterior)
+ * - Current: Último día (endDate)
+ * - Previous: Día anterior (endDate - 1)
  */
 export function computeDailyRanges(endDate: string): RangesPair {
   const end = parseISO(endDate);
 
-  // Current: últimos 7 días
-  const currentStart = addDaysUTC(end, -6); // 7 días incluyendo endDate
+  // Current: último día solamente
   const current: DateRange = {
-    start: toISO(currentStart),
+    start: toISO(end),
     end: toISO(end),
   };
 
-  // Previous: SHIFT DE 1 DÍA - cada día vs día anterior
-  // Si current es 2025-10-05 → 2025-10-11
-  // Previous es 2025-10-04 → 2025-10-10
-  const previousEnd = addDaysUTC(end, -1); // día anterior al final
-  const previousStart = addDaysUTC(currentStart, -1); // día anterior al inicio
+  // Previous: día anterior
+  const previousDay = addDaysUTC(end, -1);
   const previous: DateRange = {
-    start: toISO(previousStart),
-    end: toISO(previousEnd),
+    start: toISO(previousDay),
+    end: toISO(previousDay),
   };
 
   return { current, previous };
@@ -148,35 +144,11 @@ export function computeRangesByGranularity(
  * UTILIDAD PARA DEBUGGING - Muestra información de los rangos
  * Solo en desarrollo
  */
-export function debugRanges(granularity: string, ranges: RangesPair): void {
+export function debugRanges(_granularity: string, _ranges: RangesPair): void {
   if (process.env.NODE_ENV !== "development") return;
 
-  console.log(`📊 ${granularity.toUpperCase()} RANGES:`);
-  console.log(`   Current:  ${ranges.current.start} → ${ranges.current.end}`);
-  console.log(`   Previous: ${ranges.previous.start} → ${ranges.previous.end}`);
-
-  const currentDays =
-    Math.ceil(
-      (new Date(ranges.current.end).getTime() -
-        new Date(ranges.current.start).getTime()) /
-        (1000 * 60 * 60 * 24)
-    ) + 1;
-  const previousDays =
-    Math.ceil(
-      (new Date(ranges.previous.end).getTime() -
-        new Date(ranges.previous.start).getTime()) /
-        (1000 * 60 * 60 * 24)
-    ) + 1;
-  const gap =
-    Math.ceil(
-      (new Date(ranges.current.start).getTime() -
-        new Date(ranges.previous.end).getTime()) /
-        (1000 * 60 * 60 * 24)
-    ) - 1;
-
-  console.log(`   Current duration:  ${currentDays} días`);
-  console.log(`   Previous duration: ${previousDays} días`);
-  console.log(`   Gap between ranges: ${gap} días`);
+  // Debug logs removed for production cleanliness
+  // Ranges can be inspected via debugger if needed
 }
 
 /**

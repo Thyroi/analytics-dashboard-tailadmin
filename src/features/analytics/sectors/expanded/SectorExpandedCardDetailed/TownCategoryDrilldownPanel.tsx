@@ -1,6 +1,7 @@
 "use client";
 
 import ChartPair from "@/components/common/ChartPair";
+import ChartPairSkeleton from "@/components/skeletons/ChartPairSkeleton";
 import { useEffect, useMemo, useRef, useState } from "react";
 import UrlDetailsPanel from "./UrlDetailsPanel";
 
@@ -208,7 +209,7 @@ export default function TownCategoryDrilldownPanel({
   const seriesAvgEngagement = isLoaded ? url.seriesAvgEngagement : emptySeries;
   const kpis = isLoaded ? url.kpis : emptyKpis;
   const operatingSystems = isLoaded ? url.operatingSystems : [];
-  const genders = isLoaded ? url.genders : [];
+  const devices = isLoaded ? url.devices : [];
   const countries = isLoaded ? url.countries : [];
   const deltaPct = isLoaded ? url.deltaPct : 0;
 
@@ -228,49 +229,44 @@ export default function TownCategoryDrilldownPanel({
         />
 
         {/* Nivel 2: Sub-actividades */}
-        <div className="bg-yellow-100 p-4 border-2 border-yellow-500 rounded">
-          <h3 className="text-lg font-bold text-yellow-800">
-            NIVEL 2 DEBUG - ChartPair Aquí
-          </h3>
-          <p>
-            Town: {townId}, Category: {categoryId}
-          </p>
-          <p>Loading: {dd.loading ? "SÍ" : "NO"}</p>
-          <p>Donut items: {dd.donut.length}</p>
-        </div>
+        {dd.loading ? (
+          <ChartPairSkeleton />
+        ) : (
+          <ChartPair
+            mode="multi"
+            xLabels={dd.xLabels}
+            seriesBySub={dd.seriesByUrl}
+            loading={dd.loading}
+            donutData={dd.donut}
+            deltaPct={dd.deltaPct}
+            onDonutSlice={(sub) => {
+              const candidate = pickPathForSubActivity(
+                sub,
+                dd.seriesByUrl as UrlSeries[]
+              );
+              if (candidate) {
+                setSelectedPath(candidate);
+              }
+            }}
+            donutCenterLabel="Actividades"
+            actionButtonTarget="actividad"
+          />
+        )}
 
-        <ChartPair
-          mode="multi"
-          xLabels={dd.xLabels}
-          seriesBySub={dd.seriesByUrl}
-          loading={dd.loading}
-          donutData={dd.donut}
-          deltaPct={dd.deltaPct}
-          onDonutSlice={(sub) => {
-            const candidate = pickPathForSubActivity(
-              sub,
-              dd.seriesByUrl as UrlSeries[]
-            );
-            if (candidate) setSelectedPath(candidate);
-          }}
-          donutCenterLabel="Actividades"
-          actionButtonTarget="actividad"
-        />
-
-        {/* Nivel 3: Detalle de la URL seleccionada */}
+        {/* Nivel 3: Detalles de URL seleccionada */}
         {selectedPath && (
           <div ref={detailsRef} className="scroll-mt-24">
             <UrlDetailsPanel
-              path={url.selectedPath ?? selectedPath}
-              loading={url.loading}
-              seriesAvgEngagement={seriesAvgEngagement}
+              path={selectedPath}
+              granularity={granularity}
+              endISO={endISO}
               kpis={kpis}
+              seriesAvgEngagement={seriesAvgEngagement}
               operatingSystems={operatingSystems}
-              genders={genders}
+              devices={devices}
               countries={countries}
               deltaPct={deltaPct}
-              granularity={granularity}
-              onClose={() => setSelectedPath(null)}
+              loading={url.loading}
             />
           </div>
         )}

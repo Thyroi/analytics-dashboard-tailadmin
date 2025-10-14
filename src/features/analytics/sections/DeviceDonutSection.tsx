@@ -2,10 +2,10 @@
 
 import DonutCard from "@/components/dashboard/DonutCard";
 import {
-  colorizeGender,
-  useGender,
-} from "@/features/analytics/hooks/useGender";
-import { Users } from "lucide-react";
+  colorizeDevices,
+  useDevices,
+} from "@/features/analytics/hooks/useDevices";
+import { MonitorSmartphone } from "lucide-react";
 import { useMemo } from "react";
 import { useHeaderAnalyticsTimeframe } from "../context/HeaderAnalyticsTimeContext";
 import { DonutSectionSkeleton } from "../skeletons";
@@ -14,16 +14,16 @@ const CHART_HEIGHT = 260;
 
 type DonutItem = { label: string; value: number; color?: string };
 
-export default function GenderDonutSection() {
+export default function DeviceDonutSection() {
   const { mode, startISO, endISO, granularity } = useHeaderAnalyticsTimeframe();
 
   const start = mode === "range" ? startISO : undefined;
   const end = mode === "range" ? endISO : undefined;
 
-  const { data, isLoading, error } = useGender({ start, end, granularity });
+  const { data, isLoading, error } = useDevices({ start, end, granularity });
 
   const items: DonutItem[] = useMemo(
-    () => colorizeGender(data?.items ?? []),
+    () => colorizeDevices(data?.items ?? []),
     [data?.items]
   );
 
@@ -46,10 +46,10 @@ export default function GenderDonutSection() {
     <DonutCard
       className="card bg-analytics-gradient overflow-hidden p-6"
       items={items}
-      title="Usuarios por género"
+      title="Usuarios por dispositivo"
       centerTitle="Total"
       height={CHART_HEIGHT}
-      Icon={Users}
+      Icon={MonitorSmartphone}
       titleSize="xxs"
       iconColor="text-huelva-primary"
       variant="plain"

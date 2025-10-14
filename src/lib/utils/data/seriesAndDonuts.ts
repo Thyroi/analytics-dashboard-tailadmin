@@ -222,12 +222,14 @@ export function buildTownsDonutForCategory<T>(
     const path = safeUrlPathname(url);
     const value = Number(r.metricValues?.[0]?.value ?? 0);
 
-    // Filtrar por categoría y rango de fechas
-    const matchedCategory = categoryMatcher(path);
-    if (matchedCategory !== targetCategory) continue;
+    // Filtrar por rango de fechas PRIMERO
     if (iso < donutStart || iso > donutEnd) continue;
 
-    // Extraer pueblo
+    // Filtrar por categoría - DEBE coincidir con la categoría objetivo
+    const matchedCategory = categoryMatcher(path);
+    if (matchedCategory !== targetCategory) continue;
+
+    // Extraer pueblo de la URL
     const town = townMatcher(path);
     if (town) {
       townCounts[town] = (townCounts[town] || 0) + value;
@@ -291,12 +293,14 @@ export function buildCategoriesDonutForTown<T>(
     const path = safeUrlPathname(url);
     const value = Number(r.metricValues?.[0]?.value ?? 0);
 
-    // Filtrar por pueblo y rango de fechas
-    const matchedTown = townMatcher(path);
-    if (matchedTown !== targetTown) continue;
+    // Filtrar por rango de fechas PRIMERO
     if (iso < donutStart || iso > donutEnd) continue;
 
-    // Extraer categoría
+    // Filtrar por pueblo - DEBE coincidir con el pueblo objetivo
+    const matchedTown = townMatcher(path);
+    if (matchedTown !== targetTown) continue;
+
+    // Extraer categoría de la URL
     const category = categoryMatcher(path);
     if (category) {
       categoryCounts[category] = (categoryCounts[category] || 0) + value;
@@ -335,6 +339,7 @@ export function buildUrlsDonutForTownCategory<T>(
     // Filtrar por pueblo, categoría y rango de fechas
     const matchedTown = townMatcher(path);
     if (matchedTown !== targetTown) continue;
+
     if (iso < donutStart || iso > donutEnd) continue;
 
     const category = categoryMatcher(path);
@@ -390,9 +395,6 @@ export function formatSeries(
   };
 }
 
-/**
- * Construye datos para donut de URLs para una categoría y pueblo específicos
- */
 export function buildUrlsDonutForCategoryTown<T>(
   rows: GA4Row[],
   categoryMatcher: (path: string) => string | null,
@@ -414,11 +416,14 @@ export function buildUrlsDonutForCategoryTown<T>(
     const path = safeUrlPathname(url);
     const value = Number(r.metricValues?.[0]?.value ?? 0);
 
-    // Filtrar por categoría, pueblo y rango de fechas
-    const category = categoryMatcher(path);
-    if (category !== targetCategory) continue;
+    // Filtrar por rango de fechas PRIMERO
     if (iso < donutStart || iso > donutEnd) continue;
 
+    // Filtrar por categoría
+    const category = categoryMatcher(path);
+    if (category !== targetCategory) continue;
+
+    // Filtrar por pueblo
     const matchedTown = townMatcher(path);
     if (matchedTown !== targetTown) continue;
 

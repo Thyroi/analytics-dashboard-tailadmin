@@ -11,8 +11,8 @@ import AnalyticsByTagSection from "@/features/analytics/sections/AnalyticsByTagS
 import AnalyticsByTownSection from "@/features/analytics/sections/AnalyticsByTownSection";
 import AnalyticsKPISection from "@/features/analytics/sections/AnalyticsKPISection";
 import CustomersDemographicsSection from "@/features/analytics/sections/CustomersDemographicsSection";
+import DeviceDonutSection from "@/features/analytics/sections/DeviceDonutSection";
 import DevicesOsSection from "@/features/analytics/sections/DevicesOsDonutSection";
-import GenderDonutSection from "@/features/analytics/sections/GenderDonutSection";
 import UserAcquisitionSection from "@/features/analytics/sections/UserAcquisitionSection";
 import { Suspense } from "react";
 
@@ -63,7 +63,7 @@ function PageBody() {
       <section className="grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch">
         <UserAcquisitionSection />
         <DevicesOsSection />
-        <GenderDonutSection />
+        <DeviceDonutSection />
       </section>
       <section>
         <CustomersDemographicsSection />

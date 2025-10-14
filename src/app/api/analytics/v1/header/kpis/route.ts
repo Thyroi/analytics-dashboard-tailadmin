@@ -9,7 +9,10 @@ import {
 import { analyticsdata_v1beta, google } from "googleapis";
 import { NextRequest, NextResponse } from "next/server";
 
-import { computeRangesFromQuery } from "@/lib/utils/time/timeWindows";
+import {
+  derivePrevShifted,
+  deriveRangeEndingYesterday,
+} from "@/lib/utils/time/dateRangeWindow";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -68,12 +71,22 @@ export async function GET(req: NextRequest) {
     const endQ = sp.get("end");
     const granularity = (sp.get("granularity") || "d") as Granularity;
 
-    // RANGOS con política unificada (desplazado con solape)
-    const { current, previous } = computeRangesFromQuery(
-      granularity,
-      startQ,
-      endQ
-    );
+    // COMPORTAMIENTO DONUT/KPI: agregación de datos
+    // - d: último día (ayer)
+    // - w: últimos 7 días
+    // - m: últimos 30 días
+    // - y: últimos 365 días
+    let current, previous;
+
+    if (startQ && endQ) {
+      // Rango personalizado
+      current = { start: startQ, end: endQ };
+      previous = derivePrevShifted(current, granularity);
+    } else {
+      // Rango automático por granularidad (termina ayer)
+      current = deriveRangeEndingYesterday(granularity);
+      previous = derivePrevShifted(current, granularity);
+    }
 
     // Auth + GA4
     const auth = getAuth();

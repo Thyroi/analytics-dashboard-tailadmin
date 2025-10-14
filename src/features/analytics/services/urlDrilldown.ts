@@ -61,7 +61,7 @@ export type UrlDrilldownResponse = {
 
   /** Donuts (policy backend: si g==='d' → último día; si no, todo current) */
   operatingSystems: DonutDatum[];
-  genders: DonutDatum[];
+  devices: DonutDatum[];
   countries: DonutDatum[];
 
   /** delta % de la serie base (p.ej. vistas) current vs previous */
