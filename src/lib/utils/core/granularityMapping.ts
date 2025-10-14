@@ -124,8 +124,8 @@ export function mapDailyData<T>(
 
 /**
  * GRANULARIDAD SEMANAL (w)
- * Labels: UN SOLO PUNTO que representa toda la semana (agregado)
- * La etiqueta es el rango de fechas de la semana
+ * Labels: YYYY-MM-DD para cada día (7 días, igual que 'd')
+ * La gráfica debe mostrar 7 puntos diarios, idéntica a la granularidad 'd'
  */
 export function mapWeeklyData<T>(
   rows: GA4Row[],
@@ -133,13 +133,31 @@ export function mapWeeklyData<T>(
   targetCategory: T,
   ranges: { current: DateRange; previous: DateRange }
 ): MappingResult {
-  // Para weekly: UN SOLO punto por período (agregado de toda la semana)
-  const xLabels = [`${ranges.current.start} to ${ranges.current.end}`];
-  const previousLabels = [`${ranges.previous.start} to ${ranges.previous.end}`];
+  // Generar labels para current (7 días)
+  const xLabels: string[] = [];
+  const currentStart = new Date(ranges.current.start);
+  const currentEnd = new Date(ranges.current.end);
 
-  // Inicializar series con 1 punto cada una
-  const currentSeries = [0];
-  const previousSeries = [0];
+  const current = new Date(currentStart);
+  while (current <= currentEnd) {
+    xLabels.push(current.toISOString().slice(0, 10));
+    current.setDate(current.getDate() + 1);
+  }
+
+  // Generar labels para previous (7 días)
+  const previousLabels: string[] = [];
+  const previousStart = new Date(ranges.previous.start);
+  const previousEnd = new Date(ranges.previous.end);
+
+  const prev = new Date(previousStart);
+  while (prev <= previousEnd) {
+    previousLabels.push(prev.toISOString().slice(0, 10));
+    prev.setDate(prev.getDate() + 1);
+  }
+
+  // Inicializar series
+  const currentSeries = new Array(xLabels.length).fill(0);
+  const previousSeries = new Array(previousLabels.length).fill(0);
 
   let totalCurrent = 0;
   let totalPrevious = 0;
@@ -158,15 +176,21 @@ export function mapWeeklyData<T>(
     const matchedCategory = categoryMatcher(path);
     if (matchedCategory !== targetCategory) continue;
 
-    // Agregar a current (TODO el rango)
+    // Mapear a current series
     if (iso >= ranges.current.start && iso <= ranges.current.end) {
-      currentSeries[0] += value;
+      const timeIndex = xLabels.indexOf(iso);
+      if (timeIndex >= 0) {
+        currentSeries[timeIndex] += value;
+      }
       totalCurrent += value;
     }
 
-    // Agregar a previous (TODO el rango)
+    // Mapear a previous series
     if (iso >= ranges.previous.start && iso <= ranges.previous.end) {
-      previousSeries[0] += value;
+      const timeIndex = previousLabels.indexOf(iso);
+      if (timeIndex >= 0) {
+        previousSeries[timeIndex] += value;
+      }
       totalPrevious += value;
     }
   }

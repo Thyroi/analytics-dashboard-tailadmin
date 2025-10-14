@@ -19,7 +19,7 @@ Para visualizaciones que muestran evolución temporal con puntos de datos indivi
 | Granularidad   | Current (Actual) | Previous (Comparación) | Shift | Puntos en gráfica     |
 | -------------- | ---------------- | ---------------------- | ----- | --------------------- |
 | **d** (día)    | Últimos 7 días   | 7 días anteriores      | 1 día | 7 puntos (diarios)    |
-| **w** (semana) | Últimos 7 días   | 7 días anteriores      | 1 día | 1 punto (agregado)    |
+| **w** (semana) | Últimos 7 días   | 7 días anteriores      | 1 día | 7 puntos (diarios)    |
 | **m** (mes)    | Últimos 30 días  | 30 días anteriores     | 1 día | 30 puntos (diarios)   |
 | **y** (año)    | Últimos 365 días | 365 días anteriores    | 1 mes | 12 puntos (mensuales) |
 
