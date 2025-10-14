@@ -44,7 +44,7 @@ function editDistance(a: string, b: string): number {
   const m = a.length;
   const n = b.length;
   const dp: number[][] = Array.from({ length: m + 1 }, () =>
-    Array(n + 1).fill(0),
+    Array(n + 1).fill(0)
   );
   for (let i = 0; i <= m; i++) dp[i][0] = i;
   for (let j = 0; j <= n; j++) dp[0][j] = j;
@@ -52,9 +52,9 @@ function editDistance(a: string, b: string): number {
     for (let j = 1; j <= n; j++) {
       const cost = a[i - 1] === b[j - 1] ? 0 : 1;
       dp[i][j] = Math.min(
-        dp[i - 1][j] + 1,      // delete
-        dp[i][j - 1] + 1,      // insert
-        dp[i - 1][j - 1] + cost, // substitute
+        dp[i - 1][j] + 1, // delete
+        dp[i][j - 1] + 1, // insert
+        dp[i - 1][j - 1] + cost // substitute
       );
     }
   }
@@ -103,7 +103,7 @@ function approxEquals(aRaw: string, bRaw: string): boolean {
 
 // Construye índice de sinónimos normalizados por categoría
 function buildSynonymIndex(
-  SYNONYMS: Record<CategoryId, string[]>,
+  SYNONYMS: Record<CategoryId, string[]>
 ): Array<{ cid: CategoryId; syn: string }> {
   const out: Array<{ cid: CategoryId; syn: string }> = [];
   (Object.keys(SYNONYMS) as CategoryId[]).forEach((cid) => {
@@ -118,8 +118,6 @@ function firstTwoSegments(rawKey: string): { seg1: string; seg2: string } {
   const parts = keyNoRoot.split(".");
   return { seg1: parts[0] ?? "", seg2: parts[1] ?? "" };
 }
-
-
 
 /** Normaliza y tokeniza para matching robusto (sin acentos, minúsculas) */
 function norm(s: string): string {
@@ -260,9 +258,7 @@ export function aggregateCategoriesForUI(
 /**
  * Versión con debug de aggregateCategoriesForUI para troubleshooting
  */
-export function aggregateCategoriesForUIWithDebug(
-  apiOutput: APIOutput,
-): {
+export function aggregateCategoriesForUIWithDebug(apiOutput: APIOutput): {
   result: CategoryAggUI[];
   debug: {
     rawKeys: string[];
