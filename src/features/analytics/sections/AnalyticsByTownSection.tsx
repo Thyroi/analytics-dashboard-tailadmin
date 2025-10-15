@@ -36,7 +36,11 @@ function AnalyticsByTownSectionInner() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   // Calcular fechas correctas según granularidad
-  const { currentEndISO } = getCorrectDatesForGranularity(endDate, granularity, mode);
+  const { currentEndISO } = getCorrectDatesForGranularity(
+    endDate,
+    granularity,
+    mode
+  );
 
   // Usar fechas corregidas para deltas/KPIs
   const timeParams =

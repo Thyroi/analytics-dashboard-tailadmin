@@ -21,7 +21,11 @@ export default function SectorsByTownSection({ granularity }: Props) {
   const { startDate, endDate, mode } = useTownTimeframe();
 
   // Calcular fechas correctas según granularidad
-  const { currentEndISO } = getCorrectDatesForGranularity(endDate, granularity, mode);
+  const { currentEndISO } = getCorrectDatesForGranularity(
+    endDate,
+    granularity,
+    mode
+  );
 
   // Preparar parámetros de tiempo para los hooks
   const timeParams =
