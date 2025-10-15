@@ -55,10 +55,7 @@ export async function getCategoriesTotals(
   signal?: AbortSignal
 ): Promise<CategoriesTotalsResponse> {
   // construir ventanas con la misma política usada en analytics
-  const startISO =
-    typeof time === "object" && time && "startISO" in time
-      ? time.startISO
-      : undefined;
+  // const startISO = typeof time === "object" && time && "startISO" in time ? time.startISO : undefined; // TEMPORALMENTE NO USADO
   const endISO =
     typeof time === "string"
       ? time

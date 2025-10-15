@@ -4,13 +4,15 @@ import {
   TagTimeProvider,
   useTagTimeframe,
 } from "@/features/analytics/context/TagTimeContext";
-import { useMemo, useState } from "react";
+// import { useMemo, useState } from "react"; // TEMPORALMENTE DESACTIVADO
 
 import StickyHeaderSection from "@/components/common/StickyHeaderSection";
 
-import { CATEGORY_ID_ORDER, type CategoryId } from "@/lib/taxonomy/categories";
-import type { TownId } from "@/lib/taxonomy/towns";
-import type { DonutDatum, Granularity, SeriesPoint } from "@/lib/types";
+// TEMPORALMENTE DESACTIVADO
+// import { CATEGORY_ID_ORDER, type CategoryId } from "@/lib/taxonomy/categories";
+// import type { TownId } from "@/lib/taxonomy/towns";
+// import type { DonutDatum, SeriesPoint } from "@/lib/types";
+import type { Granularity } from "@/lib/types";
 
 // import { useCategoriesTotals } from "@/features/chatbot/hooks/useCategoriesTotals"; // TEMPORALMENTE DESACTIVADO
 // import { useCategoryDetailsChatbot } from "@/features/chatbot/hooks/useCategoryDetailsChatbot"; // TEMPORALMENTE DESACTIVADO
@@ -46,69 +48,19 @@ function ChatbotByTagSectionInner() {
     endTime: endISO,
   });
 
-  const [expandedId, setExpandedId] = useState<string | null>(null);
-
-  // DELTAS (independiente de analytics) - TEMPORALMENTE DESACTIVADO
-  // const {
-  //   state,
-  //   ids,
-  //   itemsById,
-  //   isFetching: isDeltaLoading,
-  // } = useCategoriesTotals(granularity, endISO);
-
-  // Mock data para evitar errores
-  const state = { status: "ready" as const };
-  const ids = CATEGORY_ID_ORDER;
-  const itemsById = {};
-  const isDeltaLoading = false;
-
-  const displayedIds = useMemo<string[]>(
-    () =>
-      state.status === "ready" ? (ids as string[]) : [...CATEGORY_ID_ORDER],
-    [state.status, ids]
-  );
-
-  // DRILL
-  type Drill =
-    | { kind: "category"; categoryId: CategoryId }
-    | { kind: "town+cat"; townId: TownId; categoryId: CategoryId };
-
-  const [drill, setDrill] = useState<Drill | null>(null);
-  const catId = expandedId as CategoryId | null;
-
-  // Series & donut (independiente de analytics) - TEMPORALMENTE DESACTIVADO
-  // const catForDetails =
-  //   (drill?.kind === "category" ? drill.categoryId : catId) ??
-  //   ("naturaleza" as CategoryId);
-  // const { data: details } = useCategoryDetailsChatbot(
-  //   catForDetails,
-  //   granularity as Granularity,
-  //   endISO
-  // );
-
-  const seriesCat = {
-    current: [] as SeriesPoint[], // (details?.current ?? []) as SeriesPoint[],
-    previous: [] as SeriesPoint[], // (details?.previous ?? []) as SeriesPoint[],
-  };
-  const donutCat = [] as DonutDatum[]; // (details?.donut ?? []) as DonutDatum[];
-
-  const getDeltaPctFor = (_id: string) => null; // itemsById[id as CategoryId]?.deltaPct ?? null
-
-  const getSeriesFor = (_id: string) => {
-    return { current: [], previous: [] };
-  };
-
-  const getDonutFor = (_id: string) => {
-    return [];
-  };
-
-  const handleOpen = (_id: string) => {
-    // Temporalmente desactivado
-  };
-
-  const handleSliceClick = (_label: string) => {
-    // Temporalmente desactivado
-  };
+  // TEMPORALMENTE DESACTIVADO - TODO: Reactivar cuando se necesite la funcionalidad completa
+  // const [expandedId, setExpandedId] = useState<string | null>(null);
+  // const { state, ids, itemsById, isFetching: isDeltaLoading } = useCategoriesTotals(granularity, endISO);
+  // const displayedIds = useMemo<string[]>(() => state.status === "ready" ? (ids as string[]) : [...CATEGORY_ID_ORDER], [state.status, ids]);
+  // const [drill, setDrill] = useState<Drill | null>(null);
+  // const catId = expandedId as CategoryId | null;
+  // const seriesCat = { current: [] as SeriesPoint[], previous: [] as SeriesPoint[] };
+  // const donutCat = [] as DonutDatum[];
+  // const getDeltaPctFor = (id: string) => null;
+  // const getSeriesFor = (id: string) => ({ current: [], previous: [] });
+  // const getDonutFor = (id: string) => [];
+  // const handleOpen = (id: string) => {};
+  // const handleSliceClick = (label: string) => {};
 
   return (
     <section className="max-w-[1560px]">

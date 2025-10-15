@@ -5,8 +5,8 @@ export type DateRange = { start: string; end: string };
 
 export function deriveRangeEndingYesterday(
   g: Granularity,
-  now?: Date,
-  dayAsWeek = false
+  now?: Date
+  // dayAsWeek = false // TEMPORALMENTE NO USADO
 ) {
   // Si no se pasa fecha, usar hoy
   const end = now ?? todayUTC();

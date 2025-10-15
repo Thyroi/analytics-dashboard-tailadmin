@@ -16,8 +16,7 @@ export type ChatbotDrilldownSkeletonProps = {
 export default function ChatbotDrilldownSkeleton({
   isOpen,
   onClose,
-  title = "Cargando análisis...",
-}: ChatbotDrilldownSkeletonProps) {
+}: Omit<ChatbotDrilldownSkeletonProps, 'title'>) {
   if (!isOpen) return null;
 
   return (

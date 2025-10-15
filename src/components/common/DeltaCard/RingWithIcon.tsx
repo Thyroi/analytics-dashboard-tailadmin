@@ -61,6 +61,7 @@ export default function RingWithIcon({
         }}
       >
         {"imgSrc" in variant ? (
+          // eslint-disable-next-line @next/next/no-img-element
           <img
             src={variant.imgSrc}
             alt={title}

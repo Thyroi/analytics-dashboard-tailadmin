@@ -47,10 +47,7 @@ export async function getTownsTotalsChatbot(
   time?: { startISO: string; endISO: string } | { endISO?: string } | string,
   signal?: AbortSignal
 ): Promise<TownsTotalsResponse> {
-  const startISO =
-    typeof time === "object" && time && "startISO" in time
-      ? time.startISO
-      : undefined;
+  // const startISO = typeof time === "object" && time && "startISO" in time ? time.startISO : undefined; // TEMPORALMENTE NO USADO
   const endISO =
     typeof time === "string"
       ? time

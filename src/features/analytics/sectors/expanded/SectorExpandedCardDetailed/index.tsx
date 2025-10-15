@@ -68,7 +68,9 @@ export default function SectorExpandedCardDetailed(props: Props) {
 
   // Click en dona - simplemente delegar al parent
   const handleDonutTopClick = (label: string) => {
-    onSliceClick ? onSliceClick(label) : null;
+    if (onSliceClick) {
+      onSliceClick(label);
+    }
     // Hacer scroll al nivel 2 tras el click (el prop level2 puede llegar en el siguiente render)
     scrollToLevel2();
   };

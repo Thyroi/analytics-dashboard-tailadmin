@@ -82,12 +82,11 @@ export default function LineChart({
         };
   }, [type, brandAreaGradient]);
 
-  // Config de leyenda: si está desactivada, no se reserva alto
-  const legendOpts: ApexOptions["legend"] = showLegend
-    ? { show: true, position: legendPosition, labels: { colors: foreColor } }
-    : { show: false, height: 0, offsetY: 0 };
-
   const options: ApexOptions = useMemo(() => {
+    // Config de leyenda: si está desactivada, no se reserva alto
+    const legendOpts: ApexOptions["legend"] = showLegend
+      ? { show: true, position: legendPosition, labels: { colors: foreColor } }
+      : { show: false, height: 0, offsetY: 0 };
     const base: ApexOptions = {
       chart: {
         fontFamily: "Outfit, sans-serif",
@@ -153,7 +152,7 @@ export default function LineChart({
     foreColor,
     gridColor,
     isDark,
-    legendOpts,
+    legendPosition,
     optionsExtra,
     showLegend,
     smooth,

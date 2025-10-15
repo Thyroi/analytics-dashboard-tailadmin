@@ -1,16 +1,14 @@
 import type { ChatbotGranularity, ChatbotPoint } from "@/lib/api/chatbot";
 
 /** ---------- helpers base ---------- */
-const pad = (n: number, w = 2) => String(n).padStart(w, "0");
+// const pad = (n: number, w = 2) => String(n).padStart(w, "0"); // TEMPORALMENTE NO USADO
 const toISO = (d: Date) => d.toISOString().slice(0, 10);
 const parseISO = (iso: string) => new Date(`${iso}T00:00:00Z`);
-const addDays = (d: Date, n: number) => {
-  const x = new Date(
-    Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())
-  );
-  x.setUTCDate(x.getUTCDate() + n);
-  return x;
-};
+// const addDays = (d: Date, n: number) => { // TEMPORALMENTE NO USADO
+//   const x = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+//   x.setUTCDate(x.getUTCDate() + n);
+//   return x;
+// };
 
 /** ---------- normalizadores por granularidad ---------- */
 export function isoFromYYYYMMDD(yyyymmdd: string): string {

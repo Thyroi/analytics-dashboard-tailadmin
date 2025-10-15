@@ -200,9 +200,11 @@ export function computeRangesByGranularityForSeries(
  */
 export function debugRanges(_granularity: string, _ranges: RangesPair): void {
   if (process.env.NODE_ENV !== "development") return;
-
   // Debug logs removed for production cleanliness
   // Ranges can be inspected via debugger if needed
+  // Explicitly use parameters to suppress warnings
+  void _granularity;
+  void _ranges;
 }
 
 /**

@@ -3,17 +3,17 @@
 
 import { fetchChatbotTags, type ChatbotGranularity } from "@/lib/api/chatbot";
 import type { CategoryId } from "@/lib/taxonomy/categories";
-import { TOWN_ID_ORDER, TOWN_META, type TownId } from "@/lib/taxonomy/towns";
+import { TOWN_META, type TownId } from "@/lib/taxonomy/towns";
+// import { TOWN_ID_ORDER } from "@/lib/taxonomy/towns"; // TEMPORALMENTE NO USADO
 import type { DonutDatum, Granularity, SeriesPoint } from "@/lib/types";
 import { buildWindowSets } from "@/lib/utils/core/windowPolicy";
 import { useQuery } from "@tanstack/react-query";
 
 /* ---------- helpers ---------- */
-const gToChatbot = (g: Granularity) => g as ChatbotGranularity;
+// const gToChatbot = (g: Granularity) => g as ChatbotGranularity; // TEMPORALMENTE NO USADO
 const toYYYYMMDD = (iso: string) => iso.replaceAll("-", "");
-const TOWN_KEYS: readonly TownId[] = TOWN_ID_ORDER;
-const isTownId = (x: string): x is TownId =>
-  (TOWN_KEYS as readonly string[]).includes(x);
+// const TOWN_KEYS: readonly TownId[] = TOWN_ID_ORDER;
+// const isTownId = (x: string): x is TownId => (TOWN_KEYS as readonly string[]).includes(x); // TEMPORALMENTE NO USADO
 
 function sumPointsInRange(
   output: Record<string, { time: string; value: number }[]>,

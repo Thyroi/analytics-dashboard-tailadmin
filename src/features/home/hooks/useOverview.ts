@@ -79,7 +79,7 @@ export function useOverview(
       .finally(() => {
         if (!ac.signal.aborted) setIsLoading(false);
       });
-  }, [granularity, startTime, endTime, slice]);
+  }, [granularity, startTime, endTime]); // Removed 'slice' as it's not actually used in the dependency
 
   useEffect(() => {
     run();

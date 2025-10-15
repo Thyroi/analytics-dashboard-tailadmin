@@ -3,7 +3,8 @@
  * Según especificaciones del prompt maestro
  */
 
-import type { ComparisonMode, Granularity, PeriodConfig } from "../types";
+// import type { ComparisonMode } from "../types"; // TEMPORALMENTE NO USADO
+import type { Granularity, PeriodConfig } from "../types";
 
 export const TIMEZONE = "America/Bogota";
 
@@ -83,7 +84,7 @@ function getISOWeek(date: Date): { year: number; week: number } {
  */
 export function computePeriods(
   granularity: Granularity,
-  _comparisonMode: ComparisonMode = "toDate"
+  // _comparisonMode: ComparisonMode = "toDate" // TEMPORALMENTE NO USADO
 ): PeriodConfig {
   const yesterday = yesterdayBogota();
 
