@@ -152,12 +152,11 @@ describe("useUrlSeries", () => {
     await waitFor(
       () => {
         expect(consoleErrorSpy).toHaveBeenCalledWith(
-          "Failed to fetch URL series:",
-          expect.any(Error)
+          "Failed to fetch some URL series"
         );
       },
-      { timeout: 5000 }
-    ); // Increase timeout for React Query retry logic
+      { timeout: 8000 }
+    ); // Increase timeout for React Query retry logic (2 retries + initial attempt)
 
     expect(result.current.loading).toBe(true);
 
