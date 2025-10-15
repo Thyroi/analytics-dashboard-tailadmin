@@ -15,6 +15,7 @@ import type { TownId } from "@/lib/taxonomy/towns";
 import { TOWN_ID_ORDER } from "@/lib/taxonomy/towns";
 import type { SeriesPoint } from "@/lib/types";
 import { labelToCategoryId } from "@/lib/utils/core/sector";
+import { getCorrectDatesForGranularity } from "@/lib/utils/time/deltaDateCalculation";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useMemo, useState } from "react";
 
@@ -34,14 +35,17 @@ function AnalyticsByTownSectionInner() {
 
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  // Usar la misma lógica que categorías: siempre incluir endDate
+  // Calcular fechas correctas según granularidad
+  const { currentEndISO } = getCorrectDatesForGranularity(endDate, granularity, mode);
+
+  // Usar fechas corregidas para deltas/KPIs
   const timeParams =
     mode === "range"
       ? {
           startISO: startDate.toISOString().split("T")[0],
           endISO: endDate.toISOString().split("T")[0],
         }
-      : { endISO: endDate.toISOString().split("T")[0] };
+      : { endISO: currentEndISO };
 
   const { state, ids, itemsById, isInitialLoading, isFetching } =
     usePueblosTotals(granularity, timeParams);
@@ -62,7 +66,7 @@ function AnalyticsByTownSectionInner() {
   const { series: seriesTown, donutData: donutTown } = useTownDetails(
     (drill?.kind === "town" ? drill.townId : townId) ?? ("almonte" as TownId),
     granularity,
-    endDate.toISOString().split("T")[0], // endISO
+    mode === "range" ? endDate.toISOString().split("T")[0] : currentEndISO, // endISO corregido
     mode === "range" ? startDate.toISOString().split("T")[0] : undefined // startISO
   );
 
@@ -172,14 +176,14 @@ function AnalyticsByTownSectionInner() {
         onClose={handleClose}
         onSliceClick={handleSliceClick}
         isDeltaLoading={isInitialLoading || isFetching}
-        // Nivel 2 (drill)
+        // Nivel 2 (drill) - usar fecha corregida
         level2Data={
           drill?.kind === "town+cat"
             ? {
                 townId: drill.townId,
                 categoryId: drill.categoryId,
                 granularity,
-                endISO,
+                endISO: mode === "range" ? endISO : currentEndISO,
               }
             : undefined
         }

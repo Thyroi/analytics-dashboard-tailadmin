@@ -13,6 +13,7 @@ import {
 import { CATEGORY_ID_ORDER, type CategoryId } from "@/lib/taxonomy/categories";
 import type { TownId } from "@/lib/taxonomy/towns";
 import { labelToTownId } from "@/lib/utils/core/sector";
+import { getCorrectDatesForGranularity } from "@/lib/utils/time/deltaDateCalculation";
 import { useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 
@@ -32,14 +33,17 @@ function AnalyticsByTagSectionInner() {
 
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  // Usar la misma lógica que Home: siempre incluir endDate
+  // Calcular fechas correctas según granularidad
+  const { currentEndISO } = getCorrectDatesForGranularity(endDate, granularity, mode);
+
+  // Usar fechas corregidas para deltas/KPIs
   const timeParams =
     mode === "range"
       ? {
           startISO: startDate.toISOString().split("T")[0],
           endISO: endDate.toISOString().split("T")[0],
         }
-      : { endISO: endDate.toISOString().split("T")[0] };
+      : { endISO: currentEndISO };
 
   const { state, ids, itemsById } = useCategoriesTotals(
     granularity,
@@ -59,12 +63,12 @@ function AnalyticsByTagSectionInner() {
   const [drill, setDrill] = useState<Drill | null>(null);
   const catId = expandedId as CategoryId | null;
 
-  // NIVEL 1 (base)
+  // NIVEL 1 (base) - usar fecha corregida para detalles
   const { series: seriesCat, donutData: donutCat } = useCategoryDetails(
     (drill?.kind === "category" ? drill.categoryId : catId) ??
       ("naturaleza" as CategoryId),
     granularity,
-    endISO
+    mode === "range" ? endISO : currentEndISO
   );
 
   const getDeltaPctFor = (id: string) =>
@@ -138,7 +142,7 @@ function AnalyticsByTagSectionInner() {
         }}
         onSliceClick={handleSliceClick}
         isDeltaLoading={state.status !== "ready"}
-        // NIVEL 2 (drill)
+        // NIVEL 2 (drill) - usar fecha corregida
         level2Data={(() => {
           const result =
             drill?.kind === "town+cat"
@@ -146,7 +150,7 @@ function AnalyticsByTagSectionInner() {
                   townId: drill.townId,
                   categoryId: drill.categoryId,
                   granularity,
-                  endISO,
+                  endISO: mode === "range" ? endISO : currentEndISO,
                 }
               : undefined;
           return result;

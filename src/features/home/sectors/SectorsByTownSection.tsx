@@ -7,6 +7,7 @@ import { useTownDetails } from "@/features/home/hooks/useTownDetails";
 import type { TownId } from "@/lib/taxonomy/towns";
 import { TOWN_ID_ORDER } from "@/lib/taxonomy/towns";
 import type { Granularity } from "@/lib/types";
+import { getCorrectDatesForGranularity } from "@/lib/utils/time/deltaDateCalculation";
 import { useMemo, useState } from "react";
 
 type Props = {
@@ -19,6 +20,9 @@ export default function SectorsByTownSection({ granularity }: Props) {
   // Obtener fechas del contexto
   const { startDate, endDate, mode } = useTownTimeframe();
 
+  // Calcular fechas correctas según granularidad
+  const { currentEndISO } = getCorrectDatesForGranularity(endDate, granularity, mode);
+
   // Preparar parámetros de tiempo para los hooks
   const timeParams =
     mode === "range"
@@ -26,7 +30,7 @@ export default function SectorsByTownSection({ granularity }: Props) {
           startISO: startDate.toISOString().split("T")[0],
           endISO: endDate.toISOString().split("T")[0],
         }
-      : { endISO: endDate.toISOString().split("T")[0] };
+      : { endISO: currentEndISO };
 
   const { state, ids, itemsById } = usePueblosTotals(granularity, timeParams);
   const displayedIds = useMemo<string[]>(

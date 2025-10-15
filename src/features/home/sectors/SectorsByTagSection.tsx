@@ -9,6 +9,7 @@ import {
 import type { CategoryId } from "@/lib/taxonomy/categories";
 import { CATEGORY_ID_ORDER } from "@/lib/taxonomy/categories";
 import type { Granularity } from "@/lib/types";
+import { getCorrectDatesForGranularity } from "@/lib/utils/time/deltaDateCalculation";
 import { useMemo, useState } from "react";
 
 type Props = {
@@ -21,6 +22,9 @@ export default function SectorsByTagSection({ granularity }: Props) {
   // Obtener fechas del contexto
   const { startDate, endDate, mode } = useTagTimeframe();
 
+  // Calcular fechas correctas según granularidad
+  const { currentEndISO } = getCorrectDatesForGranularity(endDate, granularity, mode);
+
   // Preparar parámetros de tiempo para los hooks
   const timeParams =
     mode === "range"
@@ -28,7 +32,7 @@ export default function SectorsByTagSection({ granularity }: Props) {
           startISO: startDate.toISOString().split("T")[0],
           endISO: endDate.toISOString().split("T")[0],
         }
-      : { endISO: endDate.toISOString().split("T")[0] };
+      : { endISO: currentEndISO };
 
   const { state, ids, itemsById } = useCategoriesTotals(
     granularity,
@@ -46,7 +50,7 @@ export default function SectorsByTagSection({ granularity }: Props) {
   const { series, donutData } = useCategoryDetails(
     catId ?? ("naturaleza" as CategoryId),
     granularity,
-    endDate.toISOString().split("T")[0], // endISO
+    mode === "range" ? endDate.toISOString().split("T")[0] : currentEndISO, // endISO corregido
     mode === "range" ? startDate.toISOString().split("T")[0] : undefined // startISO
   );
 
