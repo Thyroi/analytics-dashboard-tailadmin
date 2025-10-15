@@ -1,19 +1,23 @@
-import { useMemo } from "react";
-import { generateBrandGradient } from "@/lib/utils/formatting/colors";
 import { formatUrlForDisplay } from "@/lib/utils/drilldown/url-formatting";
+import { generateBrandGradient } from "@/lib/utils/formatting/colors";
+import { useMemo } from "react";
 
 type DrilldownItem = {
   label: string;
   value: number;
 };
 
-type DrilldownData = 
+type DrilldownData =
   | { loading: true }
   | { loading: false; donut: DrilldownItem[]; deltaPct: number };
 
-type UrlSeriesData = 
+type UrlSeriesData =
   | { loading: true }
-  | { loading: false; seriesByUrl: Array<{ name: string; data: number[]; path: string }>; xLabels: string[] };
+  | {
+      loading: false;
+      seriesByUrl: Array<{ name: string; data: number[]; path: string }>;
+      xLabels: string[];
+    };
 
 export function useDrilldownTransformation(
   drilldown: DrilldownData,

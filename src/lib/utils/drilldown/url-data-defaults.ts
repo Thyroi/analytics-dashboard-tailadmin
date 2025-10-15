@@ -51,14 +51,16 @@ type LoadedUrlData = {
 
 type UrlData = {
   loading: boolean;
-} & Partial<Omit<LoadedUrlData, 'loading'>>;
+} & Partial<Omit<LoadedUrlData, "loading">>;
 
 /**
  * Función para determinar si los datos de URL están cargados
  * Guard de tipo: loaded si el objeto tiene la prop 'seriesAvgEngagement'
  */
 export function isUrlDataLoaded(url: UrlData): url is LoadedUrlData {
-  return !url.loading && "seriesAvgEngagement" in url && !!url.seriesAvgEngagement;
+  return (
+    !url.loading && "seriesAvgEngagement" in url && !!url.seriesAvgEngagement
+  );
 }
 
 /**

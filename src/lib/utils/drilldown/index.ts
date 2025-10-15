@@ -1,2 +1,2 @@
-export * from "./url-formatting";
 export * from "./url-data-defaults";
+export * from "./url-formatting";

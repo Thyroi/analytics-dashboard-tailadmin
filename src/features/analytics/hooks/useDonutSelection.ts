@@ -1,7 +1,7 @@
-import { useState, useRef, useCallback } from "react";
-import { useQueryClient } from "@tanstack/react-query";
-import { pickPathForSubActivity } from "@/lib/utils/core/drilldown";
 import type { UrlSeries } from "@/features/analytics/services/drilldown";
+import { pickPathForSubActivity } from "@/lib/utils/core/drilldown";
+import { useQueryClient } from "@tanstack/react-query";
+import { useCallback, useRef, useState } from "react";
 
 type SeriesByUrl = {
   name: string;
@@ -17,13 +17,16 @@ export function useDonutSelection(seriesByUrl: SeriesByUrl) {
   const handleDonutSliceClick = useCallback(
     (sub: string) => {
       // Adaptamos el formato para que funcione con pickPathForSubActivity
-      const adaptedSeries = seriesByUrl.map(s => ({
+      const adaptedSeries = seriesByUrl.map((s) => ({
         name: s.name,
         path: s.path,
-        data: s.data
+        data: s.data,
       }));
-      
-      const candidate = pickPathForSubActivity(sub, adaptedSeries as UrlSeries[]);
+
+      const candidate = pickPathForSubActivity(
+        sub,
+        adaptedSeries as UrlSeries[]
+      );
 
       if (candidate) {
         // Si es el mismo path, no hacer nada
