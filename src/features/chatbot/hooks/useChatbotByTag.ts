@@ -44,8 +44,8 @@ export function useChatbotByTag({
   granularity,
   categories = [],
   towns = [],
-  comparisonMode = "toDate",
-}: UseChatbotByTagParams): UseChatbotByTagResult {
+}: // comparisonMode = "toDate", // TEMPORALMENTE NO USADO
+Omit<UseChatbotByTagParams, "comparisonMode">): UseChatbotByTagResult {
   const [cards, setCards] = useState<ChatbotCardData[]>([]);
   const [state, setState] = useState<UIState>("idle");
   const [error, setError] = useState<string | null>(null);
@@ -54,7 +54,8 @@ export function useChatbotByTag({
   // Calcular períodos según especificaciones
   const period = useMemo(() => {
     try {
-      return computePeriods(granularity, comparisonMode);
+      // Temporalmente ignoramos comparisonMode hasta que se reactive la funcionalidad
+      return computePeriods(granularity);
     } catch (err) {
       console.error("Error calculando períodos:", err);
       setState("error");
@@ -72,7 +73,7 @@ export function useChatbotByTag({
         apiEndTime: "",
       } as PeriodConfig;
     }
-  }, [granularity, comparisonMode]);
+  }, [granularity]); // comparisonMode removido temporalmente
 
   // Determinar pattern según modo
   const pattern = useMemo(() => {

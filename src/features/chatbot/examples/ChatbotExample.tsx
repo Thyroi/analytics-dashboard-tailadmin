@@ -138,7 +138,7 @@ export default function ChatbotExample() {
           granularity={config.granularity}
           categories={config.mode === "byCategory" ? CATEGORIES : []}
           towns={config.mode === "byTown" ? TOWNS : []}
-          comparisonMode={config.comparisonMode}
+          // comparisonMode={config.comparisonMode} // TEMPORALMENTE NO USADO
           className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm"
         />
 

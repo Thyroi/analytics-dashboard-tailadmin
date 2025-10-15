@@ -151,7 +151,7 @@ export default function TownCategoryDrilldownPanel({
             donutData={dd.donut}
             deltaPct={dd.deltaPct}
             onDonutSlice={handleDonutSliceClick}
-            donutCenterLabel="Actividades"
+            donutCenterLabel="Interacciones"
             actionButtonTarget="actividad"
             colorsByName={dd.colorsByName}
           />

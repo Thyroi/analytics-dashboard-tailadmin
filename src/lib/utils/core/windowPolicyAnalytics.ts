@@ -1,5 +1,10 @@
 import type { Granularity } from "@/lib/types";
-import { addDaysUTC, parseISO, todayUTC, toISO } from "@/lib/utils/time/datetime";
+import {
+  addDaysUTC,
+  parseISO,
+  todayUTC,
+  toISO,
+} from "@/lib/utils/time/datetime";
 
 export type DateRange = { start: string; end: string };
 

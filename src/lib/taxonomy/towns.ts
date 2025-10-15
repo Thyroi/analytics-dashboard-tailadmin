@@ -10,7 +10,6 @@ export type TownId =
   | "bollullos"
   | "bonares"
   | "chucena"
-  | "crucesMayoBonares"
   | "escacena"
   | "hinojos"
   | "laPalmaDelCondado"
@@ -19,7 +18,6 @@ export type TownId =
   | "niebla"
   | "palos"
   | "paternaDelCampo"
-  | "puertasMurallaNiebla"
   | "rocianaDelCondado"
   | "villalba"
   | "villarrasa";
@@ -36,7 +34,6 @@ export const TOWN_ID_ORDER: readonly TownId[] = [
   "bollullos",
   "bonares",
   "chucena",
-  "crucesMayoBonares",
   "escacena",
   "hinojos",
   "laPalmaDelCondado",
@@ -45,7 +42,6 @@ export const TOWN_ID_ORDER: readonly TownId[] = [
   "niebla",
   "palos",
   "paternaDelCampo",
-  "puertasMurallaNiebla",
   "rocianaDelCondado",
   "villalba",
   "villarrasa",
@@ -59,8 +55,7 @@ const FILE_ALIAS: Record<TownId, string> = {
   almonte: "almonte.png",
   bollullos: "bollullos.png",
   bonares: "bonares.png",
-  chucena: "chucena.png",
-  crucesMayoBonares: "bonares.png",           // alias (no hay archivo específico)
+  chucena: "chucena.png",        // alias (no hay archivo específico)
   escacena: "escacena.png",
   hinojos: "hinojos.png",
   laPalmaDelCondado: "palma.png",            // alias visto en /public
@@ -69,7 +64,6 @@ const FILE_ALIAS: Record<TownId, string> = {
   niebla: "niebla.png",
   palos: "palos.png",
   paternaDelCampo: "paterna.png",
-  puertasMurallaNiebla: "niebla.png",        // alias (no hay archivo específico)
   rocianaDelCondado: "rociana.png",          // alias visto en /public
   villalba: "villalba.png",
   villarrasa: "villarasa.png",               // archivo usa una sola “r”
@@ -80,7 +74,6 @@ const LABELS: Record<TownId, string> = {
   bollullos: "Bollullos",
   bonares: "Bonares",
   chucena: "Chucena",
-  crucesMayoBonares: "Cruces de mayo de Bonares",
   escacena: "Escacena",
   hinojos: "Hinojos",
   laPalmaDelCondado: "La Palma del Condado",
@@ -89,7 +82,6 @@ const LABELS: Record<TownId, string> = {
   niebla: "Niebla",
   palos: "Palos",
   paternaDelCampo: "Paterna del Campo",
-  puertasMurallaNiebla: "Puertas de la muralla de Niebla",
   rocianaDelCondado: "Rociana del Condado",
   villalba: "Villalba",
   villarrasa: "Villarrasa",

@@ -91,7 +91,7 @@ export default function SectorExpandedCardDetailed(props: Props) {
         donutData={donutData}
         deltaPct={deltaPct}
         onDonutSlice={handleDonutTopClick}
-        donutCenterLabel="Items"
+        donutCenterLabel="Interacciones"
         actionButtonTarget="item"
         className="mb-4"
         granularity={granularity}

@@ -83,7 +83,7 @@ function getISOWeek(date: Date): { year: number; week: number } {
  * Calcula los períodos actual y anterior según especificaciones
  */
 export function computePeriods(
-  granularity: Granularity,
+  granularity: Granularity
   // _comparisonMode: ComparisonMode = "toDate" // TEMPORALMENTE NO USADO
 ): PeriodConfig {
   const yesterday = yesterdayBogota();

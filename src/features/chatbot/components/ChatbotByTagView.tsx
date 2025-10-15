@@ -41,9 +41,9 @@ export default function ChatbotByTag({
   granularity,
   categories = [],
   towns = [],
-  comparisonMode = "toDate",
+  // comparisonMode = "toDate", // TEMPORALMENTE NO USADO
   className = "",
-}: ChatbotByTagProps) {
+}: Omit<ChatbotByTagProps, "comparisonMode">) {
   const [selectedCard, setSelectedCard] = useState<{
     id: string;
     label: string;
@@ -55,7 +55,7 @@ export default function ChatbotByTag({
     granularity,
     categories,
     towns,
-    comparisonMode,
+    // comparisonMode, // TEMPORALMENTE NO USADO
   });
 
   // Hook para drill-down

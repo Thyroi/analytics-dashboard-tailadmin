@@ -7,12 +7,12 @@ import {
 } from "@/lib/api/chatbot";
 import { CATEGORY_ID_ORDER, type CategoryId } from "@/lib/taxonomy/categories";
 import type { Granularity } from "@/lib/types";
-import { parseISO } from "@/lib/utils/time/datetime";
 import {
   deriveRangeEndingYesterday,
   getDonutWindow,
   shiftRangeByDays,
 } from "@/lib/utils/core/windowPolicyAnalytics";
+import { parseISO } from "@/lib/utils/time/datetime";
 
 /* ---------- tipos públicos (compatibles con la UI) ---------- */
 export type CategoryTotalsItem = {
