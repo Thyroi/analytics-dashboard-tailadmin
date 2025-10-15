@@ -2,7 +2,7 @@
 
 import { fetchJSON } from "@/lib/api/analytics";
 import type { DonutDatum, Granularity, SeriesPoint } from "@/lib/types";
-import { useQuery } from "@tanstack/react-query";
+import { useQueries, useQueryClient } from "@tanstack/react-query";
 
 type UrlDrilldownResponse = {
   granularity: Granularity;
@@ -49,79 +49,112 @@ export function useUrlSeries({
   granularity: Granularity;
   endISO?: string;
 }): UseUrlSeriesReturn {
-  // Solo ejecutar query si tenemos URLs
-  const url = urls[0]; // Por ahora solo manejamos una URL
+  const queryClient = useQueryClient();
 
-  const { data, isLoading, error } = useQuery({
-    queryKey: ["url-series", url, granularity, endISO],
-    queryFn: async (): Promise<UrlDrilldownResponse> => {
-      if (!url) throw new Error("No URL provided");
-
-      const params = new URLSearchParams();
-      params.set("path", url);
-      params.set("g", granularity);
-      if (endISO) params.set("end", endISO);
-
-      return fetchJSON<UrlDrilldownResponse>(
-        `/api/analytics/v1/drilldown/url?${params.toString()}`
-      );
-    },
-    enabled: Boolean(url), // Solo ejecutar si tenemos URL
-    staleTime: 5 * 60 * 1000, // 5 minutos
-    retry: (failureCount, error) => {
-      // No reintentar en caso de errores de abort
-      if (error instanceof Error && error.name === "AbortError") return false;
-      return failureCount < 2;
-    },
+  // Optimización: Verificar qué URLs ya están en caché para evitar queries duplicadas
+  const cachedUrls = new Set<string>();
+  const uncachedUrls = urls.filter((url) => {
+    const queryKey = ["url-series", url, granularity, endISO];
+    const cachedData = queryClient.getQueryData(queryKey);
+    if (cachedData) {
+      cachedUrls.add(url);
+      return false; // No necesita query
+    }
+    return true; // Necesita query
   });
 
+  // Solo ejecutar queries para URLs que no están en caché
+  const queries = useQueries({
+    queries: uncachedUrls.map((url) => ({
+      queryKey: ["url-series", url, granularity, endISO],
+      queryFn: async (): Promise<UrlDrilldownResponse> => {
+        if (!url) throw new Error("No URL provided");
+
+        const params = new URLSearchParams();
+        params.set("path", url);
+        params.set("g", granularity);
+        if (endISO) params.set("end", endISO);
+
+        return fetchJSON<UrlDrilldownResponse>(
+          `/api/analytics/v1/drilldown/url?${params.toString()}`
+        );
+      },
+      enabled: Boolean(url),
+      staleTime: 5 * 60 * 1000,
+      retry: (failureCount: number, error: Error) => {
+        if (error instanceof Error && error.name === "AbortError") return false;
+        return failureCount < 2;
+      },
+    })),
+  });
+
+  // Combinar datos cacheados con queries en progreso
+  const allQueries = urls.map((url) => {
+    if (cachedUrls.has(url)) {
+      const queryKey = ["url-series", url, granularity, endISO];
+      const cachedData =
+        queryClient.getQueryData<UrlDrilldownResponse>(queryKey);
+      return {
+        data: cachedData,
+        isLoading: false,
+        error: null,
+      };
+    } else {
+      const queryIndex = uncachedUrls.indexOf(url);
+      return queries[queryIndex];
+    }
+  });
+
+  const isLoading = allQueries.some((query) => query.isLoading);
+  const hasError = allQueries.some((query) => query.error);
+
   // DEBUG TRACE
-  console.debug("[useUrlSeries] queryKey:", [
-    "url-series",
-    url,
-    granularity,
-    endISO,
-  ]);
-  console.debug("[useUrlSeries] enabled:", Boolean(url), "url:", url);
-  if (isLoading) console.debug("[useUrlSeries] loading...");
-  if (error) console.debug("[useUrlSeries] error:", error);
-  if (data)
-    console.debug(
-      "[useUrlSeries] xLabels:",
-      data.xLabels?.length,
-      "avgEngagement curr len:",
-      data.seriesAvgEngagement?.current?.length
-    );
+  console.debug("[useUrlSeries] urls:", urls);
+  console.debug("[useUrlSeries] loading:", isLoading);
+  if (hasError) console.debug("[useUrlSeries] some queries have errors");
 
   // Si no hay URLs o está cargando
-  if (!url || isLoading) {
+  if (urls.length === 0 || isLoading) {
     return { loading: true };
   }
 
-  // Si hay error, mostrar estado de loading (sin datos)
-  if (error) {
-    console.error("Failed to fetch URL series:", error);
+  // Si hay errores, mostrar estado de loading (sin datos)
+  if (hasError) {
+    console.error("Failed to fetch some URL series");
     return { loading: true };
   }
 
-  // Si no hay datos (no debería pasar pero por seguridad)
-  if (!data) {
+  // Obtener el primer resultado exitoso para los xLabels (todos deberían tener los mismos)
+  const firstSuccessfulData = allQueries.find((query) => query.data)?.data;
+  if (!firstSuccessfulData) {
     return { loading: true };
   }
 
-  // Estado exitoso con datos
-  const seriesByUrl = [
-    {
-      name: url.split("/").filter(Boolean).pop() || url,
-      data: data.seriesAvgEngagement.current.map((point) => point.value),
-      path: url,
-    },
-  ];
+  // Estado exitoso con datos de múltiples URLs
+  const seriesByUrl = allQueries
+    .map((query, index) => {
+      const url = urls[index];
+      const data = query.data;
+
+      if (!data || query.error) {
+        return null;
+      }
+
+      return {
+        name: url.split("/").filter(Boolean).pop() || url,
+        data: data.seriesAvgEngagement.current.map((point) => point.value),
+        path: url,
+      };
+    })
+    .filter(
+      (item): item is { name: string; data: number[]; path: string } =>
+        item !== null
+    );
 
   return {
     loading: false,
-    data,
+    data: firstSuccessfulData,
     seriesByUrl,
-    xLabels: data.xLabels,
+    xLabels: firstSuccessfulData.xLabels,
   };
 }

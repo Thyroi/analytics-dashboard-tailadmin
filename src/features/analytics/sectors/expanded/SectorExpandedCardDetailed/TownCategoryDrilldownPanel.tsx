@@ -2,20 +2,19 @@
 
 import ChartPair from "@/components/common/ChartPair";
 import ChartPairSkeleton from "@/components/skeletons/ChartPairSkeleton";
-import { useMemo, useRef, useState } from "react";
+import { useMemo } from "react";
+import DrilldownTitle from "./DrilldownTitle";
 import UrlDetailsPanel from "./UrlDetailsPanel";
 
+import { useDonutSelection } from "@/features/analytics/hooks/useDonutSelection";
 import { useDrilldownDetails } from "@/features/analytics/hooks/useDrilldownDetails";
+import { useDrilldownTransformation } from "@/features/analytics/hooks/useDrilldownTransformation";
 import { useUrlDrilldown } from "@/features/analytics/hooks/useUrlDrilldown";
 import { useUrlSeries } from "@/features/analytics/hooks/useUrlSeries";
-import { pickPathForSubActivity } from "@/lib/utils/core/drilldown";
 
-import type { UrlSeries } from "@/features/analytics/services/drilldown";
 import { CATEGORY_META, type CategoryId } from "@/lib/taxonomy/categories";
 import { TOWN_META, type TownId } from "@/lib/taxonomy/towns";
-import type { Granularity, SeriesPoint } from "@/lib/types";
-import { useQueryClient } from "@tanstack/react-query";
-import DrilldownTitle from "./DrilldownTitle";
+import type { Granularity } from "@/lib/types";
 
 type Props = {
   townId: TownId;
@@ -37,8 +36,6 @@ export default function TownCategoryDrilldownPanel({
   color = "dark",
   endISO,
 }: Props) {
-  const queryClient = useQueryClient();
-
   // Nivel 2: sub-actividades (series por URL + donut)
   const drilldown = useDrilldownDetails({
     type: "pueblo-category",
@@ -48,8 +45,6 @@ export default function TownCategoryDrilldownPanel({
     endISO,
   });
 
-  // Get real URL series data
-  // In level 2 drilldown, the donut label IS the URL
   // Estabilizar las URLs para evitar re-renders infinitos
   const urlsToFetch = useMemo(() => {
     if (drilldown.loading) return [];
@@ -62,86 +57,15 @@ export default function TownCategoryDrilldownPanel({
     endISO,
   });
 
-  // Transform to legacy format expected by ChartPair
-  const dd = useMemo(() => {
-    if (drilldown.loading || urlSeries.loading) {
-      return {
-        loading: true,
-        xLabels: [],
-        seriesByUrl: [],
-        donut: [],
-        deltaPct: 0,
-      };
-    }
+  // Transform data using custom hook
+  const dd = useDrilldownTransformation(drilldown, urlSeries);
 
-    // Use real data from URL series or fallback to synthetic data
-    let seriesByUrl: { name: string; data: number[]; path: string }[];
-    let xLabels: string[];
+  // Handle donut selection with proper functionality
+  const { selectedPath, detailsRef, handleDonutSliceClick } = useDonutSelection(
+    dd.loading ? [] : dd.seriesByUrl
+  );
 
-    if (urlSeries.seriesByUrl.length > 0) {
-      // Use real data from the URL drilldown endpoint
-      seriesByUrl = drilldown.donut.map((item, index) => {
-        // Try to find matching URL data
-        const realData = urlSeries.seriesByUrl.find(
-          (series) => series.path === item.label || series.name === item.label
-        );
-
-        if (realData) {
-          return {
-            name: item.label.split("/").filter(Boolean).pop() || item.label,
-            data: realData.data,
-            path: item.label,
-          };
-        }
-
-        // Fallback to synthetic data if no real data found
-        const baseValue = item.value || 0;
-        const data = urlSeries.xLabels.map((_, dayIndex: number) => {
-          const variation = Math.sin((dayIndex + index) * 0.5) * 0.3 + 1;
-          return Math.round(baseValue * variation);
-        });
-
-        return {
-          name: item.label.split("/").filter(Boolean).pop() || item.label,
-          data,
-          path: item.label,
-        };
-      });
-      xLabels = urlSeries.xLabels;
-    } else {
-      // Fallback to original synthetic approach
-      xLabels =
-        drilldown.response?.series?.current?.map((point) => point.label) || [];
-      seriesByUrl = drilldown.donut.map((item, index) => {
-        const baseValue = item.value || 0;
-        const data = xLabels.map((_, dayIndex: number) => {
-          const variation = Math.sin((dayIndex + index) * 0.5) * 0.3 + 1;
-          return Math.round(baseValue * variation);
-        });
-
-        return {
-          name: item.label.split("/").filter(Boolean).pop() || item.label,
-          data,
-          path: item.label,
-        };
-      });
-    }
-
-    const result = {
-      loading: false,
-      xLabels,
-      seriesByUrl,
-      donut: drilldown.donut,
-      deltaPct: drilldown.deltaPct,
-    };
-
-    return result;
-  }, [drilldown, urlSeries]);
-
-  // Nivel 3: URL seleccionada - KEY es crítico para forzar re-render
-  const [selectedPath, setSelectedPath] = useState<string | null>(null);
-
-  // Generar key único basado en townId + categoryId + selectedPath
+  // Nivel 3: URL seleccionada
   const level3Key = useMemo(
     () => `${townId}-${categoryId}-${selectedPath || "none"}`,
     [townId, categoryId, selectedPath]
@@ -149,93 +73,56 @@ export default function TownCategoryDrilldownPanel({
 
   const url = useUrlDrilldown({ path: selectedPath, granularity, endISO });
 
-  // auto-scroll cuando hay selección
-  const detailsRef = useRef<HTMLDivElement | null>(null);
+  // Safe data extraction - keep it simple
+  const isLoaded =
+    !url.loading && "seriesAvgEngagement" in url && !!url.seriesAvgEngagement;
 
-  // Handler para click en dona - actualiza estado e invalida queries
-  const handleDonutSliceClick = (sub: string) => {
-    const candidate = pickPathForSubActivity(
-      sub,
-      dd.seriesByUrl as UrlSeries[]
-    );
-
-    if (candidate) {
-      // Si es el mismo path, no hacer nada
-      if (candidate === selectedPath) return;
-
-      // Actualizar estado
-      setSelectedPath(candidate);
-
-      // Invalidar queries por prefijo para forzar refetch inmediato
-      queryClient.invalidateQueries({
-        queryKey: ["url-drilldown"],
-      });
-
-      // Hacer scroll al nivel 3
-      setTimeout(() => {
-        detailsRef.current?.scrollIntoView({
-          behavior: "smooth",
-          block: "start",
-        });
-      }, 100);
-    }
-  };
+  const seriesAvgEngagement = isLoaded
+    ? url.seriesAvgEngagement
+    : { current: [], previous: [] };
+  const kpis = isLoaded
+    ? url.kpis
+    : {
+        current: {
+          activeUsers: 0,
+          userEngagementDuration: 0,
+          newUsers: 0,
+          eventCount: 0,
+          sessions: 0,
+          averageSessionDuration: 0,
+          avgEngagementPerUser: 0,
+          eventsPerSession: 0,
+        },
+        previous: {
+          activeUsers: 0,
+          userEngagementDuration: 0,
+          newUsers: 0,
+          eventCount: 0,
+          sessions: 0,
+          averageSessionDuration: 0,
+          avgEngagementPerUser: 0,
+          eventsPerSession: 0,
+        },
+        deltaPct: {
+          activeUsers: 0,
+          newUsers: 0,
+          eventCount: 0,
+          sessions: 0,
+          averageSessionDuration: 0,
+          avgEngagementPerUser: 0,
+          eventsPerSession: 0,
+        },
+      };
+  const operatingSystems = isLoaded ? url.operatingSystems : [];
+  const devices = isLoaded ? url.devices : [];
+  const countries = isLoaded ? url.countries : [];
+  const deltaPct = isLoaded ? url.deltaPct : 0;
 
   const name = useMemo(() => {
     return headline === "town"
       ? TOWN_META[townId]?.label ?? "Pueblo"
       : CATEGORY_META[categoryId]?.label ?? "Categoría";
   }, [headline, townId, categoryId]);
-
-  // ========= Narrowing/Defaults seguros para UrlDetailsPanel =========
-  // Cuando url.loading === true, url no tiene las props de datos (union type).
-  // Definimos valores vacíos seguros para pasar al panel mientras carga.
-  const emptySeries: { current: SeriesPoint[]; previous: SeriesPoint[] } = {
-    current: [],
-    previous: [],
-  };
-  const emptyKpis = {
-    current: {
-      activeUsers: 0,
-      userEngagementDuration: 0,
-      newUsers: 0,
-      eventCount: 0,
-      sessions: 0,
-      averageSessionDuration: 0,
-      avgEngagementPerUser: 0,
-      eventsPerSession: 0,
-    },
-    previous: {
-      activeUsers: 0,
-      userEngagementDuration: 0,
-      newUsers: 0,
-      eventCount: 0,
-      sessions: 0,
-      averageSessionDuration: 0,
-      avgEngagementPerUser: 0,
-      eventsPerSession: 0,
-    },
-    deltaPct: {
-      activeUsers: 0,
-      newUsers: 0,
-      eventCount: 0,
-      sessions: 0,
-      averageSessionDuration: 0,
-      avgEngagementPerUser: 0,
-      eventsPerSession: 0,
-    },
-  };
-
-  // Guard de tipo: loaded si el objeto tiene la prop 'seriesAvgEngagement'
-  const isLoaded =
-    !url.loading && "seriesAvgEngagement" in url && !!url.seriesAvgEngagement;
-
-  const seriesAvgEngagement = isLoaded ? url.seriesAvgEngagement : emptySeries;
-  const kpis = isLoaded ? url.kpis : emptyKpis;
-  const operatingSystems = isLoaded ? url.operatingSystems : [];
-  const devices = isLoaded ? url.devices : [];
-  const countries = isLoaded ? url.countries : [];
-  const deltaPct = isLoaded ? url.deltaPct : 0;
 
   return (
     <div className="overflow-hidden mt-8">
@@ -266,6 +153,7 @@ export default function TownCategoryDrilldownPanel({
             onDonutSlice={handleDonutSliceClick}
             donutCenterLabel="Actividades"
             actionButtonTarget="actividad"
+            colorsByName={dd.colorsByName}
           />
         )}
 

@@ -55,6 +55,8 @@ type MultiLineMode = Base & {
   xLabels: string[];
   seriesBySub: UrlSeries[];
   loading?: boolean;
+  /** Mapa de colores por nombre de serie para consistencia visual */
+  colorsByName?: Record<string, string>;
 };
 
 type Props = LineChartMode | MultiLineMode;
@@ -79,6 +81,7 @@ export default function ChartPair(props: Props) {
             xLabels={props.xLabels}
             seriesBySub={props.seriesBySub}
             loading={props.loading}
+            colorsByName={props.colorsByName}
           />
         )}
       </div>
