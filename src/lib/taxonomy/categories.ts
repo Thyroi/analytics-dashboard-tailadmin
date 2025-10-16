@@ -18,7 +18,6 @@ export type CategoryId =
   | "circuitoMonteblanco"
   | "laRabida"
   | "lugaresColombinos"
-  | "historia"
   | "otros";
 
 export type CategoryMeta = {
@@ -40,7 +39,6 @@ export const CATEGORY_ID_ORDER: readonly CategoryId[] = [
   "circuitoMonteblanco",
   "laRabida",
   "lugaresColombinos",
-  "historia",
   "otros",
 ] as const;
 
@@ -104,11 +102,6 @@ export const CATEGORY_META: Record<CategoryId, CategoryMeta> = {
     id: "lugaresColombinos",
     label: "LUGARES COLOMBINOS",
     iconSrc: "/tags/colombinos.png",
-  },
-  historia: {
-    id: "historia",
-    label: "HISTORIA",
-    iconSrc: "/tags/patrimonio.png", // reutilizamos icono de patrimonio
   },
   otros: {
     id: "otros",
@@ -207,6 +200,5 @@ export const CATEGORY_SYNONYMS: Record<CategoryId, string[]> = {
     "colombinos",
     "lugares colombinos",
   ],
-  historia: ["historia", "history", "historico", "histórico"],
   otros: ["otros", "other", "others", "varios", "miscelanea", "miscelánea"],
 };
