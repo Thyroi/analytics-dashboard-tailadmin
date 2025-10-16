@@ -6,6 +6,7 @@
 "use client";
 
 import React from "react";
+import Image from "next/image";
 import ChartPair from "@/components/common/ChartPair";
 import { useCategoryDrilldown } from "../hooks/useCategoryDrilldownReal";
 import { CATEGORY_META } from "@/lib/taxonomy/categories";
@@ -35,9 +36,11 @@ function Header({
       <div className="flex items-center space-x-3">
         {imgSrc && (
           <div className="flex-shrink-0">
-            <img
+            <Image
               src={imgSrc}
               alt={title}
+              width={32}
+              height={32}
               className="w-8 h-8 rounded-lg object-cover"
             />
           </div>

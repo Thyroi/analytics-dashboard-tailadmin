@@ -92,7 +92,7 @@ export default function CategorySectionWithExpandedDemo() {
             <li>• <strong>CategoryExpandedCard</strong> con estilo similar a SectorExpandedCard</li>
             <li>• <strong>Cards siempre visibles</strong> con selección resaltada (ring azul)</li>
             <li>• <strong>Drilldown como overlay</strong> que se muestra arriba del grid</li>
-            <li>• <strong>Subtítulo en header</strong> con "Análisis detallado por subcategorías • X interacciones totales"</li>
+            <li>• <strong>Subtítulo en header</strong> con &quot;Análisis detallado por subcategorías • X interacciones totales&quot;</li>
             <li>• <strong>Gráfico por fechas</strong> en eje X con barras por subcategoría</li>
           </ul>
         </div>
