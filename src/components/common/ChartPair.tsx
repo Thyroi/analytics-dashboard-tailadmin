@@ -1,5 +1,8 @@
 "use client";
 
+import GroupedBarChart, {
+  type GroupedBarSeries,
+} from "@/components/charts/GroupedBarChart";
 import DonutSection from "@/features/analytics/sectors/expanded/SectorExpandedCardDetailed/DonutSection";
 import DrilldownMultiLineSection from "@/features/analytics/sectors/expanded/SectorExpandedCardDetailed/DrilldownMultiLineSection";
 import type { UrlSeries } from "@/features/analytics/services/drilldown";
@@ -59,7 +62,26 @@ type MultiLineMode = Base & {
   colorsByName?: Record<string, string>;
 };
 
-type Props = LineChartMode | MultiLineMode;
+type GroupedBarMode = Base & {
+  mode: "grouped";
+  /** Categorías del eje X para el grouped bar chart */
+  categories: string[];
+  /** Series de datos agrupados */
+  groupedSeries: GroupedBarSeries[];
+  /** Título del gráfico */
+  chartTitle?: string;
+  /** Subtítulo del gráfico */
+  chartSubtitle?: string;
+  /** Altura del gráfico */
+  chartHeight?: number;
+  /** Formato de tooltips */
+  tooltipFormatter?: (val: number) => string;
+  /** Formato del eje Y */
+  yAxisFormatter?: (val: number) => string;
+  loading?: boolean;
+};
+
+type Props = LineChartMode | MultiLineMode | GroupedBarMode;
 
 /**
  * Layout 2 columnas:
@@ -76,12 +98,23 @@ export default function ChartPair(props: Props) {
       <div>
         {props.mode === "line" ? (
           <LineSide series={props.series} granularity={props.granularity} />
-        ) : (
+        ) : props.mode === "multi" ? (
           <DrilldownMultiLineSection
             xLabels={props.xLabels}
             seriesBySub={props.seriesBySub}
             loading={props.loading}
             colorsByName={props.colorsByName}
+          />
+        ) : (
+          <GroupedBarSide
+            categories={props.categories}
+            groupedSeries={props.groupedSeries}
+            chartTitle={props.chartTitle}
+            chartSubtitle={props.chartSubtitle}
+            chartHeight={props.chartHeight}
+            tooltipFormatter={props.tooltipFormatter}
+            yAxisFormatter={props.yAxisFormatter}
+            loading={props.loading}
           />
         )}
       </div>
@@ -118,4 +151,52 @@ function LineSide({
   const prev = series.previous.slice(-n).map((p) => p.value);
 
   return <ChartSection categories={cats} currData={curr} prevData={prev} />;
+}
+
+/* ===== left side (grouped bar) ===== */
+function GroupedBarSide({
+  categories,
+  groupedSeries,
+  chartTitle,
+  chartSubtitle,
+  chartHeight = 350,
+  tooltipFormatter,
+  yAxisFormatter,
+  loading = false,
+}: {
+  categories: string[];
+  groupedSeries: GroupedBarSeries[];
+  chartTitle?: string;
+  chartSubtitle?: string;
+  chartHeight?: number;
+  tooltipFormatter?: (val: number) => string;
+  yAxisFormatter?: (val: number) => string;
+  loading?: boolean;
+}) {
+  if (loading) {
+    return (
+      <div className="w-full bg-white dark:bg-gray-800 rounded-lg">
+        <div className="p-6">
+          <div className="animate-pulse">
+            <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/3 mb-2"></div>
+            <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2 mb-4"></div>
+            <div className="h-80 bg-gray-200 dark:bg-gray-700 rounded"></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <GroupedBarChart
+      title={chartTitle}
+      subtitle={chartSubtitle}
+      categories={categories}
+      series={groupedSeries}
+      height={chartHeight}
+      showLegend={true}
+      tooltipFormatter={tooltipFormatter}
+      yAxisFormatter={yAxisFormatter}
+    />
+  );
 }

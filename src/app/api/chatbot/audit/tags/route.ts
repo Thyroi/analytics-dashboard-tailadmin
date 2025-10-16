@@ -98,16 +98,24 @@ export async function GET(req: Request) {
     // 1) Calcula los rangos con la política pedida
     const range = computeRanges(gran, endISO);
 
-    // 2) Llama a tu endpoint real que pega a Mindsaic
+    // 2) Convierte fechas YYYY-MM-DD a YYYYMMDD para el API de Mindsaic
+    const formatDateForMindsaic = (dateISO: string) =>
+      dateISO.replace(/-/g, "");
+
+    // 3) Llama a tu endpoint real que pega a Mindsaic
     const internalUrl = new URL(
       "/api/chatbot/audit/tags",
       url.origin
     ).toString();
     const payload = {
       patterns,
-      granularity: gran,
-      ...(range.current.start ? { startTime: range.current.start } : null),
-      ...(range.current.end ? { endTime: range.current.end } : null),
+      granularity: "d", // SIEMPRE "d" para Mindsaic (granularity del usuario solo afecta rangos)
+      ...(range.current.start
+        ? { startTime: formatDateForMindsaic(range.current.start) }
+        : null),
+      ...(range.current.end
+        ? { endTime: formatDateForMindsaic(range.current.end) }
+        : null),
       ...(db ? { db } : null),
     };
 
