@@ -22,31 +22,10 @@ function InnerSectorsByTagSection() {
   // USAR CÁLCULO AUTOMÁTICO CORRECTO - SIN FECHAS HARDCODEADAS
   const hookParams = { granularity };
 
-  // Importar useResumenCategory para obtener totales globales
-  // USANDO LOS MISMOS PARÁMETROS QUE EL DEBUG
-  const { categoriesData } = useResumenCategory(hookParams);
-
-  // Calcular totales globales de GA4 y Chatbot
-  const totals = categoriesData.reduce(
-    (
-      acc: { ga4: number; chatbot: number },
-      item: { ga4Value: number; chatbotValue: number }
-    ) => ({
-      ga4: acc.ga4 + item.ga4Value,
-      chatbot: acc.chatbot + item.chatbotValue,
-    }),
-    { ga4: 0, chatbot: 0 }
-  );
-
-  const subtitle = `GA4: ${totals.ga4.toLocaleString()} • Chatbot: ${totals.chatbot.toLocaleString()} • Total: ${(
-    totals.ga4 + totals.chatbot
-  ).toLocaleString()}`;
-
   return (
     <section className="max-w-[1560px] mx-auto w-full">
       <StickyHeaderSection
         title="Sectores por categoría"
-        subtitle={subtitle}
         mode={mode}
         granularity={granularity}
         startDate={startDate}

@@ -5,7 +5,7 @@ import {
   TagTimeProvider,
   useTagTimeframe,
 } from "@/features/analytics/context/TagTimeContext";
-import DebugTownsSectionContent from "@/features/home/debug/DebugTownsSection";
+import { DebugTownsSection } from "@/features/home/debug/DebugTownsSection";
 
 function InnerDebugTownsSection() {
   const {
@@ -30,7 +30,7 @@ function InnerDebugTownsSection() {
         onRangeChange={setRange}
         onClearRange={clearRange}
       />
-      <DebugTownsSectionContent granularity={granularity} />
+      <DebugTownsSection granularity={granularity} />
     </section>
   );
 }

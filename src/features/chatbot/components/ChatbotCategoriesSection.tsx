@@ -65,14 +65,14 @@ function ChatbotCategoriesSectionContent() {
         onRangeChange={setRange}
         onClearRange={clearRange}
       />
-      
+
       {/* Top Categories KPI entre header y categorías */}
       <div className="px-4 mb-6">
-        <TopCategoriesKPI 
-          items={categories.slice(0, 4).map(cat => ({
+        <TopCategoriesKPI
+          items={categories.slice(0, 4).map((cat) => ({
             key: cat.id,
             value: cat.currentValue || 0,
-            time: new Date().toISOString().split('T')[0]
+            time: new Date().toISOString().split("T")[0],
           }))}
         />
       </div>

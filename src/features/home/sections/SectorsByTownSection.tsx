@@ -17,6 +17,10 @@ function InnerSectorsByTownSection() {
     setRange,
     clearRange,
   } = useTownTimeframe();
+
+  // USAR CÁLCULO AUTOMÁTICO CORRECTO - SIN FECHAS HARDCODEADAS
+  const hookParams = { granularity };
+
   return (
     <section className="max-w-[1560px] mx-auto w-full">
       <StickyHeaderSection

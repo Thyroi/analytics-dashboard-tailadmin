@@ -5,12 +5,11 @@
 
 "use client";
 
-import React from "react";
-import Image from "next/image";
 import ChartPair from "@/components/common/ChartPair";
-import { useCategoryDrilldown } from "../hooks/useCategoryDrilldownReal";
-import { CATEGORY_META } from "@/lib/taxonomy/categories";
 import type { CategoryId } from "@/lib/taxonomy/categories";
+import { CATEGORY_META } from "@/lib/taxonomy/categories";
+import Image from "next/image";
+import { useCategoryDrilldown } from "../hooks/useCategoryDrilldownReal";
 import type { Granularity } from "../types";
 
 type Props = {
@@ -54,7 +53,7 @@ function Header({
           </p>
         </div>
       </div>
-      
+
       <button
         onClick={onClose}
         className="flex-shrink-0 p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
@@ -92,14 +91,14 @@ export default function CategoryExpandedCard({
   const categoryMeta = CATEGORY_META[categoryId];
   const categoryLabel = categoryMeta?.label || categoryId;
   const categoryIcon = categoryMeta?.iconSrc;
-  
-  const { 
-    groupedSeries, 
-    groupedCategories, 
-    donutData, 
-    totalInteractions, 
-    isLoading, 
-    error 
+
+  const {
+    groupedSeries,
+    groupedCategories,
+    donutData,
+    totalInteractions,
+    isLoading,
+    error,
   } = drilldownData;
 
   // Subtítulo con información detallada
@@ -122,7 +121,9 @@ export default function CategoryExpandedCard({
           <div className="text-red-600 dark:text-red-400 mb-2">
             Error al cargar datos de {categoryLabel}
           </div>
-          <p className="text-red-500 dark:text-red-300 text-sm">{error.message}</p>
+          <p className="text-red-500 dark:text-red-300 text-sm">
+            {error.message}
+          </p>
         </div>
       </div>
     );

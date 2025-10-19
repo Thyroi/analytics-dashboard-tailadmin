@@ -87,7 +87,7 @@ export default function SectorsByTownSection({ granularity }: Props) {
         mode="town"
         ids={displayedIds}
         granularity={granularity}
-        onGranularityChange={() => {}} // No usado, controlado por el sticky header
+        onGranularityChange={() => {}}
         getDeltaPctFor={getDeltaPctFor}
         getSeriesFor={getSeriesFor}
         getDonutFor={getDonutFor}

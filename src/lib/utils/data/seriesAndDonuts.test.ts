@@ -598,4 +598,70 @@ describe("buildSeriesAndDonutFocused", () => {
       result.series.current[result.series.current.length - 1].value;
     expect(donutTotal).toBe(lastDaySeriesValue); // Both should be 16
   });
+
+  test("processes chatbot data for town focus correctly", () => {
+    const mockChatbotData = {
+      output: {
+        "root.almonte.playas": [
+          { time: "20251014", value: 5 },
+          { time: "20251015", value: 3 },
+        ],
+        "root.almonte.naturaleza": [
+          { time: "20251014", value: 2 },
+          { time: "20251016", value: 4 },
+        ],
+        "root.almonte.cultura.museos": [
+          { time: "20251015", value: 6 },
+          { time: "20251017", value: 1 },
+        ],
+        "root.huelva.playas": [{ time: "20251014", value: 10 }], // Different town, should be ignored
+        "root.moguer.naturaleza": [{ time: "20251015", value: 8 }], // Different town, should be ignored
+      },
+    };
+
+    const config = {
+      granularity: "d" as const,
+      currentRange: { start: "2025-10-14", end: "2025-10-17" },
+      prevRange: { start: "2025-10-13", end: "2025-10-16" },
+      focus: { type: "town" as const, id: "almonte" },
+    };
+
+    const result = buildSeriesAndDonutFocused(config, mockChatbotData);
+
+    // Verificar series CURRENT (solo datos de almonte)
+    expect(result.series.current).toEqual([
+      { label: "2025-10-14", value: 7 }, // almonte.playas(5) + almonte.naturaleza(2)
+      { label: "2025-10-15", value: 9 }, // almonte.playas(3) + almonte.cultura(6)
+      { label: "2025-10-16", value: 4 }, // almonte.naturaleza(4)
+      { label: "2025-10-17", value: 1 }, // almonte.cultura(1)
+    ]);
+
+    // Verificar donut data (categorías de almonte del ÚLTIMO DÍA solamente para granularidad 'd')
+    // Para granularidad 'd', el donut solo usa el último día: 2025-10-17
+    // Solo "root.almonte.cultura.museos" tiene datos en 2025-10-17 (value: 1)
+    expect(result.donutData).toEqual([
+      { label: "cultura", value: 1 }, // Solo datos del último día (2025-10-17)
+    ]);
+  });
+
+  test("returns empty data when no matching town found", () => {
+    const mockChatbotData = {
+      output: {
+        "root.huelva.playas": [{ time: "20251014", value: 5 }],
+        "root.moguer.naturaleza": [{ time: "20251015", value: 3 }],
+      },
+    };
+
+    const config = {
+      granularity: "d" as const,
+      currentRange: { start: "2025-10-14", end: "2025-10-17" },
+      prevRange: { start: "2025-10-13", end: "2025-10-16" },
+      focus: { type: "town" as const, id: "almonte" },
+    };
+
+    const result = buildSeriesAndDonutFocused(config, mockChatbotData);
+
+    expect(result.series.current.every((p) => p.value === 0)).toBe(true);
+    expect(result.donutData).toEqual([]);
+  });
 });
