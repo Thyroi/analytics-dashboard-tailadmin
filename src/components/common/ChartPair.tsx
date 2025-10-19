@@ -91,11 +91,11 @@ type Props = LineChartMode | MultiLineMode | GroupedBarMode;
 export default function ChartPair(props: Props) {
   return (
     <div
-      className={`grid grid-cols-1 xl:grid-cols-2 gap-4 ${
+      className={`grid grid-cols-1 xl:grid-cols-2 gap-4 xl:items-stretch ${
         props.className ?? ""
       }`}
     >
-      <div>
+      <div className="flex">
         {props.mode === "line" ? (
           <LineSide series={props.series} granularity={props.granularity} />
         ) : props.mode === "multi" ? (
@@ -119,13 +119,15 @@ export default function ChartPair(props: Props) {
         )}
       </div>
 
-      <DonutSection
-        donutData={props.donutData}
-        onSliceClick={props.onDonutSlice}
-        centerLabel={props.donutCenterLabel}
-        actionButtonTarget={props.actionButtonTarget}
-        showActivityButton={props.showActivityButton}
-      />
+      <div className="flex">
+        <DonutSection
+          donutData={props.donutData}
+          onSliceClick={props.onDonutSlice}
+          centerLabel={props.donutCenterLabel}
+          actionButtonTarget={props.actionButtonTarget}
+          showActivityButton={props.showActivityButton}
+        />
+      </div>
     </div>
   );
 }
@@ -150,7 +152,11 @@ function LineSide({
   const curr = series.current.slice(-n).map((p) => p.value);
   const prev = series.previous.slice(-n).map((p) => p.value);
 
-  return <ChartSection categories={cats} currData={curr} prevData={prev} />;
+  return (
+    <div className="w-full h-full">
+      <ChartSection categories={cats} currData={curr} prevData={prev} />
+    </div>
+  );
 }
 
 /* ===== left side (grouped bar) ===== */

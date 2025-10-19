@@ -106,7 +106,6 @@ export default function CategoryExpandedCard({
   const subtitle = `Análisis detallado por subcategorías • ${totalInteractions.toLocaleString()} interacciones totales`;
 
   const handleDonutSlice = (label: string) => {
-    console.log("Subcategory clicked from donut:", label);
     onSubcategoryClick?.(label);
   };
 

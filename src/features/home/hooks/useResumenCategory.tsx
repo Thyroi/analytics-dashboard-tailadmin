@@ -50,7 +50,9 @@ export function useResumenCategory(params: UseResumenCategoryParams = {}) {
 
   // Procesar datos para CategoryGrid combinando Analytics + Chatbot
   const processedData = useMemo(() => {
-    if (!categoryTotalsQuery.data) return [];
+    if (!categoryTotalsQuery.data) {
+      return [];
+    }
 
     // Convertir datos de Analytics al formato CategoryGrid
     return categoryTotalsQuery.data.items.map((category) => {
@@ -67,17 +69,6 @@ export function useResumenCategory(params: UseResumenCategoryParams = {}) {
 
       // Calcular delta combinado usando función oficial (retorna null si prev <= 0)
       const combinedDelta = computeDeltaPct(totalCurrent, totalPrevious);
-
-      // Debug temporal para primeras categorías
-      // if (category.id === 'playas' || category.id === 'naturaleza') {
-      //   console.log(`🧮 Delta Calculation - ${category.id}:`, {
-      //     ga4: { current: category.total, prev: category.previousTotal },
-      //     chatbot: { current: chatbotCategory?.currentTotal || 0, prev: chatbotCategory?.prevTotal || 0 },
-      //     combined: { current: totalCurrent, prev: totalPrevious },
-      //     delta: combinedDelta,
-      //     note: combinedDelta === null ? "Sin datos suficientes (prev = 0)" : "Delta calculado"
-      //   });
-      // }
 
       return {
         categoryId: category.id,

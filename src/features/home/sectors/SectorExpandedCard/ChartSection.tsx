@@ -1,6 +1,5 @@
 "use client";
 
-import React from "react";
 import LineChart from "@/components/charts/LineChart";
 import { motion } from "motion/react";
 
@@ -10,12 +9,16 @@ type ChartSectionProps = {
   prevData: number[];
 };
 
-export default function ChartSection({ categories, currData, prevData }: ChartSectionProps) {
+export default function ChartSection({
+  categories,
+  currData,
+  prevData,
+}: ChartSectionProps) {
   return (
     <motion.div
       whileHover={{ scale: 1.01 }}
       whileTap={{ scale: 0.99 }}
-      className="h-[420px] flex flex-col rounded-2xl border bg-white shadow-sm p-6 transition-all duration-200
+      className="min-h-[420px] h-full flex flex-col rounded-2xl border bg-white shadow-sm p-6 transition-all duration-200
                  border-gray-200 hover:border-red-300 hover:shadow-md"
     >
       <div className="mb-2" />

@@ -41,7 +41,6 @@ export default function CategoryDrilldownView({
   } = drilldownData;
 
   const handleDonutSlice = (label: string) => {
-    console.log("Subcategory clicked from donut:", label);
     onSubcategoryClick?.(label);
   };
 

@@ -4,6 +4,7 @@
  */
 
 import type { Granularity } from "@/lib/types";
+import { computeRangesByGranularity } from "@/lib/utils/time/granularityRanges";
 import { safeUrlPathname } from "../routing/pathMatching";
 
 // Tipo para filas de GA4
@@ -436,4 +437,192 @@ export function buildUrlsDonutForCategoryTown<T>(
   return Object.entries(urlCounts)
     .map(([label, value]) => ({ label, value }))
     .sort((a, b) => b.value - a.value);
+}
+
+/**
+ * Función enfocada para construir series y donut para chatbot data
+ * Basada en los parámetros que requiere nuestro caso de uso específico
+ */
+export function buildSeriesAndDonutFocused(
+  config: {
+    granularity: Granularity;
+    currentRange: { start: string; end: string };
+    prevRange: { start: string; end: string };
+    focus: { type: "category" | "town"; id: string };
+  },
+  inputData: Record<string, unknown> | null // Datos raw del chatbot en formato ApiResponse
+): {
+  series: {
+    current: Array<{ label: string; value: number }>;
+    previous: Array<{ label: string; value: number }>;
+  };
+  donutData: Array<{ label: string; value: number }>;
+} {
+  const { granularity, currentRange, prevRange, focus } = config;
+
+  // Calcular rango específico para donut (KPI) usando las reglas de granularidad
+  // Para granularidad 'd': solo último día del período current
+  // Para otras granularidades: usar el rango completo current
+  const donutRange = computeRangesByGranularity(granularity, currentRange.end);
+
+  // Generar ejes temporales separados para current y previous
+  const currentLabels = generateTimeAxis(
+    granularity,
+    currentRange.start,
+    currentRange.end
+  );
+  const previousLabels = generateTimeAxis(
+    granularity,
+    prevRange.start,
+    prevRange.end
+  );
+
+  // Si focus es category, procesamos datos del chatbot
+  if (focus.type === "category") {
+    const targetCategory = focus.id; // ej: "playas", "naturaleza", etc.
+
+    if (!inputData?.output) {
+      return {
+        series: {
+          current: currentLabels.map((label) => ({ label, value: 0 })),
+          previous: previousLabels.map((label) => ({ label, value: 0 })),
+        },
+        donutData: [],
+      };
+    }
+
+    // Procesar series temporales
+    const currentSeries: Record<string, number> = {};
+    const previousSeries: Record<string, number> = {};
+    const donutCounts: Record<string, number> = {};
+
+    // Inicializar series con 0 usando sus respectivos labels
+    currentLabels.forEach((label) => {
+      currentSeries[label] = 0;
+    });
+    previousLabels.forEach((label) => {
+      previousSeries[label] = 0;
+    });
+
+    // Procesar cada entrada del chatbot
+    for (const [path, entries] of Object.entries(inputData.output)) {
+      // Verificar si el path contiene la categoría objetivo
+      // Formato: "root.playas.accesos" o "root.almonte.playas" o "root.genéricas del condado.playas.accesos"
+      const pathLower = path.toLowerCase();
+      const categoryLower = targetCategory.toLowerCase();
+
+      if (!pathLower.includes(categoryLower)) continue;
+
+      // Procesar cada entrada temporal
+      for (const entry of entries as Array<{ time: string; value: number }>) {
+        const { time, value } = entry;
+
+        // Convertir time de "20251015" a "2025-10-15"
+        const dateStr = `${time.slice(0, 4)}-${time.slice(4, 6)}-${time.slice(
+          6,
+          8
+        )}`;
+
+        // Verificar si está en rango current
+        if (dateStr >= currentRange.start && dateStr <= currentRange.end) {
+          if (currentSeries[dateStr] !== undefined) {
+            currentSeries[dateStr] += value;
+          }
+        }
+
+        // Verificar si está en rango previous
+        if (dateStr >= prevRange.start && dateStr <= prevRange.end) {
+          if (previousSeries[dateStr] !== undefined) {
+            previousSeries[dateStr] += value;
+          }
+        }
+
+        // Para donut, acumular por subcategoría usando el rango específico para KPI
+        if (
+          dateStr >= donutRange.current.start &&
+          dateStr <= donutRange.current.end
+        ) {
+          const pathParts = path.split(".");
+          let subcategoryLabel = "Otros";
+
+          // Ejemplos de paths:
+          // "root.playas.accesos" -> subcategory: "accesos"
+          // "root.almonte.playas" -> subcategory: "almonte"
+          // "root.genéricas del condado.playas.accesos" -> subcategory: "genéricas del condado"
+
+          if (pathParts.length >= 3) {
+            // Buscar el índice donde aparece la categoría objetivo
+            const categoryIndex = pathParts.findIndex((part) =>
+              part.toLowerCase().includes(categoryLower)
+            );
+
+            if (categoryIndex === 1) {
+              // Formato: "root.playas.accesos" - la subcategoría está después de la categoría
+              if (pathParts.length > 2) {
+                subcategoryLabel = pathParts[2];
+              }
+            } else if (categoryIndex === 2) {
+              // Formato: "root.almonte.playas" - el pueblo/lugar está antes de la categoría
+              subcategoryLabel = pathParts[1];
+            } else if (categoryIndex > 2) {
+              // Formato: "root.genéricas del condado.playas.accesos"
+              // Tomar todo lo que está antes de la categoría (excepto "root")
+              subcategoryLabel = pathParts.slice(1, categoryIndex).join(".");
+            }
+          }
+
+          donutCounts[subcategoryLabel] =
+            (donutCounts[subcategoryLabel] || 0) + value;
+        }
+      }
+    }
+
+    // Convertir a formato requerido
+    const currentSeriesArray = currentLabels.map((label) => ({
+      label,
+      value: currentSeries[label] || 0,
+    }));
+
+    const previousSeriesArray = previousLabels.map((label) => ({
+      label,
+      value: previousSeries[label] || 0,
+    }));
+
+    const donutDataArray = Object.entries(donutCounts)
+      .map(([label, value]) => ({ label, value }))
+      .sort((a, b) => {
+        // Primero ordenar por valor descendente
+        if (b.value !== a.value) return b.value - a.value;
+        // Si tienen el mismo valor, ordenar alfabéticamente para consistencia
+        return a.label.localeCompare(b.label);
+      });
+
+    return {
+      series: {
+        current: currentSeriesArray,
+        previous: previousSeriesArray,
+      },
+      donutData: donutDataArray,
+    };
+  }
+
+  // Si focus es town, similar lógica
+  if (focus.type === "town") {
+    return {
+      series: {
+        current: currentLabels.map((label) => ({ label, value: 0 })),
+        previous: previousLabels.map((label) => ({ label, value: 0 })),
+      },
+      donutData: [],
+    };
+  }
+
+  // Fallback
+  return {
+    series: {
+      current: [],
+      previous: [],
+    },
+    donutData: [],
+  };
 }

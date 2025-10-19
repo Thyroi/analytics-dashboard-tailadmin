@@ -15,6 +15,7 @@ type BaseProps = {
   onClose: () => void;
   isTown?: boolean;
   granularity: Granularity;
+  totals?: { ga4: number; chatbot: number; total: number } | null;
 };
 
 type WithIcon = {
@@ -35,6 +36,7 @@ export default function SectorExpandedCard(props: Props) {
     onClose,
     isTown = false,
     granularity,
+    totals,
   } = props;
 
   const imgSrc =
@@ -47,9 +49,14 @@ export default function SectorExpandedCard(props: Props) {
   const Icon = "Icon" in props ? props.Icon : undefined;
 
   // Subtítulo explicativo según el tipo de entidad
-  const subtitle = isTown
+  const baseSubtitle = isTown
     ? "Visualizaciones de página por categoría de interés turístico"
     : "Visualizaciones de página distribuidas por pueblo";
+
+  // Si hay totales disponibles, agregar la información al subtítulo
+  const subtitle = totals
+    ? `${baseSubtitle} • GA4: ${totals.ga4.toLocaleString()} • Chatbot: ${totals.chatbot.toLocaleString()} • Total: ${totals.total.toLocaleString()}`
+    : baseSubtitle;
 
   return (
     <div className="rounded-2xl border border-gray-200 dark:border-white/10 bg-[#fff7ed] dark:bg-[#0c1116] p-3 shadow-sm w-full">

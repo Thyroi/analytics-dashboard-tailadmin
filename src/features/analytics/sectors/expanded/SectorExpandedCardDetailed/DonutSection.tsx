@@ -38,15 +38,18 @@ export default function DonutSection({
   );
 
   return (
-    <DonutCard
-      items={items}
-      onSliceClick={onSliceClick}
-      title={title}
-      titleClassName={titleColor}
-      centerTitle={centerLabel}
-      centerValueOverride={centerValueOverride}
-      actionHref={showActivityButton ? actionButtonTarget : undefined}
-      height={180}
-    />
+    <div className="w-full h-full">
+      <DonutCard
+        items={items}
+        onSliceClick={onSliceClick}
+        title={title}
+        titleClassName={titleColor}
+        centerTitle={centerLabel}
+        centerValueOverride={centerValueOverride}
+        actionHref={showActivityButton ? actionButtonTarget : undefined}
+        height={180}
+        className="h-full"
+      />
+    </div>
   );
 }

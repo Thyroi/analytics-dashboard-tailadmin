@@ -1,6 +1,7 @@
 import type { GA4Row } from "@/lib/utils/core/granularityMapping";
 import {
   buildCategoriesDonutForTown,
+  buildSeriesAndDonutFocused,
   buildTownsDonutForCategory,
   buildUrlsDonutForCategoryTown,
   buildUrlsDonutForTownCategory,
@@ -406,5 +407,195 @@ describe("Donut functions integration", () => {
       { label: "https://example.com/almonte/naturaleza/park", value: 40 },
       { label: "https://example.com/almonte/naturaleza/beach", value: 20 },
     ]);
+  });
+});
+
+describe("buildSeriesAndDonutFocused", () => {
+  test("processes chatbot data for category focus correctly", () => {
+    const mockChatbotData = {
+      output: {
+        "root.playas.accesos": [
+          { time: "20251014", value: 2 },
+          { time: "20251015", value: 2 },
+        ],
+        "root.playas.limpieza": [{ time: "20251014", value: 2 }],
+        "root.almonte.playas": [
+          { time: "20251014", value: 3 },
+          { time: "20251016", value: 1 },
+        ],
+        "root.genéricas del condado.playas.accesos": [
+          { time: "20251015", value: 2 },
+          { time: "20251017", value: 1 },
+        ],
+        "root.naturaleza.otros": [{ time: "20251014", value: 5 }],
+      },
+    };
+
+    const config = {
+      granularity: "d" as const,
+      currentRange: { start: "2025-10-14", end: "2025-10-17" },
+      prevRange: { start: "2025-10-13", end: "2025-10-16" }, // Shifted range
+      focus: { type: "category" as const, id: "playas" },
+    };
+
+    const result = buildSeriesAndDonutFocused(config, mockChatbotData);
+
+    // Verificar series CURRENT (2025-10-14 to 2025-10-17)
+    expect(result.series.current).toEqual([
+      { label: "2025-10-14", value: 7 }, // playas.accesos(2) + playas.limpieza(2) + almonte.playas(3)
+      { label: "2025-10-15", value: 4 }, // playas.accesos(2) + genéricas.playas.accesos(2)
+      { label: "2025-10-16", value: 1 }, // almonte.playas(1)
+      { label: "2025-10-17", value: 1 }, // genéricas.playas.accesos(1)
+    ]);
+
+    // Verificar series PREVIOUS (2025-10-13 to 2025-10-16) - shifted range
+    expect(result.series.previous).toEqual([
+      { label: "2025-10-13", value: 0 }, // No data for this date
+      { label: "2025-10-14", value: 7 }, // Same data as current 2025-10-14
+      { label: "2025-10-15", value: 4 }, // Same data as current 2025-10-15
+      { label: "2025-10-16", value: 1 }, // Same data as current 2025-10-16
+    ]);
+
+    // Verificar donut data (subcategorías de playas del ÚLTIMO DÍA solamente para granularidad 'd')
+    // Para granularidad 'd', el donut solo usa el último día: 2025-10-17
+    // Solo "root.genéricas del condado.playas.accesos" tiene datos en 2025-10-17 (value: 1)
+    expect(result.donutData).toEqual([
+      { label: "genéricas del condado", value: 1 }, // Solo datos del último día (2025-10-17)
+    ]);
+  });
+
+  test("returns empty data when no matching category found", () => {
+    const mockChatbotData = {
+      output: {
+        "root.naturaleza.otros": [{ time: "20251014", value: 5 }],
+      },
+    };
+
+    const config = {
+      granularity: "d" as const,
+      currentRange: { start: "2025-10-14", end: "2025-10-17" },
+      prevRange: { start: "2025-10-13", end: "2025-10-16" },
+      focus: { type: "category" as const, id: "playas" },
+    };
+
+    const result = buildSeriesAndDonutFocused(config, mockChatbotData);
+
+    expect(result.series.current.every((p) => p.value === 0)).toBe(true);
+    expect(result.donutData).toEqual([]);
+  });
+
+  test("handles missing or invalid input data", () => {
+    const config = {
+      granularity: "d" as const,
+      currentRange: { start: "2025-10-14", end: "2025-10-17" },
+      prevRange: { start: "2025-10-13", end: "2025-10-16" },
+      focus: { type: "category" as const, id: "playas" },
+    };
+
+    const result1 = buildSeriesAndDonutFocused(config, null);
+    const result2 = buildSeriesAndDonutFocused(config, {});
+    const result3 = buildSeriesAndDonutFocused(config, { output: null });
+
+    [result1, result2, result3].forEach((result) => {
+      expect(result.series.current.every((p) => p.value === 0)).toBe(true);
+      expect(result.donutData).toEqual([]);
+    });
+  });
+
+  test("demonstrates shifted ranges with different data", () => {
+    const mockChatbotData = {
+      output: {
+        "root.naturaleza.parques": [
+          { time: "20251010", value: 5 }, // Only in previous range
+          { time: "20251011", value: 3 }, // Only in previous range
+          { time: "20251012", value: 2 }, // In both previous and current
+          { time: "20251013", value: 4 }, // In both previous and current
+          { time: "20251014", value: 6 }, // Only in current range
+          { time: "20251015", value: 1 }, // Only in current range
+        ],
+      },
+    };
+
+    const config = {
+      granularity: "d" as const,
+      currentRange: { start: "2025-10-12", end: "2025-10-15" }, // 4 days
+      prevRange: { start: "2025-10-10", end: "2025-10-13" }, // 4 days, shifted back 2 days
+      focus: { type: "category" as const, id: "naturaleza" },
+    };
+
+    const result = buildSeriesAndDonutFocused(config, mockChatbotData);
+
+    // Current range: 2025-10-12 to 2025-10-15
+    expect(result.series.current).toEqual([
+      { label: "2025-10-12", value: 2 },
+      { label: "2025-10-13", value: 4 },
+      { label: "2025-10-14", value: 6 },
+      { label: "2025-10-15", value: 1 },
+    ]);
+
+    // Previous range: 2025-10-10 to 2025-10-13 (shifted back)
+    expect(result.series.previous).toEqual([
+      { label: "2025-10-10", value: 5 },
+      { label: "2025-10-11", value: 3 },
+      { label: "2025-10-12", value: 2 },
+      { label: "2025-10-13", value: 4 },
+    ]);
+
+    // Verify they have different axis labels and values
+    expect(result.series.current.map((p) => p.label)).not.toEqual(
+      result.series.previous.map((p) => p.label)
+    );
+  });
+
+  test("donut uses only last day for daily granularity", () => {
+    const mockChatbotData = {
+      output: {
+        "root.cultura.museos": [
+          { time: "20251015", value: 10 }, // Should NOT appear in donut
+          { time: "20251016", value: 8 }, // Should NOT appear in donut
+          { time: "20251017", value: 5 }, // Should appear in donut (last day)
+        ],
+        "root.cultura.eventos": [
+          { time: "20251015", value: 3 }, // Should NOT appear in donut
+          { time: "20251017", value: 7 }, // Should appear in donut (last day)
+        ],
+        "root.almonte.cultura": [
+          { time: "20251016", value: 2 }, // Should NOT appear in donut
+          { time: "20251017", value: 4 }, // Should appear in donut (last day)
+        ],
+      },
+    };
+
+    const config = {
+      granularity: "d" as const,
+      currentRange: { start: "2025-10-15", end: "2025-10-17" }, // 3 days
+      prevRange: { start: "2025-10-14", end: "2025-10-16" },
+      focus: { type: "category" as const, id: "cultura" },
+    };
+
+    const result = buildSeriesAndDonutFocused(config, mockChatbotData);
+
+    // Series should use all days in the range
+    expect(result.series.current).toEqual([
+      { label: "2025-10-15", value: 13 }, // museos(10) + eventos(3)
+      { label: "2025-10-16", value: 10 }, // museos(8) + almonte(2)
+      { label: "2025-10-17", value: 16 }, // museos(5) + eventos(7) + almonte(4)
+    ]);
+
+    // Donut should ONLY use the last day (2025-10-17) for granularity 'd'
+    expect(result.donutData).toEqual([
+      { label: "eventos", value: 7 }, // Only from 2025-10-17
+      { label: "museos", value: 5 }, // Only from 2025-10-17
+      { label: "almonte", value: 4 }, // Only from 2025-10-17
+    ]);
+
+    // Verify donut total equals only last day of series
+    const donutTotal = result.donutData.reduce(
+      (sum, item) => sum + item.value,
+      0
+    );
+    const lastDaySeriesValue =
+      result.series.current[result.series.current.length - 1].value;
+    expect(donutTotal).toBe(lastDaySeriesValue); // Both should be 16
   });
 });

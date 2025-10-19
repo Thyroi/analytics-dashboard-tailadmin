@@ -42,7 +42,6 @@ function ChatbotCategoriesSectionContent() {
     useState<CategoryId | null>(null);
 
   const handleCategoryClick = (categoryId: string) => {
-    console.log("Category clicked:", categoryId);
     setSelectedCategoryId(categoryId as CategoryId);
   };
 
@@ -50,8 +49,7 @@ function ChatbotCategoriesSectionContent() {
     setSelectedCategoryId(null);
   };
 
-  const handleSubcategoryClick = (subcategory: string) => {
-    console.log("Subcategory clicked:", subcategory);
+  const handleSubcategoryClick = (_subcategory: string) => {
     // Aquí se podría implementar un nivel adicional de drilldown si es necesario
   };
 

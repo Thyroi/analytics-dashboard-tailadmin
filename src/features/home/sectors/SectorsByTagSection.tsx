@@ -2,7 +2,10 @@
 
 import SectorsGrid from "@/components/common/SectorsGrid";
 import { useTagTimeframe } from "@/features/analytics/context/TagTimeContext";
-import { useCategoryDetails } from "@/features/analytics/hooks/categorias";
+import {
+  useCategoryDetails,
+  type TimeParams,
+} from "@/features/home/hooks/useCategoryDetails";
 import { useResumenCategory } from "@/features/home/hooks/useResumenCategory";
 import type { CategoryId } from "@/lib/taxonomy/categories";
 import { CATEGORY_ID_ORDER } from "@/lib/taxonomy/categories";
@@ -52,11 +55,21 @@ export default function SectorsByTagSection({ granularity }: Props) {
   const catId = expandedId as CategoryId | null;
 
   // Usar el nuevo hook con parámetros de fecha apropiados
+  const timeParams: TimeParams = useMemo(() => {
+    if (mode === "range") {
+      return {
+        startISO: startDate.toISOString().split("T")[0],
+        endISO: endDate.toISOString().split("T")[0],
+      };
+    } else {
+      return { endISO: currentEndISO };
+    }
+  }, [mode, startDate, endDate, currentEndISO]);
+
   const { series, donutData } = useCategoryDetails(
     catId ?? ("naturaleza" as CategoryId),
     granularity,
-    mode === "range" ? endDate.toISOString().split("T")[0] : currentEndISO, // endISO corregido
-    mode === "range" ? startDate.toISOString().split("T")[0] : undefined // startISO
+    timeParams
   );
 
   const getDeltaPctFor = (id: string) => itemsById[id]?.deltaPct ?? null;

@@ -446,10 +446,6 @@ export async function fetchDrilldownData(
   // Crear el pattern específico para la categoría con wildcard
   const pattern = `root.${categoryId}.*`;
 
-  console.log(`🎯 DRILLDOWN - Haciendo query para categoría: ${categoryId}`);
-  console.log(`📡 Pattern: ${pattern}`);
-  console.log(`⏰ Período: ${startTime} - ${endTime}`);
-
   try {
     // Hacer la query específica para esta categoría
     const response = await fetchTagAudit({
@@ -478,14 +474,6 @@ export async function fetchDrilldownData(
           dataPointsCount++;
         });
       }
-    });
-
-    console.log(`✅ DRILLDOWN - Datos obtenidos para ${categoryId}:`, {
-      pattern,
-      matchedKeys: Object.keys(response.output),
-      totalDataPoints: dataPointsCount,
-      totalValue,
-      keysFound: Object.keys(response.output).length,
     });
 
     return {

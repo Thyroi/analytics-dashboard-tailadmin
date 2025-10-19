@@ -99,16 +99,6 @@ Omit<UseChatbotByTagParams, "comparisonMode">): UseChatbotByTagResult {
         setState("loading");
         setError(null);
 
-        console.log("🔄 Cargando datos chatbot:", {
-          mode,
-          granularity,
-          pattern,
-          period: {
-            apiStartTime: period.apiStartTime,
-            apiEndTime: period.apiEndTime,
-          },
-        });
-
         const response = await fetchTagAudit({
           patterns: pattern,
           granularity: period.apiGranularity,
@@ -160,12 +150,6 @@ Omit<UseChatbotByTagParams, "comparisonMode">): UseChatbotByTagResult {
             period.previousEnd
           );
         }
-
-        console.log("✅ Datos procesados:", {
-          totalCards: processedCards.length,
-          cardsWithData: processedCards.filter((c) => c.currentTotal > 0)
-            .length,
-        });
 
         setCards(processedCards);
         setState(processedCards.length > 0 ? "success" : "empty");
@@ -255,16 +239,6 @@ export function useChatbotDrilldown({
         setState("loading");
         setError(null);
 
-        console.log("🔍 Cargando drill-down:", {
-          cardId,
-          mode,
-          granularity,
-          period: {
-            apiStartTime: period.apiStartTime,
-            apiEndTime: period.apiEndTime,
-          },
-        });
-
         // Determinar pattern para drill-down
         const pattern =
           mode === "byCategory"
@@ -299,14 +273,6 @@ export function useChatbotDrilldown({
           period.previousStart,
           period.previousEnd
         );
-
-        console.log("✅ Drill-down procesado:", {
-          id: drilldownData.id,
-          currentTotal: drilldownData.currentTotal,
-          prevTotal: drilldownData.prevTotal,
-          seriesLength: drilldownData.currentSeries.length,
-          donutItems: drilldownData.donutData.length,
-        });
 
         setData(drilldownData);
         setState("success");

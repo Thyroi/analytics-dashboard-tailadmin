@@ -1,6 +1,7 @@
 import type { GA4Row } from "@/lib/utils/core/granularityMapping";
 import {
   buildCategoriesDonutForTown,
+  buildSeriesAndDonutFocused,
   buildTownsDonutForCategory,
   buildUrlsDonutForCategoryTown,
   buildUrlsDonutForTownCategory,
@@ -406,5 +407,91 @@ describe("Donut functions integration", () => {
       { label: "https://example.com/almonte/naturaleza/park", value: 40 },
       { label: "https://example.com/almonte/naturaleza/beach", value: 20 },
     ]);
+  });
+});
+
+describe("buildSeriesAndDonutFocused", () => {
+  test("processes chatbot data for category focus correctly", () => {
+    const mockChatbotData = {
+      output: {
+        "root.playas.accesos": [
+          { time: "20251014", value: 2 },
+          { time: "20251015", value: 2 },
+        ],
+        "root.playas.limpieza": [{ time: "20251014", value: 2 }],
+        "root.almonte.playas": [
+          { time: "20251014", value: 3 },
+          { time: "20251016", value: 1 },
+        ],
+        "root.genéricas del condado.playas.accesos": [
+          { time: "20251015", value: 2 },
+          { time: "20251017", value: 1 },
+        ],
+        "root.naturaleza.otros": [{ time: "20251014", value: 5 }],
+      },
+    };
+
+    const config = {
+      granularity: "d" as const,
+      currentRange: { start: "2025-10-14", end: "2025-10-17" },
+      prevRange: { start: "2025-10-13", end: "2025-10-16" },
+      focus: { type: "category" as const, id: "playas" },
+    };
+
+    const result = buildSeriesAndDonutFocused(config, mockChatbotData);
+
+    // Verificar series
+    expect(result.series.current).toEqual([
+      { label: "2025-10-14", value: 7 }, // playas.accesos(2) + playas.limpieza(2) + almonte.playas(3)
+      { label: "2025-10-15", value: 4 }, // playas.accesos(2) + genéricas.playas.accesos(2)
+      { label: "2025-10-16", value: 1 }, // almonte.playas(1)
+      { label: "2025-10-17", value: 1 }, // genéricas.playas.accesos(1)
+    ]);
+
+    // Verificar donut data (subcategorías de playas)
+    expect(result.donutData).toEqual([
+      { label: "almonte", value: 4 }, // almonte.playas total
+      { label: "accesos", value: 4 }, // playas.accesos total
+      { label: "genéricas del condado", value: 3 }, // genéricas del condado.playas total
+      { label: "limpieza", value: 2 }, // playas.limpieza total
+    ]);
+  });
+
+  test("returns empty data when no matching category found", () => {
+    const mockChatbotData = {
+      output: {
+        "root.naturaleza.otros": [{ time: "20251014", value: 5 }],
+      },
+    };
+
+    const config = {
+      granularity: "d" as const,
+      currentRange: { start: "2025-10-14", end: "2025-10-17" },
+      prevRange: { start: "2025-10-13", end: "2025-10-16" },
+      focus: { type: "category" as const, id: "playas" },
+    };
+
+    const result = buildSeriesAndDonutFocused(config, mockChatbotData);
+
+    expect(result.series.current.every((p) => p.value === 0)).toBe(true);
+    expect(result.donutData).toEqual([]);
+  });
+
+  test("handles missing or invalid input data", () => {
+    const config = {
+      granularity: "d" as const,
+      currentRange: { start: "2025-10-14", end: "2025-10-17" },
+      prevRange: { start: "2025-10-13", end: "2025-10-16" },
+      focus: { type: "category" as const, id: "playas" },
+    };
+
+    const result1 = buildSeriesAndDonutFocused(config, null);
+    const result2 = buildSeriesAndDonutFocused(config, {});
+    const result3 = buildSeriesAndDonutFocused(config, { output: null });
+
+    [result1, result2, result3].forEach((result) => {
+      expect(result.series.current.every((p) => p.value === 0)).toBe(true);
+      expect(result.donutData).toEqual([]);
+    });
   });
 });

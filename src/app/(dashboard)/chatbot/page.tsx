@@ -20,8 +20,7 @@ export default function TagsDashboard() {
         categoryId={selectedCategory}
         granularity="d" // Usar granularidad por defecto, se puede sincronizar con el contexto
         onBack={() => setSelectedCategory(null)}
-        onSubcategoryClick={(subcategory) => {
-          console.log("Navigate to subcategory:", subcategory);
+        onSubcategoryClick={(_subcategory) => {
           // TODO: Implementar siguiente nivel de drilldown
         }}
       />

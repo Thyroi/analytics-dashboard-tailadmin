@@ -4,7 +4,10 @@ import PieChart from "@/components/charts/PieChart";
 import ActivityButton from "@/components/common/ActivityButton";
 import Header from "@/components/common/Header";
 import LegendList, { type LegendItem } from "@/components/dashboard/LegendList";
-import { BRAND_STOPS, generateBrandGradient } from "@/lib/utils/formatting/colors";
+import {
+  BRAND_STOPS,
+  generateBrandGradient,
+} from "@/lib/utils/formatting/colors";
 import type { LucideIcon } from "lucide-react";
 import { CircleSlash } from "lucide-react";
 import { motion } from "motion/react";
@@ -74,7 +77,6 @@ export default function DonutCard({
   centerTitle,
   centerValueOverride,
   actionHref,
-  height = 180,
   legendColumns,
   variant = "card",
 
@@ -152,8 +154,8 @@ export default function DonutCard({
 
   const wrapperClass =
     variant === "card"
-      ? "rounded-xl border bg-white p-3 transition-all duration-200 border-gray-200 hover:border-red-300 hover:shadow-md"
-      : "p-0";
+      ? "rounded-xl border bg-white p-3 transition-all duration-200 border-gray-200 hover:border-red-300 hover:shadow-md h-full flex flex-col"
+      : "p-0 h-full flex flex-col";
 
   const EmptyIcon = emptyIcon ?? CircleSlash;
 
@@ -178,11 +180,11 @@ export default function DonutCard({
           {actionHref && <ActivityButton target={actionHref} />}
         </div>
 
-        <div className="relative w-full">
+        <div className="relative w-full flex-1 flex flex-col">
           <PieChart
             data={apexData}
             type="donut"
-            height={height}
+            height={320}
             {...(paletteBase ? { palette: paletteBase } : {})}
             colorsByLabel={colorsByLabel}
             showLegend={false}
@@ -211,7 +213,7 @@ export default function DonutCard({
                   },
                 }),
             }}
-            className="w-full"
+            className="w-full flex-1"
             // En vacío no mostramos número en el centro; en normal sí
             centerTop={isEmpty ? "" : String(centerValue)}
             centerBottom={isEmpty ? "" : centerTitle}
