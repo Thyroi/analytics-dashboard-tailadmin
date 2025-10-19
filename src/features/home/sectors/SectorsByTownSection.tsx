@@ -2,10 +2,9 @@
 
 import SectorsGrid from "@/components/common/SectorsGrid";
 import { useTownTimeframe } from "@/features/analytics/context/TownTimeContext";
-import { usePueblosTotals } from "@/features/analytics/hooks/pueblos";
 import { useTownDetails } from "@/features/home/hooks/useTownDetails";
+import { useResumenTown } from "@/features/home/hooks/useResumenTown";
 import type { TownId } from "@/lib/taxonomy/towns";
-import { TOWN_ID_ORDER } from "@/lib/taxonomy/towns";
 import type { Granularity } from "@/lib/types";
 import { getCorrectDatesForGranularity } from "@/lib/utils/time/deltaDateCalculation";
 import { useMemo, useState } from "react";
@@ -27,30 +26,50 @@ export default function SectorsByTownSection({ granularity }: Props) {
     mode
   );
 
-  // Preparar parámetros de tiempo para los hooks
-  const timeParams =
+  // Preparar parámetros de tiempo para useResumenTown
+  const startDateStr = mode === "range" ? startDate.toISOString().split("T")[0] : null;
+  const endDateStr = mode === "range" ? endDate.toISOString().split("T")[0] : currentEndISO;
+
+  // Usar hook combinado GA4 + Chatbot
+  const townResumenResult = useResumenTown({
+    granularity,
+    startDate: startDateStr,
+    endDate: endDateStr,
+  });
+
+
+  // Crear lookup map por ID para acceso eficiente
+  const itemsById = useMemo(() => {
+    return townResumenResult.data.reduce((acc, item) => {
+      acc[item.id as TownId] = item;
+      return acc;
+    }, {} as Record<TownId, (typeof townResumenResult.data)[0]>);
+  }, [townResumenResult]);
+
+  const displayedIds = useMemo<string[]>(
+    () => townResumenResult.data.map(item => item.id),
+    [townResumenResult.data]
+  );
+
+  const townId = expandedId as TownId | null;
+  
+  // Preparar timeParams para useTownDetails (formato original)
+  const timeParamsForDetails =
     mode === "range"
       ? {
           startISO: startDate.toISOString().split("T")[0],
           endISO: endDate.toISOString().split("T")[0],
         }
       : { endISO: currentEndISO };
-
-  const { state, ids, itemsById } = usePueblosTotals(granularity, timeParams);
-  const displayedIds = useMemo<string[]>(
-    () => (state.status === "ready" ? (ids as string[]) : [...TOWN_ID_ORDER]),
-    [state.status, ids]
-  );
-
-  const townId = expandedId as TownId | null;
+  
   const { series, donutData } = useTownDetails(
     townId ?? ("almonte" as TownId),
     granularity,
-    timeParams
+    timeParamsForDetails
   );
 
   const getDeltaPctFor = (id: string) =>
-    state.status === "ready" ? itemsById[id as TownId]?.deltaPct ?? null : null;
+    itemsById[id as TownId]?.combinedDeltaPct ?? null;
 
   const getSeriesFor = (_id: string) => {
     return townId && _id === townId ? series : { current: [], previous: [] };
@@ -74,7 +93,7 @@ export default function SectorsByTownSection({ granularity }: Props) {
         expandedId={expandedId}
         onOpen={setExpandedId}
         onClose={() => setExpandedId(null)}
-        isDeltaLoading={state.status !== "ready"}
+        isDeltaLoading={townResumenResult.isLoading}
       />
     </section>
   );

@@ -2,10 +2,8 @@
 
 import SectorsGrid from "@/components/common/SectorsGrid";
 import { useTagTimeframe } from "@/features/analytics/context/TagTimeContext";
-import {
-  useCategoriesTotals,
-  useCategoryDetails,
-} from "@/features/analytics/hooks/categorias";
+import { useCategoryDetails } from "@/features/analytics/hooks/categorias";
+import { useResumenCategory } from "@/features/home/hooks/useResumenCategory";
 import type { CategoryId } from "@/lib/taxonomy/categories";
 import { CATEGORY_ID_ORDER } from "@/lib/taxonomy/categories";
 import type { Granularity } from "@/lib/types";
@@ -29,23 +27,25 @@ export default function SectorsByTagSection({ granularity }: Props) {
     mode
   );
 
-  // Preparar parámetros de tiempo para los hooks
-  const timeParams =
-    mode === "range"
-      ? {
-          startISO: startDate.toISOString().split("T")[0],
-          endISO: endDate.toISOString().split("T")[0],
-        }
-      : { endISO: currentEndISO };
-
-  const { state, ids, itemsById } = useCategoriesTotals(
+  // Usar useResumenData para obtener deltas combinados (GA4 + Chatbot)
+  const { categoriesData, isLoading } = useResumenCategory({
     granularity,
-    timeParams
-  );
+    startDate: mode === "range" ? startDate.toISOString().split("T")[0] : undefined,
+    endDate: mode === "range" ? endDate.toISOString().split("T")[0] : currentEndISO,
+  });
+
+  // Convertir datos a formato compatible con SectorsGrid
+  const itemsById = useMemo(() => {
+    const result: Record<string, { deltaPct: number | null }> = {};
+    categoriesData.forEach((item: { categoryId: string; delta: number | null }) => {
+      result[item.categoryId] = { deltaPct: item.delta };
+    });
+    return result;
+  }, [categoriesData]);
+
   const displayedIds = useMemo<string[]>(
-    () =>
-      state.status === "ready" ? (ids as string[]) : [...CATEGORY_ID_ORDER],
-    [state.status, ids]
+    () => [...CATEGORY_ID_ORDER],
+    []
   );
 
   const catId = expandedId as CategoryId | null;
@@ -59,9 +59,7 @@ export default function SectorsByTagSection({ granularity }: Props) {
   );
 
   const getDeltaPctFor = (id: string) =>
-    state.status === "ready"
-      ? itemsById[id as CategoryId]?.deltaPct ?? null
-      : null;
+    itemsById[id]?.deltaPct ?? null;
 
   const getSeriesFor = (_id: string) =>
     catId && _id === catId ? series : { current: [], previous: [] };
@@ -83,7 +81,7 @@ export default function SectorsByTagSection({ granularity }: Props) {
         expandedId={expandedId}
         onOpen={setExpandedId}
         onClose={() => setExpandedId(null)}
-        isDeltaLoading={state.status !== "ready"}
+        isDeltaLoading={isLoading}
       />
     </section>
   );

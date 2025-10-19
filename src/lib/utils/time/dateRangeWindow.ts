@@ -192,11 +192,11 @@ export function deriveRangeEndingYesterday(
 }
 
 /**
- * Rango anterior DESPLAZADO (misma longitud):
+ * Rango anterior DESPLAZADO (misma longitud) para gráficas comparables:
  *  - "d": -1 día
- *  - "w": -7 días
- *  - "m": -30 días
- *  - "y": -1 año
+ *  - "w": -1 día (para gráficas idénticas desplazadas 1 punto)
+ *  - "m": -1 día (para gráficas idénticas desplazadas 1 punto)  
+ *  - "y": -1 mes (para buckets mensuales desplazados 1 bucket)
  */
 export function derivePrevShifted(
   current: DateRange,
@@ -206,10 +206,15 @@ export function derivePrevShifted(
   const e = parseISO(current.end);
 
   if (g === "y") {
-    return { start: toISO(addYearsUTC(s, -1)), end: toISO(addYearsUTC(e, -1)) };
+    // Para año: shift de 1 mes (no 1 año) para buckets mensuales comparables
+    return { 
+      start: toISO(addMonthsUTC(s, -1)), 
+      end: toISO(addMonthsUTC(e, -1)) 
+    };
   }
 
-  const shiftDays = g === "d" ? 1 : g === "w" ? 7 : 30;
+  // Para todas las demás granularidades: shift de 1 día para gráficas comparables
+  const shiftDays = 1;
   return {
     start: toISO(addDaysUTC(s, -shiftDays)),
     end: toISO(addDaysUTC(e, -shiftDays)),
@@ -287,4 +292,38 @@ export function computeRanges(opts: {
   const current = deriveRangeEndingYesterday(g, baseNow);
   const previous = derivePrevShifted(current, g);
   return { current, previous };
+}
+
+/* ==================== Comportamiento específico para KPI/Donut/Delta ==================== */
+
+/**
+ * Comportamiento DONUT/KPI/DELTA: 
+ * - Granularidad "d": Solo 1 día (ayer vs antes de ayer)
+ * - Otras granularidades: Rangos normales con shift de 1 día/mes
+ */
+export function computeRangesForKPI(opts: {
+  g: Granularity;
+  startISO?: string;
+  endISO?: string;
+}): { current: DateRange; previous: DateRange } {
+  return computeRanges({
+    ...opts,
+    seriesExpandDay: false // Granularidad "d" = 1 día para KPIs
+  });
+}
+
+/**
+ * Comportamiento SERIE/GRÁFICOS:
+ * - Granularidad "d": 7 días (para gráficas útiles)
+ * - Otras granularidades: Rangos normales con shift de 1 día/mes
+ */
+export function computeRangesForSeries(opts: {
+  g: Granularity;
+  startISO?: string;
+  endISO?: string;
+}): { current: DateRange; previous: DateRange } {
+  return computeRanges({
+    ...opts,
+    seriesExpandDay: true // Granularidad "d" = 7 días para series
+  });
 }

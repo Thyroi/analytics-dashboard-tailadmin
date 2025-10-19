@@ -21,7 +21,7 @@ import {
 } from "@/lib/utils/routing/pathMatching";
 import {
   computeDeltaPct,
-  computeRangesFromQuery,
+  computeRangesForKPI,
 } from "@/lib/utils/time/timeWindows";
 import { google } from "googleapis";
 import { NextResponse } from "next/server";
@@ -36,8 +36,9 @@ export async function GET(req: Request) {
     const startQ = searchParams.get("start");
     const endQ = searchParams.get("end");
 
-    // Rangos con política (desplazamiento con solape)
-    const ranges = computeRangesFromQuery(g, startQ, endQ);
+    // Calcular rangos con comportamiento KPI estandarizado
+    // Categorias = KPI: granularidad "d" = 1 día, shift estándar
+    const ranges = computeRangesForKPI(g, startQ, endQ);
 
     // GA
     const auth = getAuth();
@@ -96,6 +97,7 @@ export async function GET(req: Request) {
         id,
         title: getCategoryLabel(id), // Usa el título oficial de la taxonomía
         total: curr,
+        previousTotal: prev, // ✨ NUEVO: agregar valor anterior
         deltaPct: computeDeltaPct(curr, prev),
       };
     });

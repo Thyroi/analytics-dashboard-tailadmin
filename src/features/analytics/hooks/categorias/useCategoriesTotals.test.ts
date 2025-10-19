@@ -50,12 +50,14 @@ describe("useCategoriesTotalsNew", () => {
           id: "naturaleza" as CategoryId,
           title: "Naturaleza",
           total: 100,
+          previousTotal: 87, // Agregado para compatibilidad
           deltaPct: 15.5,
         },
         {
           id: "playas" as CategoryId,
           title: "Playas",
           total: 75,
+          previousTotal: 83, // Agregado para compatibilidad
           deltaPct: -10.2,
         },
       ],

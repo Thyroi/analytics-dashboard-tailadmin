@@ -19,7 +19,7 @@ import { buildPageViewWithFilterUnionRequest } from "@/lib/utils/analytics/ga4Re
 import { safeUrlPathname } from "@/lib/utils/routing/pathMatching";
 import {
   computeDeltaPct,
-  computeRangesFromQuery,
+  computeRangesForKPI,
 } from "@/lib/utils/time/timeWindows";
 import { google } from "googleapis";
 import { NextResponse } from "next/server";
@@ -90,8 +90,9 @@ export async function GET(req: Request) {
     const startQ = searchParams.get("start");
     const endQ = searchParams.get("end");
 
-    // Calcular rangos con overlay shifting
-    const ranges = computeRangesFromQuery(g, startQ, endQ);
+    // Calcular rangos con comportamiento KPI estandarizado
+    // Towns = KPI: granularidad "d" = 1 día, shift estándar
+    const ranges = computeRangesForKPI(g, startQ, endQ);
     const towns: TownId[] = [...TOWN_ID_ORDER];
 
     // Configurar GA4
@@ -130,7 +131,10 @@ export async function GET(req: Request) {
       towns.map((t) => [t, 0])
     ) as Record<TownId, number>;
 
+
+
     // Procesar datos GA4
+    
     for (const row of rows) {
       const dateRaw = String(row.dimensionValues?.[0]?.value ?? "");
       if (dateRaw.length !== 8) continue;
@@ -153,6 +157,8 @@ export async function GET(req: Request) {
       }
     }
 
+
+
     // Construir respuesta
     const items = towns.map((id) => {
       const current = currentTotals[id] ?? 0;
@@ -161,6 +167,7 @@ export async function GET(req: Request) {
         id,
         title: getTownLabel(id),
         total: current,
+        previousTotal: previous, // ✨ NUEVO: incluir valor anterior
         deltaPct: computeDeltaPct(current, previous),
       };
     });

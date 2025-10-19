@@ -18,6 +18,7 @@ export type PueblosTotalsResponse = {
     id: TownId;
     title: string;
     total: number;
+    previousTotal: number; // ✨ NUEVO: valor del período anterior
     deltaPct: number | null;
   }>;
 };

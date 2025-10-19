@@ -18,6 +18,7 @@ export type CategoriesTotalsResponse = {
     id: CategoryId;
     title: string;
     total: number;
+    previousTotal: number; // ✨ NUEVO: valor del período anterior
     deltaPct: number | null;
   }>;
 };

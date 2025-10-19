@@ -24,7 +24,15 @@ export function unwrapRange(r: MaybeLegacyRange): DateRange {
   };
 }
 
-/** Rango previo con desplazamiento NO SUPERPUESTO (períodos consecutivos), manteniendo shape {start,end}. */
+/** 
+ * ESTÁNDAR: Rango previo con desplazamiento consistente para todas las granularidades.
+ * 
+ * REGLA DE SHIFT:
+ * - d, w, m: shift de -1 día (previous termina 1 día antes de que inicie current)
+ * - y: shift de -30 días (para desplazar gráfica 1 punto, no 1 año completo)
+ * 
+ * DURACIÓN: Misma duración que el período current
+ */
 export function shiftPrevRange(
   current: DateRange,
   granularity: Granularity
@@ -32,33 +40,22 @@ export function shiftPrevRange(
   const currentStart = parseISO(current.start);
   const currentEnd = parseISO(current.end);
 
-  // Calcular la duración del período actual
-  const durationDays =
-    Math.ceil(
-      (currentEnd.getTime() - currentStart.getTime()) / (1000 * 60 * 60 * 24)
-    ) + 1;
-
+  // SHIFT ESTÁNDAR: Definir cuántos días desplazar según granularidad
+  let shiftDays: number;
+  
   if (granularity === "y") {
-    // Para granularidad anual: período anterior de la misma duración, terminando 1 día antes del inicio actual
-    const prevEnd = addDaysUTC(currentStart, -1);
-    const prevStart = addDaysUTC(prevEnd, -(durationDays - 1));
-    return {
-      start: toISO(prevStart),
-      end: toISO(prevEnd),
-    };
-  } else if (granularity === "m") {
-    // Para granularidad mensual: período anterior de la misma duración, terminando 1 día antes del inicio actual
-    const prevEnd = addDaysUTC(currentStart, -1);
-    const prevStart = addDaysUTC(prevEnd, -(durationDays - 1));
-    return {
-      start: toISO(prevStart),
-      end: toISO(prevEnd),
-    };
+    // Año: shift de 30 días (no 365) para desplazar gráfica 1 punto
+    shiftDays = 30;
+  } else {
+    // d, w, m: shift de 1 día siempre
+    shiftDays = 1;
   }
 
-  // Para otras granularidades (d, w): período anterior de la misma duración, terminando 1 día antes del inicio actual
-  const prevEnd = addDaysUTC(currentStart, -1);
-  const prevStart = addDaysUTC(prevEnd, -(durationDays - 1));
+  // Calcular período previo: desplazar todo el rango current según shiftDays
+  // Previous = Current desplazado -shiftDays en ambos extremos (start y end)
+  const prevEnd = addDaysUTC(currentEnd, -shiftDays);
+  const prevStart = addDaysUTC(currentStart, -shiftDays);
+  
   return {
     start: toISO(prevStart),
     end: toISO(prevEnd),
@@ -66,18 +63,41 @@ export function shiftPrevRange(
 }
 
 /**
- * Construye current/previous a partir de query (?start&end o ?end o ninguno),
- * aplicando la política:
- *  - start+end: respeta rango y calcula previous con desplazamiento
- *  - end: preset terminando en `end`
- *  - nada: preset terminando AYER
- *
- * IMPORTANTE: Para granularidad "d", usa ventana de 7 días para que las gráficas sean útiles
+ * ESTÁNDAR: Duración de período por granularidad
+ * 
+ * @param granularity - La granularidad solicitada
+ * @param dayAsWeek - Para granularidad "d": true=7 días (series), false=1 día (KPI/donut)
+ */
+function getStandardDurationDays(granularity: Granularity, dayAsWeek = false): number {
+  switch (granularity) {
+    case "d":
+      return dayAsWeek ? 7 : 1; // Series: 7 días, KPI/Donut: 1 día
+    case "w":
+      return 7;
+    case "m":
+      return 30;
+    case "y":
+      return 365;
+    default:
+      return 1;
+  }
+}
+
+/**
+ * ESTÁNDAR: Construye current/previous a partir de query (?start&end o ?end o ninguno)
+ * 
+ * POLÍTICA:
+ *  - start+end: respeta rango custom y calcula previous con shift estándar
+ *  - end: preset con duración estándar terminando en `end`
+ *  - nada: preset con duración estándar terminando AYER
+ * 
+ * SHIFT: Usa shiftPrevRange estandarizado (1 día para d/w/m, 30 días para y)
  */
 export function computeRangesFromQuery(
   g: Granularity,
   startQ?: string | null,
-  endQ?: string | null
+  endQ?: string | null,
+  dayAsWeek = false
 ): { current: DateRange; previous: DateRange } {
   if (startQ && endQ) {
     const s = parseISO(startQ);
@@ -90,37 +110,44 @@ export function computeRangesFromQuery(
   if (endQ) {
     const base = parseISO(endQ);
 
-    // Cuando se especifica endDate, el rango debe terminar en ese día, no en "yesterday"
-    // Recalcular el rango usando el endDate como final
-    let current: DateRange;
+    // Crear rango current con duración estándar terminando en base
+    const currentDuration = getStandardDurationDays(g, dayAsWeek);
+    const start = addDaysUTC(base, -(currentDuration - 1));
+    const current: DateRange = { start: toISO(start), end: toISO(base) };
 
-    if (g === "d") {
-      // Series (g='d'): usamos ventana de 7 días terminando en "base"
-      const start = addDaysUTC(base, -(7 - 1));
-      current = { start: toISO(start), end: toISO(base) };
-    } else if (g === "w") {
-      const start = addDaysUTC(base, -(7 - 1)); // 7 días hacia atrás
-      current = { start: toISO(start), end: toISO(base) };
-    } else if (g === "m") {
-      const start = addDaysUTC(base, -(30 - 1)); // 30 días hacia atrás
-      current = { start: toISO(start), end: toISO(base) };
-    } else {
-      // g === "y"
-      const start = addDaysUTC(base, -(365 - 1)); // 365 días hacia atrás
-      current = { start: toISO(start), end: toISO(base) };
-    }
-
+    // Usar shiftPrevRange estandarizado para calcular previous
     const previous = shiftPrevRange(current, g);
     return { current, previous };
   }
 
-  // Para granularidad diaria, usar ventana de 7 días para gráficas útiles
-  const dayAsWeek = g === "d";
+  // Caso sin parámetros: usar duración estándar terminando ayer
   const current = unwrapRange(
     deriveRangeEndingYesterday(g, todayUTC(), dayAsWeek)
   );
   const previous = shiftPrevRange(current, g);
   return { current, previous };
+}
+
+/**
+ * HELPERS ESTANDARIZADOS: Para facilitar el uso correcto de computeRangesFromQuery
+ */
+
+/** Para KPIs/Donuts: granularidad "d" = 1 día, resto = duración estándar */
+export function computeRangesForKPI(
+  g: Granularity,
+  startQ?: string | null,
+  endQ?: string | null
+): { current: DateRange; previous: DateRange } {
+  return computeRangesFromQuery(g, startQ, endQ, false);
+}
+
+/** Para Series: granularidad "d" = 7 días, resto = duración estándar */
+export function computeRangesForSeries(
+  g: Granularity,
+  startQ?: string | null,
+  endQ?: string | null
+): { current: DateRange; previous: DateRange } {
+  return computeRangesFromQuery(g, startQ, endQ, true);
 }
 
 /** Delta % segura: null cuando no hay base (prev <= 0). */
