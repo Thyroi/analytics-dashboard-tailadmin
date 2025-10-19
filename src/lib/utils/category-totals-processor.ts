@@ -30,13 +30,15 @@ export function processCategoryTotalsData(
 /**
  * Convierte datos procesados al formato requerido por CategoryGrid
  */
-export function convertToCategoryGridFormat(processedData: CategoryTotalItem[]): CategoryGridData[] {
-  return processedData.map(category => ({
+export function convertToCategoryGridFormat(
+  processedData: CategoryTotalItem[]
+): CategoryGridData[] {
+  return processedData.map((category) => ({
     categoryId: category.id,
     ga4Value: category.total, // Por ahora usamos total como GA4
     ga4PrevValue: category.previousTotal,
     chatbotValue: 0, // Por ahora 0 hasta integrar chatbot
     chatbotPrevValue: 0,
-    delta: category.deltaPct || 0
+    delta: category.deltaPct || 0,
   }));
 }

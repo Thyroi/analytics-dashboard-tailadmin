@@ -8,11 +8,7 @@ import {
   CATEGORY_SYNONYMS,
   type CategoryId,
 } from "@/lib/taxonomy/categories";
-import {
-  TOWN_ID_ORDER,
-  TOWN_META,
-  type TownId,
-} from "@/lib/taxonomy/towns";
+import { TOWN_ID_ORDER, TOWN_META, type TownId } from "@/lib/taxonomy/towns";
 
 // ===== Tipos de la API entrante =====
 export type ApiPoint = { time: string; value: number };
@@ -151,7 +147,10 @@ function detectTownAndCategory(
   // category: primera categoría en orden canónico que aparezca por id/label/sinónimos
   let categoryId: CategoryId | undefined;
   outer: for (const cat of CATEGORY_ID_ORDER) {
-    if (segSet.has(normalize(cat)) || segSet.has(normalize(CATEGORY_META[cat].label))) {
+    if (
+      segSet.has(normalize(cat)) ||
+      segSet.has(normalize(CATEGORY_META[cat].label))
+    ) {
       categoryId = cat;
       break;
     }
@@ -194,24 +193,24 @@ export function computeCategoryAndTownTotals(
   const townIndex = buildTownSynIndex();
 
   const catTotals: Record<CategoryId, { current: number; prev: number }> =
-    Object.fromEntries(CATEGORY_ID_ORDER.map((id) => [id, { current: 0, prev: 0 }])) as Record<
-      CategoryId,
-      { current: number; prev: number }
-    >;
+    Object.fromEntries(
+      CATEGORY_ID_ORDER.map((id) => [id, { current: 0, prev: 0 }])
+    ) as Record<CategoryId, { current: number; prev: number }>;
 
   const townTotals: Record<TownId, { current: number; prev: number }> =
-    Object.fromEntries(TOWN_ID_ORDER.map((id) => [id, { current: 0, prev: 0 }])) as Record<
-      TownId,
-      { current: number; prev: number }
-    >;
+    Object.fromEntries(
+      TOWN_ID_ORDER.map((id) => [id, { current: 0, prev: 0 }])
+    ) as Record<TownId, { current: number; prev: number }>;
 
   const debug = opts?.debug === true;
   const onDebugRow = opts?.onDebugRow;
 
-
-
   for (const rawKey of Object.keys(output)) {
-    const { townId, categoryId, segments } = detectTownAndCategory(rawKey, townIndex, catIndex);
+    const { townId, categoryId, segments } = detectTownAndCategory(
+      rawKey,
+      townIndex,
+      catIndex
+    );
     if (!townId && !categoryId) {
       if (debug && onDebugRow) {
         onDebugRow({
@@ -231,14 +230,12 @@ export function computeCategoryAndTownTotals(
     for (const pt of series) {
       const ymd = pt.time;
       const v = pt.value ?? 0;
-      
+
       const isInCurrent = inRange(ymd, currentStart, currentEnd);
       const isInPrev = inRange(ymd, prevStart, prevEnd);
-      
+
       if (isInCurrent) addCur += v;
       if (isInPrev) addPrev += v;
-      
-
     }
 
     if (categoryId) {
@@ -275,8 +272,6 @@ export function computeCategoryAndTownTotals(
     currentTotal: townTotals[id].current,
     prevTotal: townTotals[id].prev,
   }));
-
-
 
   return { categories, towns };
 }

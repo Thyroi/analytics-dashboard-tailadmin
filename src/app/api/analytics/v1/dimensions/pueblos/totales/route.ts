@@ -131,10 +131,8 @@ export async function GET(req: Request) {
       towns.map((t) => [t, 0])
     ) as Record<TownId, number>;
 
-
-
     // Procesar datos GA4
-    
+
     for (const row of rows) {
       const dateRaw = String(row.dimensionValues?.[0]?.value ?? "");
       if (dateRaw.length !== 8) continue;
@@ -156,8 +154,6 @@ export async function GET(req: Request) {
         previousTotals[town] += value;
       }
     }
-
-
 
     // Construir respuesta
     const items = towns.map((id) => {

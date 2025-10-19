@@ -2,8 +2,8 @@
 
 import SectorsGrid from "@/components/common/SectorsGrid";
 import { useTownTimeframe } from "@/features/analytics/context/TownTimeContext";
-import { useTownDetails } from "@/features/home/hooks/useTownDetails";
 import { useResumenTown } from "@/features/home/hooks/useResumenTown";
+import { useTownDetails } from "@/features/home/hooks/useTownDetails";
 import type { TownId } from "@/lib/taxonomy/towns";
 import type { Granularity } from "@/lib/types";
 import { getCorrectDatesForGranularity } from "@/lib/utils/time/deltaDateCalculation";
@@ -27,8 +27,10 @@ export default function SectorsByTownSection({ granularity }: Props) {
   );
 
   // Preparar parámetros de tiempo para useResumenTown
-  const startDateStr = mode === "range" ? startDate.toISOString().split("T")[0] : null;
-  const endDateStr = mode === "range" ? endDate.toISOString().split("T")[0] : currentEndISO;
+  const startDateStr =
+    mode === "range" ? startDate.toISOString().split("T")[0] : null;
+  const endDateStr =
+    mode === "range" ? endDate.toISOString().split("T")[0] : currentEndISO;
 
   // Usar hook combinado GA4 + Chatbot
   const townResumenResult = useResumenTown({
@@ -36,7 +38,6 @@ export default function SectorsByTownSection({ granularity }: Props) {
     startDate: startDateStr,
     endDate: endDateStr,
   });
-
 
   // Crear lookup map por ID para acceso eficiente
   const itemsById = useMemo(() => {
@@ -47,12 +48,12 @@ export default function SectorsByTownSection({ granularity }: Props) {
   }, [townResumenResult]);
 
   const displayedIds = useMemo<string[]>(
-    () => townResumenResult.data.map(item => item.id),
+    () => townResumenResult.data.map((item) => item.id),
     [townResumenResult.data]
   );
 
   const townId = expandedId as TownId | null;
-  
+
   // Preparar timeParams para useTownDetails (formato original)
   const timeParamsForDetails =
     mode === "range"
@@ -61,7 +62,7 @@ export default function SectorsByTownSection({ granularity }: Props) {
           endISO: endDate.toISOString().split("T")[0],
         }
       : { endISO: currentEndISO };
-  
+
   const { series, donutData } = useTownDetails(
     townId ?? ("almonte" as TownId),
     granularity,

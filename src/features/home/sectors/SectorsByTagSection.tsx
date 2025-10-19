@@ -30,23 +30,24 @@ export default function SectorsByTagSection({ granularity }: Props) {
   // Usar useResumenData para obtener deltas combinados (GA4 + Chatbot)
   const { categoriesData, isLoading } = useResumenCategory({
     granularity,
-    startDate: mode === "range" ? startDate.toISOString().split("T")[0] : undefined,
-    endDate: mode === "range" ? endDate.toISOString().split("T")[0] : currentEndISO,
+    startDate:
+      mode === "range" ? startDate.toISOString().split("T")[0] : undefined,
+    endDate:
+      mode === "range" ? endDate.toISOString().split("T")[0] : currentEndISO,
   });
 
   // Convertir datos a formato compatible con SectorsGrid
   const itemsById = useMemo(() => {
     const result: Record<string, { deltaPct: number | null }> = {};
-    categoriesData.forEach((item: { categoryId: string; delta: number | null }) => {
-      result[item.categoryId] = { deltaPct: item.delta };
-    });
+    categoriesData.forEach(
+      (item: { categoryId: string; delta: number | null }) => {
+        result[item.categoryId] = { deltaPct: item.delta };
+      }
+    );
     return result;
   }, [categoriesData]);
 
-  const displayedIds = useMemo<string[]>(
-    () => [...CATEGORY_ID_ORDER],
-    []
-  );
+  const displayedIds = useMemo<string[]>(() => [...CATEGORY_ID_ORDER], []);
 
   const catId = expandedId as CategoryId | null;
 
@@ -58,8 +59,7 @@ export default function SectorsByTagSection({ granularity }: Props) {
     mode === "range" ? startDate.toISOString().split("T")[0] : undefined // startISO
   );
 
-  const getDeltaPctFor = (id: string) =>
-    itemsById[id]?.deltaPct ?? null;
+  const getDeltaPctFor = (id: string) => itemsById[id]?.deltaPct ?? null;
 
   const getSeriesFor = (_id: string) =>
     catId && _id === catId ? series : { current: [], previous: [] };

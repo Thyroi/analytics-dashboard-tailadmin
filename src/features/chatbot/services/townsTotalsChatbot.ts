@@ -48,7 +48,6 @@ export async function getTownsTotalsChatbot(
   time?: { startISO: string; endISO: string } | { endISO?: string } | string,
   signal?: AbortSignal
 ): Promise<TownsTotalsResponse> {
-
   // const startISO = typeof time === "object" && time && "startISO" in time ? time.startISO : undefined; // TEMPORALMENTE NO USADO
   const endISO =
     typeof time === "string"
@@ -69,13 +68,10 @@ export async function getTownsTotalsChatbot(
   const prvStart = toYYYYMMDD(previous.start);
   const prvEnd = toYYYYMMDD(previous.end);
 
-
-
   let items;
   if (granularity === "y") {
     // ✨ OPTIMIZACIÓN: Una sola llamada para todos los towns (granularidad anual)
 
-    
     const [curResp, prvResp] = await Promise.all([
       fetchChatbotTags(
         {
@@ -100,7 +96,7 @@ export async function getTownsTotalsChatbot(
     // Construir ejes de tiempo usando datos completos
     const axis = buildAxisFromChatbot(curResp.output, "y");
     const prevAxis = buildAxisFromChatbot(prvResp.output, "y");
-    
+
     // Función para sumar por mes usando datos filtrados
     const sumByMonth = (
       output: Record<string, { time: string; value: number }[]>,
@@ -133,30 +129,31 @@ export async function getTownsTotalsChatbot(
     items = TOWN_ID_ORDER.map((town) => {
       // Filtrar datos por town del resultado completo
       const townPattern = new RegExp(`^root\\.${town}\\.`);
-      
+
       const currentData: Record<string, { time: string; value: number }[]> = {};
-      const previousData: Record<string, { time: string; value: number }[]> = {};
-      
+      const previousData: Record<string, { time: string; value: number }[]> =
+        {};
+
       // Filtrar current data
       for (const [key, values] of Object.entries(curResp.output || {})) {
         if (townPattern.test(key)) {
           currentData[key] = values;
         }
       }
-      
-      // Filtrar previous data  
+
+      // Filtrar previous data
       for (const [key, values] of Object.entries(prvResp.output || {})) {
         if (townPattern.test(key)) {
           previousData[key] = values;
         }
       }
-      
+
       const curMonths = sumByMonth(currentData, axis.keysOrdered);
       const prevMonths = sumByMonth(previousData, prevAxis.keysOrdered);
       const total = curMonths.reduce((a, b) => a + b, 0);
       const prev = prevMonths.reduce((a, b) => a + b, 0);
       const deltaPct = prev > 0 ? ((total - prev) / prev) * 100 : null;
-      
+
       return {
         id: town,
         title: town,
@@ -172,7 +169,6 @@ export async function getTownsTotalsChatbot(
   } else {
     // ✨ OPTIMIZACIÓN: Una sola llamada para todos los towns en lugar de 30 llamadas individuales
 
-    
     const [curResp, prvResp] = await Promise.all([
       fetchChatbotTags(
         {
@@ -194,34 +190,33 @@ export async function getTownsTotalsChatbot(
       ),
     ]);
 
-
-    
     // Procesar datos localmente por town
     items = TOWN_ID_ORDER.map((town) => {
       // Filtrar datos por town del resultado completo
       const townPattern = new RegExp(`^root\\.${town}\\.`);
-      
+
       const currentData: Record<string, { time: string; value: number }[]> = {};
-      const previousData: Record<string, { time: string; value: number }[]> = {};
-      
+      const previousData: Record<string, { time: string; value: number }[]> =
+        {};
+
       // Filtrar current data
       for (const [key, values] of Object.entries(curResp.output || {})) {
         if (townPattern.test(key)) {
           currentData[key] = values;
         }
       }
-      
-      // Filtrar previous data  
+
+      // Filtrar previous data
       for (const [key, values] of Object.entries(prvResp.output || {})) {
         if (townPattern.test(key)) {
           previousData[key] = values;
         }
       }
-      
+
       const total = sumOutput(currentData);
       const prev = sumOutput(previousData);
       const deltaPct = prev > 0 ? ((total - prev) / prev) * 100 : null;
-      
+
       return {
         id: town,
         title: town,

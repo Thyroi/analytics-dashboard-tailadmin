@@ -1,11 +1,14 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import {
+  fetchChatbotTotals,
+  type ChatbotTotalsResponse,
+} from "@/lib/services/chatbot/totals";
 import { TOWN_ID_ORDER, getTownLabel } from "@/lib/taxonomy/towns";
 import type { Granularity } from "@/lib/types";
-import { fetchChatbotTotals, type ChatbotTotalsResponse } from "@/lib/services/chatbot/totals";
 import { computeCategoryAndTownTotals } from "@/lib/utils/chatbot/aggregate";
 import { computeDeltaPct } from "@/lib/utils/time/timeWindows";
+import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 
 export interface UseResumenTownParams {
@@ -18,9 +21,9 @@ export interface TownGridData {
   id: string;
   title: string;
   ga4Total: number;
-  ga4Previous: number;        // ✨ NUEVO: GA4 valor anterior
+  ga4Previous: number; // ✨ NUEVO: GA4 valor anterior
   chatbotTotal: number;
-  chatbotPrevious: number;    // ✨ NUEVO: Chatbot valor anterior
+  chatbotPrevious: number; // ✨ NUEVO: Chatbot valor anterior
   combinedTotal: number;
   combinedDelta: number;
   combinedDeltaPct: number | null;
@@ -52,7 +55,6 @@ export function useResumenTown({
   startDate,
   endDate,
 }: UseResumenTownParams) {
-  
   // Query para datos GA4 de towns
   const townTotalesQuery = useQuery({
     queryKey: ["townTotales", granularity, startDate, endDate],
@@ -60,20 +62,18 @@ export function useResumenTown({
       const params = new URLSearchParams({
         g: granularity,
       });
-      
+
       if (startDate) params.set("start", startDate);
       if (endDate) params.set("end", endDate);
 
       const apiUrl = `/api/analytics/v1/dimensions/pueblos/totales?${params}`;
-      
-
 
       const response = await fetch(apiUrl);
-      
+
       if (!response.ok) {
         throw new Error(`API Error: ${response.status} ${response.statusText}`);
       }
-      
+
       return response.json();
     },
     enabled: true,
@@ -102,24 +102,29 @@ export function useResumenTown({
 
   // Procesar y combinar datos de GA4 y Chatbot usando función de agregación
   const processedData: TownGridData[] = useMemo(() => {
-    return TOWN_ID_ORDER.map(townId => {
+    return TOWN_ID_ORDER.map((townId) => {
       // Datos GA4
-      const ga4Item = townTotalesQuery.data?.items.find(item => item.id === townId);
+      const ga4Item = townTotalesQuery.data?.items.find(
+        (item) => item.id === townId
+      );
       const ga4Current = ga4Item?.total ?? 0;
       const ga4Previous = ga4Item?.previousTotal ?? 0;
-      
+
       // Datos Chatbot desde la función de agregación
-      const chatbotTown = chatbotAggregated?.towns.find(town => town.id === townId);
+      const chatbotTown = chatbotAggregated?.towns.find(
+        (town) => town.id === townId
+      );
       const chatbotCurrent = chatbotTown?.currentTotal ?? 0;
       const chatbotPrevious = chatbotTown?.prevTotal ?? 0;
-      
+
       // Combinados con función estandarizada para delta %
       const combinedCurrent = ga4Current + chatbotCurrent;
       const combinedPrevious = ga4Previous + chatbotPrevious;
       const combinedDelta = combinedCurrent - combinedPrevious;
-      const combinedDeltaPct = computeDeltaPct(combinedCurrent, combinedPrevious);
-
-
+      const combinedDeltaPct = computeDeltaPct(
+        combinedCurrent,
+        combinedPrevious
+      );
 
       return {
         id: townId,

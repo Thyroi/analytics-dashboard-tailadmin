@@ -24,13 +24,13 @@ export function unwrapRange(r: MaybeLegacyRange): DateRange {
   };
 }
 
-/** 
+/**
  * ESTÁNDAR: Rango previo con desplazamiento consistente para todas las granularidades.
- * 
+ *
  * REGLA DE SHIFT:
  * - d, w, m: shift de -1 día (previous termina 1 día antes de que inicie current)
  * - y: shift de -30 días (para desplazar gráfica 1 punto, no 1 año completo)
- * 
+ *
  * DURACIÓN: Misma duración que el período current
  */
 export function shiftPrevRange(
@@ -42,7 +42,7 @@ export function shiftPrevRange(
 
   // SHIFT ESTÁNDAR: Definir cuántos días desplazar según granularidad
   let shiftDays: number;
-  
+
   if (granularity === "y") {
     // Año: shift de 30 días (no 365) para desplazar gráfica 1 punto
     shiftDays = 30;
@@ -55,7 +55,7 @@ export function shiftPrevRange(
   // Previous = Current desplazado -shiftDays en ambos extremos (start y end)
   const prevEnd = addDaysUTC(currentEnd, -shiftDays);
   const prevStart = addDaysUTC(currentStart, -shiftDays);
-  
+
   return {
     start: toISO(prevStart),
     end: toISO(prevEnd),
@@ -64,11 +64,14 @@ export function shiftPrevRange(
 
 /**
  * ESTÁNDAR: Duración de período por granularidad
- * 
+ *
  * @param granularity - La granularidad solicitada
  * @param dayAsWeek - Para granularidad "d": true=7 días (series), false=1 día (KPI/donut)
  */
-function getStandardDurationDays(granularity: Granularity, dayAsWeek = false): number {
+function getStandardDurationDays(
+  granularity: Granularity,
+  dayAsWeek = false
+): number {
   switch (granularity) {
     case "d":
       return dayAsWeek ? 7 : 1; // Series: 7 días, KPI/Donut: 1 día
@@ -85,12 +88,12 @@ function getStandardDurationDays(granularity: Granularity, dayAsWeek = false): n
 
 /**
  * ESTÁNDAR: Construye current/previous a partir de query (?start&end o ?end o ninguno)
- * 
+ *
  * POLÍTICA:
  *  - start+end: respeta rango custom y calcula previous con shift estándar
  *  - end: preset con duración estándar terminando en `end`
  *  - nada: preset con duración estándar terminando AYER
- * 
+ *
  * SHIFT: Usa shiftPrevRange estandarizado (1 día para d/w/m, 30 días para y)
  */
 export function computeRangesFromQuery(

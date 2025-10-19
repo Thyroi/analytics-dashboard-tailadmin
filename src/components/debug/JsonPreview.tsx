@@ -1,7 +1,5 @@
 "use client";
 
-import React from "react";
-
 export default function JsonPreview({
   data,
   title = "Raw Query Result",
@@ -21,8 +19,8 @@ export default function JsonPreview({
   const pretty = (() => {
     try {
       return JSON.stringify(data, null, 2);
-      } catch {
-        return String(data);
+    } catch {
+      return String(data);
     }
   })();
 

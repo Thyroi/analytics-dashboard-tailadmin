@@ -195,7 +195,7 @@ export function deriveRangeEndingYesterday(
  * Rango anterior DESPLAZADO (misma longitud) para gráficas comparables:
  *  - "d": -1 día
  *  - "w": -1 día (para gráficas idénticas desplazadas 1 punto)
- *  - "m": -1 día (para gráficas idénticas desplazadas 1 punto)  
+ *  - "m": -1 día (para gráficas idénticas desplazadas 1 punto)
  *  - "y": -1 mes (para buckets mensuales desplazados 1 bucket)
  */
 export function derivePrevShifted(
@@ -207,9 +207,9 @@ export function derivePrevShifted(
 
   if (g === "y") {
     // Para año: shift de 1 mes (no 1 año) para buckets mensuales comparables
-    return { 
-      start: toISO(addMonthsUTC(s, -1)), 
-      end: toISO(addMonthsUTC(e, -1)) 
+    return {
+      start: toISO(addMonthsUTC(s, -1)),
+      end: toISO(addMonthsUTC(e, -1)),
     };
   }
 
@@ -297,7 +297,7 @@ export function computeRanges(opts: {
 /* ==================== Comportamiento específico para KPI/Donut/Delta ==================== */
 
 /**
- * Comportamiento DONUT/KPI/DELTA: 
+ * Comportamiento DONUT/KPI/DELTA:
  * - Granularidad "d": Solo 1 día (ayer vs antes de ayer)
  * - Otras granularidades: Rangos normales con shift de 1 día/mes
  */
@@ -308,7 +308,7 @@ export function computeRangesForKPI(opts: {
 }): { current: DateRange; previous: DateRange } {
   return computeRanges({
     ...opts,
-    seriesExpandDay: false // Granularidad "d" = 1 día para KPIs
+    seriesExpandDay: false, // Granularidad "d" = 1 día para KPIs
   });
 }
 
@@ -324,6 +324,6 @@ export function computeRangesForSeries(opts: {
 }): { current: DateRange; previous: DateRange } {
   return computeRanges({
     ...opts,
-    seriesExpandDay: true // Granularidad "d" = 7 días para series
+    seriesExpandDay: true, // Granularidad "d" = 7 días para series
   });
 }

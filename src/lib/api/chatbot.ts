@@ -24,9 +24,7 @@ export async function fetchChatbotTags(
     ...(input.startTime && { startTime: input.startTime }),
     ...(input.endTime && { endTime: input.endTime }),
   };
-  
 
-  
   const res = await fetch("/api/chatbot/audit/tags", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -40,12 +38,14 @@ export async function fetchChatbotTags(
       status: res.status,
       statusText: res.statusText,
       errorText: text,
-      requestBody
+      requestBody,
     });
-    throw new Error(`Chatbot API Error ${res.status}: ${text || res.statusText}`);
+    throw new Error(
+      `Chatbot API Error ${res.status}: ${text || res.statusText}`
+    );
   }
-  
-  const response = await res.json() as ChatbotResponse;
+
+  const response = (await res.json()) as ChatbotResponse;
 
   return response;
 }

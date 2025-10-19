@@ -3,9 +3,9 @@
  * Usa comportamiento KPI/Delta con shifts correctos
  */
 
-import { computeRangesForKPI } from "@/lib/utils/time/dateRangeWindow";
 import type { Granularity } from "@/lib/types";
 import type { ApiResponse } from "@/lib/utils/chatbot/aggregate";
+import { computeRangesForKPI } from "@/lib/utils/time/dateRangeWindow";
 
 /** Parámetros para el servicio de chatbot */
 export type ChatbotTotalsParams = {
@@ -57,16 +57,14 @@ export async function fetchChatbotTotals(
     patterns: "root.*.*.*", // Patrón más específico para capturar toda la taxonomía
     granularity: "d" as const, // Siempre "d" para la API interna
     startTime: formatDateForChatbot(ranges.previous.start), // Desde el inicio del período previous
-    endTime: formatDateForChatbot(ranges.current.end),     // Hasta el final del período current
+    endTime: formatDateForChatbot(ranges.current.end), // Hasta el final del período current
   };
-
-
 
   // 3. Hacer POST request (no GET)
   const response = await fetch(ENDPOINT_URL, {
     method: "POST",
-    headers: { 
-      "Content-Type": "application/json" 
+    headers: {
+      "Content-Type": "application/json",
     },
     body: JSON.stringify(payload),
   });
@@ -79,7 +77,7 @@ export async function fetchChatbotTotals(
   }
 
   const data = await response.json();
-  
+
   // 4. Enriquecer respuesta con información de rangos calculados
   const enrichedResponse: ChatbotTotalsResponse = {
     ...data,
