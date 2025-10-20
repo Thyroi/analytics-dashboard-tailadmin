@@ -6,7 +6,6 @@ import {
   useTagTimeframe,
 } from "@/features/analytics/context/TagTimeContext";
 
-import { Loader2 } from "lucide-react";
 import { useState } from "react";
 
 import {
@@ -81,7 +80,7 @@ function ChatbotTownsSectionContent() {
       {/* KPI Section - Top Towns */}
       <div className="px-4 mb-6">
         <TopTownsKPI
-          towns={towns.slice(0, 6)} // Top 6 towns
+          towns={towns.slice(0, 8)} // Top 8 towns
           isLoading={isLoading}
           isError={isError}
         />
@@ -135,11 +134,13 @@ function ChatbotTownsGrid({
 }) {
   if (isLoading) {
     return (
-      <div className="flex justify-center items-center py-12">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
-        <span className="ml-3 text-gray-600 dark:text-gray-400">
-          Cargando datos de pueblos...
-        </span>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
+        {Array.from({ length: 10 }).map((_, i) => (
+          <div
+            key={i}
+            className="h-32 bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse"
+          />
+        ))}
       </div>
     );
   }

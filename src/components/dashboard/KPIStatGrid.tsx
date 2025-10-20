@@ -11,6 +11,8 @@ type Props = {
   minItemWidth?: number;
   infiniteRow?: boolean;
   itemsPerPage?: number;
+  autoSlide?: boolean;
+  slideInterval?: number;
 };
 
 export default function KPIStatGrid({
@@ -20,8 +22,12 @@ export default function KPIStatGrid({
   minItemWidth = 221,
   infiniteRow = false,
   itemsPerPage = 4,
+  autoSlide = false,
+  slideInterval = 4000,
 }: Props) {
   const [page, setPage] = React.useState(0);
+  const [isHovered, setIsHovered] = React.useState(false);
+  
   const pages = infiniteRow
     ? Math.max(1, Math.ceil(items.length / itemsPerPage))
     : 1;
@@ -30,11 +36,26 @@ export default function KPIStatGrid({
     ? items.slice(sliceStart, sliceStart + itemsPerPage)
     : items;
 
-  const next = () => setPage((p) => Math.min(pages - 1, p + 1));
-  const prev = () => setPage((p) => Math.max(0, p - 1));
+  const next = () => setPage((p) => (p + 1) % pages); // Circular navigation
+  const prev = () => setPage((p) => (p - 1 + pages) % pages); // Circular navigation
+
+  // Auto-slide functionality
+  React.useEffect(() => {
+    if (!autoSlide || !infiniteRow || pages <= 1 || isHovered) return;
+
+    const interval = setInterval(() => {
+      setPage((p) => (p + 1) % pages);
+    }, slideInterval);
+
+    return () => clearInterval(interval);
+  }, [autoSlide, infiniteRow, pages, isHovered, slideInterval]);
 
   return (
-    <div className={className}>
+    <div 
+      className={className}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
       <div
         className={`grid items-stretch gap-6 ${colsClassName}`}
         style={{
@@ -51,7 +72,13 @@ export default function KPIStatGrid({
       </div>
       {infiniteRow && items.length > itemsPerPage && (
         <div className="flex justify-center mt-3">
-          <PagerDots page={page} pages={pages} onPrev={prev} onNext={next} />
+          <PagerDots 
+            page={page} 
+            pages={pages} 
+            onPrev={prev} 
+            onNext={next}
+            className={autoSlide ? "opacity-75 hover:opacity-100 transition-opacity" : ""}
+          />
         </div>
       )}
     </div>

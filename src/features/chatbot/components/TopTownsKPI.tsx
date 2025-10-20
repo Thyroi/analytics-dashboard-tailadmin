@@ -40,6 +40,8 @@ export default function TopTownsKPI({
       items={kpis}
       infiniteRow={true}
       itemsPerPage={4}
+      autoSlide={true}
+      slideInterval={5000}
       className="mb-6"
     />
   );

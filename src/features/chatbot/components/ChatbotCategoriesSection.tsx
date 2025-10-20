@@ -90,7 +90,7 @@ function ChatbotCategoriesSectionContent() {
       {/* Top Categories KPI entre header y categorías */}
       <div className="px-4 mb-6">
         <TopCategoriesKPI
-          categories={categories.slice(0, 4)}
+          categories={categories.slice(0, 8)}
           isLoading={isLoading}
           isError={isError}
         />
