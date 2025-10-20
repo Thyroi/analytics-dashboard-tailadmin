@@ -1,0 +1,193 @@
+"use client";
+
+import StickyHeaderSection from "@/components/common/StickyHeaderSection";
+import {
+  TagTimeProvider,
+  useTagTimeframe,
+} from "@/features/analytics/context/TagTimeContext";
+
+import { Loader2 } from "lucide-react";
+import { useState } from "react";
+
+import {
+  type TownCardData,
+  useChatbotTowns,
+} from "../hooks/useChatbotTowns";
+import TownExpandedCard from "./TownExpandedCard";
+import TopTownsKPI from "./TopTownsKPI";
+import TownCard from "./TownCard";
+
+function ChatbotTownsSectionContent() {
+  const {
+    mode,
+    granularity,
+    startDate,
+    endDate,
+    setGranularity,
+    setRange,
+    clearRange,
+  } = useTagTimeframe();
+
+  // Convertir fechas de manera segura
+  let startDateStr: string | null = null;
+  let endDateStr: string | null = null;
+
+  try {
+    startDateStr = startDate instanceof Date && !isNaN(startDate.getTime()) 
+      ? startDate.toISOString().split('T')[0] 
+      : null;
+    endDateStr = endDate instanceof Date && !isNaN(endDate.getTime()) 
+      ? endDate.toISOString().split('T')[0] 
+      : null;
+  } catch (error) {
+    console.error("Error converting dates:", { startDate, endDate, error });
+  }
+
+  const [selectedTownId, setSelectedTownId] = useState<string | null>(null);
+
+  // Obtener datos de towns
+  const {
+    towns,
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useChatbotTowns({
+    granularity,
+    startDate: startDateStr,
+    endDate: endDateStr,
+    enabled: true,
+  });
+
+
+
+  return (
+    <section className="max-w-[1560px] mx-auto w-full">
+      {/* Header con controles */}
+      <div className="px-4 mb-6">
+        <StickyHeaderSection
+          title="Chatbot · Analíticas por pueblo"
+          subtitle="Interacciones del chatbot organizadas por municipio"
+          mode={mode}
+          granularity={granularity}
+          onGranularityChange={setGranularity}
+          startDate={startDate}
+          endDate={endDate}
+          onRangeChange={setRange}
+          onClearRange={clearRange}
+        />
+      </div>
+
+      {/* KPI Section - Top Towns */}
+      <div className="px-4 mb-6">
+        <TopTownsKPI
+          towns={towns.slice(0, 6)} // Top 6 towns
+          isLoading={isLoading}
+          isError={isError}
+        />
+      </div>
+
+      {/* Drilldown expandido como overlay */}
+      {selectedTownId && (
+        <div className="px-4 mb-6">
+          <TownExpandedCard
+            townId={selectedTownId}
+            granularity={granularity}
+            startDate={startDateStr}
+            endDate={endDateStr}
+            onClose={() => setSelectedTownId(null)}
+          />
+        </div>
+      )}
+
+      {/* Grid de towns siempre visible */}
+      <div className="px-4">
+        <ChatbotTownsGrid
+          towns={towns}
+          isLoading={isLoading}
+          isError={isError}
+          error={error}
+          onRefetch={refetch}
+          onTownClick={setSelectedTownId}
+          selectedTownId={selectedTownId}
+        />
+      </div>
+    </section>
+  );
+}
+
+function ChatbotTownsGrid({
+  towns,
+  isLoading,
+  isError,
+  error,
+  onRefetch,
+  onTownClick,
+  selectedTownId,
+}: {
+  towns: TownCardData[];
+  isLoading: boolean;
+  isError: boolean;
+  error: Error | null;
+  onRefetch: () => void;
+  onTownClick: (townId: string) => void;
+  selectedTownId: string | null;
+}) {
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+        <span className="ml-3 text-gray-600 dark:text-gray-400">
+          Cargando datos de pueblos...
+        </span>
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-6 text-center">
+        <p className="text-red-700 dark:text-red-300 mb-4">
+          Error cargando datos de pueblos: {error?.message || "Error desconocido"}
+        </p>
+        <button
+          onClick={() => onRefetch()}
+          className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+        >
+          Reintentar
+        </button>
+      </div>
+    );
+  }
+
+  if (towns.length === 0) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-gray-500 dark:text-gray-400 text-lg">
+          No hay datos de pueblos disponibles para el período seleccionado
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
+      {towns.map((town) => (
+        <TownCard
+          key={town.id}
+          data={town}
+          onClick={() => onTownClick(town.id)}
+          isSelected={selectedTownId === town.id}
+        />
+      ))}
+    </div>
+  );
+}
+
+export default function ChatbotTownsSection() {
+  return (
+    <TagTimeProvider>
+      <ChatbotTownsSectionContent />
+    </TagTimeProvider>
+  );
+}

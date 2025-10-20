@@ -2,6 +2,7 @@
 
 import CategoryDrilldownView from "@/features/chatbot/components/CategoryDrilldownView";
 import ChatbotCategoriesSection from "@/features/chatbot/components/ChatbotCategoriesSection";
+import ChatbotTownsSection from "@/features/chatbot/components/ChatbotTownsSection";
 import type { CategoryId } from "@/lib/taxonomy/categories";
 import { useState } from "react";
 
@@ -24,6 +25,9 @@ export default function TagsDashboard() {
     <div className="space-y-8">
       {/* Categories section with sticky header */}
       <ChatbotCategoriesSection />
+
+      {/* Towns section with sticky header */}
+      <ChatbotTownsSection />
 
     </div>
   );
