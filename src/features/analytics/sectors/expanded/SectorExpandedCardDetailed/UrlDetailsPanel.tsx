@@ -229,7 +229,8 @@ export default function UrlDetailsPanel({
           />
           {categories.length === 0 && (
             <div className="mt-2 text-xs text-gray-500">
-              Sin datos suficientes para la granularidad &quot;{granularity}&quot;.
+              Sin datos suficientes para la granularidad &quot;{granularity}
+              &quot;.
             </div>
           )}
         </div>

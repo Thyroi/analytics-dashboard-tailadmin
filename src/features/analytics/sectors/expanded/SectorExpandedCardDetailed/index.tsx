@@ -67,7 +67,7 @@ export default function SectorExpandedCardDetailed(props: Props) {
         level2Ref.current?.scrollIntoView({
           behavior: "smooth",
           block: "start",
-          inline: "nearest"
+          inline: "nearest",
         });
       }, 150); // Delay para asegurar que el DOM esté actualizado
     }
