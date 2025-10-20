@@ -29,10 +29,7 @@ export function useDonutSelection(seriesByUrl: SeriesByUrl) {
       );
 
       if (candidate) {
-        // Si es el mismo path, no hacer nada
-        if (candidate === selectedPath) return;
-
-        // Actualizar estado
+        // Actualizar estado (incluso si es el mismo path)
         setSelectedPath(candidate);
 
         // Invalidar queries por prefijo para forzar refetch inmediato
@@ -40,16 +37,16 @@ export function useDonutSelection(seriesByUrl: SeriesByUrl) {
           queryKey: ["url-drilldown"],
         });
 
-        // Hacer scroll al nivel 3
+        // Hacer scroll al nivel 3 (siempre, para asegurar visibilidad)
         setTimeout(() => {
           detailsRef.current?.scrollIntoView({
             behavior: "smooth",
             block: "start",
           });
-        }, 100);
+        }, 150);
       }
     },
-    [selectedPath, queryClient, seriesByUrl]
+    [queryClient, seriesByUrl]
   );
 
   return {

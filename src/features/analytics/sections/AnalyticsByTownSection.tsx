@@ -142,6 +142,18 @@ function AnalyticsByTownSectionInner() {
     setDrill(null);
   }, []);
 
+  // Memoizar level2Data para mejor tracking de dependencias
+  const level2Data = useMemo(() => {
+    return drill?.kind === "town+cat"
+      ? {
+          townId: drill.townId,
+          categoryId: drill.categoryId,
+          granularity,
+          endISO: mode === "range" ? endISO : currentEndISO,
+        }
+      : undefined;
+  }, [drill, granularity, mode, endISO, currentEndISO]);
+
   // Remonta el grid si cambian exp/drill/granularidad/rango
   const gridKey = useMemo(() => {
     const base = `g=${granularity}|end=${endISO ?? ""}|exp=${expandedId ?? ""}`;
@@ -181,16 +193,7 @@ function AnalyticsByTownSectionInner() {
         onSliceClick={handleSliceClick}
         isDeltaLoading={isInitialLoading || isFetching}
         // Nivel 2 (drill) - usar fecha corregida
-        level2Data={
-          drill?.kind === "town+cat"
-            ? {
-                townId: drill.townId,
-                categoryId: drill.categoryId,
-                granularity,
-                endISO: mode === "range" ? endISO : currentEndISO,
-              }
-            : undefined
-        }
+        level2Data={level2Data}
         startDate={startDate}
         endDate={endDate}
       />

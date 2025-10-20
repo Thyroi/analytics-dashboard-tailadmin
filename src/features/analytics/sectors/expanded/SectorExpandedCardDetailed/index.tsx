@@ -4,7 +4,7 @@ import Header from "@/features/home/sectors/SectorExpandedCard/Header";
 import type { CategoryId } from "@/lib/taxonomy/categories";
 import type { TownId } from "@/lib/taxonomy/towns";
 import type { DonutDatum, Granularity, SeriesPoint } from "@/lib/types";
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 
 import ChartPair from "@/components/common/ChartPair";
 import { IconOrImage } from "@/lib/utils/core/images";
@@ -60,19 +60,24 @@ export default function SectorExpandedCardDetailed(props: Props) {
   // Auto-scroll a nivel 2
   const level2Ref = useRef<HTMLDivElement | null>(null);
 
-  const scrollToLevel2 = () => {
-    setTimeout(() => {
-      level2Ref.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }, 100);
-  };
+  // Auto-scroll cuando aparece level2 (después del click en donut)
+  useEffect(() => {
+    if (level2 && level2Ref.current) {
+      setTimeout(() => {
+        level2Ref.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+          inline: "nearest"
+        });
+      }, 150); // Delay para asegurar que el DOM esté actualizado
+    }
+  }, [level2]);
 
-  // Click en dona - simplemente delegar al parent
+  // Click en dona - simplemente delegar al parent (el scroll lo maneja useEffect)
   const handleDonutTopClick = (label: string) => {
     if (onSliceClick) {
       onSliceClick(label);
     }
-    // Hacer scroll al nivel 2 tras el click (el prop level2 puede llegar en el siguiente render)
-    scrollToLevel2();
   };
 
   return (

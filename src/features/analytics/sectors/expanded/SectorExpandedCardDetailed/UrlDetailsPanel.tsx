@@ -221,7 +221,7 @@ export default function UrlDetailsPanel({
       {/* Engagement promedio */}
       <section className="mb-6">
         <DrilldownTitle name="engagement promedio (s)" color="primary" />
-        <div className="mt-3">
+        <div className="mt-3 h-[450px]">
           <ChartSection
             categories={categories}
             currData={currData}
@@ -229,7 +229,7 @@ export default function UrlDetailsPanel({
           />
           {categories.length === 0 && (
             <div className="mt-2 text-xs text-gray-500">
-              Sin datos suficientes para la granularidad “{granularity}”.
+              Sin datos suficientes para la granularidad &quot;{granularity}&quot;.
             </div>
           )}
         </div>

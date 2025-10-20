@@ -91,20 +91,22 @@ type Props = LineChartMode | MultiLineMode | GroupedBarMode;
 export default function ChartPair(props: Props) {
   return (
     <div
-      className={`grid grid-cols-1 xl:grid-cols-2 gap-4 xl:items-stretch ${
+      className={`grid grid-cols-1 xl:grid-cols-2 gap-4 xl:items-stretch w-full ${
         props.className ?? ""
       }`}
     >
-      <div className="flex">
+      <div className="flex w-full">
         {props.mode === "line" ? (
           <LineSide series={props.series} granularity={props.granularity} />
         ) : props.mode === "multi" ? (
-          <DrilldownMultiLineSection
-            xLabels={props.xLabels}
-            seriesBySub={props.seriesBySub}
-            loading={props.loading}
-            colorsByName={props.colorsByName}
-          />
+          <div className="w-full h-full">
+            <DrilldownMultiLineSection
+              xLabels={props.xLabels}
+              seriesBySub={props.seriesBySub}
+              loading={props.loading}
+              colorsByName={props.colorsByName}
+            />
+          </div>
         ) : (
           <GroupedBarSide
             categories={props.categories}
@@ -119,7 +121,7 @@ export default function ChartPair(props: Props) {
         )}
       </div>
 
-      <div className="flex">
+      <div className="flex w-full">
         <DonutSection
           donutData={props.donutData}
           onSliceClick={props.onDonutSlice}

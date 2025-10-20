@@ -115,6 +115,18 @@ function AnalyticsByTagSectionInner() {
     }
   };
 
+  // Memoizar level2Data para mejor tracking de dependencias
+  const level2Data = useMemo(() => {
+    return drill?.kind === "town+cat"
+      ? {
+          townId: drill.townId,
+          categoryId: drill.categoryId,
+          granularity,
+          endISO: mode === "range" ? endISO : currentEndISO,
+        }
+      : undefined;
+  }, [drill, granularity, mode, endISO, currentEndISO]);
+
   return (
     <section className="max-w-[1560px]">
       <StickyHeaderSection
@@ -147,18 +159,7 @@ function AnalyticsByTagSectionInner() {
         onSliceClick={handleSliceClick}
         isDeltaLoading={state.status !== "ready"}
         // NIVEL 2 (drill) - usar fecha corregida
-        level2Data={(() => {
-          const result =
-            drill?.kind === "town+cat"
-              ? {
-                  townId: drill.townId,
-                  categoryId: drill.categoryId,
-                  granularity,
-                  endISO: mode === "range" ? endISO : currentEndISO,
-                }
-              : undefined;
-          return result;
-        })()}
+        level2Data={level2Data}
         startDate={startDate}
         endDate={endDate}
       />

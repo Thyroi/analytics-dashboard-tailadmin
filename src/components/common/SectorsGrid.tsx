@@ -96,6 +96,7 @@ export default function SectorsGrid(props: Props) {
 
   const orderedIds = useMemo(() => orderIdsByTaxonomy(mode, ids), [mode, ids]);
 
+
   // Auto-scroll cuando aparece el expandido (solo para variante detailed)
   useEffect(() => {
     if (!expandedId || props.variant !== "detailed") return;
@@ -104,7 +105,7 @@ export default function SectorsGrid(props: Props) {
         behavior: "smooth",
         block: "start",
       });
-    }, 0);
+    }, 100);
     return () => clearTimeout(t);
   }, [expandedId, props.variant]);
 
