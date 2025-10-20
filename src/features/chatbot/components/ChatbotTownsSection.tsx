@@ -8,13 +8,10 @@ import {
 
 import { useState } from "react";
 
-import {
-  type TownCardData,
-  useChatbotTowns,
-} from "../hooks/useChatbotTowns";
-import TownExpandedCard from "./TownExpandedCard";
+import { type TownCardData, useChatbotTowns } from "../hooks/useChatbotTowns";
 import TopTownsKPI from "./TopTownsKPI";
 import TownCard from "./TownCard";
+import TownExpandedCard from "./TownExpandedCard";
 
 function ChatbotTownsSectionContent() {
   const {
@@ -32,12 +29,14 @@ function ChatbotTownsSectionContent() {
   let endDateStr: string | null = null;
 
   try {
-    startDateStr = startDate instanceof Date && !isNaN(startDate.getTime()) 
-      ? startDate.toISOString().split('T')[0] 
-      : null;
-    endDateStr = endDate instanceof Date && !isNaN(endDate.getTime()) 
-      ? endDate.toISOString().split('T')[0] 
-      : null;
+    startDateStr =
+      startDate instanceof Date && !isNaN(startDate.getTime())
+        ? startDate.toISOString().split("T")[0]
+        : null;
+    endDateStr =
+      endDate instanceof Date && !isNaN(endDate.getTime())
+        ? endDate.toISOString().split("T")[0]
+        : null;
   } catch (error) {
     console.error("Error converting dates:", { startDate, endDate, error });
   }
@@ -45,20 +44,12 @@ function ChatbotTownsSectionContent() {
   const [selectedTownId, setSelectedTownId] = useState<string | null>(null);
 
   // Obtener datos de towns
-  const {
-    towns,
-    isLoading,
-    isError,
-    error,
-    refetch,
-  } = useChatbotTowns({
+  const { towns, isLoading, isError, error, refetch } = useChatbotTowns({
     granularity,
     startDate: startDateStr,
     endDate: endDateStr,
     enabled: true,
   });
-
-
 
   return (
     <section className="max-w-[1560px] mx-auto w-full">
@@ -149,7 +140,8 @@ function ChatbotTownsGrid({
     return (
       <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-6 text-center">
         <p className="text-red-700 dark:text-red-300 mb-4">
-          Error cargando datos de pueblos: {error?.message || "Error desconocido"}
+          Error cargando datos de pueblos:{" "}
+          {error?.message || "Error desconocido"}
         </p>
         <button
           onClick={() => onRefetch()}

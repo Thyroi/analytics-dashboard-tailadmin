@@ -23,8 +23,6 @@ export type UseChatbotTownDetailsOptions = {
   enabled?: boolean;
 };
 
-
-
 export function useChatbotTownDetails({
   townId,
   granularity,
@@ -50,10 +48,14 @@ export function useChatbotTownDetails({
 
     try {
       // Calcular rangos usando la misma lógica que GA4
-      const endDateFinal = endDate || 
+      const endDateFinal =
+        endDate ||
         new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split("T")[0];
-      
-      const ranges = computeRangesByGranularityForSeries(granularity, endDateFinal);
+
+      const ranges = computeRangesByGranularityForSeries(
+        granularity,
+        endDateFinal
+      );
 
       // Usar buildSeriesAndDonutFocused con focus en town
       const result = buildSeriesAndDonutFocused(
@@ -89,12 +91,20 @@ export function useChatbotTownDetails({
 
   return {
     state: processedData,
-    series: processedData.status === "ready" ? processedData.series : { current: [], previous: [] },
+    series:
+      processedData.status === "ready"
+        ? processedData.series
+        : { current: [], previous: [] },
     donutData: processedData.status === "ready" ? processedData.donutData : [],
-    totalInteractions: processedData.status === "ready" ? processedData.totalInteractions : 0,
+    totalInteractions:
+      processedData.status === "ready" ? processedData.totalInteractions : 0,
     isLoading: chatbotQuery.isLoading || processedData.status === "loading",
     isError: chatbotQuery.isError || processedData.status === "error",
-    error: chatbotQuery.error || (processedData.status === "error" ? new Error(processedData.message) : null),
+    error:
+      chatbotQuery.error ||
+      (processedData.status === "error"
+        ? new Error(processedData.message)
+        : null),
     refetch: chatbotQuery.refetch,
   };
 }

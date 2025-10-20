@@ -740,13 +740,16 @@ export function buildSeriesAndDonutFocused(
         const { time, value } = entry;
 
         // Convertir time de "20251015" a "2025-10-15" para comparaciones de rango
-        const dateStr = `${time.slice(0, 4)}-${time.slice(4, 6)}-${time.slice(6, 8)}`;
+        const dateStr = `${time.slice(0, 4)}-${time.slice(4, 6)}-${time.slice(
+          6,
+          8
+        )}`;
 
         // Para granularidad "y", los datos vienen como YYYYMMDD pero necesitamos agrupar por YYYYMM
         if (granularity === "y") {
           // Convertir YYYYMMDD a YYYY-MM para que coincida con las etiquetas de las series
           const monthLabel = `${time.slice(0, 4)}-${time.slice(4, 6)}`; // YYYY-MM
-          
+
           // Verificar si está en rango current
           if (dateStr >= currentRange.start && dateStr <= currentRange.end) {
             if (currentSeries[monthLabel] !== undefined) {
@@ -754,7 +757,7 @@ export function buildSeriesAndDonutFocused(
             }
           }
 
-          // Verificar si está en rango previous  
+          // Verificar si está en rango previous
           if (dateStr >= prevRange.start && dateStr <= prevRange.end) {
             if (previousSeries[monthLabel] !== undefined) {
               previousSeries[monthLabel] += value;

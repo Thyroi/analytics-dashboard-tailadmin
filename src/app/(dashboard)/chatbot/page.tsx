@@ -28,7 +28,6 @@ export default function TagsDashboard() {
 
       {/* Towns section with sticky header */}
       <ChatbotTownsSection />
-
     </div>
   );
 }

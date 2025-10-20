@@ -64,41 +64,41 @@ export function useChatbotTowns({
       return [];
     }
 
-    const processedTowns = TOWN_ID_ORDER
-      .map((townId): TownCardData | null => {
-        const townMeta = TOWN_META[townId];
-        
-        if (!townMeta) {
-          return null;
-        }
+    const processedTowns = TOWN_ID_ORDER.map((townId): TownCardData | null => {
+      const townMeta = TOWN_META[townId];
 
-        // Buscar datos del town en los resultados agregados
-        const chatbotTown = chatbotAggregated.towns.find(
-          (town) => town.id === townId
-        );
+      if (!townMeta) {
+        return null;
+      }
 
-        const currentValue = chatbotTown?.currentTotal ?? 0;
-        const previousValue = chatbotTown?.prevTotal ?? 0;
+      // Buscar datos del town en los resultados agregados
+      const chatbotTown = chatbotAggregated.towns.find(
+        (town) => town.id === townId
+      );
 
-        // Solo mostrar towns con datos
-        if (currentValue === 0 && previousValue === 0) {
-          return null;
-        }
+      const currentValue = chatbotTown?.currentTotal ?? 0;
+      const previousValue = chatbotTown?.prevTotal ?? 0;
 
-        // Calcular delta usando función oficial
-        const deltaPercent = computeDeltaPct(currentValue, previousValue) ?? undefined;
-        const delta = currentValue - previousValue;
+      // Solo mostrar towns con datos
+      if (currentValue === 0 && previousValue === 0) {
+        return null;
+      }
 
-        return {
-          id: townId,
-          label: townMeta.label,
-          iconSrc: townMeta.iconSrc,
-          currentValue,
-          previousValue,
-          delta,
-          deltaPercent,
-        };
-      })
+      // Calcular delta usando función oficial
+      const deltaPercent =
+        computeDeltaPct(currentValue, previousValue) ?? undefined;
+      const delta = currentValue - previousValue;
+
+      return {
+        id: townId,
+        label: townMeta.label,
+        iconSrc: townMeta.iconSrc,
+        currentValue,
+        previousValue,
+        delta,
+        deltaPercent,
+      };
+    })
       .filter((town): town is TownCardData => town !== null)
       .sort((a, b) => b.currentValue - a.currentValue); // Ordenar por valor descendente
 

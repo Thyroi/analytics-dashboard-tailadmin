@@ -27,7 +27,7 @@ export default function KPIStatGrid({
 }: Props) {
   const [page, setPage] = React.useState(0);
   const [isHovered, setIsHovered] = React.useState(false);
-  
+
   const pages = infiniteRow
     ? Math.max(1, Math.ceil(items.length / itemsPerPage))
     : 1;
@@ -51,7 +51,7 @@ export default function KPIStatGrid({
   }, [autoSlide, infiniteRow, pages, isHovered, slideInterval]);
 
   return (
-    <div 
+    <div
       className={className}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
@@ -72,12 +72,14 @@ export default function KPIStatGrid({
       </div>
       {infiniteRow && items.length > itemsPerPage && (
         <div className="flex justify-center mt-3">
-          <PagerDots 
-            page={page} 
-            pages={pages} 
-            onPrev={prev} 
+          <PagerDots
+            page={page}
+            pages={pages}
+            onPrev={prev}
             onNext={next}
-            className={autoSlide ? "opacity-75 hover:opacity-100 transition-opacity" : ""}
+            className={
+              autoSlide ? "opacity-75 hover:opacity-100 transition-opacity" : ""
+            }
           />
         </div>
       )}

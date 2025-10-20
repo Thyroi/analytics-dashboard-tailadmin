@@ -80,18 +80,15 @@ export default function TownExpandedCard({
   const [selectedSlice, setSelectedSlice] = useState<string | null>(null);
 
   // Obtener detalles del town usando nuestro hook específico
-  const {
-    series,
-    donutData,
-    totalInteractions,
-    error,
-  } = useChatbotTownDetails({
-    townId: townId as TownId,
-    granularity,
-    startDate,
-    endDate,
-    enabled: true,
-  });
+  const { series, donutData, totalInteractions, error } = useChatbotTownDetails(
+    {
+      townId: townId as TownId,
+      granularity,
+      startDate,
+      endDate,
+      enabled: true,
+    }
+  );
 
   const townMeta = TOWN_META[townId as TownId];
   const townLabel = townMeta?.label || townId;

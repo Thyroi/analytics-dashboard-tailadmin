@@ -8,11 +8,7 @@ type Props = {
 };
 
 export default function TownCard({ data, onClick, isSelected }: Props) {
-  const {
-    label,
-    iconSrc,
-    deltaPercent,
-  } = data;
+  const { label, iconSrc, deltaPercent } = data;
 
   return (
     <div
