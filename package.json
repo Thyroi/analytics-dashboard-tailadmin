@@ -23,7 +23,7 @@
     "validate:lint": "npm run lint",
     "validate:build": "npm run db:ensure && npm run build",
     "pre-push": "npm run db:ensure && npm run validate && npm run validate:build",
-    "prepare": "husky install || true",
+    "prepare": "npm run postinstall",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",
