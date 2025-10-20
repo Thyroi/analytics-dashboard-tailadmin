@@ -32,9 +32,34 @@ function ChatbotCategoriesSectionContent() {
     clearRange,
   } = useTagTimeframe();
 
+  // Debug info disponible en el componente DebugDataSection
+
+  // Convertir fechas de manera segura con logs esenciales
+  let startDateStr: string | null = null;
+  let endDateStr: string | null = null;
+
+  try {
+    startDateStr =
+      startDate instanceof Date && !isNaN(startDate.getTime())
+        ? startDate.toISOString().split("T")[0]
+        : null;
+    endDateStr =
+      endDate instanceof Date && !isNaN(endDate.getTime())
+        ? endDate.toISOString().split("T")[0]
+        : null;
+  } catch (error) {
+    console.error("Error converting dates:", { startDate, endDate, error });
+    startDateStr = null;
+    endDateStr = null;
+  }
+
+  // Fechas disponibles en DebugDataSection
+
   const { categories, isLoading, isError, error, refetch } =
     useChatbotCategories({
       granularity,
+      startDate: startDateStr,
+      endDate: endDateStr,
     });
 
   // Estado para manejar el drilldown
@@ -47,10 +72,6 @@ function ChatbotCategoriesSectionContent() {
 
   const handleBackToCategories = () => {
     setSelectedCategoryId(null);
-  };
-
-  const handleSubcategoryClick = (_subcategory: string) => {
-    // Aquí se podría implementar un nivel adicional de drilldown si es necesario
   };
 
   return (
@@ -69,11 +90,9 @@ function ChatbotCategoriesSectionContent() {
       {/* Top Categories KPI entre header y categorías */}
       <div className="px-4 mb-6">
         <TopCategoriesKPI
-          items={categories.slice(0, 4).map((cat) => ({
-            key: cat.id,
-            value: cat.currentValue || 0,
-            time: new Date().toISOString().split("T")[0],
-          }))}
+          categories={categories.slice(0, 4)}
+          isLoading={isLoading}
+          isError={isError}
         />
       </div>
 
@@ -83,8 +102,9 @@ function ChatbotCategoriesSectionContent() {
           <CategoryExpandedCard
             categoryId={selectedCategoryId}
             granularity={granularity}
+            startDate={startDateStr}
+            endDate={endDateStr}
             onClose={handleBackToCategories}
-            onSubcategoryClick={handleSubcategoryClick}
           />
         </div>
       )}

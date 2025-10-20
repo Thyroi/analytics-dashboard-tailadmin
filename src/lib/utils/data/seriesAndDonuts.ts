@@ -440,6 +440,81 @@ export function buildUrlsDonutForCategoryTown<T>(
 }
 
 /**
+ * Helper para verificar si un path/texto contiene una categoría específica
+ * Maneja casos especiales con diferentes variantes ortográficas
+ */
+function matchesCategory(text: string, targetCategory: string): boolean {
+  const textLower = text.toLowerCase();
+
+  if (targetCategory === "espaciosMuseisticos") {
+    return (
+      textLower.includes("espacios") &&
+      (textLower.includes("museisticos") ||
+        textLower.includes("museísticos") ||
+        textLower.includes("museíticos") ||
+        textLower.includes("museiticos"))
+    );
+  } else if (targetCategory === "fiestasTradiciones") {
+    return (
+      textLower.includes("fiestas") ||
+      textLower.includes("festivals") ||
+      (textLower.includes("fiestas") && textLower.includes("tradiciones"))
+    );
+  } else if (targetCategory === "rutasCulturales") {
+    return (
+      (textLower.includes("rutas") && textLower.includes("culturales")) ||
+      textLower.includes("rutas_culturales") ||
+      textLower.includes("rutas-culturales") ||
+      textLower.includes("cultural-routes") ||
+      textLower.includes("cultural_routes") ||
+      // Caso especial: "rutas" a secas también puede ser cultural (según comentario en taxonomy)
+      (textLower.includes("root.rutas") && !textLower.includes("senderismo"))
+    );
+  } else if (targetCategory === "rutasSenderismo") {
+    return (
+      textLower.includes("senderismo") ||
+      textLower.includes("hiking") ||
+      textLower.includes("btt") ||
+      textLower.includes("vias-verdes") ||
+      textLower.includes("vias_verdes") ||
+      textLower.includes("vías") ||
+      (textLower.includes("rutas") && textLower.includes("senderismo")) ||
+      (textLower.includes("rutas") && textLower.includes("cicloturistas")) ||
+      textLower.includes("rutas-senderismo") ||
+      textLower.includes("rutas_senderismo") ||
+      textLower.includes("hiking-and-cycling") ||
+      textLower.includes("hiking_and_cycling")
+    );
+  } else if (targetCategory === "circuitoMonteblanco") {
+    return (
+      textLower.includes("monteblanco") ||
+      textLower.includes("circuito-monteblanco") ||
+      textLower.includes("circuito_monteblanco") ||
+      (textLower.includes("circuito") && textLower.includes("monteblanco"))
+    );
+  } else if (targetCategory === "laRabida") {
+    return (
+      textLower.includes("rabida") ||
+      textLower.includes("rábida") ||
+      textLower.includes("la-rabida") ||
+      textLower.includes("la_rabida") ||
+      textLower.includes("larabida") ||
+      (textLower.includes("la") && textLower.includes("rabida")) ||
+      (textLower.includes("la") && textLower.includes("rábida"))
+    );
+  } else if (targetCategory === "lugaresColombinos") {
+    return (
+      textLower.includes("colombinos") ||
+      textLower.includes("lugares-colombinos") ||
+      textLower.includes("lugares_colombinos") ||
+      (textLower.includes("lugares") && textLower.includes("colombinos"))
+    );
+  } else {
+    return textLower.includes(targetCategory.toLowerCase());
+  }
+}
+
+/**
  * Función enfocada para construir series y donut para chatbot data
  * Basada en los parámetros que requiere nuestro caso de uso específico
  */
@@ -508,32 +583,50 @@ export function buildSeriesAndDonutFocused(
     for (const [path, entries] of Object.entries(inputData.output)) {
       // Verificar si el path contiene la categoría objetivo
       // Formato: "root.playas.accesos" o "root.almonte.playas" o "root.genéricas del condado.playas.accesos"
-      const pathLower = path.toLowerCase();
-      const categoryLower = targetCategory.toLowerCase();
-
-      if (!pathLower.includes(categoryLower)) continue;
+      if (!matchesCategory(path, targetCategory)) continue;
 
       // Procesar cada entrada temporal
       for (const entry of entries as Array<{ time: string; value: number }>) {
         const { time, value } = entry;
 
-        // Convertir time de "20251015" a "2025-10-15"
+        // Convertir time de "20251015" a "2025-10-15" para comparaciones de rango
         const dateStr = `${time.slice(0, 4)}-${time.slice(4, 6)}-${time.slice(
           6,
           8
         )}`;
 
-        // Verificar si está en rango current
-        if (dateStr >= currentRange.start && dateStr <= currentRange.end) {
-          if (currentSeries[dateStr] !== undefined) {
-            currentSeries[dateStr] += value;
-          }
-        }
+        // Para granularidad "y", los datos vienen como YYYYMMDD pero necesitamos agrupar por YYYYMM
+        if (granularity === "y") {
+          // Convertir YYYYMMDD a YYYY-MM para que coincida con las etiquetas de las series
+          const monthLabel = `${time.slice(0, 4)}-${time.slice(4, 6)}`; // YYYY-MM
 
-        // Verificar si está en rango previous
-        if (dateStr >= prevRange.start && dateStr <= prevRange.end) {
-          if (previousSeries[dateStr] !== undefined) {
-            previousSeries[dateStr] += value;
+          // Verificar si está en rango current
+          if (dateStr >= currentRange.start && dateStr <= currentRange.end) {
+            if (currentSeries[monthLabel] !== undefined) {
+              currentSeries[monthLabel] += value;
+            }
+          }
+
+          // Verificar si está en rango previous
+          if (dateStr >= prevRange.start && dateStr <= prevRange.end) {
+            if (previousSeries[monthLabel] !== undefined) {
+              previousSeries[monthLabel] += value;
+            }
+          }
+        } else {
+          // Para otras granularidades, usar el formato normal
+          // Verificar si está en rango current
+          if (dateStr >= currentRange.start && dateStr <= currentRange.end) {
+            if (currentSeries[dateStr] !== undefined) {
+              currentSeries[dateStr] += value;
+            }
+          }
+
+          // Verificar si está en rango previous
+          if (dateStr >= prevRange.start && dateStr <= prevRange.end) {
+            if (previousSeries[dateStr] !== undefined) {
+              previousSeries[dateStr] += value;
+            }
           }
         }
 
@@ -553,7 +646,7 @@ export function buildSeriesAndDonutFocused(
           if (pathParts.length >= 3) {
             // Buscar el índice donde aparece la categoría objetivo
             const categoryIndex = pathParts.findIndex((part) =>
-              part.toLowerCase().includes(categoryLower)
+              matchesCategory(part, targetCategory)
             );
 
             if (categoryIndex === 1) {

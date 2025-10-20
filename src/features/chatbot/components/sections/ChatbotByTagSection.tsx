@@ -16,7 +16,7 @@ import type { Granularity } from "@/lib/types";
 
 // import { useCategoriesTotals } from "@/features/chatbot/hooks/useCategoriesTotals"; // TEMPORALMENTE DESACTIVADO
 // import { useCategoryDetailsChatbot } from "@/features/chatbot/hooks/useCategoryDetailsChatbot"; // TEMPORALMENTE DESACTIVADO
-import { useTopCategories } from "@/features/chatbot/hooks/useTopCategories";
+import { useChatbotCategories } from "@/features/chatbot/hooks/useChatbotCategories";
 import TopCategoriesKPI from "../TopCategoriesKPI";
 
 /* ============ sección interna ============ */
@@ -37,16 +37,23 @@ function ChatbotByTagSectionInner() {
     endISO,
   } = useTagTimeframe();
 
-  // TOP CATEGORIES KPI (declaración justo después de obtener granularidad y rango)
-  // Usamos un patrón amplio para obtener TODAS las categorías y sus variantes
-  const topPatterns = ["root.*"];
-  const startISO = startDate.toISOString().split("T")[0];
-  const { data: topCategories, isLoading: isTopLoading } = useTopCategories({
-    patterns: topPatterns,
-    granularity: granularity as Granularity,
-    startTime: startISO,
-    endTime: endISO,
-  });
+  // TOP CATEGORIES KPI usando el nuevo hook integrado
+  // Convertir fechas de manera segura
+  const startISO =
+    startDate instanceof Date && !isNaN(startDate.getTime())
+      ? startDate.toISOString().split("T")[0]
+      : null;
+  const endISO_safe =
+    endDate instanceof Date && !isNaN(endDate.getTime())
+      ? endDate.toISOString().split("T")[0]
+      : endISO; // Fallback al endISO del contexto
+
+  const { categories: topCategories, isLoading: isTopLoading } =
+    useChatbotCategories({
+      granularity: granularity as Granularity,
+      startDate: startISO,
+      endDate: endISO_safe,
+    });
 
   // TEMPORALMENTE DESACTIVADO - TODO: Reactivar cuando se necesite la funcionalidad completa
   // const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -79,7 +86,11 @@ function ChatbotByTagSectionInner() {
         {isTopLoading ? (
           <div className="mb-6">Cargando KPIs...</div>
         ) : topCategories && topCategories.length > 0 ? (
-          <TopCategoriesKPI items={topCategories} />
+          <TopCategoriesKPI
+            categories={topCategories.slice(0, 4)}
+            isLoading={isTopLoading}
+            isError={false}
+          />
         ) : null}
       </div>
       {/* TEMPORALMENTE DESACTIVADO - SectorsGridDetailed

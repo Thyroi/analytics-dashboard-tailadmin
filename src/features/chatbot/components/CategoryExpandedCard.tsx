@@ -15,6 +15,8 @@ import type { Granularity } from "../types";
 type Props = {
   categoryId: CategoryId;
   granularity: Granularity;
+  startDate?: string | null;
+  endDate?: string | null;
   onClose: () => void;
   onSubcategoryClick?: (subcategory: string) => void;
 };
@@ -80,26 +82,23 @@ function Header({
 export default function CategoryExpandedCard({
   categoryId,
   granularity,
+  startDate,
+  endDate,
   onClose,
   onSubcategoryClick,
 }: Props) {
   const drilldownData = useCategoryDrilldown({
     categoryId,
     granularity,
+    startDate,
+    endDate,
   });
 
   const categoryMeta = CATEGORY_META[categoryId];
   const categoryLabel = categoryMeta?.label || categoryId;
   const categoryIcon = categoryMeta?.iconSrc;
 
-  const {
-    groupedSeries,
-    groupedCategories,
-    donutData,
-    totalInteractions,
-    isLoading,
-    error,
-  } = drilldownData;
+  const { lineSeriesData, donutData, totalInteractions, error } = drilldownData;
 
   // Subtítulo con información detallada
   const subtitle = `Análisis detallado por subcategorías • ${totalInteractions.toLocaleString()} interacciones totales`;
@@ -139,21 +138,17 @@ export default function CategoryExpandedCard({
       />
 
       <ChartPair
-        mode="grouped"
-        categories={groupedCategories}
-        groupedSeries={groupedSeries}
-        chartTitle="Interacciones por Fecha"
-        chartSubtitle={`Evolución temporal de subcategorías en ${categoryLabel}`}
-        chartHeight={400}
-        tooltipFormatter={(val) => `${val} interacciones`}
-        yAxisFormatter={(val) => `${val}`}
+        mode="line"
+        series={{
+          current: lineSeriesData,
+          previous: [],
+        }}
         donutData={donutData}
         deltaPct={null}
         onDonutSlice={handleDonutSlice}
         donutCenterLabel={categoryLabel}
         showActivityButton={false}
         actionButtonTarget={`/chatbot/category/${categoryId}/activity`}
-        loading={isLoading}
         className=""
       />
     </div>

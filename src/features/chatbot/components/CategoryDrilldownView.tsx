@@ -30,15 +30,8 @@ export default function CategoryDrilldownView({
   });
 
   const categoryLabel = CATEGORY_META[categoryId]?.label || categoryId;
-  const {
-    subcategories,
-    groupedSeries,
-    groupedCategories,
-    donutData,
-    totalInteractions,
-    isLoading,
-    error,
-  } = drilldownData;
+  const { subcategories, donutData, totalInteractions, isLoading, error } =
+    drilldownData;
 
   const handleDonutSlice = (label: string) => {
     onSubcategoryClick?.(label);
@@ -114,21 +107,17 @@ export default function CategoryDrilldownView({
       {/* Main content with ChartPair */}
       <div className="px-4">
         <ChartPair
-          mode="grouped"
-          categories={groupedCategories}
-          groupedSeries={groupedSeries}
-          chartTitle="Interacciones por Fecha"
-          chartSubtitle={`Evolución temporal de subcategorías en ${categoryLabel}`}
-          chartHeight={400}
-          tooltipFormatter={(val) => `${val} interacciones`}
-          yAxisFormatter={(val) => `${val}`}
+          mode="line"
+          series={{
+            current: [],
+            previous: [],
+          }}
           donutData={donutData}
-          deltaPct={null} // Se puede calcular si se tienen datos históricos
+          deltaPct={null}
           onDonutSlice={handleDonutSlice}
           donutCenterLabel={categoryLabel}
           showActivityButton={true}
           actionButtonTarget={`/chatbot/category/${categoryId}/activity`}
-          loading={isLoading}
           className="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700"
         />
       </div>

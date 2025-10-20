@@ -182,7 +182,9 @@ function formatDateForAPI(dateString: string): string {
 
 /**
  * Construye la URL para la query según parámetros
+ * DEPRECATED: Ahora usamos POST, no GET
  */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function buildQueryUrl(params: CategoryDrilldownParams): string {
   const url = new URL("/api/chatbot/audit/tags", window.location.origin);
 
@@ -193,11 +195,19 @@ function buildQueryUrl(params: CategoryDrilldownParams): string {
   url.searchParams.set("granularity", params.granularity);
 
   // Fechas específicas si se proporcionan (convertir a formato YYYYMMDD)
-  if (params.startDate) {
-    url.searchParams.set("start", formatDateForAPI(params.startDate));
+  if (params.startDate && params.startDate.trim() !== "") {
+    try {
+      url.searchParams.set("start", formatDateForAPI(params.startDate));
+    } catch (error) {
+      console.error("Error formatting startDate:", params.startDate, error);
+    }
   }
-  if (params.endDate) {
-    url.searchParams.set("end", formatDateForAPI(params.endDate));
+  if (params.endDate && params.endDate.trim() !== "") {
+    try {
+      url.searchParams.set("end", formatDateForAPI(params.endDate));
+    } catch (error) {
+      console.error("Error formatting endDate:", params.endDate, error);
+    }
   }
 
   // Database
@@ -215,13 +225,33 @@ export async function fetchCategoryDrilldown(
   params: CategoryDrilldownParams
 ): Promise<CategoryDrilldownResponse> {
   try {
-    const url = buildQueryUrl(params);
+    // Construir payload para POST (no usar buildQueryUrl)
+    const payload: {
+      db: string;
+      patterns: string;
+      granularity: "d";
+      startTime?: string;
+      endTime?: string;
+    } = {
+      db: params.db || "project_huelva",
+      patterns: `root.${params.categoryId}.*.*`, // Patrón específico para la categoría
+      granularity: "d" as const, // Siempre "d" para la API interna
+    };
 
-    const response = await fetch(url, {
-      method: "GET",
+    // Agregar fechas si se proporcionan
+    if (params.startDate && params.startDate.trim() !== "") {
+      payload.startTime = formatDateForAPI(params.startDate);
+    }
+    if (params.endDate && params.endDate.trim() !== "") {
+      payload.endTime = formatDateForAPI(params.endDate);
+    }
+
+    const response = await fetch("/api/chatbot/audit/tags", {
+      method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
+      body: JSON.stringify(payload),
     });
 
     if (!response.ok) {

@@ -5,7 +5,6 @@ import {
   TagTimeProvider,
   useTagTimeframe,
 } from "@/features/analytics/context/TagTimeContext";
-import { useResumenCategory } from "@/features/home/hooks/useResumenCategory";
 import SectorsByTagSectionContent from "@/features/home/sectors/SectorsByTagSection";
 
 function InnerSectorsByTagSection() {
@@ -18,9 +17,6 @@ function InnerSectorsByTagSection() {
     setRange,
     clearRange,
   } = useTagTimeframe();
-
-  // USAR CÁLCULO AUTOMÁTICO CORRECTO - SIN FECHAS HARDCODEADAS
-  const hookParams = { granularity };
 
   return (
     <section className="max-w-[1560px] mx-auto w-full">

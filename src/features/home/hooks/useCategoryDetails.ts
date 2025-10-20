@@ -299,29 +299,5 @@ function useCategoryDetailsImpl(
     state,
     series,
     donutData,
-    // Para debug: datos separados de GA4, Chatbot y Combinados
-    debug: {
-      ga4: {
-        series: ga4Query.data?.series || { current: [], previous: [] },
-        donutData: ga4Query.data?.donutData || [],
-        isLoading: ga4Query.isLoading,
-        error: ga4Query.error,
-      },
-      chatbot: {
-        series: {
-          current: chatbotCategorySeries.current,
-          previous: chatbotCategorySeries.previous,
-        },
-        donutData: chatbotCategorySeries.donutData,
-        isLoading: chatbotQuery.isLoading,
-        error: chatbotQuery.error,
-        rawData: chatbotQuery.data,
-      },
-      combined: {
-        series: combinedSeries,
-        donutData: combinedDonutData,
-        note: "Production data: GA4 + Chatbot combined",
-      },
-    },
   };
 }
