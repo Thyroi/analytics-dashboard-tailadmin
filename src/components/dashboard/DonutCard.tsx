@@ -4,12 +4,12 @@ import PieChart from "@/components/charts/PieChart";
 import ActivityButton from "@/components/common/ActivityButton";
 import Header from "@/components/common/Header";
 import LegendList, { type LegendItem } from "@/components/dashboard/LegendList";
+import EmptyIcon from "@/components/icons/EmptyIcon";
 import {
   BRAND_STOPS,
   generateBrandGradient,
 } from "@/lib/utils/formatting/colors";
 import type { LucideIcon } from "lucide-react";
-import { CircleSlash } from "lucide-react";
 import { motion } from "motion/react";
 import { useMemo, useState } from "react";
 
@@ -81,8 +81,8 @@ export default function DonutCard({
   variant = "card",
 
   emptyIcon,
-  emptyLabel = "Sin datos",
-  emptyColor = "#E5E7EB",
+  emptyLabel = "No se han encontrado datos",
+  emptyColor = "#F9FAFB",
 
   className = "",
 }: DonutCardProps) {
@@ -157,7 +157,7 @@ export default function DonutCard({
       ? "rounded-xl border bg-white p-3 transition-all duration-200 border-gray-200 hover:border-red-300 hover:shadow-md h-full flex flex-col"
       : "p-0 h-full flex flex-col";
 
-  const EmptyIcon = emptyIcon ?? CircleSlash;
+  const EmptyIconComponent = emptyIcon ?? EmptyIcon;
 
   return (
     <div className={className}>
@@ -166,19 +166,21 @@ export default function DonutCard({
         whileTap={{ scale: 0.98 }}
         className={wrapperClass}
       >
-        <div className="flex items-start justify-between">
-          <Header
-            className="m-0 p-0"
-            title={title}
-            subtitle={subtitle}
-            Icon={Icon}
-            iconColor={iconColor}
-            titleSize={titleSize}
-            titleClassName={titleClassName}
-            subtitleColor={subtitleColor}
-          />
-          {actionHref && <ActivityButton target={actionHref} />}
-        </div>
+        {!isEmpty && (
+          <div className="flex items-start justify-between">
+            <Header
+              className="m-0 p-0"
+              title={title}
+              subtitle={subtitle}
+              Icon={Icon}
+              iconColor={iconColor}
+              titleSize={titleSize}
+              titleClassName={titleClassName}
+              subtitleColor={subtitleColor}
+            />
+            {actionHref && <ActivityButton target={actionHref} />}
+          </div>
+        )}
 
         <div className="relative w-full flex-1 flex flex-col">
           <PieChart
@@ -220,10 +222,15 @@ export default function DonutCard({
           />
 
           {isEmpty && (
-            <EmptyIcon
-              className="pointer-events-none absolute left-1/2 top-1/2 h-8 w-8 -translate-x-1/2 -translate-y-1/2 text-gray-400"
-              aria-hidden
-            />
+            <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-2">
+              <EmptyIconComponent
+                className="h-20 w-20"
+                aria-hidden
+              />
+              <span className="text-xs text-gray-400 font-medium">
+                No se han encontrado datos
+              </span>
+            </div>
           )}
         </div>
 
