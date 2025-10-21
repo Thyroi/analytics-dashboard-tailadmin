@@ -1,20 +1,14 @@
 /**
  * Exportaciones del módulo de chatbot
- * Arquitectura drill-down completa
+ * Solo componentes y servicios realmente utilizados
  */
 
-// Componentes principales
-export { default as ChatbotByTagView } from "./components/ChatbotByTagView";
-export { default as ChatbotCard } from "./components/ChatbotCard";
-export { default as ChatbotCardSkeleton } from "./components/ChatbotCardSkeleton";
-export { default as ChatbotDrilldownPanel } from "./components/ChatbotDrilldownPanel";
-export { default as ChatbotDrilldownSkeleton } from "./components/ChatbotDrilldownSkeleton";
+// Componentes principales (solo los usados por la página principal)
+export { default as CategoryDrilldownView } from "./components/CategoryDrilldownView";
+export { default as ChatbotCategoriesSection } from "./components/ChatbotCategoriesSection";
+export { default as ChatbotTownsSection } from "./components/ChatbotTownsSection";
 
-// Hooks
-export { useChatbotByTag, useChatbotDrilldown } from "./hooks/useChatbotByTag";
-
-// Servicios
-export { getCategoriesTotals } from "./services/categoriesTotals";
+// Servicios (solo tagAudit se usa)
 export {
   clearCache as clearTagAuditCache,
   fetchTagAudit,
@@ -22,14 +16,6 @@ export {
   TagAuditError,
   type TagAuditParams,
 } from "./services/tagAudit";
-export { getTopCategories } from "./services/topCategories";
-export { getTownCategoryDrilldown } from "./services/townCategoryDrilldown";
-export { getTownDetailsChatbot } from "./services/townDetailsChatbot";
-export { getTownsTotals } from "./services/townsTotals";
-export { getTownsTotalsChatbot } from "./services/townsTotalsChatbot";
-
-// Utilidades
-// export * from "./utils/aggregation"; // Temporalmente comentado
 
 // Tipos
 export * from "./types";

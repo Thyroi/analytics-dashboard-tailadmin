@@ -1,7 +1,6 @@
 "use client";
 
 import StickyHeaderSection from "@/components/common/StickyHeaderSection";
-import JsonPreview from "@/components/debug/JsonPreview";
 import { useResumenTown } from "@/features/home/hooks/useResumenTown";
 import type { Granularity } from "@/lib/types";
 import { getCorrectDatesForGranularity } from "@/lib/utils/time/deltaDateCalculation";
