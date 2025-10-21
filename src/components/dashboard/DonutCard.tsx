@@ -223,10 +223,7 @@ export default function DonutCard({
 
           {isEmpty && (
             <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-2">
-              <EmptyIconComponent
-                className="h-20 w-20"
-                aria-hidden
-              />
+              <EmptyIconComponent className="h-20 w-20" aria-hidden />
               <span className="text-xs text-gray-400 font-medium">
                 No se han encontrado datos
               </span>
