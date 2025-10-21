@@ -1,8 +1,8 @@
-import { NextResponse } from "next/server";
-import { 
+import {
   handleOverviewRequest,
-  type OverviewResponse 
+  type OverviewResponse,
 } from "@/lib/utils/analytics/overviewHelpers";
+import { NextResponse } from "next/server";
 
 // Re-export types for backward compatibility
 export type { OverviewResponse };

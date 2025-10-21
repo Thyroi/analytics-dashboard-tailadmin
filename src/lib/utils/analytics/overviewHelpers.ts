@@ -8,7 +8,12 @@ import {
   normalizePropertyId,
   resolvePropertyId,
 } from "@/lib/utils/analytics/ga";
-import { addDaysUTC, parseISO, toISO, todayUTC } from "@/lib/utils/time/datetime";
+import {
+  addDaysUTC,
+  parseISO,
+  toISO,
+  todayUTC,
+} from "@/lib/utils/time/datetime";
 import { buildLaggedAxisForGranularity } from "@/lib/utils/time/timeAxis";
 import { analyticsdata_v1beta, google } from "googleapis";
 
@@ -73,13 +78,17 @@ function listDatesISO(startISO: string, endISO: string): string[] {
 
 function addMonthsISO(iso: string, delta: number): string {
   const d = parseISO(iso);
-  const d2 = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + delta, d.getUTCDate()));
+  const d2 = new Date(
+    Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + delta, d.getUTCDate())
+  );
   return toISO(d2);
 }
 
 function firstDayOfMonthISO(anchorISO: string, monthsBack: number): string {
   const d = parseISO(anchorISO);
-  const d2 = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() - monthsBack, 1));
+  const d2 = new Date(
+    Date.UTC(d.getUTCFullYear(), d.getUTCMonth() - monthsBack, 1)
+  );
   return toISO(d2);
 }
 
@@ -93,8 +102,12 @@ function listLast12YearMonthKeys(endISO: string): string[] {
   const end = parseISO(endISO);
   const out: string[] = [];
   for (let i = 11; i >= 0; i--) {
-    const d = new Date(Date.UTC(end.getUTCFullYear(), end.getUTCMonth() - i, 1));
-    out.push(`${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`);
+    const d = new Date(
+      Date.UTC(end.getUTCFullYear(), end.getUTCMonth() - i, 1)
+    );
+    out.push(
+      `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`
+    );
   }
   return out;
 }
@@ -103,7 +116,10 @@ function plusOneMonthYM(ym: string): string {
   const [y, m] = ym.split("-").map(Number);
   const d = new Date(Date.UTC(y, m - 1, 1));
   const d2 = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1));
-  return `${d2.getUTCFullYear()}-${String(d2.getUTCMonth() + 1).padStart(2, "0")}`;
+  return `${d2.getUTCFullYear()}-${String(d2.getUTCMonth() + 1).padStart(
+    2,
+    "0"
+  )}`;
 }
 
 /* ================= Query Principal ================= */
@@ -175,7 +191,10 @@ export async function queryOverview(
   const translatePrevToCur = (key: string) =>
     dimensionTime === "yearMonth" ? plusOneMonthYM(key) : plusOneDayISO(key);
 
-  async function fetchUsersSeries(range: Range, isPrev = false): Promise<Point[]> {
+  async function fetchUsersSeries(
+    range: Range,
+    isPrev = false
+  ): Promise<Point[]> {
     const req: analyticsdata_v1beta.Schema$RunReportRequest = {
       dateRanges: [{ startDate: range.start, endDate: range.end }],
       metrics: [{ name: "activeUsers" }],
@@ -202,7 +221,10 @@ export async function queryOverview(
     }));
   }
 
-  async function fetchInteractionsSeries(range: Range, isPrev = false): Promise<Point[]> {
+  async function fetchInteractionsSeries(
+    range: Range,
+    isPrev = false
+  ): Promise<Point[]> {
     const req: analyticsdata_v1beta.Schema$RunReportRequest = {
       dateRanges: [{ startDate: range.start, endDate: range.end }],
       metrics: [{ name: "eventCount" }],
@@ -262,7 +284,9 @@ export async function queryOverview(
 }
 
 /* ================= Handler ================= */
-export async function handleOverviewRequest(req: Request): Promise<OverviewResponse> {
+export async function handleOverviewRequest(
+  req: Request
+): Promise<OverviewResponse> {
   const { searchParams } = new URL(req.url);
 
   const gParam = (

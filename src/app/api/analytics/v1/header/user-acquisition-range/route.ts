@@ -1,8 +1,8 @@
-import { NextResponse } from "next/server";
-import { 
+import {
   handleUserAcquisitionRangeRequest,
-  type AcquisitionRangePayload 
+  type AcquisitionRangePayload,
 } from "@/lib/utils/analytics/timeSeriesHelpers";
+import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";

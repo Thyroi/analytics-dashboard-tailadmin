@@ -8,12 +8,14 @@ import {
   normalizePropertyId,
   resolvePropertyId,
 } from "@/lib/utils/analytics/ga";
-import { analyticsdata_v1beta, google } from "googleapis";
-import { parseISO, toISO, todayUTC } from "@/lib/utils/time/datetime";
-import { 
+import {
   deriveAutoRangeForGranularity,
-  deriveRangeEndingYesterday
+  deriveRangeEndingYesterday,
+  parseISO,
+  toISO,
+  todayUTC,
 } from "@/lib/utils/time/datetime";
+import { analyticsdata_v1beta, google } from "googleapis";
 
 /* ======================= Tipos ======================= */
 export type Point = { label: string; value: number };
@@ -43,8 +45,12 @@ export type AcquisitionRangePayload = {
 export function enumerateDaysUTC(startISO: string, endISO: string): string[] {
   const s = parseISO(startISO);
   const e = parseISO(endISO);
-  const cur = new Date(Date.UTC(s.getUTCFullYear(), s.getUTCMonth(), s.getUTCDate()));
-  const end = new Date(Date.UTC(e.getUTCFullYear(), e.getUTCMonth(), e.getUTCDate()));
+  const cur = new Date(
+    Date.UTC(s.getUTCFullYear(), s.getUTCMonth(), s.getUTCDate())
+  );
+  const end = new Date(
+    Date.UTC(e.getUTCFullYear(), e.getUTCMonth(), e.getUTCDate())
+  );
   const out: string[] = [];
   while (cur <= end) {
     out.push(toISO(cur));
@@ -96,12 +102,13 @@ export async function queryTopPagesRange(
   top: number = 5,
   includeTotal: boolean = true
 ): Promise<TopPagesRangePayload> {
-  const range = start && end
-    ? { start, end }
-    : (() => {
-        const r = deriveAutoRangeForGranularity(granularity);
-        return { start: r.start, end: r.end };
-      })();
+  const range =
+    start && end
+      ? { start, end }
+      : (() => {
+          const r = deriveAutoRangeForGranularity(granularity);
+          return { start: r.start, end: r.end };
+        })();
 
   const days = enumerateDaysUTC(range.start, range.end);
   const idxByDay = new Map(days.map((d, i) => [d, i]));
@@ -191,13 +198,18 @@ export async function queryUserAcquisitionRange(
   includeTotal: boolean = true
 ): Promise<AcquisitionRangePayload> {
   // Rango actual: si no pasan start/end, usar ventana que TERMINA AYER.
-  const range = start && end
-    ? { start, end }
-    : (() => {
-        const dayAsWeek = granularity === "d";
-        const r = deriveRangeEndingYesterday(granularity, todayUTC(), dayAsWeek);
-        return r;
-      })();
+  const range =
+    start && end
+      ? { start, end }
+      : (() => {
+          const dayAsWeek = granularity === "d";
+          const r = deriveRangeEndingYesterday(
+            granularity,
+            todayUTC(),
+            dayAsWeek
+          );
+          return r;
+        })();
 
   // Auth + GA4
   const auth = getAuth();
@@ -258,7 +270,10 @@ export async function queryUserAcquisitionRange(
     if (dimensionTime === "date") {
       // YYYYMMDD -> YYYY-MM-DD
       if (slotRaw.length === 8) {
-        key = `${slotRaw.slice(0, 4)}-${slotRaw.slice(4, 6)}-${slotRaw.slice(6, 8)}`;
+        key = `${slotRaw.slice(0, 4)}-${slotRaw.slice(4, 6)}-${slotRaw.slice(
+          6,
+          8
+        )}`;
       }
     } else {
       // yearMonth -> YYYYMM
@@ -312,9 +327,11 @@ export async function queryUserAcquisitionRange(
 /**
  * Handler para top pages range
  */
-export async function handleTopPagesRangeRequest(req: Request): Promise<TopPagesRangePayload> {
+export async function handleTopPagesRangeRequest(
+  req: Request
+): Promise<TopPagesRangePayload> {
   const { searchParams } = new URL(req.url);
-  
+
   const start = searchParams.get("start") || undefined;
   const end = searchParams.get("end") || undefined;
   const g = (searchParams.get("granularity") || "d") as Granularity;
@@ -327,9 +344,11 @@ export async function handleTopPagesRangeRequest(req: Request): Promise<TopPages
 /**
  * Handler para user acquisition range
  */
-export async function handleUserAcquisitionRangeRequest(req: Request): Promise<AcquisitionRangePayload> {
+export async function handleUserAcquisitionRangeRequest(
+  req: Request
+): Promise<AcquisitionRangePayload> {
   const { searchParams } = new URL(req.url);
-  
+
   const start = searchParams.get("start") || undefined;
   const end = searchParams.get("end") || undefined;
   const g = (searchParams.get("granularity") || "d") as Granularity;

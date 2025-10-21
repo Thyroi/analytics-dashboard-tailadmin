@@ -1,8 +1,8 @@
-import { NextResponse } from "next/server";
-import { 
+import {
   handleTopPagesRangeRequest,
-  type TopPagesRangePayload 
+  type TopPagesRangePayload,
 } from "@/lib/utils/analytics/timeSeriesHelpers";
+import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
