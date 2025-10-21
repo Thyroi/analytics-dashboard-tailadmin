@@ -293,7 +293,9 @@ export default function DebugPage() {
             🔍 Hook State Completo:
           </h3>
           <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow">
-            <JsonPreview data={townHookResult} />
+            <pre className="text-sm overflow-auto max-h-96 bg-gray-100 dark:bg-gray-900 p-4 rounded font-mono">
+              {JSON.stringify(townHookResult, null, 2)}
+            </pre>
           </div>
         </div>
       </div>
