@@ -97,6 +97,11 @@ export default function LineChart({
         redrawOnParentResize: true,
         parentHeightOffset: 0, // no restar header/padding del padre
         foreColor,
+        // Asegurar que hay espacio suficiente para las etiquetas
+        offsetX: 0,
+        offsetY: 0,
+        // Evitar que se corten los elementos en los bordes
+        sparkline: { enabled: false },
       },
       stroke: {
         curve: smooth ? "smooth" : "straight",
@@ -109,7 +114,12 @@ export default function LineChart({
         borderColor: gridColor,
         yaxis: { lines: { show: true } },
         xaxis: { lines: { show: false } },
-        padding: { left: 0, right: 0, top: 0, bottom: 0 },
+        padding: { 
+          left: 0, 
+          right: 20, // Aumentar padding derecho para evitar que se corte la última etiqueta 
+          top: 0, 
+          bottom: 0 
+        },
       },
       dataLabels: { enabled: false },
       xaxis: {
@@ -118,11 +128,16 @@ export default function LineChart({
         labels: {
           style: { fontSize: "12px", colors: axisLabelColor },
           rotate: 0,
-          trim: true,
-          hideOverlappingLabels: true,
+          trim: false, // No recortar las etiquetas
+          hideOverlappingLabels: false, // Mostrar todas las etiquetas
+          offsetX: 0,
+          offsetY: 0,
         },
         axisBorder: { show: true, color: gridColor },
         axisTicks: { show: true, color: gridColor },
+        // Agregar padding para evitar que se corten las etiquetas
+        min: undefined,
+        max: undefined,
       },
       yaxis: {
         labels: { style: { fontSize: "12px", colors: axisLabelColor } },

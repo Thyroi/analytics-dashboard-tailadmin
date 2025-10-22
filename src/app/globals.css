@@ -204,7 +204,7 @@
   @apply flex items-center justify-between gap-3 px-6 pt-5 pb-4 border-b border-gray-100/80 dark:border-white/5;
 }
 .card-body {
-  @apply px-6 pb-6;
+  @apply pl-6 pr-3 pb-6;
 }
 
 @keyframes dash-shimmer {

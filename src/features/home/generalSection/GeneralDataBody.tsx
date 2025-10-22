@@ -39,7 +39,7 @@ export default function GeneralDataBody({
     <div
       className={`w-full bg-amber-50/60 dark:bg-white/5 rounded-b-xl border-t border-gray-100 dark:border-white/10 ${className}`}
     >
-      <div className="px-6 pb-3">
+      <div className="pl-6 pr-3 pb-3">
         <div className="w-full h-[300px] md:h-[340px]">
           <LineChart
             categories={categories}
