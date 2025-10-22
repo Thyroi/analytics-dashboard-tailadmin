@@ -114,11 +114,11 @@ export default function LineChart({
         borderColor: gridColor,
         yaxis: { lines: { show: true } },
         xaxis: { lines: { show: false } },
-        padding: { 
-          left: 0, 
-          right: 20, // Aumentar padding derecho para evitar que se corte la última etiqueta 
-          top: 0, 
-          bottom: 0 
+        padding: {
+          left: 0,
+          right: 20, // Aumentar padding derecho para evitar que se corte la última etiqueta
+          top: 0,
+          bottom: 0,
         },
       },
       dataLabels: { enabled: false },
