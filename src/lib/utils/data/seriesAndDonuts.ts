@@ -3,12 +3,12 @@
  * Utilidades para generar series temporales y donuts reutilizables
  */
 
-import type { Granularity } from "@/lib/types";
+import { getCategoryLabel } from "@/lib/taxonomy/categories";
 import { TOWN_SYNONYMS } from "@/lib/taxonomy/towns";
+import type { Granularity } from "@/lib/types";
+import { detectTownAndCategoryFromPath } from "@/lib/utils/chatbot/aggregate";
 import { computeRangesByGranularity } from "@/lib/utils/time/granularityRanges";
 import { safeUrlPathname } from "../routing/pathMatching";
-import { detectTownAndCategoryFromPath } from "@/lib/utils/chatbot/aggregate";
-import { getCategoryLabel } from "@/lib/taxonomy/categories";
 
 // Tipo para filas de GA4
 export type GA4Row = {
@@ -732,14 +732,14 @@ export function buildSeriesAndDonutFocused(
     // Construir índice de sinónimos de towns usando TOWN_SYNONYMS de taxonomy
     const townIndex = new Map<string, string>();
     const normalize = (s: string) => s.toLowerCase().trim();
-    
+
     // Usar el arreglo centralizado de sinónimos
     Object.entries(TOWN_SYNONYMS).forEach(([townId, synonyms]) => {
       // Agregar el townId mismo
       townIndex.set(normalize(townId), townId);
-      
+
       // Agregar todos los sinónimos
-      synonyms.forEach(synonym => {
+      synonyms.forEach((synonym) => {
         townIndex.set(normalize(synonym), townId);
       });
     });
@@ -747,21 +747,23 @@ export function buildSeriesAndDonutFocused(
     // Procesar cada entrada del chatbot
     for (const [path, entries] of Object.entries(inputData.output)) {
       // Usar lógica de matching robusta basada en segmentos (como detectTownAndCategory)
-      const segments = path.startsWith("root.") ? path.slice(5).split(".") : path.split(".");
-      
+      const segments = path.startsWith("root.")
+        ? path.slice(5).split(".")
+        : path.split(".");
+
       // Buscar el town en los segmentos usando el índice de sinónimos
       let pathMatchesTargetTown = false;
-      
+
       for (const segment of segments) {
         const normalizedSegment = normalize(segment);
         const matchedTown = townIndex.get(normalizedSegment);
-        
+
         // Si este segmento matchea nuestro target town, procesamos esta entrada
         if (matchedTown === targetTown) {
           pathMatchesTargetTown = true;
           break;
         }
-        
+
         // También verificar match directo con el townId
         if (normalizedSegment === normalize(targetTown)) {
           pathMatchesTargetTown = true;
@@ -828,13 +830,13 @@ export function buildSeriesAndDonutFocused(
           if (pathParts.length >= 3) {
             // detectTownAndCategoryFromPath espera el path completo con "root."
             const detected = detectTownAndCategoryFromPath(path);
-            
+
             // Si detectamos el town correcto y una categoría válida
             if (detected.townId === targetTown && detected.categoryId) {
               // Usar formato CamelCase amigable en lugar de mayúsculas
               const friendlyLabels: Record<string, string> = {
                 naturaleza: "Naturaleza",
-                fiestasTradiciones: "Fiestas y Tradiciones", 
+                fiestasTradiciones: "Fiestas y Tradiciones",
                 playas: "Playas",
                 espaciosMuseisticos: "Espacios Museísticos",
                 patrimonio: "Patrimonio",
@@ -843,12 +845,14 @@ export function buildSeriesAndDonutFocused(
                 sabor: "Sabor",
                 donana: "Doñana",
                 circuitoMonteblanco: "Circuito Monteblanco",
-                laRabida: "La Rábida", 
+                laRabida: "La Rábida",
                 lugaresColombinos: "Lugares Colombinos",
-                otros: "Otros"
+                otros: "Otros",
               };
-              
-              categoryLabel = friendlyLabels[detected.categoryId] || getCategoryLabel(detected.categoryId);
+
+              categoryLabel =
+                friendlyLabels[detected.categoryId] ||
+                getCategoryLabel(detected.categoryId);
             }
           }
 

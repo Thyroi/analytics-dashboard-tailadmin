@@ -6,7 +6,7 @@ import {
   useTagTimeframe,
 } from "@/features/analytics/context/TagTimeContext";
 
-import { useState, useRef } from "react";
+import { useRef, useState } from "react";
 
 import { type TownCardData, useChatbotTowns } from "../hooks/useChatbotTowns";
 import TopTownsKPI from "./TopTownsKPI";
@@ -42,7 +42,7 @@ function ChatbotTownsSectionContent() {
   }
 
   const [selectedTownId, setSelectedTownId] = useState<string | null>(null);
-  
+
   // Ref para hacer scroll al drilldown
   const drilldownRef = useRef<HTMLDivElement>(null);
 
@@ -57,26 +57,26 @@ function ChatbotTownsSectionContent() {
   // Función para manejar click en town con scroll automático
   const handleTownClick = (townId: string) => {
     setSelectedTownId(townId);
-    
+
     // Scroll automático al drilldown después de un pequeño delay
     setTimeout(() => {
       drilldownRef.current?.scrollIntoView({
-        behavior: 'smooth',
-        block: 'start',
-        inline: 'nearest'
+        behavior: "smooth",
+        block: "start",
+        inline: "nearest",
       });
       // Forzar reflow de componentes (charts) que dependen del tamaño del contenedor
       // Algunos chart libraries necesitan un evento de resize para recalcular dimensiones.
       // Disparamos dos eventos: resize nativo y un custom 'chart-reflow' para compatibilidad.
       setTimeout(() => {
         try {
-          window.dispatchEvent(new Event('resize'));
+          window.dispatchEvent(new Event("resize"));
         } catch {
           // no-op en entornos donde window no existe
         }
 
         try {
-          window.dispatchEvent(new CustomEvent('chart-reflow'));
+          window.dispatchEvent(new CustomEvent("chart-reflow"));
         } catch {
           // noop
         }

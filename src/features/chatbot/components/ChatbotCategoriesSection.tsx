@@ -13,7 +13,7 @@ import {
   useTagTimeframe,
 } from "@/features/analytics/context/TagTimeContext";
 import type { CategoryId } from "@/lib/taxonomy/categories";
-import { useState, useRef } from "react";
+import { useRef, useState } from "react";
 import {
   useChatbotCategories,
   type CategoryCardData,
@@ -65,19 +65,19 @@ function ChatbotCategoriesSectionContent() {
   // Estado para manejar el drilldown
   const [selectedCategoryId, setSelectedCategoryId] =
     useState<CategoryId | null>(null);
-  
+
   // Ref para hacer scroll al drilldown
   const drilldownRef = useRef<HTMLDivElement>(null);
 
   const handleCategoryClick = (categoryId: string) => {
     setSelectedCategoryId(categoryId as CategoryId);
-    
+
     // Scroll automático al drilldown después de un pequeño delay
     setTimeout(() => {
       drilldownRef.current?.scrollIntoView({
-        behavior: 'smooth',
-        block: 'start',
-        inline: 'nearest'
+        behavior: "smooth",
+        block: "start",
+        inline: "nearest",
       });
     }, 100);
   };

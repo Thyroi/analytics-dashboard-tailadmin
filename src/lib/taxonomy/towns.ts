@@ -55,18 +55,18 @@ const FILE_ALIAS: Record<TownId, string> = {
   almonte: "almonte.png",
   bollullos: "bollullos.png",
   bonares: "bonares.png",
-  chucena: "chucena.png",        // alias (no hay archivo específico)
+  chucena: "chucena.png", // alias (no hay archivo específico)
   escacena: "escacena.png",
   hinojos: "hinojos.png",
-  laPalmaDelCondado: "palma.png",            // alias visto en /public
-  lucenaDelPuerto: "lucena.png",             // alias visto en /public
+  laPalmaDelCondado: "palma.png", // alias visto en /public
+  lucenaDelPuerto: "lucena.png", // alias visto en /public
   manzanilla: "manzanilla.png",
   niebla: "niebla.png",
   palos: "palos.png",
   paternaDelCampo: "paterna.png",
-  rocianaDelCondado: "rociana.png",          // alias visto en /public
+  rocianaDelCondado: "rociana.png", // alias visto en /public
   villalba: "villalba.png",
-  villarrasa: "villarasa.png",               // archivo usa una sola “r”
+  villarrasa: "villarasa.png", // archivo usa una sola “r”
 };
 
 const LABELS: Record<TownId, string> = {
@@ -98,8 +98,9 @@ export const TOWN_META: Record<TownId, TownMeta> = Object.fromEntries(
   ])
 ) as Record<TownId, TownMeta>;
 
-export const TOWNS: ReadonlyArray<TownMeta> =
-  TOWN_ID_ORDER.map((id) => TOWN_META[id]);
+export const TOWNS: ReadonlyArray<TownMeta> = TOWN_ID_ORDER.map(
+  (id) => TOWN_META[id]
+);
 
 /**
  * Sinónimos y variantes de towns que aparecen en el API del chatbot.
@@ -113,26 +114,16 @@ export const TOWN_SYNONYMS: Record<TownId, string[]> = {
   chucena: ["chucena"],
   escacena: ["escacena"],
   hinojos: ["hinojos"],
-  laPalmaDelCondado: [
-    "la palma del condado",
-    "la palma", 
-    "la_palma"
-  ],
-  lucenaDelPuerto: [
-    "lucena del puerto",
-    "lucena_del_puerto"
-  ],
+  laPalmaDelCondado: ["la palma del condado", "la palma", "la_palma"],
+  lucenaDelPuerto: ["lucena del puerto", "lucena_del_puerto"],
   manzanilla: ["manzanilla"],
   niebla: ["niebla", "NIEBLA"],
-  palos: [
-    "palos",
-    "palos de la frontera"
-  ],
+  palos: ["palos", "palos de la frontera"],
   paternaDelCampo: ["paterna"],
   rocianaDelCondado: [
     "rociana del condado",
     "rociana",
-    "rocianna"  // typo en API
+    "rocianna", // typo en API
   ],
   villalba: ["villalba del alcor"],
   villarrasa: ["villarrasa"],

@@ -107,7 +107,7 @@ export default function TownExpandedCard({
 
   const handleDonutSlice = (label: string) => {
     // Removed selectedSlice functionality - no action needed
-    console.log('Donut slice clicked:', label);
+    console.log("Donut slice clicked:", label);
   };
 
   if (error) {
