@@ -50,15 +50,15 @@ export default function DeltaCard(props: Props) {
 
   const { ringBackground } = useMemo(() => ringVisuals(deltaPct), [deltaPct]);
 
-  // ⬇️ Estilo original + SOLO borde rojo en hover
+  // ⬇️ Estilo mejorado para consistencia con GeneralDataCards
   const baseClasses =
-    "box-border w-full h-full rounded-2xl border bg-white dark:bg-[#0c1116] shadow-sm " +
-    "border-gray-200 dark:border-white/10 overflow-hidden hover:border-red-300";
+    "box-border w-full h-full rounded-2xl border bg-white dark:bg-gray-800 shadow-sm " +
+    "border-gray-200/50 dark:border-gray-700/50 ring-1 ring-black/5 dark:ring-white/10 overflow-hidden hover:border-red-300";
   const interactiveClasses =
     typeof onClick === "function"
       ? "cursor-pointer hover:shadow-md transition-shadow focus:outline-none " +
         "focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-1 " +
-        "focus-visible:ring-offset-white dark:focus-visible:ring-offset-[#0c1116] appearance-none"
+        "focus-visible:ring-offset-white dark:focus-visible:ring-offset-gray-800 appearance-none"
       : "";
   const selectedRing = expanded
     ? "ring-2 ring-emerald-400 ring-offset-1"

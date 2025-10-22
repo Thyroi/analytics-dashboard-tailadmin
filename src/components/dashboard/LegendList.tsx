@@ -1,4 +1,3 @@
-
 "use client";
 
 import { motion } from "motion/react";
@@ -65,8 +64,8 @@ export default function LegendList({
               className={[
                 "flex h-10 items-center justify-between rounded-lg border p-2 text-sm transition-all",
                 isActive
-                  ? "bg-red-100/80 border-red-300 text-red-700 shadow-sm"
-                  : "bg-gray-50 hover:bg-red-50 border-gray-200",
+                  ? "bg-red-100/80 dark:bg-red-900/30 border-red-300 dark:border-red-600 text-red-700 dark:text-red-300 shadow-sm"
+                  : "bg-gray-50 dark:bg-gray-700/50 hover:bg-red-50 dark:hover:bg-red-900/20 border-gray-200 dark:border-gray-600 text-gray-900 dark:text-gray-100",
               ].join(" ")}
             >
               <div className="flex min-w-0 items-center gap-2">
@@ -108,9 +107,11 @@ export default function LegendList({
                 style={{ backgroundColor: it.color }}
                 aria-hidden
               />
-              <span className="truncate text-gray-800">{it.label}</span>
+              <span className="truncate text-gray-800 dark:text-gray-200">
+                {it.label}
+              </span>
             </div>
-            <span className="text-xs font-semibold tabular-nums text-gray-700">
+            <span className="text-xs font-semibold tabular-nums text-gray-700 dark:text-gray-300">
               {formatPct(pct)}
             </span>
           </div>

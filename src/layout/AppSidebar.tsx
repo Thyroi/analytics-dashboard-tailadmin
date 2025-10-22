@@ -72,10 +72,7 @@ export default function AppSidebar() {
           !isExpanded && !isHovered ? "lg:justify-center" : "justify-start px-4"
         }`}
       >
-        <Link
-          href="/"
-          className="text-lg font-bold text-huelva-primary dark:text-white"
-        >
+        <Link href="/" className="text-lg font-bold text-huelva-primary">
           Dashboard
         </Link>
       </div>

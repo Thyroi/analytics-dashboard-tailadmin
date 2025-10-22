@@ -1,12 +1,12 @@
 "use client";
 
-import React from "react";
 import { Users } from "lucide-react";
+import React from "react";
 
 type Props = {
   title: string;
   value: number;
-  deltaPct: number;              // delta porcentual vs periodo anterior
+  deltaPct: number; // delta porcentual vs periodo anterior
   icon?: React.ReactNode;
   className?: string;
 };
@@ -34,7 +34,9 @@ export default function GeneralDataHeader({
   const isDown = deltaPct < 0;
 
   return (
-    <div className={`w-full rounded-t-xl bg-white dark:bg-gray-900 px-4 py-3 ${className}`}>
+    <div
+      className={`w-full rounded-t-xl bg-white dark:bg-gray-800 px-4 py-3 ${className}`}
+    >
       <div className="grid grid-cols-2 gap-2 items-center">
         {/* Izquierda: icono + título */}
         <div className="flex items-center gap-3">

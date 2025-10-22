@@ -1,13 +1,18 @@
 "use client";
 
+import {
+  BRAND_STOPS,
+  generateBrandGradient,
+} from "@/lib/utils/formatting/colors";
 import type { ApexOptions } from "apexcharts";
-import dynamic from "next/dynamic";
-import { useTheme } from "next-themes";
-import { useMemo } from "react";
-import { generateBrandGradient, BRAND_STOPS } from "@/lib/utils/formatting/colors";
 import { RouteOff as NoDataIcon } from "lucide-react"; // ⬅️ icono por defecto
+import { useTheme } from "next-themes";
+import dynamic from "next/dynamic";
+import { useMemo } from "react";
 
-const ReactApexChart = dynamic(() => import("react-apexcharts"), { ssr: false });
+const ReactApexChart = dynamic(() => import("react-apexcharts"), {
+  ssr: false,
+});
 
 export type PieDatum = { label: string; value: number };
 
@@ -67,7 +72,6 @@ export default function PieChart({
 }: Props) {
   const { theme } = useTheme();
   const isDark = theme === "dark";
-  const bg = isDark ? "#0b0f14" : "#ffffff";
 
   const labels = useMemo(() => data.map((d) => d.label), [data]);
   const series = useMemo(() => data.map((d) => d.value ?? 0), [data]);
@@ -90,59 +94,72 @@ export default function PieChart({
   const dlEnabled = compactHover ? false : dataLabels !== "none";
 
   const options: ApexOptions = useMemo(() => {
-    const compactDonutLabels:
-      NonNullable<NonNullable<ApexOptions["plotOptions"]>["pie"]>["donut"] = {
-        size: "72%",
-        labels: {
+    const compactDonutLabels: NonNullable<
+      NonNullable<ApexOptions["plotOptions"]>["pie"]
+    >["donut"] = {
+      size: "72%",
+      labels: {
+        show: true,
+        name: {
           show: true,
-          name: {
-            show: true,
-            formatter: (_name: string, opts?: { seriesIndex?: number; w?: { globals?: { labels?: string[] } } }) => {
-              const idx = opts?.seriesIndex ?? -1;
-              const lbl = idx >= 0 ? opts?.w?.globals?.labels?.[idx] ?? "" : "";
-              return String(lbl);
-            },
-            fontSize: "13px",
-            color: isDark ? "#94a3b8" : "#6b7280",
-            offsetY: 8,
+          formatter: (
+            _name: string,
+            opts?: {
+              seriesIndex?: number;
+              w?: { globals?: { labels?: string[] } };
+            }
+          ) => {
+            const idx = opts?.seriesIndex ?? -1;
+            const lbl = idx >= 0 ? opts?.w?.globals?.labels?.[idx] ?? "" : "";
+            return String(lbl);
           },
-          value: {
-            show: true,
-            formatter: (vStr: string) => {
-              const v = Number(vStr);
-              const pct = total > 0 ? (v / total) * 100 : 0;
-              return `${pct.toFixed(1)}%`;
-            },
-            fontSize: "20px",
-            color: isDark ? "#e5e7eb" : "#111827",
-            offsetY: -8,
-          },
-          total: { show: false },
+          fontSize: "13px",
+          color: isDark ? "#94a3b8" : "#6b7280",
+          offsetY: 8,
         },
-      };
+        value: {
+          show: true,
+          formatter: (vStr: string) => {
+            const v = Number(vStr);
+            const pct = total > 0 ? (v / total) * 100 : 0;
+            return `${pct.toFixed(1)}%`;
+          },
+          fontSize: "20px",
+          color: isDark ? "#e5e7eb" : "#111827",
+          offsetY: -8,
+        },
+        total: { show: false },
+      },
+    };
 
-    const defaultDonutLabels:
-      NonNullable<NonNullable<ApexOptions["plotOptions"]>["pie"]>["donut"] = {
-        size: "58%",
-        labels: {
-          show: true,
-          name: { show: false },
-          value: { show: false },
-          total: {
-            show: false,
-            // Si quisieras usar el centro nativo:
-            // show: true,
-            // showAlways: true,
-            // label: donutTotalLabel,
-            // formatter: () => donutTotalFormatter ? donutTotalFormatter(total) : Intl.NumberFormat().format(total),
-          },
+    const defaultDonutLabels: NonNullable<
+      NonNullable<ApexOptions["plotOptions"]>["pie"]
+    >["donut"] = {
+      size: "58%",
+      labels: {
+        show: true,
+        name: { show: false },
+        value: { show: false },
+        total: {
+          show: false,
+          // Si quisieras usar el centro nativo:
+          // show: true,
+          // showAlways: true,
+          // label: donutTotalLabel,
+          // formatter: () => donutTotalFormatter ? donutTotalFormatter(total) : Intl.NumberFormat().format(total),
         },
-      };
+      },
+    };
 
     const plotOptions: ApexOptions["plotOptions"] = {
       pie: {
         expandOnClick: false,
-        donut: type === "donut" ? (compactHover ? compactDonutLabels : defaultDonutLabels) : undefined,
+        donut:
+          type === "donut"
+            ? compactHover
+              ? compactDonutLabels
+              : defaultDonutLabels
+            : undefined,
         dataLabels: {
           offset: labelPosition === "outside" ? 22 : 0,
           minAngleToShowLabel: 8,
@@ -187,7 +204,10 @@ export default function PieChart({
         dropShadow: { enabled: false },
         style: { fontSize: "12px", fontWeight: 700 },
       },
-      stroke: { width: 3, colors: [bg] },
+      stroke: {
+        width: 1,
+        colors: [isDark ? "rgba(255, 255, 255, 0.03)" : "rgba(0, 0, 0, 0.05)"],
+      },
       colors,
       plotOptions,
       states: {
@@ -199,7 +219,6 @@ export default function PieChart({
 
     return { ...base, ...(optionsExtra ?? {}) };
   }, [
-    bg,
     compactHover,
     dataLabels,
     height,
@@ -223,11 +242,18 @@ export default function PieChart({
   // ------- Estado vacío con icono centrado -------
   if (!series.length || height <= 0) {
     return (
-      <div className={`relative w-full overflow-hidden ${className}`} style={{ height }}>
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-gray-400">
+      <div
+        className={`relative w-full overflow-hidden ${className}`}
+        style={{ height }}
+      >
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
           {/* icono configurable, por defecto uno de lucide */}
-          {emptyIcon ?? <NoDataIcon className="h-14 w-14" />}
-          <span className="text-xs">{emptyText}</span>
+          <div className="text-gray-400 dark:text-gray-500">
+            {emptyIcon ?? <NoDataIcon className="h-14 w-14" />}
+          </div>
+          <span className="text-xs text-gray-600 dark:text-gray-300 font-semibold">
+            {emptyText}
+          </span>
         </div>
       </div>
     );
@@ -235,7 +261,13 @@ export default function PieChart({
 
   return (
     <div className={`relative w-full overflow-hidden ${className}`}>
-      <ReactApexChart key={key} options={options} series={series} type={type} height={height} />
+      <ReactApexChart
+        key={key}
+        options={options}
+        series={series}
+        type={type}
+        height={height}
+      />
       {(centerTop || centerBottom) && (
         <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center leading-tight">
           {centerTop && (

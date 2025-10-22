@@ -128,8 +128,10 @@ export default function TownCategoryDrilldownPanel({
     <div className="overflow-hidden mt-8">
       <div
         className="
-          rounded-xl p-6 space-y-4 shadow-sm border-l-4
+          rounded-xl p-6 space-y-4 shadow-sm border-l-4 transition-all duration-200
           bg-gradient-to-r from-white via-[#fef2f2] to-[#fff7ed]
+          dark:from-gray-800 dark:via-gray-800/95 dark:to-gray-800/90
+          border-gray-200/50 dark:border-gray-700/50 ring-1 ring-black/5 dark:ring-white/10
         "
         style={{ borderLeftColor: "var(--color-huelva-primary, #E55338)" }}
       >

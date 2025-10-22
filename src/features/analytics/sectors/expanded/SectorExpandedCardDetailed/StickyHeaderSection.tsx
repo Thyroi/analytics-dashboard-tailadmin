@@ -33,8 +33,8 @@ export default function StickyHeaderSection({
       <div
         className="
           flex items-center justify-between gap-3
-          bg-[#f9fafb] dark:bg-[#160c0cbb]
-          dark:supports-[backdrop-filter]:bg-[#0c1116]/70
+          bg-gray-50/95 dark:bg-gray-900/95
+          supports-[backdrop-filter]:backdrop-blur-sm
           px-1 py-2
         "
       >

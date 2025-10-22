@@ -1,13 +1,16 @@
 "use client";
 
-import React, { useMemo } from "react";
-import type { SeriesPoint } from "@/lib/types";
 import KPIList, { type KPIItem } from "@/components/charts/KPIList";
 import KPIListSkeleton from "@/components/skeletons/KPIListSkeleton";
 import ChartSection from "@/features/home/sectors/SectorExpandedCard/ChartSection";
-import { Clock, UserPlus, MousePointer2, Timer } from "lucide-react";
+import type { SeriesPoint } from "@/lib/types";
+import { Clock, MousePointer2, Timer, UserPlus } from "lucide-react";
+import { useMemo } from "react";
 
-const pf = new Intl.NumberFormat("es-ES", { style: "percent", maximumFractionDigits: 1 });
+const pf = new Intl.NumberFormat("es-ES", {
+  style: "percent",
+  maximumFractionDigits: 1,
+});
 const df = new Intl.NumberFormat("es-ES", { maximumFractionDigits: 2 });
 
 function formatDuration(seconds: number): string {
@@ -24,8 +27,8 @@ type KPIsForUrl = {
   current: {
     newUsers: number;
     eventsPerSession: number;
-    avgEngagementPerUser: number;      // seconds/user
-    averageSessionDuration: number;    // seconds
+    avgEngagementPerUser: number; // seconds/user
+    averageSessionDuration: number; // seconds
   };
   deltaPct: {
     newUsers: number;
@@ -115,7 +118,9 @@ export default function KPIColumnWithTrend({
         {loading || !items ? (
           <KPIListSkeleton stretch />
         ) : error ? (
-          <div className="text-sm text-red-500">Error cargando KPIs: {error}</div>
+          <div className="text-sm text-red-500 dark:text-red-400">
+            Error cargando KPIs: {error}
+          </div>
         ) : (
           <KPIList items={items} stretch />
         )}
@@ -126,7 +131,11 @@ export default function KPIColumnWithTrend({
         <div className="mb-2 text-sm font-medium text-gray-800 dark:text-gray-200">
           {title}
         </div>
-        <ChartSection categories={categories} currData={currData} prevData={prevData} />
+        <ChartSection
+          categories={categories}
+          currData={currData}
+          prevData={prevData}
+        />
       </div>
     </div>
   );

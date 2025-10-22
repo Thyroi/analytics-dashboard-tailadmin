@@ -1,8 +1,8 @@
 "use client";
 
-import * as React from "react";
 import type { Granularity } from "@/lib/types";
-import { motion, LayoutGroup } from "motion/react";
+import { LayoutGroup, motion } from "motion/react";
+import * as React from "react";
 
 const LABELS: Record<Granularity, string> = {
   d: "Día",
@@ -30,7 +30,7 @@ export default function GranularityTabs({
       <div
         role="tablist"
         aria-label="Granularidad"
-        className={`inline-flex bg-gray-100 border border-gray-200 rounded-2xl p-1 ${className}`}
+        className={`inline-flex bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-1 ${className}`}
       >
         {ORDER.map((g) => {
           const isActive = value === g;
@@ -43,14 +43,16 @@ export default function GranularityTabs({
               onClick={() => onChange(g)}
               className={[
                 "relative px-4 py-2 text-sm font-medium transition-colors rounded-2xl",
-                isActive ? "text-gray-900" : "text-gray-600 hover:text-gray-800",
+                isActive
+                  ? "text-gray-900 dark:text-gray-100"
+                  : "text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200",
               ].join(" ")}
             >
               {isActive && (
                 <motion.div
                   // layoutId aislado por instancia
                   layoutId={`granularityActive-${uid}`}
-                  className="absolute inset-0 bg-white rounded-2xl shadow-sm ring-1 ring-black/5"
+                  className="absolute inset-0 bg-white dark:bg-gray-700 rounded-2xl shadow-sm ring-1 ring-black/5 dark:ring-white/10"
                   transition={{ type: "spring", stiffness: 400, damping: 30 }}
                 />
               )}

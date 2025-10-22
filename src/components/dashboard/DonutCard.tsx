@@ -11,6 +11,7 @@ import {
 } from "@/lib/utils/formatting/colors";
 import type { LucideIcon } from "lucide-react";
 import { motion } from "motion/react";
+import { useTheme } from "next-themes";
 import { useMemo, useState } from "react";
 
 export type DonutCardItem = {
@@ -86,8 +87,12 @@ export default function DonutCard({
 
   className = "",
 }: DonutCardProps) {
+  const { theme } = useTheme();
   const [selectedLabel, setSelectedLabel] = useState<string | null>(null);
   const interactive = typeof onSliceClick === "function";
+
+  // Color vacío adaptado al tema
+  const adaptedEmptyColor = theme === "dark" ? "#374151" : emptyColor;
 
   const sum = useMemo(
     () =>
@@ -128,14 +133,14 @@ export default function DonutCard({
 
   // Colores por label (respeta color si viene; en vacío usa gris)
   const colorsByLabel = useMemo(() => {
-    if (isEmpty) return { [emptyLabel]: emptyColor };
+    if (isEmpty) return { [emptyLabel]: adaptedEmptyColor };
     const out: Record<string, string> = {};
     const fb = paletteBase ?? [];
     items.forEach((d, i) => {
       out[d.label] = d.color ?? fb[i % Math.max(1, fb.length)] ?? "#E55338";
     });
     return out;
-  }, [isEmpty, items, paletteBase, emptyLabel, emptyColor]);
+  }, [isEmpty, items, paletteBase, emptyLabel, adaptedEmptyColor]);
 
   const legendItems: LegendItem[] = useMemo(() => {
     if (isEmpty) return [];
@@ -154,8 +159,10 @@ export default function DonutCard({
 
   const wrapperClass =
     variant === "card"
-      ? "rounded-xl border bg-white p-3 transition-all duration-200 border-gray-200 hover:border-red-300 hover:shadow-md h-full flex flex-col"
-      : "p-0 h-full flex flex-col";
+      ? `rounded-xl border bg-white dark:bg-gray-800 p-3 transition-all duration-200 border-gray-200/50 dark:border-gray-700/50 ring-1 ring-black/5 dark:ring-white/10 hover:border-red-300 hover:shadow-md ${
+          isEmpty ? "min-h-[420px]" : ""
+        } flex flex-col`
+      : "p-0 flex flex-col";
 
   const EmptyIconComponent = emptyIcon ?? EmptyIcon;
 
@@ -182,7 +189,11 @@ export default function DonutCard({
           </div>
         )}
 
-        <div className="relative w-full flex-1 flex flex-col">
+        <div
+          className={`relative w-full flex-1 flex ${
+            isEmpty ? "items-center justify-center" : "flex-col"
+          }`}
+        >
           <PieChart
             data={apexData}
             type="donut"
@@ -223,8 +234,11 @@ export default function DonutCard({
 
           {isEmpty && (
             <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-2">
-              <EmptyIconComponent className="h-20 w-20" aria-hidden />
-              <span className="text-xs text-gray-400 font-medium">
+              <EmptyIconComponent
+                className="h-20 w-20 text-gray-400 dark:text-gray-500"
+                aria-hidden
+              />
+              <span className="text-xs text-gray-600 dark:text-gray-300 font-semibold">
                 No se han encontrado datos
               </span>
             </div>

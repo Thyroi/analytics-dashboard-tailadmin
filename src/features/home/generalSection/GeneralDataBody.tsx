@@ -34,7 +34,7 @@ export default function GeneralDataBody({ kpiSeries, className = "" }: Props) {
 
   return (
     <div
-      className={`w-full bg-amber-50/60 dark:bg-white/5 rounded-b-xl border-t border-gray-100 dark:border-white/10 ${className}`}
+      className={`w-full bg-amber-50/60 dark:bg-gray-900/50 rounded-b-xl border-t border-gray-200 dark:border-gray-600 ${className}`}
     >
       <div className="pl-6 pr-3 pb-3">
         <div className="w-full h-[300px] md:h-[340px]">

@@ -1,9 +1,9 @@
 "use client";
 
-import React from "react";
-import GeneralDataHeader from "./GeneralDataHeader";
-import GeneralDataBody from "./GeneralDataBody";
 import type { Granularity, KPISeries, Mode } from "@/lib/types";
+import React from "react";
+import GeneralDataBody from "./GeneralDataBody";
+import GeneralDataHeader from "./GeneralDataHeader";
 
 type Props = {
   title: string;
@@ -39,9 +39,14 @@ export default function GeneralDataCardView({
 }: Props) {
   return (
     <div
-      className={`w-full rounded-xl bg-white dark:bg-gray-900 shadow-sm ring-1 ring-black/5 overflow-hidden ${className}`}
+      className={`w-full rounded-xl bg-white dark:bg-gray-800 shadow-sm ring-1 ring-black/5 dark:ring-white/10 border border-gray-200/50 dark:border-gray-700/50 overflow-hidden ${className}`}
     >
-      <GeneralDataHeader title={title} value={value} deltaPct={deltaPct} icon={icon} />
+      <GeneralDataHeader
+        title={title}
+        value={value}
+        deltaPct={deltaPct}
+        icon={icon}
+      />
 
       <GeneralDataBody
         mode={mode}

@@ -181,25 +181,27 @@ export default function UrlDetailsPanel({
   return (
     <div
       className="
-        w-full p-6 rounded-lg shadow-sm border
-        border-red-200/60
+        w-full p-6 rounded-lg shadow-sm border transition-all duration-200
+        border-red-200/60 dark:border-red-700/40
         bg-gradient-to-r from-white via-[#fef2f2] to-[#fff7ed]
+        dark:from-gray-800 dark:via-gray-800/95 dark:to-gray-800/90
+        ring-1 ring-black/5 dark:ring-white/10
       "
     >
       {/* Encabezado */}
-      <div className="mb-4 flex items-start justify-between gap-3 pb-3 border-b border-red-200/60">
+      <div className="mb-4 flex items-start justify-between gap-3 pb-3 border-b border-red-200/60 dark:border-red-700/40">
         <Header
           title="Detalle de URL"
           titleSize="sm"
           Icon={Activity}
           subtitle={subtitleText}
-          subtitleColor="text-red-600"
+          subtitleColor="text-red-600 dark:text-red-400"
         />
         {onClose && (
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg px-3 py-1.5 text-xs text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-white/5"
+            className="rounded-lg px-3 py-1.5 text-xs border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 bg-white/80 dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
           >
             Cerrar
           </button>
@@ -228,7 +230,7 @@ export default function UrlDetailsPanel({
             prevData={prevData}
           />
           {categories.length === 0 && (
-            <div className="mt-2 text-xs text-gray-500">
+            <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
               Sin datos suficientes para la granularidad &quot;{granularity}
               &quot;.
             </div>
@@ -259,7 +261,7 @@ export default function UrlDetailsPanel({
       </section>
 
       {/* Delta global (sobre vistas) */}
-      <div className="mt-3 text-xs text-gray-600">
+      <div className="mt-3 text-xs text-gray-600 dark:text-gray-400">
         Variación total (vistas):{" "}
         <span className="font-semibold">{Math.round(deltaPct)}%</span>
       </div>

@@ -11,7 +11,7 @@ export default function CustomersDemographicSkeleton({
       className="
         card rounded-2xl shadow-sm
         border border-gray-200 dark:border-white/10
-        bg-white dark:bg-[#14181e]
+        bg-white dark:bg-gray-900
         animate-pulse
       "
       aria-busy="true"
@@ -32,7 +32,7 @@ export default function CustomersDemographicSkeleton({
           className="
             h-10 w-56 rounded-lg
             border border-gray-200 dark:border-white/10
-            bg-gray-100 dark:bg-[#14181e]
+            bg-gray-100 dark:bg-gray-800
           "
         />
       </div>
@@ -42,7 +42,7 @@ export default function CustomersDemographicSkeleton({
         <div
           className="
             relative mb-6 w-full overflow-hidden rounded-xl
-            bg-gray-100 dark:bg-[#0f1318]
+            bg-gray-100 dark:bg-gray-700
           "
           style={{ height }}
         >

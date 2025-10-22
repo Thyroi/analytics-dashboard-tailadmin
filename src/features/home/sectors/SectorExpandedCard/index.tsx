@@ -59,7 +59,7 @@ export default function SectorExpandedCard(props: Props) {
     : baseSubtitle;
 
   return (
-    <div className="rounded-2xl border border-gray-200 dark:border-white/10 bg-[#fff7ed] dark:bg-[#0c1116] p-3 shadow-sm w-full">
+    <div className="rounded-2xl border border-gray-200 dark:border-white/10 bg-orange-50 dark:bg-gray-900/50 p-3 shadow-sm w-full">
       <Header
         title={title}
         subtitle={subtitle}

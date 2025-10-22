@@ -42,12 +42,10 @@ export default function DrilldownMultiLineSection({
 
   const chartSeries = useMemo(() => {
     const N = Math.max(0, Math.min(maxSeries, safeSeries.length));
-    return safeSeries
-      .slice(0, N)
-      .map((s) => ({
-        name: s.name,
-        data: padToLen(s.data ?? [], safeX.length),
-      }));
+    return safeSeries.slice(0, N).map((s) => ({
+      name: s.name,
+      data: padToLen(s.data ?? [], safeX.length),
+    }));
   }, [safeSeries, safeX, maxSeries]);
 
   const hasData = useMemo(
@@ -57,7 +55,7 @@ export default function DrilldownMultiLineSection({
 
   return (
     <div
-      className={`rounded-xl border border-gray-200 dark:border-white/10 bg-white/70 dark:bg-[#0b0f14]/70 p-3 ${className}`}
+      className={`rounded-xl border bg-white dark:bg-gray-800 shadow-sm p-3 transition-all duration-200 border-gray-200/50 dark:border-gray-700/50 ring-1 ring-black/5 dark:ring-white/10 hover:border-red-300 hover:shadow-md ${className}`}
     >
       <div className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
         Sub-actividades (comparativa por URL)
@@ -65,7 +63,7 @@ export default function DrilldownMultiLineSection({
 
       {loading && (
         <div
-          className="w-full rounded-md bg-gray-100 dark:bg-white/5 animate-pulse"
+          className="w-full rounded-md bg-gray-100 dark:bg-gray-700 animate-pulse"
           style={{
             height: typeof height === "number" ? `${height}px` : height,
           }}

@@ -38,7 +38,7 @@ export default function DonutSection({
   );
 
   return (
-    <div className="w-full h-full">
+    <div className="w-full min-h-[420px] flex">
       <DonutCard
         items={items}
         onSliceClick={onSliceClick}
@@ -47,8 +47,8 @@ export default function DonutSection({
         centerTitle={centerLabel}
         centerValueOverride={centerValueOverride}
         actionHref={showActivityButton ? actionButtonTarget : undefined}
-        height={180}
-        className="h-full"
+        height={420}
+        className="w-full"
       />
     </div>
   );

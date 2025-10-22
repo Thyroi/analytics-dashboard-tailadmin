@@ -48,17 +48,28 @@
   --text-theme-xs--line-height: 18px;
 
   /* =========================
-     HUELVA COLORS (NEW)
+     HUELVA COLORS (LIGHT & DARK)
   ========================== */
+  /* Light mode Huelva colors */
   --color-huelva-primary: #e55338; /* Naranja principal, botones */
   --color-huelva-secondary: #f5aa35; /* Naranja claro, inicio degradado */
   --color-huelva-dark: #902919; /* Rojo oscuro, acentos y contrastes */
 
-  /* Gradient */
+  /* Dark mode Huelva colors - más saturados y vibrantes */
+  --color-huelva-primary-dark: #ff6b52; /* Naranja más brillante para dark */
+  --color-huelva-secondary-dark: #ffb347; /* Naranja claro más brillante */
+  --color-huelva-dark-dark: #d63a2a; /* Rojo más vibrante para dark */
+
+  /* Gradients - responsive to theme */
   --gradient-huelva: linear-gradient(
     90deg,
     var(--color-huelva-primary),
     var(--color-huelva-secondary)
+  );
+  --gradient-huelva-dark: linear-gradient(
+    90deg,
+    var(--color-huelva-primary-dark),
+    var(--color-huelva-secondary-dark)
   );
 
   /* =========================
@@ -78,7 +89,7 @@
   --color-brand-900: #262e89;
   --color-brand-950: #161950;
 
-  /* Grays */
+  /* Grays - Enhanced for better dark mode */
   --color-gray-25: #fcfcfd;
   --color-gray-50: #f9fafb;
   --color-gray-100: #f2f4f7;
@@ -90,6 +101,18 @@
   --color-gray-700: #344054;
   --color-gray-800: #1d2939;
   --color-gray-900: #101828;
+
+  /* Dark mode specific grays for consistent theming */
+  --color-dark-surface: #0c1116; /* Primary dark surface */
+  --color-dark-surface-elevated: #14181e; /* Elevated dark surface */
+  --color-dark-surface-subtle: #0b0f14; /* Subtle background */
+  --color-dark-border: rgba(255, 255, 255, 0.1); /* Consistent dark borders */
+  --color-dark-border-subtle: rgba(255, 255, 255, 0.05); /* Subtle borders */
+
+  /* Custom colors for Tailwind */
+  --color-huelva-primary-rgb: 229 83 56;
+  --color-huelva-secondary-rgb: 245 170 53;
+  --color-huelva-dark-rgb: 144 41 25;
 
   /* States */
   --color-success-500: #12b76a;
@@ -125,6 +148,10 @@
 
 .bg-analytics-gradient {
   background: linear-gradient(135deg, #fff7f2 10%, #ffe6d1 80%, #ffd7b3 100%);
+}
+
+.dark .bg-analytics-gradient {
+  background: linear-gradient(135deg, #1a1410 10%, #2a1f14 80%, #3a2518 100%);
 }
 /* =========================
    UTILITIES (sidebar + scroll)
@@ -198,10 +225,10 @@
    CARDS + SKELETON
 ========================= */
 .card {
-  @apply w-full rounded-2xl border border-gray-100 bg-white shadow-sm dark:bg-neutral-900/60 dark:border-white/10;
+  @apply w-full rounded-2xl border border-gray-100 bg-white shadow-sm dark:bg-dark-surface-elevated dark:border-dark-border;
 }
 .card-header {
-  @apply flex items-center justify-between gap-3 px-6 pt-5 pb-4 border-b border-gray-100/80 dark:border-white/5;
+  @apply flex items-center justify-between gap-3 px-6 pt-5 pb-4 border-b border-gray-100/80 dark:border-dark-border-subtle;
 }
 .card-body {
   @apply pl-6 pr-3 pb-6;
@@ -318,8 +345,8 @@ html:not(.dark) .apexcharts-tooltip {
   min-height: 112px;
 }
 .dark .kpi-card {
-  border-color: rgba(255, 255, 255, 0.1);
-  background: #14181e;
+  border-color: var(--color-dark-border);
+  background: var(--color-dark-surface-elevated);
 }
 
 .kpi-title {
@@ -390,9 +417,17 @@ html:not(.dark) .apexcharts-tooltip {
   background: #ecfdf5;
   color: #059669;
 }
+.dark .kpi-delta--up {
+  background: rgba(16, 185, 129, 0.15);
+  color: #34d399;
+}
 .kpi-delta--down {
   background: #fef2f2;
   color: #dc2626;
+}
+.dark .kpi-delta--down {
+  background: rgba(239, 68, 68, 0.15);
+  color: #f87171;
 }
 
 @container (inline-size < 120px) {
@@ -695,6 +730,54 @@ html:not(.dark) .apexcharts-tooltip {
 /* Si usas modo “static” alineado a la derecha */
 .flatpickr-calendar.static {
   right: 0;
+}
+
+/* =========================
+   THEME-AWARE UTILITIES
+========================= */
+.text-huelva-primary {
+  color: var(--color-huelva-primary);
+}
+.dark .text-huelva-primary {
+  color: var(--color-huelva-primary-dark);
+}
+
+.bg-huelva-primary {
+  background-color: var(--color-huelva-primary);
+}
+.dark .bg-huelva-primary {
+  background-color: var(--color-huelva-primary-dark);
+}
+
+.border-huelva-primary {
+  border-color: var(--color-huelva-primary);
+}
+.dark .border-huelva-primary {
+  border-color: var(--color-huelva-primary-dark);
+}
+
+.bg-gradient-huelva {
+  background: var(--gradient-huelva);
+}
+.dark .bg-gradient-huelva {
+  background: var(--gradient-huelva-dark);
+}
+
+/* Enhanced dark mode surfaces */
+.bg-dark-surface {
+  background-color: var(--color-dark-surface);
+}
+.bg-dark-surface-elevated {
+  background-color: var(--color-dark-surface-elevated);
+}
+.bg-dark-surface-subtle {
+  background-color: var(--color-dark-surface-subtle);
+}
+.border-dark-border {
+  border-color: var(--color-dark-border);
+}
+.border-dark-border-subtle {
+  border-color: var(--color-dark-border-subtle);
 }
 
 /* ========== ARREGLA ANCHO DEL CALENDARIO ========== */

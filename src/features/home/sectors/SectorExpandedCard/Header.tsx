@@ -57,7 +57,7 @@ export default function Header({
       </div>
       <button
         onClick={onClose}
-        className="h-8 w-8 rounded-full grid place-items-center bg-white/80 border border-gray-200 hover:bg-white"
+        className="h-8 w-8 rounded-full grid place-items-center bg-white/80 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 hover:bg-white dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 transition-colors"
         title="Cerrar detalle"
       >
         ✕
