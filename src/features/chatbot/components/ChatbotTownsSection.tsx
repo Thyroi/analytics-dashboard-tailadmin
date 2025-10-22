@@ -6,7 +6,7 @@ import {
   useTagTimeframe,
 } from "@/features/analytics/context/TagTimeContext";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 
 import { type TownCardData, useChatbotTowns } from "../hooks/useChatbotTowns";
 import TopTownsKPI from "./TopTownsKPI";
@@ -42,6 +42,9 @@ function ChatbotTownsSectionContent() {
   }
 
   const [selectedTownId, setSelectedTownId] = useState<string | null>(null);
+  
+  // Ref para hacer scroll al drilldown
+  const drilldownRef = useRef<HTMLDivElement>(null);
 
   // Obtener datos de towns
   const { towns, isLoading, isError, error, refetch } = useChatbotTowns({
@@ -51,22 +54,50 @@ function ChatbotTownsSectionContent() {
     enabled: true,
   });
 
+  // Función para manejar click en town con scroll automático
+  const handleTownClick = (townId: string) => {
+    setSelectedTownId(townId);
+    
+    // Scroll automático al drilldown después de un pequeño delay
+    setTimeout(() => {
+      drilldownRef.current?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+        inline: 'nearest'
+      });
+      // Forzar reflow de componentes (charts) que dependen del tamaño del contenedor
+      // Algunos chart libraries necesitan un evento de resize para recalcular dimensiones.
+      // Disparamos dos eventos: resize nativo y un custom 'chart-reflow' para compatibilidad.
+      setTimeout(() => {
+        try {
+          window.dispatchEvent(new Event('resize'));
+        } catch {
+          // no-op en entornos donde window no existe
+        }
+
+        try {
+          window.dispatchEvent(new CustomEvent('chart-reflow'));
+        } catch {
+          // noop
+        }
+      }, 200);
+    }, 100);
+  };
+
   return (
     <section className="max-w-[1560px] mx-auto w-full">
-      {/* Header con controles */}
-      <div className="px-4 mb-6">
-        <StickyHeaderSection
-          title="Chatbot · Analíticas por pueblo"
-          subtitle="Interacciones del chatbot organizadas por municipio"
-          mode={mode}
-          granularity={granularity}
-          onGranularityChange={setGranularity}
-          startDate={startDate}
-          endDate={endDate}
-          onRangeChange={setRange}
-          onClearRange={clearRange}
-        />
-      </div>
+      {/* Sticky Header Section */}
+      <StickyHeaderSection
+        title="Chatbot · Analíticas por pueblo"
+        subtitle="Interacciones del chatbot organizadas por municipio"
+        mode={mode}
+        granularity={granularity}
+        startDate={startDate}
+        endDate={endDate}
+        onGranularityChange={setGranularity}
+        onRangeChange={setRange}
+        onClearRange={clearRange}
+      />
 
       {/* KPI Section - Top Towns */}
       <div className="px-4 mb-6">
@@ -79,7 +110,7 @@ function ChatbotTownsSectionContent() {
 
       {/* Drilldown expandido como overlay */}
       {selectedTownId && (
-        <div className="px-4 mb-6">
+        <div ref={drilldownRef} className="px-4 mb-6">
           <TownExpandedCard
             townId={selectedTownId}
             granularity={granularity}
@@ -98,7 +129,7 @@ function ChatbotTownsSectionContent() {
           isError={isError}
           error={error}
           onRefetch={refetch}
-          onTownClick={setSelectedTownId}
+          onTownClick={handleTownClick}
           selectedTownId={selectedTownId}
         />
       </div>

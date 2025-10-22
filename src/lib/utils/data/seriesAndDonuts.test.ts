@@ -640,7 +640,7 @@ describe("buildSeriesAndDonutFocused", () => {
     // Para granularidad 'd', el donut solo usa el último día: 2025-10-17
     // Solo "root.almonte.cultura.museos" tiene datos en 2025-10-17 (value: 1)
     expect(result.donutData).toEqual([
-      { label: "cultura", value: 1 }, // Solo datos del último día (2025-10-17)
+      { label: "Espacios Museísticos", value: 1 }, // Solo datos del último día (2025-10-17) - ahora usa friendly labels
     ]);
   });
 

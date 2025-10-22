@@ -1,5 +1,5 @@
 import ChartPair from "@/components/common/ChartPair";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 
 import { TOWN_META, type TownId } from "@/lib/taxonomy/towns";
 import type { Granularity } from "@/lib/types";
@@ -77,7 +77,7 @@ export default function TownExpandedCard({
   endDate,
   onClose,
 }: Props) {
-  const [selectedSlice, setSelectedSlice] = useState<string | null>(null);
+  // Removed selectedSlice functionality
 
   // Obtener detalles del town usando nuestro hook específico
   const { series, donutData, totalInteractions, error } = useChatbotTownDetails(
@@ -106,7 +106,8 @@ export default function TownExpandedCard({
   const subtitle = `Análisis detallado por categorías • ${totalInteractions.toLocaleString()} interacciones totales`;
 
   const handleDonutSlice = (label: string) => {
-    setSelectedSlice(selectedSlice === label ? null : label);
+    // Removed selectedSlice functionality - no action needed
+    console.log('Donut slice clicked:', label);
   };
 
   if (error) {
@@ -131,16 +132,7 @@ export default function TownExpandedCard({
         onClose={onClose}
       />
 
-      {/* Información de slice seleccionado */}
-      {selectedSlice && (
-        <div className="px-4 mb-4">
-          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-            <p className="text-blue-800 dark:text-blue-200">
-              Visualizando datos para: <strong>{selectedSlice}</strong>
-            </p>
-          </div>
-        </div>
-      )}
+      {/* Removed selectedSlice information section */}
 
       {/* Gráficas */}
       <div className="px-4">

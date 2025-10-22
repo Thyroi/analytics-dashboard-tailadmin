@@ -101,6 +101,43 @@ export const TOWN_META: Record<TownId, TownMeta> = Object.fromEntries(
 export const TOWNS: ReadonlyArray<TownMeta> =
   TOWN_ID_ORDER.map((id) => TOWN_META[id]);
 
+/**
+ * Sinónimos y variantes de towns que aparecen en el API del chatbot.
+ * Basado en análisis real de datos del chatbot API con parámetros:
+ * {db: "project_huelva", patterns: "root.*.*.*", granularity: "d", startTime: "20231018", endTime: "20251018"}
+ */
+export const TOWN_SYNONYMS: Record<TownId, string[]> = {
+  almonte: ["almonte", "Almonte"],
+  bollullos: ["bollullos", "BOLLULLOS"],
+  bonares: ["bonares", "Bonares"],
+  chucena: ["chucena"],
+  escacena: ["escacena"],
+  hinojos: ["hinojos"],
+  laPalmaDelCondado: [
+    "la palma del condado",
+    "la palma", 
+    "la_palma"
+  ],
+  lucenaDelPuerto: [
+    "lucena del puerto",
+    "lucena_del_puerto"
+  ],
+  manzanilla: ["manzanilla"],
+  niebla: ["niebla", "NIEBLA"],
+  palos: [
+    "palos",
+    "palos de la frontera"
+  ],
+  paternaDelCampo: ["paterna"],
+  rocianaDelCondado: [
+    "rociana del condado",
+    "rociana",
+    "rocianna"  // typo en API
+  ],
+  villalba: ["villalba del alcor"],
+  villarrasa: ["villarrasa"],
+};
+
 export function getTownLabel(id: TownId): string {
   return TOWN_META[id].label;
 }

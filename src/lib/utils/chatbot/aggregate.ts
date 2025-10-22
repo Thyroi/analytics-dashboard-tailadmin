@@ -8,7 +8,7 @@ import {
   CATEGORY_SYNONYMS,
   type CategoryId,
 } from "@/lib/taxonomy/categories";
-import { TOWN_ID_ORDER, TOWN_META, type TownId } from "@/lib/taxonomy/towns";
+import { TOWN_ID_ORDER, TOWN_META, TOWN_SYNONYMS, type TownId } from "@/lib/taxonomy/towns";
 
 // ===== Tipos de la API entrante =====
 export type ApiPoint = { time: string; value: number };
@@ -87,17 +87,21 @@ function buildCategorySynIndex(): Map<string, CategoryId> {
 
 function buildTownSynIndex(): Map<string, TownId> {
   const m = new Map<string, TownId>();
+  
+  // Agregar IDs y labels oficiales de cada town
   for (const id of TOWN_ID_ORDER) {
     m.set(normalize(id), id);
     m.set(normalize(TOWN_META[id].label), id);
   }
-  // alias frecuentes
-  m.set(normalize("la palma"), "laPalmaDelCondado");
-  m.set(normalize("la palma del condado"), "laPalmaDelCondado");
-  m.set(normalize("lucena"), "lucenaDelPuerto");
-  m.set(normalize("paterna"), "paternaDelCampo");
-  m.set(normalize("rociana"), "rocianaDelCondado");
-  m.set(normalize("palos de la frontera"), "palos");
+  
+  // Agregar todos los sinónimos definidos en TOWN_SYNONYMS
+  for (const townId of TOWN_ID_ORDER) {
+    const synonyms = TOWN_SYNONYMS[townId] || [];
+    for (const synonym of synonyms) {
+      m.set(normalize(synonym), townId);
+    }
+  }
+  
   return m;
 }
 
@@ -175,6 +179,15 @@ function detectTownAndCategory(
   }
 
   return { townId, categoryId, segments };
+}
+
+/**
+ * Función wrapper pública para detectar town y category con índices internos
+ */
+export function detectTownAndCategoryFromPath(rawKey: string): { townId?: TownId; categoryId?: CategoryId; segments: string[] } {
+  const townIndex = buildTownSynIndex();
+  const catIndex = buildCategorySynIndex();
+  return detectTownAndCategory(rawKey, townIndex, catIndex);
 }
 
 // ======= FUNCIÓN PRINCIPAL =======
