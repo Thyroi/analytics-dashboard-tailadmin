@@ -91,8 +91,6 @@ export function useDrilldownDetails(
     },
   });
 
-
-
   // Estado de carga
   if (isLoading) {
     return { loading: true };

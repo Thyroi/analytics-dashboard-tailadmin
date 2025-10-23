@@ -68,7 +68,7 @@ async function fetchUrlSeries(
 ): Promise<{ current: SeriesPoint[]; previous: SeriesPoint[] }> {
   const puebloDimName = resolveCustomEventDim(dimsAvailable, "pueblo");
   const categoriaDimName = resolveCustomEventDim(dimsAvailable, "categoria");
-  
+
   const N = axis.xLabels.length;
 
   // Usar filtros AND para eventName Y pageLocation exacta (como en drilldown/url)
@@ -143,7 +143,10 @@ async function fetchUrlSeries(
     if (axis.dimensionTime === "date") {
       // YYYYMMDD -> YYYY-MM-DD
       if (slotRaw.length === 8) {
-        slotKey = `${slotRaw.slice(0, 4)}-${slotRaw.slice(4, 6)}-${slotRaw.slice(6, 8)}`;
+        slotKey = `${slotRaw.slice(0, 4)}-${slotRaw.slice(
+          4,
+          6
+        )}-${slotRaw.slice(6, 8)}`;
       }
     } else {
       // "yearMonth" → YYYYMM
@@ -180,18 +183,18 @@ async function fetchUrlSeries(
 export async function GET(req: Request) {
   try {
     const url = new URL(req.url);
-    
+
     // Obtener parámetros como en la API original
     const g = (url.searchParams.get("granularity") || "d") as Granularity;
     const endISOParam = url.searchParams.get("end") || undefined;
-    
+
     // Obtener múltiples URLs para series
     const includeSeriesFor = url.searchParams.getAll("includeSeriesFor");
-    
+
     if (includeSeriesFor.length === 0) {
       return NextResponse.json({
         series: [],
-        message: "No URLs provided for series data"
+        message: "No URLs provided for series data",
       });
     }
 
@@ -221,26 +224,31 @@ export async function GET(req: Request) {
 
     // ===== Construir URLs completas para GA4 =====
     const BASE_URL = "https://wp.ideanto.com";
-    
+
     // ===== Procesar todas las URLs en paralelo =====
-    const seriesPromises = includeSeriesFor.map(path => {
+    const seriesPromises = includeSeriesFor.map((path) => {
       // Construir URL completa: GA4 almacena URLs completas, no paths relativos
-      const fullUrl = path.startsWith('http') ? path : `${BASE_URL}${path}`;
-      
-      return fetchUrlSeries(analyticsData, property, axis, fullUrl, dimsAvailable)
-        .then(seriesData => ({
+      const fullUrl = path.startsWith("http") ? path : `${BASE_URL}${path}`;
+
+      return fetchUrlSeries(
+        analyticsData,
+        property,
+        axis,
+        fullUrl,
+        dimsAvailable
+      )
+        .then((seriesData) => ({
           path: path, // Devolver el path original para el frontend
           data: seriesData.current, // Solo devolvemos current para el chart
         }))
-        .catch(error => {
+        .catch((error) => {
           console.error(`❌ ERROR PROCESSING ${path}:`, error);
           return {
             path: path,
             data: [], // Serie vacía en caso de error
           };
-        })
-    }
-    );
+        });
+    });
 
     const series = await Promise.all(seriesPromises);
 
@@ -253,7 +261,6 @@ export async function GET(req: Request) {
       },
       xLabels: axis.xLabels,
     });
-
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : "Unknown error";
     console.error("[top-comparative-pages-fixed] ERROR =", msg);

@@ -72,8 +72,6 @@ export function useUrlDrilldown({ path, granularity, endISO }: Args) {
     },
   });
 
-
-
   if (!path) {
     return {
       loading: true,

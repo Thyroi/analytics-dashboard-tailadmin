@@ -172,8 +172,6 @@ export default function TestQuery() {
           aggregateCategoriesForUIWithDebug(response.output);
         setProcessedCategories(aggregatedData);
         setDebugInfo(debug);
-
-
       }
     } catch (error) {
       console.error("❌ ERROR EN LA QUERY:", error);
