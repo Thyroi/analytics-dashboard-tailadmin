@@ -3,8 +3,8 @@
 import LineChart from "@/components/charts/LineChart";
 import Header from "@/components/common/Header";
 import { useUserAcquisitionRange } from "@/features/analytics/hooks/useUserAcquisitionRange";
-import { buildSeriesColorMap } from "@/lib/utils/formatting/colors";
 import { formatChartLabelsSimple } from "@/lib/utils/charts/labelFormatting";
+import { buildSeriesColorMap } from "@/lib/utils/formatting/colors";
 import { UserPlus } from "lucide-react";
 import { useHeaderAnalyticsTimeframe } from "../context/HeaderAnalyticsTimeContext";
 import { ChartSectionSkeleton } from "../skeletons";
@@ -25,7 +25,7 @@ export default function UserAcquisitionSection() {
   });
 
   if (isLoading) {
-    return <ChartSectionSkeleton/>;
+    return <ChartSectionSkeleton />;
   }
 
   const rawCategories: string[] =
@@ -34,7 +34,7 @@ export default function UserAcquisitionSection() {
     [];
 
   const categories = formatChartLabelsSimple(rawCategories, granularity);
-  
+
   const series = data?.series ?? [];
   const seriesNames = series.map((s) => s.name);
   const colorsByName = buildSeriesColorMap(seriesNames, {

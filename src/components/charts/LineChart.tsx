@@ -116,8 +116,8 @@ export default function LineChart({
         width: strokeWidths,
         dashArray,
       },
-      markers: { 
-        size: 0, 
+      markers: {
+        size: 0,
         hover: { sizeOffset: 3 },
         // Optimizar markers para mejor rendimiento
         strokeWidth: 0,

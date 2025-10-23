@@ -3,8 +3,8 @@
 import LineChart from "@/components/charts/LineChart";
 import Header from "@/components/common/Header";
 import { useTopPagesRange } from "@/features/analytics/hooks/useTopPagesRange";
-import { buildSeriesColorMap } from "@/lib/utils/formatting/colors";
 import { formatChartLabelsSimple } from "@/lib/utils/charts/labelFormatting";
+import { buildSeriesColorMap } from "@/lib/utils/formatting/colors";
 import { BarChart3 } from "lucide-react";
 import { useHeaderAnalyticsTimeframe } from "../context/HeaderAnalyticsTimeContext";
 
@@ -52,7 +52,7 @@ export default function TopPagesRangeSection() {
     [];
 
   const categories = formatChartLabelsSimple(rawCategories, granularity);
-  
+
   const series = data?.series ?? [];
   const seriesNames = series.map((s) => s.name);
   const colorsByName = buildSeriesColorMap(seriesNames, {

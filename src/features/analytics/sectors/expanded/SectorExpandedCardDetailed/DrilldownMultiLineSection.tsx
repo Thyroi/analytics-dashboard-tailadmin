@@ -44,11 +44,24 @@ export default function DrilldownMultiLineSection({
 }: Props) {
   const safeX = useMemo(() => {
     const rawLabels = xLabels ?? [];
-    
+
     // Formateo específico para DrilldownMultiLineSection
     if (granularity === "y") {
       // Para granularidad anual, convertir YYYY-MM a nombres de mes cortos
-      const monthNames = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+      const monthNames = [
+        "Ene",
+        "Feb",
+        "Mar",
+        "Abr",
+        "May",
+        "Jun",
+        "Jul",
+        "Ago",
+        "Sep",
+        "Oct",
+        "Nov",
+        "Dic",
+      ];
       return rawLabels.map((label) => {
         const dateStr = String(label);
         // Formato YYYY-MM

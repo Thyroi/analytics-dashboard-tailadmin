@@ -17,7 +17,11 @@ type Props = {
   className?: string;
 };
 
-export default function GeneralDataBody({ kpiSeries, granularity, className = "" }: Props) {
+export default function GeneralDataBody({
+  kpiSeries,
+  granularity,
+  className = "",
+}: Props) {
   const { categories, currData, prevData } = useMemo(() => {
     const current = kpiSeries.current;
     const previous = kpiSeries.previous;

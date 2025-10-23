@@ -154,23 +154,14 @@ export function computeRangesForSeries(
 }
 
 /**
- * Delta % segura: null cuando no hay base suficiente (prev <= threshold).
- * Evita deltas absurdos cuando el valor anterior es muy pequeño.
+ * Delta % calculado directamente: null solo cuando no hay base (prev <= 0).
+ * Los datos son los datos, sin restricciones artificiales.
  */
 export function computeDeltaPct(curr: number, prev: number): number | null {
   // Si no hay datos previos, no podemos calcular delta
   if (prev <= 0) return null;
 
-  // Si el valor anterior es muy pequeño (< 5), el delta puede ser engañoso
-  // Ejemplo: de 1 a 100 = 9900% (técnicamente correcto pero absurdo)
-  const MIN_THRESHOLD = 5;
-  if (prev < MIN_THRESHOLD) return null;
-
   const delta = ((curr - prev) / prev) * 100;
-
-  // Limitar deltas extremos para evitar valores absurdos en la UI
-  const MAX_DELTA = 999;
-  if (Math.abs(delta) > MAX_DELTA) return null;
 
   return delta;
 }

@@ -65,7 +65,7 @@ function ChatbotTownsSectionContent() {
         block: "start",
         inline: "nearest",
       });
-      
+
       // Disparar eventos de resize de forma asíncrona después del scroll
       requestAnimationFrame(() => {
         try {
