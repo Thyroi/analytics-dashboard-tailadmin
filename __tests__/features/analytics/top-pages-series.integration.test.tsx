@@ -3,6 +3,7 @@ import { renderHook, waitFor } from "@testing-library/react";
 import { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { HeaderAnalyticsTimeContext } from "../../../src/features/analytics/context/HeaderAnalyticsTimeContext";
+import { useTopComparativePagesSeries } from "../../../src/features/analytics/hooks/useTopComparativePagesSeries";
 
 // Mock data basado en los datos reales que proporcionaste
 const REAL_TOP_PAGES_DATA = [
@@ -140,7 +141,7 @@ describe("Top Pages Series Integration Tests", () => {
       });
 
       const { result } = renderHook(
-        () => useTopComparativePages(selectedPaths),
+        () => useTopComparativePagesSeries(selectedPaths),
         { wrapper: createWrapper(timeContext) }
       );
 
@@ -204,7 +205,7 @@ describe("Top Pages Series Integration Tests", () => {
       });
 
       const { result } = renderHook(
-        () => useTopComparativePages(selectedPaths),
+        () => useTopComparativePagesSeries(selectedPaths),
         { wrapper: createWrapper(timeContext) }
       );
 
@@ -258,7 +259,7 @@ describe("Top Pages Series Integration Tests", () => {
       });
 
       const { result } = renderHook(
-        () => useTopComparativePages(selectedPaths),
+        () => useTopComparativePagesSeries(selectedPaths),
         { wrapper: createWrapper(timeContext) }
       );
 
@@ -309,7 +310,7 @@ describe("Top Pages Series Integration Tests", () => {
       });
 
       const { result } = renderHook(
-        () => useTopComparativePages(selectedPaths),
+        () => useTopComparativePagesSeries(selectedPaths),
         { wrapper: createWrapper(timeContext) }
       );
 
@@ -343,7 +344,7 @@ describe("Top Pages Series Integration Tests", () => {
       });
 
       const { result } = renderHook(
-        () => useTopComparativePages(selectedPaths),
+        () => useTopComparativePagesSeries(selectedPaths),
         { wrapper: createWrapper(timeContext) }
       );
 
@@ -373,7 +374,7 @@ describe("Top Pages Series Integration Tests", () => {
       global.fetch = vi.fn().mockRejectedValue(new Error("API Error"));
 
       const { result } = renderHook(
-        () => useTopComparativePages(selectedPaths),
+        () => useTopComparativePagesSeries(selectedPaths),
         { wrapper: createWrapper(timeContext) }
       );
 
@@ -396,7 +397,7 @@ describe("Top Pages Series Integration Tests", () => {
       });
 
       const { result } = renderHook(
-        () => useTopComparativePages(selectedPaths),
+        () => useTopComparativePagesSeries(selectedPaths),
         { wrapper: createWrapper(timeContext) }
       );
 
@@ -441,7 +442,7 @@ describe("Top Pages Series Integration Tests", () => {
       });
 
       const { result } = renderHook(
-        () => useTopComparativePages(selectedPaths),
+        () => useTopComparativePagesSeries(selectedPaths),
         { wrapper: createWrapper(timeContext) }
       );
 
@@ -480,7 +481,7 @@ describe("Top Pages Series Integration Tests", () => {
       });
 
       const { result } = renderHook(
-        () => useTopComparativePages(selectedPaths),
+        () => useTopComparativePagesSeries(selectedPaths),
         { wrapper: createWrapper(timeContext) }
       );
 
@@ -519,7 +520,7 @@ describe("Top Pages Series Integration Tests", () => {
       });
 
       const { result } = renderHook(
-        () => useTopComparativePages(selectedPaths),
+        () => useTopComparativePagesSeries(selectedPaths),
         { wrapper: createWrapper(timeContext) }
       );
 
@@ -549,7 +550,7 @@ describe("Top Pages Series Integration Tests", () => {
       mockApiResponse.mockReturnValue({ series: [] });
 
       const { result } = renderHook(
-        () => useTopComparativePages(specialPaths),
+        () => useTopComparativePagesSeries(specialPaths),
         { wrapper: createWrapper(timeContext) }
       );
 
@@ -585,7 +586,7 @@ describe("Top Pages Series Integration Tests", () => {
       mockApiResponse.mockReturnValue({ series: [] });
 
       const { result } = renderHook(
-        () => useTopComparativePages(multiplePaths),
+        () => useTopComparativePagesSeries(multiplePaths),
         { wrapper: createWrapper(timeContext) }
       );
 
