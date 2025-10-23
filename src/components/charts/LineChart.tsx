@@ -102,13 +102,28 @@ export default function LineChart({
         offsetY: 0,
         // Evitar que se corten los elementos en los bordes
         sparkline: { enabled: false },
+        // Mejorar rendimiento en dispositivos móviles
+        events: {},
+        // Configuración para eventos táctiles pasivos
+        zoom: {
+          enabled: false, // Deshabilitar zoom para evitar touch events
+          type: "x",
+          autoScaleYaxis: false,
+        },
       },
       stroke: {
         curve: smooth ? "smooth" : "straight",
         width: strokeWidths,
         dashArray,
       },
-      markers: { size: 0, hover: { sizeOffset: 3 } },
+      markers: { 
+        size: 0, 
+        hover: { sizeOffset: 3 },
+        // Optimizar markers para mejor rendimiento
+        strokeWidth: 0,
+        strokeOpacity: 0.9,
+        fillOpacity: 1,
+      },
       fill,
       grid: {
         borderColor: gridColor,
@@ -147,6 +162,9 @@ export default function LineChart({
         enabled: true,
         shared: true,
         theme: isDark ? "dark" : "light",
+        // Optimizar tooltip para mejor rendimiento
+        followCursor: false,
+        intersect: false,
       },
       legend: legendOpts,
       colors,
@@ -154,6 +172,11 @@ export default function LineChart({
 
     // Merge opcional del consumidor…
     const merged = { ...base, ...(optionsExtra ?? {}) };
+
+    // Proteger las categories - asegurar que no se sobrescriban
+    if (merged.xaxis && categories?.length > 0) {
+      merged.xaxis.categories = categories;
+    }
 
     // …pero si la leyenda está desactivada, aseguramos que no se reserve espacio.
     if (!showLegend) merged.legend = legendOpts;

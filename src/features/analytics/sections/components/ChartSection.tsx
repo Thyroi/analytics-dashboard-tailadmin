@@ -64,6 +64,13 @@ export function ChartSection({
                   height: 320,
                   toolbar: { show: false },
                   background: "transparent",
+                  // Optimizaciones para eventos táctiles
+                  events: {},
+                  zoom: {
+                    enabled: false,
+                    type: "x",
+                    autoScaleYaxis: false,
+                  },
                 },
                 theme: {
                   mode: "light",

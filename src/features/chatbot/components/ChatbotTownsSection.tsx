@@ -58,30 +58,24 @@ function ChatbotTownsSectionContent() {
   const handleTownClick = (townId: string) => {
     setSelectedTownId(townId);
 
-    // Scroll automático al drilldown después de un pequeño delay
-    setTimeout(() => {
+    // Scroll automático usando requestAnimationFrame para mejor performance
+    requestAnimationFrame(() => {
       drilldownRef.current?.scrollIntoView({
         behavior: "smooth",
         block: "start",
         inline: "nearest",
       });
-      // Forzar reflow de componentes (charts) que dependen del tamaño del contenedor
-      // Algunos chart libraries necesitan un evento de resize para recalcular dimensiones.
-      // Disparamos dos eventos: resize nativo y un custom 'chart-reflow' para compatibilidad.
-      setTimeout(() => {
+      
+      // Disparar eventos de resize de forma asíncrona después del scroll
+      requestAnimationFrame(() => {
         try {
           window.dispatchEvent(new Event("resize"));
+          window.dispatchEvent(new CustomEvent("chart-reflow"));
         } catch {
           // no-op en entornos donde window no existe
         }
-
-        try {
-          window.dispatchEvent(new CustomEvent("chart-reflow"));
-        } catch {
-          // noop
-        }
-      }, 200);
-    }, 100);
+      });
+    });
   };
 
   return (

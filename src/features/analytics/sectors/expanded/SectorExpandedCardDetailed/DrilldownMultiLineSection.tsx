@@ -1,6 +1,8 @@
 "use client";
 
 import LineChart from "@/components/charts/LineChart";
+import type { Granularity } from "@/lib/types";
+import { formatChartLabelsSimple } from "@/lib/utils/charts/labelFormatting";
 import { useMemo } from "react";
 
 export type SubSeries = { name: string; data: number[] };
@@ -16,6 +18,8 @@ type Props = {
   emptyHint?: string;
   /** Mapa de colores por nombre de serie para consistencia visual */
   colorsByName?: Record<string, string>;
+  /** Granularidad para formatear el eje X correctamente */
+  granularity?: Granularity;
 };
 
 function padToLen(arr: number[], len: number): number[] {
@@ -36,8 +40,29 @@ export default function DrilldownMultiLineSection({
   className = "",
   emptyHint = "No hay datos para mostrar en este rango.",
   colorsByName,
+  granularity = "d",
 }: Props) {
-  const safeX = useMemo(() => xLabels ?? [], [xLabels]);
+  const safeX = useMemo(() => {
+    const rawLabels = xLabels ?? [];
+    
+    // Formateo específico para DrilldownMultiLineSection
+    if (granularity === "y") {
+      // Para granularidad anual, convertir YYYY-MM a nombres de mes cortos
+      const monthNames = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+      return rawLabels.map((label) => {
+        const dateStr = String(label);
+        // Formato YYYY-MM
+        if (/^\d{4}-\d{2}$/.test(dateStr)) {
+          const month = parseInt(dateStr.split("-")[1]);
+          return monthNames[month - 1] || `M${month}`;
+        }
+        return dateStr; // Fallback
+      });
+    } else {
+      // Para otras granularidades, usar la función original
+      return formatChartLabelsSimple(rawLabels, granularity);
+    }
+  }, [xLabels, granularity]);
   const safeSeries = useMemo(() => seriesBySub ?? [], [seriesBySub]);
 
   const chartSeries = useMemo(() => {

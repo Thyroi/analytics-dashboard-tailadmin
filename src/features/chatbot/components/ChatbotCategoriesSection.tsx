@@ -72,14 +72,14 @@ function ChatbotCategoriesSectionContent() {
   const handleCategoryClick = (categoryId: string) => {
     setSelectedCategoryId(categoryId as CategoryId);
 
-    // Scroll automático al drilldown después de un pequeño delay
-    setTimeout(() => {
+    // Scroll automático usando requestAnimationFrame para mejor performance
+    requestAnimationFrame(() => {
       drilldownRef.current?.scrollIntoView({
         behavior: "smooth",
         block: "start",
         inline: "nearest",
       });
-    }, 100);
+    });
   };
 
   const handleBackToCategories = () => {

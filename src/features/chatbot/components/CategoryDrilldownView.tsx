@@ -118,6 +118,7 @@ export default function CategoryDrilldownView({
           donutCenterLabel={categoryLabel}
           showActivityButton={true}
           actionButtonTarget={`/chatbot/category/${categoryId}/activity`}
+          granularity={granularity}
           className="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700"
         />
       </div>

@@ -8,6 +8,7 @@ import DonutSection from "@/features/analytics/sectors/expanded/SectorExpandedCa
 import { UrlDetailsPanelSkeleton } from "@/features/analytics/skeletons";
 import ChartSection from "@/features/home/sectors/SectorExpandedCard/ChartSection";
 import type { DonutDatum, Granularity, SeriesPoint } from "@/lib/types";
+import { formatChartLabelsSimple } from "@/lib/utils/charts/labelFormatting";
 import { Activity, Clock, Timer, Users } from "lucide-react";
 import { useMemo } from "react";
 import DrilldownTitle from "./DrilldownTitle";
@@ -167,12 +168,13 @@ export default function UrlDetailsPanel({
     const n = Math.min(safeSeries.current.length, safeSeries.previous.length);
     const cur = safeSeries.current.slice(-n);
     const prev = safeSeries.previous.slice(-n);
+    const rawCategories = cur.map((p) => p.label);
     return {
-      categories: cur.map((p) => p.label),
+      categories: formatChartLabelsSimple(rawCategories, granularity),
       currData: cur.map((p) => p.value),
       prevData: prev.map((p) => p.value),
     };
-  }, [seriesAvgEngagement]);
+  }, [seriesAvgEngagement, granularity]);
 
   if (loading) {
     return <UrlDetailsPanelSkeleton chartHeight={260} />;

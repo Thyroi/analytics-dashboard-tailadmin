@@ -8,6 +8,7 @@ import DrilldownMultiLineSection from "@/features/analytics/sectors/expanded/Sec
 import type { UrlSeries } from "@/features/analytics/services/drilldown";
 import ChartSection from "@/features/home/sectors/SectorExpandedCard/ChartSection";
 import type { DonutDatum, Granularity, SeriesPoint } from "@/lib/types";
+import { formatChartLabelsSimple } from "@/lib/utils/charts/labelFormatting";
 
 /* ===== helpers internos ===== */
 function minLen(series: {
@@ -15,24 +16,6 @@ function minLen(series: {
   previous: SeriesPoint[];
 }): number {
   return Math.min(series.current.length, series.previous.length);
-}
-
-function formatAxisForDisplay(g: Granularity, labels: string[]): string[] {
-  if (g === "y") {
-    // "YYYY-MM" -> "MM-YY"
-    return labels.map((ym) => {
-      if (!/^\d{4}-\d{2}$/.test(ym)) return ym;
-      const mm = ym.slice(5, 7);
-      const yy = ym.slice(2, 4);
-      return `${mm}-${yy}`;
-    });
-  }
-  // d / w / m: "YYYY-MM-DD" -> "D"
-  return labels.map((d) => {
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return d;
-    const dd = d.slice(8, 10);
-    return String(Number(dd)); // sin cero a la izquierda
-  });
 }
 
 type Base = {
@@ -105,6 +88,7 @@ export default function ChartPair(props: Props) {
               seriesBySub={props.seriesBySub}
               loading={props.loading}
               colorsByName={props.colorsByName}
+              granularity={props.granularity}
             />
           </div>
         ) : (
@@ -150,7 +134,7 @@ function LineSide({
   const n = Math.min(nSeries, rawCats.length);
 
   // recortes alineados
-  const cats = formatAxisForDisplay(granularity, rawCats.slice(-n));
+  const cats = formatChartLabelsSimple(rawCats.slice(-n), granularity);
   const curr = series.current.slice(-n).map((p) => p.value);
   const prev = series.previous.slice(-n).map((p) => p.value);
 

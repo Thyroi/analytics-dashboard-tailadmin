@@ -156,6 +156,7 @@ export default function TownCategoryDrilldownPanel({
             donutCenterLabel="Interacciones"
             actionButtonTarget="actividad"
             colorsByName={dd.colorsByName}
+            granularity={granularity}
           />
         )}
 

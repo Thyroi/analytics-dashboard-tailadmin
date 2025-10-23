@@ -149,6 +149,7 @@ export default function CategoryExpandedCard({
         donutCenterLabel={categoryLabel}
         showActivityButton={false}
         actionButtonTarget={`/chatbot/category/${categoryId}/activity`}
+        granularity={granularity}
         className=""
       />
     </div>

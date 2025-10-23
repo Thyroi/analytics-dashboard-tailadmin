@@ -147,6 +147,7 @@ export default function TownExpandedCard({
           donutCenterLabel={townLabel}
           showActivityButton={false}
           actionButtonTarget={`/chatbot/town/${townId}/activity`}
+          granularity={granularity}
           className=""
         />
       </div>

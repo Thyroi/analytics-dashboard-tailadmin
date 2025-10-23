@@ -2,6 +2,7 @@
 
 import LineChart from "@/components/charts/LineChart";
 import type { Granularity, KPISeries } from "@/lib/types"; // ⬅️ ACTUALIZADO
+import { formatChartLabelsSimple } from "@/lib/utils/charts/labelFormatting";
 import { useMemo } from "react";
 
 type Props = {
@@ -16,7 +17,7 @@ type Props = {
   className?: string;
 };
 
-export default function GeneralDataBody({ kpiSeries, className = "" }: Props) {
+export default function GeneralDataBody({ kpiSeries, granularity, className = "" }: Props) {
   const { categories, currData, prevData } = useMemo(() => {
     const current = kpiSeries.current;
     const previous = kpiSeries.previous;
@@ -25,12 +26,13 @@ export default function GeneralDataBody({ kpiSeries, className = "" }: Props) {
     const currSlice = current.slice(current.length - n);
     const prevSlice = previous.slice(previous.length - n);
 
+    const rawCategories = currSlice.map((p) => p.label);
     return {
-      categories: currSlice.map((p) => p.label),
+      categories: formatChartLabelsSimple(rawCategories, granularity),
       currData: currSlice.map((p) => p.value),
       prevData: prevSlice.map((p) => p.value),
     };
-  }, [kpiSeries]);
+  }, [kpiSeries, granularity]);
 
   return (
     <div
