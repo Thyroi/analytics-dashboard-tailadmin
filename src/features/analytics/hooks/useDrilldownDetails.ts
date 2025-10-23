@@ -91,25 +91,7 @@ export function useDrilldownDetails(
     },
   });
 
-  // DEBUG TRACE
-  console.debug("[useDrilldownDetails] url:", url);
-  console.debug("[useDrilldownDetails] queryKey:", [
-    "drilldown-details",
-    drilldownConfig.type,
-    drilldownConfig.townId,
-    drilldownConfig.categoryId,
-    granularity,
-    endISO,
-  ]);
-  if (isLoading) console.debug("[useDrilldownDetails] loading...");
-  if (error) console.debug("[useDrilldownDetails] error:", error);
-  if (data)
-    console.debug(
-      "[useDrilldownDetails] donut len:",
-      data.donutData?.length,
-      "series curr len:",
-      data.series?.current?.length
-    );
+
 
   // Estado de carga
   if (isLoading) {
@@ -118,7 +100,6 @@ export function useDrilldownDetails(
 
   // Estado de error
   if (error) {
-    console.error("Error fetching drilldown details:", error);
     return { loading: true }; // Mostrar como loading en error
   }
 

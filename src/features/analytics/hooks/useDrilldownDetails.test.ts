@@ -155,7 +155,6 @@ describe("useDrilldownDetails", () => {
   });
 
   test("handles API errors gracefully", async () => {
-    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     mockFetchJSON.mockRejectedValue(new Error("API Error"));
 
     const { result } = renderHook(() =>
@@ -173,18 +172,8 @@ describe("useDrilldownDetails", () => {
       expect(result.current.loading).toBe(true); // Stays loading on error
     });
 
-    // Wait a bit more for console.error to be called (React Query has retry logic)
-    await waitFor(
-      () => {
-        expect(consoleSpy).toHaveBeenCalledWith(
-          "Error fetching drilldown details:",
-          expect.any(Error)
-        );
-      },
-      { timeout: 5000 }
-    ); // Increase timeout for retry logic
-
-    consoleSpy.mockRestore();
+    // Since we removed console.error, just verify the error state is handled correctly
+    expect(result.current.loading).toBe(true);
   });
 
   test("aborts requests when config changes", async () => {

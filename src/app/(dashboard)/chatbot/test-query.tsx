@@ -86,7 +86,6 @@ export default function TestQuery() {
       tokensByCategory: debug.tokensByCategory,
       totalTokens: debug.totalTokens,
     });
-    console.log("🔍 TOKEN MAP DEBUG:", debug);
   };
 
   // Función para testear claves específicas problemáticas
@@ -110,8 +109,6 @@ export default function TestQuery() {
       "root.patrimonio.palos",
       "root.rutas_culturales.palos",
     ];
-
-    console.log("🧪 TESTING PROBLEMATIC KEYS:");
 
     const results = problematicKeys.map((key) => {
       const keyPath = key.startsWith("root.") ? key.slice(5) : key;
@@ -140,11 +137,6 @@ export default function TestQuery() {
       };
     });
 
-    console.table(results);
-
-    // Mostrar también tokens disponibles para comparar
-    console.log("📋 Tokens disponibles por categoría:", debug.tokensByCategory);
-
     return results;
   };
 
@@ -168,29 +160,8 @@ export default function TestQuery() {
         endTime: endTime,
       };
 
-      console.log(
-        "🧪 PARÁMETROS DE PRUEBA:",
-        JSON.stringify(testParams, null, 2)
-      );
-
-      // Simular el body que se enviará a la API
-      const apiBody = {
-        db: "project_huelva",
-        patterns: testParams.patterns, // Corregido: patterns como string (no array)
-        granularity: testParams.granularity,
-        startTime: testParams.startTime,
-        endTime: testParams.endTime,
-      };
-
-      console.log(
-        "📡 BODY QUE SE ENVIARÁ A LA API:",
-        JSON.stringify(apiBody, null, 2)
-      );
-
       // Hacer la llamada real
       const response = await fetchTagAudit(testParams);
-
-      console.log("✅ RESPUESTA DE LA API:", JSON.stringify(response, null, 2));
 
       // Guardar respuesta sin procesar
       setRawApiResponse(response);
@@ -202,12 +173,7 @@ export default function TestQuery() {
         setProcessedCategories(aggregatedData);
         setDebugInfo(debug);
 
-        console.log(
-          "🔄 CATEGORÍAS PROCESADAS:",
-          JSON.stringify(aggregatedData, null, 2)
-        );
 
-        console.log("🐛 INFORMACIÓN DE DEBUG:", JSON.stringify(debug, null, 2));
       }
     } catch (error) {
       console.error("❌ ERROR EN LA QUERY:", error);
@@ -232,8 +198,6 @@ export default function TestQuery() {
 
       const startTime = formatDateForAPI(yesterday, granularity);
       const endTime = formatDateForAPI(now, granularity);
-
-      console.log(`🎯 Iniciando drilldown para categoría: ${categoryId}`);
 
       // Hacer la query específica para esta categoría
       const drilldownResult = await fetchDrilldownData(

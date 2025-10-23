@@ -108,11 +108,6 @@ export function useUrlSeries({
   const isLoading = allQueries.some((query) => query.isLoading);
   const hasError = allQueries.some((query) => query.error);
 
-  // DEBUG TRACE
-  console.debug("[useUrlSeries] urls:", urls);
-  console.debug("[useUrlSeries] loading:", isLoading);
-  if (hasError) console.debug("[useUrlSeries] some queries have errors");
-
   // Si no hay URLs o está cargando
   if (urls.length === 0 || isLoading) {
     return { loading: true };
@@ -120,7 +115,6 @@ export function useUrlSeries({
 
   // Si hay errores, mostrar estado de loading (sin datos)
   if (hasError) {
-    console.error("Failed to fetch some URL series");
     return { loading: true };
   }
 

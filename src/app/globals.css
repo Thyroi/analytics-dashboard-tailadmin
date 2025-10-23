@@ -805,3 +805,24 @@ html:not(.dark) .apexcharts-tooltip {
 .flatpickr-host {
   overflow: visible !important;
 }
+
+/* ApexCharts Dark Mode Variables */
+:root {
+  --apexcharts-text-color: #374151;
+  --apexcharts-grid-color: #e5e7eb;
+}
+
+.dark {
+  --apexcharts-text-color: #d1d5db;
+  --apexcharts-grid-color: #374151;
+}
+
+/* Shimmer animation for skeleton loading */
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%) skewX(-12deg);
+  }
+  100% {
+    transform: translateX(200%) skewX(-12deg);
+  }
+}

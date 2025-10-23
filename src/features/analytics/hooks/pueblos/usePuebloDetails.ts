@@ -31,6 +31,16 @@ type LoadingState = {
   series: SeriesData;
   donutData: DonutData;
   deltaPct: null;
+  isFetching: boolean;
+};
+
+type FetchingState = {
+  status: "fetching";
+  data: PuebloDetailsResponse;
+  series: SeriesData;
+  donutData: DonutData;
+  deltaPct: number | null;
+  isFetching: true;
 };
 
 type ReadyState = {
@@ -39,6 +49,7 @@ type ReadyState = {
   series: SeriesData;
   donutData: DonutData;
   deltaPct: number | null;
+  isFetching: boolean;
 };
 
 type ErrorState = {
@@ -48,9 +59,14 @@ type ErrorState = {
   series: SeriesData;
   donutData: DonutData;
   deltaPct: null;
+  isFetching: boolean;
 };
 
-type PuebloDetailsState = LoadingState | ReadyState | ErrorState;
+type PuebloDetailsState =
+  | LoadingState
+  | FetchingState
+  | ReadyState
+  | ErrorState;
 
 /** Series vacías por defecto */
 const EMPTY_SERIES: SeriesData = { current: [], previous: [] };
@@ -89,23 +105,7 @@ export function usePuebloDetails(
     gcTime: 1000 * 60 * 10, // 10 minutos
   });
 
-  // DEBUG TRACE
-  console.debug("[usePuebloDetails] queryKey:", queryKey);
-  console.debug(
-    "[usePuebloDetails] params:",
-    queryParams,
-    "enabled:",
-    enabled && !!townId
-  );
-  if (query.isFetching) console.debug("[usePuebloDetails] fetching...");
-  if (query.isSuccess)
-    console.debug(
-      "[usePuebloDetails] success, series len:",
-      query.data?.series.current.length,
-      "donut len:",
-      query.data?.donutData.length
-    );
-
+  // Estados de carga inicial
   if (query.isLoading) {
     return {
       status: "loading",
@@ -113,11 +113,12 @@ export function usePuebloDetails(
       series: EMPTY_SERIES,
       donutData: EMPTY_DONUT,
       deltaPct: null,
+      isFetching: query.isFetching,
     };
   }
 
+  // Estado de error
   if (query.isError) {
-    console.debug("[usePuebloDetails] error:", query.error);
     return {
       status: "error",
       error: query.error as Error,
@@ -125,16 +126,32 @@ export function usePuebloDetails(
       series: EMPTY_SERIES,
       donutData: EMPTY_DONUT,
       deltaPct: null,
+      isFetching: query.isFetching,
     };
   }
 
+  // Estado de datos disponibles
   if (query.data) {
+    // Si tenemos datos pero estamos refetching, mostrar estado fetching
+    if (query.isFetching) {
+      return {
+        status: "fetching",
+        data: query.data,
+        series: query.data.series,
+        donutData: query.data.donutData,
+        deltaPct: query.data.deltaPct,
+        isFetching: true,
+      };
+    }
+
+    // Estado normal con datos listos
     return {
       status: "ready",
       data: query.data,
       series: query.data.series,
       donutData: query.data.donutData,
       deltaPct: query.data.deltaPct,
+      isFetching: false,
     };
   }
 
@@ -145,6 +162,7 @@ export function usePuebloDetails(
     series: EMPTY_SERIES,
     donutData: EMPTY_DONUT,
     deltaPct: null,
+    isFetching: query.isFetching,
   };
 }
 

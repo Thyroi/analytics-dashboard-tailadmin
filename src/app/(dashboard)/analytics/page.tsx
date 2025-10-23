@@ -10,6 +10,7 @@ import AnalyticsProviders from "@/features/analytics/providers/AnalyticsProvider
 import AnalyticsByTagSection from "@/features/analytics/sections/AnalyticsByTagSection";
 import AnalyticsByTownSection from "@/features/analytics/sections/AnalyticsByTownSection";
 import AnalyticsKPISection from "@/features/analytics/sections/AnalyticsKPISection";
+import ComparativeTopPages from "@/features/analytics/sections/ComparativeTopPages";
 import CustomersDemographicsSection from "@/features/analytics/sections/CustomersDemographicsSection";
 import DeviceDonutSection from "@/features/analytics/sections/DeviceDonutSection";
 import DevicesOsSection from "@/features/analytics/sections/DevicesOsDonutSection";
@@ -64,6 +65,9 @@ function PageBody() {
         <UserAcquisitionSection />
         <DevicesOsSection />
         <DeviceDonutSection />
+      </section>
+      <section>
+        <ComparativeTopPages />
       </section>
       <section>
         <CustomersDemographicsSection />

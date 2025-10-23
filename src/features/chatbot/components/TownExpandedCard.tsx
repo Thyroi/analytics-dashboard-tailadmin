@@ -105,9 +105,8 @@ export default function TownExpandedCard({
   // Subtítulo con información detallada
   const subtitle = `Análisis detallado por categorías • ${totalInteractions.toLocaleString()} interacciones totales`;
 
-  const handleDonutSlice = (label: string) => {
+  const handleDonutSlice = () => {
     // Removed selectedSlice functionality - no action needed
-    console.log("Donut slice clicked:", label);
   };
 
   if (error) {
