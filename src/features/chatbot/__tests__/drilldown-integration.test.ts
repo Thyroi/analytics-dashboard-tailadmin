@@ -11,10 +11,10 @@
  * - Empty states y deltas null
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { fetchTownCategoryBreakdown } from "@/lib/services/chatbot/townCategoryBreakdown";
 import { fetchTownCategorySubcatBreakdown } from "@/lib/services/chatbot/townCategorySubcatBreakdown";
 import { computeRangesForKPI } from "@/lib/utils/time/timeWindows";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 // Removed unused imports: todayUTC, addDaysUTC
 
 describe("Drilldown Integration Tests", () => {
@@ -50,7 +50,8 @@ describe("Drilldown Integration Tests", () => {
       let callCount = 0;
       fetchSpy.mockImplementation(() => {
         callCount++;
-        const response = callCount === 1 ? mockResponseCurrent : mockResponsePrevious;
+        const response =
+          callCount === 1 ? mockResponseCurrent : mockResponsePrevious;
         return Promise.resolve({
           ok: true,
           json: () => Promise.resolve(response),
@@ -86,7 +87,9 @@ describe("Drilldown Integration Tests", () => {
           "root.almonte.playas": [{ time: "20241020", value: 100 }], // prof=3 → excluir
           "root.almonte.playas.carabeo": [{ time: "20241020", value: 50 }], // prof=4 → incluir
           "root.almonte.playas.bolonia": [{ time: "20241020", value: 30 }], // prof=4 → incluir
-          "root.almonte.playas.carabeo.norte": [{ time: "20241020", value: 10 }], // prof=5 → excluir
+          "root.almonte.playas.carabeo.norte": [
+            { time: "20241020", value: 10 },
+          ], // prof=5 → excluir
         },
       };
 
@@ -126,7 +129,7 @@ describe("Drilldown Integration Tests", () => {
       // Current debe respetar las fechas proporcionadas
       expect(ranges.current.start).toBe("2024-10-15");
       expect(ranges.current.end).toBe("2024-10-29");
-      
+
       // Previous debe ser contiguo y del mismo tamaño
       expect(ranges.previous.start).toBe("2024-09-30");
       expect(ranges.previous.end).toBe("2024-10-14");
@@ -147,7 +150,7 @@ describe("Drilldown Integration Tests", () => {
     it("auto-granularidad: 15 días → granularity='d'", () => {
       // Rango de 15 días debe usar granularidad diaria
       const ranges = computeRangesForKPI("d", "2024-10-15", "2024-10-29");
-      
+
       expect(ranges.current.start).toBe("2024-10-15");
       expect(ranges.current.end).toBe("2024-10-29");
     });
@@ -155,7 +158,7 @@ describe("Drilldown Integration Tests", () => {
     it("auto-granularidad: 45 días → granularity='w'", () => {
       // Rango de 45 días debe usar granularidad semanal
       const ranges = computeRangesForKPI("w", "2024-09-15", "2024-10-29");
-      
+
       expect(ranges.current.start).toBe("2024-09-15");
       expect(ranges.current.end).toBe("2024-10-29");
     });
@@ -163,7 +166,7 @@ describe("Drilldown Integration Tests", () => {
     it("auto-granularidad: 120 días → granularity='m'", () => {
       // Rango de 120 días debe usar granularidad mensual
       const ranges = computeRangesForKPI("m", "2024-07-01", "2024-10-29");
-      
+
       expect(ranges.current.start).toBe("2024-07-01");
       expect(ranges.current.end).toBe("2024-10-29");
     });
@@ -223,7 +226,8 @@ describe("Drilldown Integration Tests", () => {
   describe("Empty States y Deltas", () => {
     it("debe renderizar todas las categorías aunque tengan 0 datos", async () => {
       const mockResponse = {
-        code: 200, output: {
+        code: 200,
+        output: {
           "root.almonte.playas": [{ time: "20241020", value: 50 }],
           // Resto de categorías sin datos
         },
@@ -256,13 +260,15 @@ describe("Drilldown Integration Tests", () => {
 
     it("debe devolver deltaPct = null cuando prevTotal <= 0", async () => {
       const mockResponseCurrent = {
-        code: 200, output: {
+        code: 200,
+        output: {
           "root.almonte.playas": [{ time: "20241020", value: 50 }],
         },
       };
 
       const mockResponsePrevious = {
-        code: 200, output: {}, // Sin datos en previous
+        code: 200,
+        output: {}, // Sin datos en previous
       };
 
       let callCount = 0;
@@ -293,13 +299,15 @@ describe("Drilldown Integration Tests", () => {
 
     it("debe calcular deltaPct correctamente cuando prev > 0", async () => {
       const mockResponseCurrent = {
-        code: 200, output: {
+        code: 200,
+        output: {
           "root.almonte.playas": [{ time: "20241020", value: 150 }],
         },
       };
 
       const mockResponsePrevious = {
-        code: 200, output: {
+        code: 200,
+        output: {
           "root.almonte.playas": [{ time: "20241019", value: 100 }],
         },
       };
@@ -336,10 +344,10 @@ describe("Drilldown Integration Tests", () => {
     it("Nivel 1 debe usar pattern 'root.<townId>.*'", async () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const capturedBodies: any[] = [];
-      
+
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       fetchSpy.mockImplementation((_url: any, options: any) => {
-        if (options && typeof options.body === 'string') {
+        if (options && typeof options.body === "string") {
           const parsed = JSON.parse(options.body);
           capturedBodies.push(parsed);
         }
