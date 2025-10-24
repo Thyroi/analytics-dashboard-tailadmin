@@ -17,19 +17,106 @@ export function rangeToPreset(r: DateRange): GA4Preset {
   return { startTime: r.start, endTime: r.end };
 }
 
-/* ==================== Re-exportar funciones de dateRangeWindow ==================== */
-
-// Re-exportar funciones que estaban duplicadas
-export {
-  deriveAutoRangeForGranularity,
-  deriveRangeEndingYesterday,
-  endOfMonthUTC,
-  endOfYearUTC,
-  startOfMonthUTC,
-  startOfYearUTC,
-} from "./dateRangeWindow";
-
 /* ==================== Helpers base UTC ==================== */
+
+/**
+ * Retorna el primer día del mes en UTC
+ */
+export function startOfMonthUTC(d: Date): Date {
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1));
+}
+
+/**
+ * Retorna el último día del mes en UTC
+ */
+export function endOfMonthUTC(d: Date): Date {
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0));
+}
+
+/**
+ * Retorna el primer día del año en UTC
+ */
+export function startOfYearUTC(d: Date): Date {
+  return new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+}
+
+/**
+ * Retorna el último día del año en UTC
+ */
+export function endOfYearUTC(d: Date): Date {
+  return new Date(Date.UTC(d.getUTCFullYear(), 11, 31));
+}
+
+/**
+ * Deriva rango automático por granularidad (rolling, incluye "now"):
+ *  - "d": últimos 7 días
+ *  - "w": últimos 28 días
+ *  - "m": últimos 30 días (no mes calendario)
+ *  - "y": YTD (01-01 del año vigente … now)
+ */
+export function deriveAutoRangeForGranularity(
+  g: Granularity,
+  now: Date = todayUTC()
+): DateRange {
+  if (g === "d") {
+    const end = now;
+    const start = addDaysUTC(end, -6);
+    return { start: toISO(start), end: toISO(end) };
+  }
+
+  if (g === "w") {
+    const end = now;
+    const start = addDaysUTC(end, -27);
+    return { start: toISO(start), end: toISO(end) };
+  }
+
+  if (g === "m") {
+    const end = now;
+    const start = addDaysUTC(end, -29);
+    return { start: toISO(start), end: toISO(end) };
+  }
+
+  // g === "y" -> YTD
+  const start = new Date(Date.UTC(now.getUTCFullYear(), 0, 1));
+  const end = now;
+  return { start: toISO(start), end: toISO(end) };
+}
+
+/**
+ * Rango que TERMINA AYER:
+ *  - "d": 1 día (ayer…ayer) o 7 días si dayAsWeek=true
+ *  - "w": 7 días hasta ayer
+ *  - "m": 30 días hasta ayer
+ *  - "y": 365 días hasta ayer
+ */
+export function deriveRangeEndingYesterday(
+  g: Granularity,
+  now: Date = todayUTC(),
+  dayAsWeek = false
+): DateRange {
+  const yesterday = addDaysUTC(now, -1);
+
+  if (g === "d") {
+    if (dayAsWeek) {
+      const start = addDaysUTC(yesterday, -(7 - 1));
+      return { start: toISO(start), end: toISO(yesterday) };
+    }
+    return { start: toISO(yesterday), end: toISO(yesterday) };
+  }
+
+  if (g === "w") {
+    const start = addDaysUTC(yesterday, -(7 - 1));
+    return { start: toISO(start), end: toISO(yesterday) };
+  }
+
+  if (g === "m") {
+    const start = addDaysUTC(yesterday, -(30 - 1));
+    return { start: toISO(start), end: toISO(yesterday) };
+  }
+
+  const start = addDaysUTC(yesterday, -(365 - 1));
+  return { start: toISO(start), end: toISO(yesterday) };
+}
 
 /**
  * Convierte un objeto Date a formato ISO (YYYY-MM-DD).

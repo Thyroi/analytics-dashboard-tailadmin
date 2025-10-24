@@ -5,7 +5,7 @@
 
 import type { Granularity } from "@/lib/types";
 import type { ApiResponse } from "@/lib/utils/chatbot/aggregate";
-import { computeRangesForKPI } from "@/lib/utils/time/dateRangeWindow";
+import { computeRangesForKPI } from "@/lib/utils/time/timeWindows";
 
 /** Parámetros para el servicio de chatbot */
 export type ChatbotTotalsParams = {
@@ -45,11 +45,11 @@ export async function fetchChatbotTotals(
   const { granularity = "d", startDate, endDate } = params;
 
   // 1. Calcular rangos usando comportamiento KPI (igual que Analytics)
-  const ranges = computeRangesForKPI({
-    g: granularity,
-    startISO: startDate || undefined,
-    endISO: endDate || undefined,
-  });
+  const ranges = computeRangesForKPI(
+    granularity,
+    startDate || null,
+    endDate || null
+  );
 
   // 2. Preparar payload para POST (necesitamos datos de ambos períodos: current + previous)
   const payload = {

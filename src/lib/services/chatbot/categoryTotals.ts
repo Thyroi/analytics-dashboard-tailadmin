@@ -19,7 +19,7 @@ import {
   type CategoryId,
 } from "@/lib/taxonomy/categories";
 import type { Granularity } from "@/lib/types";
-import { computeRangesForKPI } from "@/lib/utils/time/dateRangeWindow";
+import { computeRangesForKPI } from "@/lib/utils/time/timeWindows";
 
 /* ==================== Tipos ==================== */
 
@@ -214,11 +214,7 @@ export async function fetchChatbotCategoryTotals(
   } = params;
 
   // 1. Calcular rangos usando comportamiento KPI
-  const ranges = computeRangesForKPI({
-    g: granularity,
-    startISO: startDate || undefined,
-    endISO: endDate || undefined,
-  });
+  const ranges = computeRangesForKPI(granularity, startDate, endDate);
 
   // 2. Construir índice de sinónimos
   const synonymIndex = buildCategorySynonymIndex();
