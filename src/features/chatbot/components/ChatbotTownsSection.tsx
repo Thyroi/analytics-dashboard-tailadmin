@@ -135,13 +135,7 @@ function ChatbotTownsSectionContent() {
             }}
             onSelectCategory={(categoryId) => {
               setSelectedCategoryId(categoryId);
-              // TODO PR #13-14: Abrir Nivel 2 (subcategorías)
-              console.log(
-                "Selected category:",
-                categoryId,
-                "in town:",
-                selectedTownId
-              );
+              // TownExpandedCard ya maneja la navegación Nivel 1→2 internamente
             }}
           />
         </div>
