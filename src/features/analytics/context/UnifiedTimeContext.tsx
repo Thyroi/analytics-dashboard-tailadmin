@@ -3,6 +3,7 @@
 import type { Granularity } from "@/lib/types";
 import { addDaysUTC, todayUTC, toISO } from "@/lib/utils/time/datetime";
 import { calculatePreviousPeriodAndGranularity } from "@/lib/utils/time/rangeCalculations";
+import { getWindowGranularityFromRange } from "@/lib/utils/time/windowGranularity";
 import {
   createContext,
   ReactNode,
@@ -19,6 +20,8 @@ type TimeframeState = {
   granularity: Granularity;
   startDate: Date;
   endDate: Date;
+  /** Lock granularity: Si true, el usuario forzó granularidad y no se debe recalcular automáticamente */
+  isGranularityLocked: boolean;
 };
 
 type TimeframeActions = {
@@ -120,6 +123,7 @@ export function createTimeContext(contextName: string) {
     const [mode, setMode] = useState<Mode>("granularity");
     const [granularity, setGranularityState] =
       useState<Granularity>(defaultGranularity);
+    const [isGranularityLocked, setIsGranularityLocked] = useState(false);
     const [startDate, setStartDate] = useState<Date>(
       () => presetForGranularity(defaultGranularity).start
     );
@@ -127,30 +131,63 @@ export function createTimeContext(contextName: string) {
       () => presetForGranularity(defaultGranularity).end
     );
 
+    /**
+     * setGranularity: Usuario fuerza una granularidad específica
+     * 
+     * POLÍTICA:
+     * - Activa LOCK de granularidad (no recalcular automáticamente)
+     * - Aplica preset de fechas según granularidad
+     * - Cambia a modo "granularity"
+     */
     const setGranularity = useCallback((g: Granularity) => {
       const preset = presetForGranularity(g);
       setGranularityState(g);
       setStartDate(preset.start);
       setEndDate(preset.end);
       setMode("granularity");
+      setIsGranularityLocked(true); // LOCK: Usuario forzó granularidad
     }, []);
 
+    /**
+     * setRange: Usuario selecciona rango custom en DatePicker
+     * 
+     * POLÍTICA:
+     * - DatePicker ya clampó end a yesterdayUTC() (NO hacer clamp adicional)
+     * - Si lock=false → recalcular windowGranularity automáticamente
+     * - Si lock=true → mantener granularidad del usuario
+     * - Cambia a modo "range"
+     */
     const setRange = useCallback((start: Date, end: Date) => {
-      // Clamp end to yesterday
-      const yesterday = yesterdayUTC();
-      const clampedEnd = end > yesterday ? yesterday : end;
-      const clampedStart = start > clampedEnd ? clampedEnd : start;
-
-      setStartDate(clampedStart);
-      setEndDate(clampedEnd);
+      // NO CLAMPAR AQUÍ - DatePicker ya lo hizo
+      // Confiar en las fechas que vienen del DatePicker
+      setStartDate(start);
+      setEndDate(end);
       setMode("range");
-    }, []);
 
+      // Si granularidad NO está locked, recalcular automáticamente por duración
+      if (!isGranularityLocked) {
+        const startISO = toISO(start);
+        const endISO = toISO(end);
+        const autoGranularity = getWindowGranularityFromRange(startISO, endISO);
+        setGranularityState(autoGranularity);
+      }
+      // Si está locked, mantener granularidad actual del usuario
+    }, [isGranularityLocked]);
+
+    /**
+     * clearRange: Limpiar rango custom y volver a preset
+     * 
+     * POLÍTICA:
+     * - Volver a preset según granularidad actual
+     * - DESBLOQUEAR lock (permitir recálculo automático)
+     * - Cambia a modo "granularity"
+     */
     const clearRange = useCallback(() => {
       const preset = presetForGranularity(granularity);
       setStartDate(preset.start);
       setEndDate(preset.end);
       setMode("granularity");
+      setIsGranularityLocked(false); // UNLOCK: Volver a permitir recálculo automático
     }, [granularity]);
 
     // Nuevos métodos para cálculos de rangos
@@ -217,6 +254,7 @@ export function createTimeContext(contextName: string) {
         granularity,
         startDate,
         endDate,
+        isGranularityLocked,
         endISO: mode === "range" ? toISO(endDate) : undefined,
         startISO: toISO(startDate), // Always available for some contexts
         setGranularity,
@@ -232,6 +270,7 @@ export function createTimeContext(contextName: string) {
         granularity,
         startDate,
         endDate,
+        isGranularityLocked,
         setGranularity,
         setRange,
         clearRange,

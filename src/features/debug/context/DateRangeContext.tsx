@@ -2,6 +2,7 @@
  * Contexto para manejar fechas con nueva lógica de rangos
  * 
  * ⚠️ MIGRADO A UTC - Reemplaza new Date() y .setDate() por addDaysUTC()
+ * ⚠️ PR-2: Agregado lock de granularidad y recálculo automático por duración
  */
 
 "use client";
@@ -9,6 +10,7 @@
 import type { Granularity } from "@/lib/types";
 import { addDaysUTC, todayUTC, toISO } from "@/lib/utils/time/datetime";
 import { calculatePreviousPeriodAndGranularity } from "@/lib/utils/time/rangeCalculations";
+import { getWindowGranularityFromRange } from "@/lib/utils/time/windowGranularity";
 import { createContext, useContext, useState, type ReactNode } from "react";
 
 export type DateMode = "granularity" | "range";
@@ -18,6 +20,7 @@ export type DateContextValue = {
   granularity: Granularity;
   startDate: Date;
   endDate: Date;
+  isGranularityLocked: boolean;
 
   // Acciones
   setMode: (mode: DateMode) => void;
@@ -82,29 +85,51 @@ export function DateRangeProvider({
   const [mode, setMode] = useState<DateMode>(initialMode);
   const [granularity, setGranularity] =
     useState<Granularity>(initialGranularity);
+  const [isGranularityLocked, setIsGranularityLocked] = useState(false);
 
   // Fechas iniciales: día por defecto
   const initialRange = calculateRangeForPeriod("dia");
   const [startDate, setStartDate] = useState<Date>(initialRange.start);
   const [endDate, setEndDate] = useState<Date>(initialRange.end);
 
+  /**
+   * setRange: Usuario selecciona rango custom
+   * - NO clampar aquí (DatePicker ya lo hizo)
+   * - Si lock=false → recalcular granularidad automáticamente
+   */
   const setRange = (start: Date, end: Date) => {
     setStartDate(start);
     setEndDate(end);
-    setMode("range"); // Cambiar a modo range automáticamente
+    setMode("range");
+
+    // Si granularidad NO está locked, recalcular automáticamente
+    if (!isGranularityLocked) {
+      const startISO = toISO(start);
+      const endISO = toISO(end);
+      const autoGranularity = getWindowGranularityFromRange(startISO, endISO);
+      setGranularity(autoGranularity);
+    }
   };
 
+  /**
+   * clearRange: Volver a preset y UNLOCK granularidad
+   */
   const clearRange = () => {
     const range = calculateRangeForPeriod("dia");
     setStartDate(range.start);
     setEndDate(range.end);
     setMode("granularity");
     setGranularity("d");
+    setIsGranularityLocked(false); // UNLOCK
   };
 
-  // Cambio de granularidad: ajusta fechas según períodos predefinidos
+  /**
+   * handleSetGranularity: Usuario fuerza granularidad → LOCK
+   */
   const handleSetGranularity = (g: Granularity) => {
     setGranularity(g);
+    setIsGranularityLocked(true); // LOCK cuando usuario fuerza granularidad
+    
     if (mode === "granularity") {
       // Mapear granularidad a período y ajustar fechas
       let period: "dia" | "semana" | "mes" | "ano";
@@ -197,6 +222,7 @@ export function DateRangeProvider({
     granularity,
     startDate,
     endDate,
+    isGranularityLocked,
     setMode,
     setGranularity: handleSetGranularity, // Usar la nueva función
     setRange,

@@ -13,10 +13,28 @@ type Props = {
   placeholder?: string;
 };
 
+/**
+ * Retorna yesterday UTC - Única capa que debe clampar a ayer
+ * 
+ * ⚠️ CRÍTICO: Esta es la ÚNICA función que debe determinar el límite superior de fechas.
+ * Ninguna otra capa debe restar días adicionales.
+ */
 function yesterdayUTC(): Date {
   return addDaysUTC(todayUTC(), -1);
 }
 
+/**
+ * DateRangePicker - Única capa responsable de clamp a yesterday
+ * 
+ * POLÍTICA DE CLAMP:
+ * - maxDate: yesterdayUTC() - Bloquea selección de fechas futuras
+ * - onChange: Clamp end a yesterdayUTC() si excede
+ * - NO aplicar offsets adicionales en otras capas
+ * 
+ * @remarks
+ * Este componente es la ÚNICA capa que debe aplicar el clamp a ayer.
+ * Los contextos y servicios deben confiar en estas fechas sin modificaciones adicionales.
+ */
 export default function DateRangePicker({
   startDate,
   endDate,
@@ -28,6 +46,8 @@ export default function DateRangePicker({
   useEffect(() => {
     if (!inputRef.current) return;
 
+    const maxDateLimit = yesterdayUTC();
+
     const fp = flatpickr(inputRef.current, {
       mode: "range",
       dateFormat: "M d, Y",
@@ -35,9 +55,23 @@ export default function DateRangePicker({
       monthSelectorType: "static",
       static: true,
       disableMobile: true,
-      maxDate: yesterdayUTC(), // bloquea futuro
+      maxDate: maxDateLimit, // bloquea futuro en UI
       onChange: (dates) => {
-        if (dates.length === 2) onRangeChange(dates[0], dates[1]);
+        if (dates.length === 2) {
+          let [start, end] = dates;
+          
+          // CLAMP ÚNICO: Si end > yesterday, clampar a yesterday
+          if (end > maxDateLimit) {
+            end = maxDateLimit;
+          }
+          
+          // CLAMP: Si start > end después del clamp, ajustar start
+          if (start > end) {
+            start = end;
+          }
+          
+          onRangeChange(start, end);
+        }
       },
     });
 
