@@ -39,33 +39,32 @@ describe("useCategoriesTotalsNew", () => {
 
   it("should fetch data with default parameters", async () => {
     const mockResponse = {
-      granularity: "d" as const,
-      range: {
-        current: { start: "2024-10-10", end: "2024-10-11" },
-        previous: { start: "2024-10-09", end: "2024-10-10" },
-      },
-      property: "test-property",
-      items: [
-        {
-          id: "naturaleza" as CategoryId,
-          title: "Naturaleza",
-          total: 100,
-          previousTotal: 87,
-          deltaPct: 15.5,
-        },
-        {
-          id: "playas" as CategoryId,
-          title: "Playas",
-          total: 75,
-          previousTotal: 83,
-          deltaPct: -10.2,
-        },
-      ],
+      success: true,
       calculation: {
-        originalGranularity: "d" as const,
+        requestedGranularity: "d" as const,
         finalGranularity: "d" as const,
-        durationDays: 1,
         granularityReason: "1-31 days: using daily granularity",
+        currentPeriod: { start: "2024-10-10", end: "2024-10-11" },
+        previousPeriod: { start: "2024-10-09", end: "2024-10-10" },
+      },
+      data: {
+        property: "test-property",
+        items: [
+          {
+            id: "naturaleza" as CategoryId,
+            title: "Naturaleza",
+            total: 100,
+            previousTotal: 87,
+            deltaPct: 15.5,
+          },
+          {
+            id: "playas" as CategoryId,
+            title: "Playas",
+            total: 75,
+            previousTotal: 83,
+            deltaPct: -10.2,
+          },
+        ],
       },
     };
 
@@ -97,18 +96,17 @@ describe("useCategoriesTotalsNew", () => {
 
   it("should pass custom options to the service", async () => {
     const mockResponse = {
-      granularity: "w" as const,
-      range: {
-        current: { start: "2024-10-01", end: "2024-10-07" },
-        previous: { start: "2024-09-24", end: "2024-09-30" },
-      },
-      property: "test-property",
-      items: [],
+      success: true,
       calculation: {
-        originalGranularity: "w" as const,
+        requestedGranularity: "w" as const,
         finalGranularity: "w" as const,
-        durationDays: 7,
         granularityReason: "32-90 days: using weekly granularity",
+        currentPeriod: { start: "2024-10-01", end: "2024-10-07" },
+        previousPeriod: { start: "2024-09-24", end: "2024-09-30" },
+      },
+      data: {
+        property: "test-property",
+        items: [],
       },
     };
 
@@ -153,18 +151,17 @@ describe("useCategoriesTotalsNew", () => {
 
   it("should handle empty data response", async () => {
     const mockResponse = {
-      granularity: "d" as const,
-      range: {
-        current: { start: "2024-10-10", end: "2024-10-11" },
-        previous: { start: "2024-10-09", end: "2024-10-10" },
-      },
-      property: "test-property",
-      items: [],
+      success: true,
       calculation: {
-        originalGranularity: "d" as const,
+        requestedGranularity: "d" as const,
         finalGranularity: "d" as const,
-        durationDays: 1,
         granularityReason: "1-31 days: using daily granularity",
+        currentPeriod: { start: "2024-10-10", end: "2024-10-11" },
+        previousPeriod: { start: "2024-10-09", end: "2024-10-10" },
+      },
+      data: {
+        property: "test-property",
+        items: [],
       },
     };
 
@@ -185,25 +182,24 @@ describe("useCategoriesTotalsNew", () => {
       expect(result.current.isSuccess).toBe(true);
     });
 
-    expect(result.current.data?.items).toHaveLength(0);
+    expect(result.current.data?.data?.items).toHaveLength(0);
   });
 
   it.each(["d", "w", "m", "y"] as const)(
     "should handle %s granularity",
     async (granularity) => {
       const mockResponse = {
-        granularity,
-        range: {
-          current: { start: "2024-10-01", end: "2024-10-07" },
-          previous: { start: "2024-09-24", end: "2024-09-30" },
-        },
-        property: "test-property",
-        items: [],
+        success: true,
         calculation: {
-          originalGranularity: granularity,
+          requestedGranularity: granularity,
           finalGranularity: granularity,
-          durationDays: 7,
           granularityReason: `Testing ${granularity} granularity`,
+          currentPeriod: { start: "2024-10-01", end: "2024-10-07" },
+          previousPeriod: { start: "2024-09-24", end: "2024-09-30" },
+        },
+        data: {
+          property: "test-property",
+          items: [],
         },
       };
 
