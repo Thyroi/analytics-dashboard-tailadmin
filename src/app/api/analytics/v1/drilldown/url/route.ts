@@ -7,6 +7,7 @@ import {
 } from "@/lib/utils/analytics/ga";
 import { safePathname } from "@/lib/utils/routing/url";
 import { addDaysUTC, todayUTC } from "@/lib/utils/time/datetime";
+import { determineGA4Granularity } from "@/lib/utils/time/rangeCalculations";
 import {
   buildLaggedAxisForGranularity,
   type AxisLagged,
@@ -244,9 +245,12 @@ export async function GET(req: Request) {
         start: startISOParam,
         end: endISO,
       };
+      // Aplicar nueva lógica de granularidad para GA4
+      const ga4Granularity = determineGA4Granularity(g);
+
       // Crear un axis simple sin lag para usar el rango completo
       axis = {
-        dimensionTime: g === "y" ? "yearMonth" : "date",
+        dimensionTime: ga4Granularity === "y" ? "yearMonth" : "date",
         queryRange: customRange,
         curRange: customRange,
         prevRange: { start: startISOParam, end: endISO }, // Mismo rango para evitar errores
@@ -262,9 +266,19 @@ export async function GET(req: Request) {
       // m   → 30 días (prev = 30 días -1 día)
       // y   → 12 meses (prev = 12 meses -1 mes), alineados por índice
       axis = buildLaggedAxisForGranularity(g, { endISO });
+
+      // SOLO actualizar la dimensión de tiempo para GA4
+      const ga4Granularity = determineGA4Granularity(g);
+      axis.dimensionTime = ga4Granularity === "y" ? "yearMonth" : "date";
     }
 
     const N = axis.xLabels.length;
+
+    // Crear rangos separados para donut (solo para granularidad diaria)
+    const donutRange =
+      g === "d"
+        ? { start: axis.curRange.end, end: axis.curRange.end } // Solo último día
+        : axis.curRange; // Rango completo para otras granularidades
 
     // ===== GA =====
     const auth: GoogleAuth = getAuth();
@@ -501,9 +515,7 @@ export async function GET(req: Request) {
       ];
 
       const req: analyticsdata_v1beta.Schema$RunReportRequest = {
-        dateRanges: [
-          { startDate: axis.curRange.start, endDate: axis.curRange.end },
-        ],
+        dateRanges: [{ startDate: donutRange.start, endDate: donutRange.end }],
         metrics: [{ name: metric }],
         dimensions: donutDimensions,
         dimensionFilter: {

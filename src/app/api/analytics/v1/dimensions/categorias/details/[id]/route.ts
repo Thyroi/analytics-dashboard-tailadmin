@@ -126,6 +126,15 @@ export async function GET(
       previous: calculation.prevRange,
     };
 
+    // Rangos para donut (para granularidad diaria, solo el último día)
+    const donutRanges =
+      finalGranularity === "d"
+        ? {
+            current: { start: endQ, end: endQ },
+            previous: { start: endQ, end: endQ },
+          }
+        : ranges;
+
     // === GA ===
     const auth = getAuth();
     const analytics = google.analyticsdata({ version: "v1beta", auth });
@@ -189,8 +198,8 @@ export async function GET(
           categoryId,
           matchTownIdFromPath,
           townFilter,
-          ranges.current.start,
-          ranges.current.end,
+          donutRanges.current.start,
+          donutRanges.current.end,
           finalGranularity
         )
       : buildTownsDonutForCategory(
@@ -198,8 +207,8 @@ export async function GET(
           matchCategoryIdFromPath,
           categoryId,
           matchTownIdFromPath,
-          ranges.current.start,
-          ranges.current.end,
+          donutRanges.current.start,
+          donutRanges.current.end,
           finalGranularity
         );
 

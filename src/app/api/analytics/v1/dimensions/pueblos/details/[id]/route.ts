@@ -87,11 +87,24 @@ export async function GET(
         const customRangeInfo = computeCustomRanges(startQ, endQ);
         actualGranularity = customRangeInfo.optimalGranularity;
 
+        const calculation = calculatePreviousPeriodOnly(startQ, endQ);
+        actualGranularity = g || "d";
+
         ranges = {
-          current: { start: startQ, end: endQ },
-          previous: { start: startQ, end: endQ },
+          current: calculation.currentRange,
+          previous: calculation.prevRange,
         };
-        donutRanges = ranges;
+
+        // Para granularidad diaria, la donut debe usar solo el último día
+        if (actualGranularity === "d") {
+          donutRanges = {
+            current: { start: endQ, end: endQ },
+            previous: { start: endQ, end: endQ },
+          };
+        } else {
+          // Para otras granularidades, usar el rango completo
+          donutRanges = ranges;
+        }
       }
     } else {
       // Sin fechas específicas: usar ayer como endDate y calcular automáticamente
