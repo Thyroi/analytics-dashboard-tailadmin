@@ -187,7 +187,7 @@ describe("TownExpandedCard", () => {
     expect(screen.queryByTestId("donut-slice-OTROS")).not.toBeInTheDocument();
   });
 
-  it("debe renderizar grouped bar con top categorías ordenadas", () => {
+  it("debe renderizar ChartPair con line series (no grouped bar)", () => {
     mockUseTownCategoryBreakdown.mockReturnValue({
       data: mockResponse,
       isLoading: false,
@@ -209,14 +209,14 @@ describe("TownExpandedCard", () => {
       </QueryClientProvider>
     );
 
-    // Verificar que las barras están ordenadas por total descendente
-    const playasBar = screen.getByTestId("bar-PLAYAS");
-    const naturalezaBar = screen.getByTestId("bar-NATURALEZA");
-    const saborBar = screen.getByTestId("bar-SABOR");
+    // Verificar que el ChartPair está renderizado (no buscar grouped bar porque ahora es line)
+    const chartPair = screen.getByTestId("chart-pair");
+    expect(chartPair).toBeInTheDocument();
 
-    expect(playasBar).toHaveTextContent("PLAYAS: 100");
-    expect(naturalezaBar).toHaveTextContent("NATURALEZA: 50");
-    expect(saborBar).toHaveTextContent("SABOR: 30");
+    // Verificar que el donut tiene las categorías
+    expect(screen.getByTestId("donut-slice-PLAYAS")).toBeInTheDocument();
+    expect(screen.getByTestId("donut-slice-NATURALEZA")).toBeInTheDocument();
+    expect(screen.getByTestId("donut-slice-SABOR")).toBeInTheDocument();
   });
 
   it("debe emitir onSelectCategory al hacer click en slice del donut", async () => {

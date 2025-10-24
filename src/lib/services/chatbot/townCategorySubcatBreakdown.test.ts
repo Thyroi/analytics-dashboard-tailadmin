@@ -117,7 +117,7 @@ describe("fetchTownCategorySubcatBreakdown", () => {
 
     for (const call of calls) {
       const body = JSON.parse(call[1].body);
-      expect(body.pattern).toBe("root.almonte.playas.*");
+      expect(body.patterns).toBe("root.almonte.playas.*");
       expect(body.granularity).toBe("d");
     }
   });
