@@ -1,11 +1,12 @@
 import ChartPair from "@/components/common/ChartPair";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 import type { GroupedBarSeries } from "@/components/charts/GroupedBarChart";
 import { CATEGORY_META, type CategoryId } from "@/lib/taxonomy/categories";
 import { TOWN_META, type TownId } from "@/lib/taxonomy/towns";
 import type { DonutDatum, Granularity } from "@/lib/types";
 import { useTownCategoryBreakdown } from "../hooks/useTownCategoryBreakdown";
+import TownCategorySubcatDrilldownView from "./TownCategorySubcatDrilldownView";
 
 type Props = {
   townId: string;
@@ -85,6 +86,10 @@ export default function TownExpandedCard({
   const townLabel = townMeta?.label || townId;
   const townIcon = townMeta?.iconSrc;
 
+  // Estado para navegación Nivel 1 <-> Nivel 2
+  const [selectedCategoryId, setSelectedCategoryId] =
+    useState<CategoryId | null>(null);
+
   // Usar el nuevo hook de breakdown por categorías
   const { data, isLoading, isError, error } = useTownCategoryBreakdown({
     townId: townId as TownId,
@@ -150,15 +155,24 @@ export default function TownExpandedCard({
 
   // Handler para click en categoría (donut o barra)
   const handleCategoryClick = (label: string) => {
-    if (!onSelectCategory || !data?.categories) return;
+    if (!data?.categories) return;
 
     // Buscar categoryId por label
     const category = data.categories.find(
       (cat) => CATEGORY_META[cat.categoryId].label === label
     );
     if (category) {
-      onSelectCategory(category.categoryId);
+      setSelectedCategoryId(category.categoryId);
+      // También llamar al callback externo si existe
+      if (onSelectCategory) {
+        onSelectCategory(category.categoryId);
+      }
     }
+  };
+
+  // Handler para volver de Nivel 2 a Nivel 1
+  const handleBackToLevel1 = () => {
+    setSelectedCategoryId(null);
   };
 
   if (isError) {
@@ -226,6 +240,21 @@ export default function TownExpandedCard({
     );
   }
 
+  // Si hay una categoría seleccionada, mostrar Nivel 2 (subcategorías)
+  if (selectedCategoryId) {
+    return (
+      <TownCategorySubcatDrilldownView
+        townId={townId as TownId}
+        categoryId={selectedCategoryId}
+        startISO={startDate}
+        endISO={endDate}
+        windowGranularity={granularity}
+        onBack={handleBackToLevel1}
+      />
+    );
+  }
+
+  // Nivel 1: Categorías
   return (
     <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
       {/* Header con X para cerrar */}
