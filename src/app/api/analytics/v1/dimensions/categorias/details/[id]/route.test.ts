@@ -119,7 +119,7 @@ describe("/api/analytics/v1/dimensions/categorias/details/[id]", () => {
 
   test("returns categoria data without filters (towns donut)", async () => {
     const request = createMockRequest(
-      "/api/analytics/v1/dimensions/categorias/details/naturaleza?g=d"
+      "/api/analytics/v1/dimensions/categorias/details/naturaleza?startDate=2024-10-01&endDate=2024-10-07&granularity=d"
     );
     const context = createMockContext("naturaleza");
 
@@ -133,18 +133,23 @@ describe("/api/analytics/v1/dimensions/categorias/details/[id]", () => {
     const data = await response.json();
 
     expect(data).toMatchObject({
-      granularity: "d",
-      id: "naturaleza",
-      title: expect.any(String),
-      series: {
-        current: expect.any(Array),
-        previous: expect.any(Array),
+      success: true,
+      data: {
+        id: "naturaleza",
+        title: expect.any(String),
+        series: {
+          current: expect.any(Array),
+          previous: expect.any(Array),
+        },
+        donutData: [
+          { label: "almonte", value: 120 },
+          { label: "huelva", value: 80 },
+        ],
+        deltaPct: 25.0,
       },
-      donutData: [
-        { label: "almonte", value: 120 },
-        { label: "huelva", value: 80 },
-      ],
-      deltaPct: 25.0,
+      calculation: {
+        finalGranularity: "d",
+      },
     });
 
     // Verify buildTownsDonutForCategory was called (no filter)
@@ -164,7 +169,7 @@ describe("/api/analytics/v1/dimensions/categorias/details/[id]", () => {
 
   test("returns categoria data with townId filter (URLs donut)", async () => {
     const request = createMockRequest(
-      "/api/analytics/v1/dimensions/categorias/details/naturaleza?g=d&townId=almonte"
+      "/api/analytics/v1/dimensions/categorias/details/naturaleza?startDate=2024-10-01&endDate=2024-10-07&granularity=d&townId=almonte"
     );
     const context = createMockContext("naturaleza");
 
@@ -174,13 +179,18 @@ describe("/api/analytics/v1/dimensions/categorias/details/[id]", () => {
     const data = await response.json();
 
     expect(data).toMatchObject({
-      granularity: "d",
-      id: "naturaleza",
-      title: expect.any(String),
-      donutData: [
-        { label: "https://example.com/almonte/naturaleza/donana", value: 80 },
-        { label: "https://example.com/almonte/naturaleza/beach", value: 40 },
-      ],
+      success: true,
+      data: {
+        id: "naturaleza",
+        title: expect.any(String),
+        donutData: [
+          { label: "https://example.com/almonte/naturaleza/donana", value: 80 },
+          { label: "https://example.com/almonte/naturaleza/beach", value: 40 },
+        ],
+      },
+      calculation: {
+        finalGranularity: "d",
+      },
     });
 
     // Verify buildUrlsDonutForCategoryTown was called (with filter)
@@ -201,7 +211,7 @@ describe("/api/analytics/v1/dimensions/categorias/details/[id]", () => {
 
   test("handles custom date ranges", async () => {
     const request = createMockRequest(
-      "/api/analytics/v1/dimensions/categorias/details/naturaleza?g=d&start=2025-10-01&end=2025-10-05"
+      "/api/analytics/v1/dimensions/categorias/details/naturaleza?startDate=2025-10-01&endDate=2025-10-05&granularity=d"
     );
     const context = createMockContext("naturaleza");
 
@@ -209,9 +219,9 @@ describe("/api/analytics/v1/dimensions/categorias/details/[id]", () => {
     await expectStatus(response, 200);
 
     const data = await response.json();
-    expect(data.range).toMatchObject({
-      current: { start: "2025-10-01", end: "2025-10-05" },
-      previous: { start: "2025-09-26", end: "2025-09-30" }, // Nueva lógica: período anterior real
+    expect(data.calculation).toMatchObject({
+      currentPeriod: { start: "2025-10-01", end: "2025-10-05" },
+      previousPeriod: { start: "2025-09-26", end: "2025-09-30" }, // Nueva lógica: período anterior real
     });
   });
 
@@ -233,7 +243,7 @@ describe("/api/analytics/v1/dimensions/categorias/details/[id]", () => {
 
     for (const granularity of testCases) {
       const request = createMockRequest(
-        `/api/analytics/v1/dimensions/categorias/details/naturaleza?g=${granularity}`
+        `/api/analytics/v1/dimensions/categorias/details/naturaleza?startDate=2024-10-01&endDate=2024-10-07&granularity=${granularity}`
       );
       const context = createMockContext("naturaleza");
 
@@ -241,13 +251,13 @@ describe("/api/analytics/v1/dimensions/categorias/details/[id]", () => {
       await expectStatus(response, 200);
 
       const data = await response.json();
-      expect(data.granularity).toBe(granularity);
+      expect(data.calculation.finalGranularity).toBe(granularity);
     }
   });
 
   test("includes debug information", async () => {
     const request = createMockRequest(
-      "/api/analytics/v1/dimensions/categorias/details/naturaleza?g=d"
+      "/api/analytics/v1/dimensions/categorias/details/naturaleza?startDate=2024-10-01&endDate=2024-10-07&granularity=d"
     );
     const context = createMockContext("naturaleza");
 
@@ -255,19 +265,17 @@ describe("/api/analytics/v1/dimensions/categorias/details/[id]", () => {
     await expectStatus(response, 200);
     const data = await response.json();
 
-    expect(data.debug).toMatchObject({
+    expect(data.data.debug).toMatchObject({
       totalRows: expect.any(Number),
       filteredRows: expect.any(Number),
       townFilter: null,
       matchedRows: expect.any(Number),
-      currentTotal: expect.any(Number),
-      previousTotal: expect.any(Number),
     });
   });
 
   test("includes debug information with town filter", async () => {
     const request = createMockRequest(
-      "/api/analytics/v1/dimensions/categorias/details/naturaleza?g=d&townId=almonte"
+      "/api/analytics/v1/dimensions/categorias/details/naturaleza?startDate=2024-10-01&endDate=2024-10-07&granularity=d&townId=almonte"
     );
     const context = createMockContext("naturaleza");
 
@@ -275,19 +283,17 @@ describe("/api/analytics/v1/dimensions/categorias/details/[id]", () => {
     await expectStatus(response, 200);
     const data = await response.json();
 
-    expect(data.debug).toMatchObject({
+    expect(data.data.debug).toMatchObject({
       totalRows: expect.any(Number),
       filteredRows: expect.any(Number),
       townFilter: "almonte",
       matchedRows: expect.any(Number),
-      currentTotal: expect.any(Number),
-      previousTotal: expect.any(Number),
     });
   });
 
   test("handles edge case with empty townId filter", async () => {
     const request = createMockRequest(
-      "/api/analytics/v1/dimensions/categorias/details/naturaleza?g=d&townId="
+      "/api/analytics/v1/dimensions/categorias/details/naturaleza?startDate=2024-10-01&endDate=2024-10-07&granularity=d&townId="
     );
     const context = createMockContext("naturaleza");
 
@@ -296,6 +302,6 @@ describe("/api/analytics/v1/dimensions/categorias/details/[id]", () => {
 
     const data = await response.json();
     // Empty townId should be treated as no filter
-    expect(data.debug.townFilter).toBe("");
+    expect(data.data.debug.townFilter).toBe("");
   });
 });

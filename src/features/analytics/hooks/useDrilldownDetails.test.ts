@@ -73,7 +73,7 @@ describe("useDrilldownDetails", () => {
 
     // Verify correct endpoint was called
     expect(mockFetchJSON).toHaveBeenCalledWith(
-      "/api/analytics/v1/dimensions/pueblos/details/almonte?g=d&categoryId=naturaleza"
+      "/api/analytics/v1/dimensions/pueblos/details/almonte?granularity=d&categoryId=naturaleza"
     );
 
     // Verify returned data structure
@@ -124,7 +124,7 @@ describe("useDrilldownDetails", () => {
 
     await waitFor(() => {
       expect(mockFetchJSON).toHaveBeenCalledWith(
-        "/api/analytics/v1/dimensions/pueblos/details/almonte?g=d&end=2025-10-15&categoryId=naturaleza"
+        "/api/analytics/v1/dimensions/pueblos/details/almonte?granularity=d&endDate=2025-10-15&categoryId=naturaleza"
       );
     });
   });
@@ -144,7 +144,7 @@ describe("useDrilldownDetails", () => {
 
       await waitFor(() => {
         expect(mockFetchJSON).toHaveBeenCalledWith(
-          expect.stringContaining(`g=${granularity}`)
+          expect.stringContaining(`granularity=${granularity}`)
         );
       });
 
@@ -221,11 +221,11 @@ describe("useDrilldownDetails", () => {
     expect(mockFetchJSON).toHaveBeenCalledTimes(2);
     expect(mockFetchJSON).toHaveBeenNthCalledWith(
       1,
-      `/api/analytics/v1/dimensions/pueblos/details/almonte?g=d&categoryId=${initialCategory}`
+      `/api/analytics/v1/dimensions/pueblos/details/almonte?granularity=d&categoryId=${initialCategory}`
     );
     expect(mockFetchJSON).toHaveBeenNthCalledWith(
       2,
-      `/api/analytics/v1/dimensions/pueblos/details/almonte?g=d&categoryId=${differentCategory}`
+      `/api/analytics/v1/dimensions/pueblos/details/almonte?granularity=d&categoryId=${differentCategory}`
     );
   });
 
