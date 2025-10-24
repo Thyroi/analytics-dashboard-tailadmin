@@ -1,7 +1,11 @@
 import "@testing-library/jest-dom";
+import React from "react";
 import { loadEnv } from "vite";
 import { beforeEach, vi } from "vitest";
 import createFetchMock from "vitest-fetch-mock";
+
+// Make React available globally for JSX transform
+global.React = React;
 
 // Load environment variables
 const env = loadEnv("", process.cwd(), "");

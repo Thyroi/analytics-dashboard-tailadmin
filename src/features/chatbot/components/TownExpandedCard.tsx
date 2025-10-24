@@ -2,8 +2,10 @@ import ChartPair from "@/components/common/ChartPair";
 import { useMemo } from "react";
 
 import { TOWN_META, type TownId } from "@/lib/taxonomy/towns";
-import type { Granularity } from "@/lib/types";
-import { useChatbotTownDetails } from "../hooks/useChatbotTownDetails";
+import { CATEGORY_META, type CategoryId } from "@/lib/taxonomy/categories";
+import type { Granularity, DonutDatum } from "@/lib/types";
+import { useTownCategoryBreakdown } from "../hooks/useTownCategoryBreakdown";
+import type { GroupedBarSeries } from "@/components/charts/GroupedBarChart";
 
 type Props = {
   townId: string;
@@ -11,6 +13,7 @@ type Props = {
   startDate?: string | null;
   endDate?: string | null;
   onClose: () => void;
+  onSelectCategory?: (categoryId: CategoryId) => void;
 };
 
 function Header({
@@ -76,47 +79,149 @@ export default function TownExpandedCard({
   startDate,
   endDate,
   onClose,
+  onSelectCategory,
 }: Props) {
-  // Removed selectedSlice functionality
-
-  // Obtener detalles del town usando nuestro hook específico
-  const { series, donutData, totalInteractions, error } = useChatbotTownDetails(
-    {
-      townId: townId as TownId,
-      granularity,
-      startDate,
-      endDate,
-      enabled: true,
-    }
-  );
-
   const townMeta = TOWN_META[townId as TownId];
   const townLabel = townMeta?.label || townId;
   const townIcon = townMeta?.iconSrc;
 
-  // Convertir series para ChartPair
-  const lineSeriesData = useMemo(() => {
-    return series.current.map((point) => ({
-      label: point.label,
-      value: point.value,
-    }));
-  }, [series]);
+  // Usar el nuevo hook de breakdown por categorías
+  const {
+    data,
+    isLoading,
+    isError,
+    error,
+  } = useTownCategoryBreakdown({
+    townId: townId as TownId,
+    startISO: startDate,
+    endISO: endDate,
+    windowGranularity: granularity,
+    enabled: true,
+  });
+
+  // Transformar datos a formato ChartPair
+  const { donutData, groupedSeries, totalInteractions, categoriesForXAxis } = useMemo(() => {
+    const categories = data?.categories || [];
+    
+    if (!categories || categories.length === 0) {
+      return {
+        donutData: [],
+        groupedSeries: [],
+        totalInteractions: 0,
+        categoriesForXAxis: [],
+      };
+    }
+
+    // Donut: participación por categoría (current totals)
+    const donut: DonutDatum[] = categories
+      .filter((cat) => cat.currentTotal > 0)
+      .map((cat) => ({
+        label: CATEGORY_META[cat.categoryId].label,
+        value: cat.currentTotal,
+        color: undefined, // ChartPair asigna colores automáticamente
+      }));
+
+    // Grouped Bar: Top categorías (ordenadas por current total)
+    const topN = 8; // Configurable
+    const topCategories = [...categories]
+      .sort((a, b) => b.currentTotal - a.currentTotal)
+      .slice(0, topN);
+
+    const grouped: GroupedBarSeries[] = [
+      {
+        name: "Interacciones",
+        data: topCategories.map((cat) => cat.currentTotal),
+        color: "#3b82f6", // blue-500
+      },
+    ];
+
+    const total = categories.reduce(
+      (sum, cat) => sum + cat.currentTotal,
+      0
+    );
+
+    const xAxisLabels = topCategories.map((cat) => CATEGORY_META[cat.categoryId].label);
+
+    return {
+      donutData: donut,
+      groupedSeries: grouped,
+      totalInteractions: total,
+      categoriesForXAxis: xAxisLabels,
+    };
+  }, [data?.categories]);
 
   // Subtítulo con información detallada
-  const subtitle = `Análisis detallado por categorías • ${totalInteractions.toLocaleString()} interacciones totales`;
+  const subtitle = `Análisis por categorías • ${totalInteractions.toLocaleString()} interacciones totales`;
 
-  const handleDonutSlice = () => {
-    // Removed selectedSlice functionality - no action needed
+  // Handler para click en categoría (donut o barra)
+  const handleCategoryClick = (label: string) => {
+    if (!onSelectCategory || !data?.categories) return;
+
+    // Buscar categoryId por label
+    const category = data.categories.find(
+      (cat) => CATEGORY_META[cat.categoryId].label === label
+    );
+    if (category) {
+      onSelectCategory(category.categoryId);
+    }
   };
 
-  if (error) {
+  if (isError) {
     return (
       <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-6">
         <Header
           title="Error cargando datos"
-          subtitle={error.message}
+          subtitle={error?.message || "Error desconocido"}
           onClose={onClose}
         />
+      </div>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+        <Header
+          title={townLabel}
+          subtitle="Cargando datos..."
+          imgSrc={townIcon}
+          onClose={onClose}
+        />
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+        </div>
+      </div>
+    );
+  }
+
+  // Empty state
+  if (!data?.categories || data.categories.length === 0 || totalInteractions === 0) {
+    return (
+      <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+        <Header
+          title={townLabel}
+          subtitle={subtitle}
+          imgSrc={townIcon}
+          onClose={onClose}
+        />
+        <div className="flex flex-col items-center justify-center h-64 text-gray-500 dark:text-gray-400">
+          <svg
+            className="w-16 h-16 mb-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={1.5}
+              d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+            />
+          </svg>
+          <p className="text-center">
+            No hay datos de categorías para este pueblo en el período seleccionado
+          </p>
+        </div>
       </div>
     );
   }
@@ -131,23 +236,20 @@ export default function TownExpandedCard({
         onClose={onClose}
       />
 
-      {/* Removed selectedSlice information section */}
-
       {/* Gráficas */}
       <div className="px-4">
         <ChartPair
-          mode="line"
-          series={{
-            current: lineSeriesData,
-            previous: [],
-          }}
+          mode="grouped"
+          categories={categoriesForXAxis}
+          groupedSeries={groupedSeries}
           donutData={donutData}
           deltaPct={null}
-          onDonutSlice={handleDonutSlice}
+          onDonutSlice={handleCategoryClick}
           donutCenterLabel={townLabel}
           showActivityButton={false}
-          actionButtonTarget={`/chatbot/town/${townId}/activity`}
-          granularity={granularity}
+          chartTitle="Top Categorías"
+          chartSubtitle={`${totalInteractions.toLocaleString()} interacciones totales`}
+          chartHeight={400}
           className=""
         />
       </div>
