@@ -50,7 +50,9 @@ function ChatbotTownsSectionContent() {
 
   const [selectedTownId, setSelectedTownId] = useState<string | null>(null);
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(
+    null
+  );
 
   // Ref para hacer scroll al drilldown
   const drilldownRef = useRef<HTMLDivElement>(null);
@@ -134,7 +136,12 @@ function ChatbotTownsSectionContent() {
             onSelectCategory={(categoryId) => {
               setSelectedCategoryId(categoryId);
               // TODO PR #13-14: Abrir Nivel 2 (subcategorías)
-              console.log("Selected category:", categoryId, "in town:", selectedTownId);
+              console.log(
+                "Selected category:",
+                categoryId,
+                "in town:",
+                selectedTownId
+              );
             }}
           />
         </div>

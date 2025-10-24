@@ -8,14 +8,13 @@
  * - Skeletons y empty states
  */
 
-import React from "react";
+import type { TownCategoryBreakdownResponse } from "@/lib/services/chatbot/townCategoryBreakdown";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { vi, describe, it, expect, beforeEach, afterEach } from "vitest";
-import TownExpandedCard from "./TownExpandedCard";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as useTownCategoryBreakdownModule from "../hooks/useTownCategoryBreakdown";
-import type { TownCategoryBreakdownResponse } from "@/lib/services/chatbot/townCategoryBreakdown";
+import TownExpandedCard from "./TownExpandedCard";
 
 // Mock del hook
 vi.mock("../hooks/useTownCategoryBreakdown");
@@ -27,7 +26,12 @@ const mockUseTownCategoryBreakdown = vi.spyOn(
 
 // Mock de ChartPair para evitar problemas de rendering
 vi.mock("@/components/common/ChartPair", () => ({
-  default: ({ donutData, groupedSeries, onDonutSlice, categories }: {
+  default: ({
+    donutData,
+    groupedSeries,
+    onDonutSlice,
+    categories,
+  }: {
     donutData: Array<{ label: string; value: number }>;
     groupedSeries: Array<{ name: string; data: number[] }>;
     onDonutSlice?: (label: string) => void;

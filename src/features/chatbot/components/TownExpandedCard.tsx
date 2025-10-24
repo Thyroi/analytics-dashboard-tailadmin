@@ -1,11 +1,11 @@
 import ChartPair from "@/components/common/ChartPair";
 import { useMemo } from "react";
 
-import { TOWN_META, type TownId } from "@/lib/taxonomy/towns";
-import { CATEGORY_META, type CategoryId } from "@/lib/taxonomy/categories";
-import type { Granularity, DonutDatum } from "@/lib/types";
-import { useTownCategoryBreakdown } from "../hooks/useTownCategoryBreakdown";
 import type { GroupedBarSeries } from "@/components/charts/GroupedBarChart";
+import { CATEGORY_META, type CategoryId } from "@/lib/taxonomy/categories";
+import { TOWN_META, type TownId } from "@/lib/taxonomy/towns";
+import type { DonutDatum, Granularity } from "@/lib/types";
+import { useTownCategoryBreakdown } from "../hooks/useTownCategoryBreakdown";
 
 type Props = {
   townId: string;
@@ -86,12 +86,7 @@ export default function TownExpandedCard({
   const townIcon = townMeta?.iconSrc;
 
   // Usar el nuevo hook de breakdown por categorías
-  const {
-    data,
-    isLoading,
-    isError,
-    error,
-  } = useTownCategoryBreakdown({
+  const { data, isLoading, isError, error } = useTownCategoryBreakdown({
     townId: townId as TownId,
     startISO: startDate,
     endISO: endDate,
@@ -100,55 +95,55 @@ export default function TownExpandedCard({
   });
 
   // Transformar datos a formato ChartPair
-  const { donutData, groupedSeries, totalInteractions, categoriesForXAxis } = useMemo(() => {
-    const categories = data?.categories || [];
-    
-    if (!categories || categories.length === 0) {
+  const { donutData, groupedSeries, totalInteractions, categoriesForXAxis } =
+    useMemo(() => {
+      const categories = data?.categories || [];
+
+      if (!categories || categories.length === 0) {
+        return {
+          donutData: [],
+          groupedSeries: [],
+          totalInteractions: 0,
+          categoriesForXAxis: [],
+        };
+      }
+
+      // Donut: participación por categoría (current totals)
+      const donut: DonutDatum[] = categories
+        .filter((cat) => cat.currentTotal > 0)
+        .map((cat) => ({
+          label: CATEGORY_META[cat.categoryId].label,
+          value: cat.currentTotal,
+          color: undefined, // ChartPair asigna colores automáticamente
+        }));
+
+      // Grouped Bar: Top categorías (ordenadas por current total)
+      const topN = 8; // Configurable
+      const topCategories = [...categories]
+        .sort((a, b) => b.currentTotal - a.currentTotal)
+        .slice(0, topN);
+
+      const grouped: GroupedBarSeries[] = [
+        {
+          name: "Interacciones",
+          data: topCategories.map((cat) => cat.currentTotal),
+          color: "#3b82f6", // blue-500
+        },
+      ];
+
+      const total = categories.reduce((sum, cat) => sum + cat.currentTotal, 0);
+
+      const xAxisLabels = topCategories.map(
+        (cat) => CATEGORY_META[cat.categoryId].label
+      );
+
       return {
-        donutData: [],
-        groupedSeries: [],
-        totalInteractions: 0,
-        categoriesForXAxis: [],
+        donutData: donut,
+        groupedSeries: grouped,
+        totalInteractions: total,
+        categoriesForXAxis: xAxisLabels,
       };
-    }
-
-    // Donut: participación por categoría (current totals)
-    const donut: DonutDatum[] = categories
-      .filter((cat) => cat.currentTotal > 0)
-      .map((cat) => ({
-        label: CATEGORY_META[cat.categoryId].label,
-        value: cat.currentTotal,
-        color: undefined, // ChartPair asigna colores automáticamente
-      }));
-
-    // Grouped Bar: Top categorías (ordenadas por current total)
-    const topN = 8; // Configurable
-    const topCategories = [...categories]
-      .sort((a, b) => b.currentTotal - a.currentTotal)
-      .slice(0, topN);
-
-    const grouped: GroupedBarSeries[] = [
-      {
-        name: "Interacciones",
-        data: topCategories.map((cat) => cat.currentTotal),
-        color: "#3b82f6", // blue-500
-      },
-    ];
-
-    const total = categories.reduce(
-      (sum, cat) => sum + cat.currentTotal,
-      0
-    );
-
-    const xAxisLabels = topCategories.map((cat) => CATEGORY_META[cat.categoryId].label);
-
-    return {
-      donutData: donut,
-      groupedSeries: grouped,
-      totalInteractions: total,
-      categoriesForXAxis: xAxisLabels,
-    };
-  }, [data?.categories]);
+    }, [data?.categories]);
 
   // Subtítulo con información detallada
   const subtitle = `Análisis por categorías • ${totalInteractions.toLocaleString()} interacciones totales`;
@@ -195,7 +190,11 @@ export default function TownExpandedCard({
   }
 
   // Empty state
-  if (!data?.categories || data.categories.length === 0 || totalInteractions === 0) {
+  if (
+    !data?.categories ||
+    data.categories.length === 0 ||
+    totalInteractions === 0
+  ) {
     return (
       <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
         <Header
@@ -219,7 +218,8 @@ export default function TownExpandedCard({
             />
           </svg>
           <p className="text-center">
-            No hay datos de categorías para este pueblo en el período seleccionado
+            No hay datos de categorías para este pueblo en el período
+            seleccionado
           </p>
         </div>
       </div>
