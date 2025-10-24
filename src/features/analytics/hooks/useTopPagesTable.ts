@@ -1,6 +1,7 @@
 "use client";
 
 import { useHeaderAnalyticsTimeframe } from "@/features/analytics/context/HeaderAnalyticsTimeContext";
+import { addDaysUTC, toISO } from "@/lib/utils/time/datetime";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 import {
@@ -17,6 +18,11 @@ export type UseTopPagesTableParams = {
   enabled?: boolean;
 };
 
+/**
+ * Hook para tabla de Top Pages (UTC)
+ * 
+ * ⚠️ MIGRADO A UTC - Usa addDaysUTC y toISO en lugar de .setDate()
+ */
 export function useTopPagesTable(params: UseTopPagesTableParams = {}) {
   const { startDate, endDate, granularity, mode } =
     useHeaderAnalyticsTimeframe();
@@ -30,7 +36,7 @@ export function useTopPagesTable(params: UseTopPagesTableParams = {}) {
     enabled = true,
   } = params;
 
-  // Convert dates to ISO strings with comprehensive error handling
+  // Convert dates to ISO strings with comprehensive error handling (UTC)
   const start = useMemo(() => {
     try {
       if (
@@ -42,25 +48,25 @@ export function useTopPagesTable(params: UseTopPagesTableParams = {}) {
       }
 
       // CRITICAL: Apply date calculations only for preset granularities, not custom ranges
-      const adjustedStartDate = new Date(startDate);
+      let adjustedStartDate = startDate;
 
       if (mode === "granularity") {
         // For preset granularities: the context already gives us the correct range
-        // We just need to ensure complete data by subtracting 1 day
-        adjustedStartDate.setDate(adjustedStartDate.getDate() - 1);
+        // We just need to ensure complete data by subtracting 1 day (UTC)
+        adjustedStartDate = addDaysUTC(startDate, -1);
       } else {
         // For custom ranges: use the dates as-is (user's exact selection)
         // No modification needed for custom ranges
       }
 
-      const isoString = adjustedStartDate.toISOString();
+      const isoString = toISO(adjustedStartDate);
       if (!isoString || typeof isoString !== "string") {
         console.warn(
           "[useTopPagesTable] Failed to convert startDate to ISO string"
         );
         return "";
       }
-      return isoString.split("T")[0];
+      return isoString;
     } catch (error) {
       console.error("[useTopPagesTable] Error processing startDate:", error);
       return "";
@@ -75,24 +81,24 @@ export function useTopPagesTable(params: UseTopPagesTableParams = {}) {
       }
 
       // CRITICAL: Apply date calculations only for preset granularities, not custom ranges
-      const adjustedEndDate = new Date(endDate);
+      let adjustedEndDate = endDate;
 
       if (mode === "granularity") {
-        // For preset granularities: always subtract 1 day to ensure complete data
-        adjustedEndDate.setDate(adjustedEndDate.getDate() - 1);
+        // For preset granularities: always subtract 1 day to ensure complete data (UTC)
+        adjustedEndDate = addDaysUTC(endDate, -1);
       } else {
         // For custom ranges: use the dates as-is (user's exact selection)
         // No modification needed for custom ranges
       }
 
-      const isoString = adjustedEndDate.toISOString();
+      const isoString = toISO(adjustedEndDate);
       if (!isoString || typeof isoString !== "string") {
         console.warn(
           "[useTopPagesTable] Failed to convert endDate to ISO string"
         );
         return "";
       }
-      return isoString.split("T")[0];
+      return isoString;
     } catch (error) {
       console.error("[useTopPagesTable] Error processing endDate:", error);
       return "";

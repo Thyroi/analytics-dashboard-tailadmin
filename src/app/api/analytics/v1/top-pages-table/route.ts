@@ -3,6 +3,7 @@ import {
   normalizePropertyId,
   resolvePropertyId,
 } from "@/lib/utils/analytics/ga";
+import { addDaysUTC, addMonthsUTC, parseISO, toISO } from "@/lib/utils/time/datetime";
 import { analyticsdata_v1beta, google } from "googleapis";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -26,39 +27,44 @@ export type TopPagesTableResponse = {
   }>;
 };
 
+/**
+ * Calcula el período anterior con shift (UTC)
+ * 
+ * ⚠️ MIGRADO A UTC - Usa parseISO, addDaysUTC, addMonthsUTC en lugar de .setDate()
+ */
 function calculateShiftedPeriod(
   start: string,
   end: string,
   granularity: "d" | "w" | "m" | "y"
 ): { start: string; end: string } {
-  const startDate = new Date(start);
-  const endDate = new Date(end);
+  const startDate = parseISO(start);
+  const endDate = parseISO(end);
 
-  const shiftedStart = new Date(startDate);
-  const shiftedEnd = new Date(endDate);
+  let shiftedStart: Date;
+  let shiftedEnd: Date;
 
   switch (granularity) {
     case "d":
     case "w":
-      // Shift -1 día
-      shiftedStart.setDate(shiftedStart.getDate() - 1);
-      shiftedEnd.setDate(shiftedEnd.getDate() - 1);
+      // Shift -1 día (UTC)
+      shiftedStart = addDaysUTC(startDate, -1);
+      shiftedEnd = addDaysUTC(endDate, -1);
       break;
     case "m":
-      // Shift -1 día (manteniendo buckets diarios dentro del mes)
-      shiftedStart.setDate(shiftedStart.getDate() - 1);
-      shiftedEnd.setDate(shiftedEnd.getDate() - 1);
+      // Shift -1 día (manteniendo buckets diarios dentro del mes) - UTC
+      shiftedStart = addDaysUTC(startDate, -1);
+      shiftedEnd = addDaysUTC(endDate, -1);
       break;
     case "y":
-      // Shift -1 mes
-      shiftedStart.setMonth(shiftedStart.getMonth() - 1);
-      shiftedEnd.setMonth(shiftedEnd.getMonth() - 1);
+      // Shift -1 mes (UTC)
+      shiftedStart = addMonthsUTC(startDate, -1);
+      shiftedEnd = addMonthsUTC(endDate, -1);
       break;
   }
 
   return {
-    start: shiftedStart.toISOString().split("T")[0],
-    end: shiftedEnd.toISOString().split("T")[0],
+    start: toISO(shiftedStart),
+    end: toISO(shiftedEnd),
   };
 }
 

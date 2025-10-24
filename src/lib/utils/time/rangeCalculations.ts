@@ -1,8 +1,11 @@
 /**
  * Cálculo de rangos de fechas y granularidad automática
+ * 
+ * ⚠️ MIGRADO A UTC - Usa parseISO, toISO, addDaysUTC en lugar de new Date() y .setDate()
  */
 
 import type { Granularity } from "@/lib/types";
+import { addDaysUTC, parseISO, toISO } from "./datetime";
 
 export type DateRange = {
   start: string; // YYYY-MM-DD
@@ -17,11 +20,13 @@ export type PeriodCalculation = {
 };
 
 /**
- * Calcula la duración en días entre dos fechas
+ * Calcula la duración en días entre dos fechas (UTC)
+ * 
+ * ⚠️ Usa parseISO para evitar timezone drift
  */
 function calculateDurationDays(startDate: string, endDate: string): number {
-  const start = new Date(startDate);
-  const end = new Date(endDate);
+  const start = parseISO(startDate);
+  const end = parseISO(endDate);
   const diffTime = end.getTime() - start.getTime();
   const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
   return diffDays + 1; // Incluir ambos días
@@ -55,44 +60,46 @@ function determineGA4Granularity(uiGranularity: Granularity): Granularity {
 }
 
 /**
- * Calcula el rango anterior del mismo tamaño
+ * Calcula el rango anterior del mismo tamaño (UTC)
+ * 
+ * ⚠️ Usa addDaysUTC en lugar de .setDate() para evitar mutaciones y timezone drift
  */
 function calculatePreviousRange(
   currentStart: string,
   currentEnd: string,
   durationDays: number
 ): DateRange {
-  const startDate = new Date(currentStart);
+  const startDate = parseISO(currentStart);
 
-  // Calcular fechas del período anterior
-  const prevEndDate = new Date(startDate);
-  prevEndDate.setDate(prevEndDate.getDate() - 1); // Un día antes del current start
-
-  const prevStartDate = new Date(prevEndDate);
-  prevStartDate.setDate(prevStartDate.getDate() - durationDays + 1); // Mismo número de días
+  // Calcular fechas del período anterior (UTC)
+  const prevEndDate = addDaysUTC(startDate, -1); // Un día antes del current start
+  const prevStartDate = addDaysUTC(prevEndDate, -(durationDays - 1)); // Mismo número de días
 
   return {
-    start: prevStartDate.toISOString().split("T")[0],
-    end: prevEndDate.toISOString().split("T")[0],
+    start: toISO(prevStartDate),
+    end: toISO(prevEndDate),
   };
 }
 
 /**
- * Función principal: calcula período anterior y granularidad automática
+ * Función principal: calcula período anterior y granularidad automática (UTC)
+ * 
+ * ⚠️ Validaciones usan parseISO para evitar timezone drift
  */
 export function calculatePreviousPeriodAndGranularity(
   currentStart: string,
   currentEnd: string
 ): PeriodCalculation {
-  // Validaciones
-  const startDate = new Date(currentStart);
-  const endDate = new Date(currentEnd);
+  // Validaciones (UTC)
+  const startDate = parseISO(currentStart);
+  const endDate = parseISO(currentEnd);
 
   if (startDate > endDate) {
     throw new Error("Start date must be before or equal to end date");
   }
 
-  if (startDate > new Date()) {
+  const now = new Date(); // Comparar con now real (no UTC) para validación
+  if (startDate > now) {
     throw new Error("Start date cannot be in the future");
   }
 

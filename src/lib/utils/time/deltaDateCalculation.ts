@@ -1,7 +1,8 @@
 import type { Granularity } from "@/lib/types";
+import { addDaysUTC, toISO } from "./datetime";
 
 /**
- * Calcula las fechas correctas para deltas según la granularidad
+ * Calcula las fechas correctas para deltas según la granularidad (UTC)
  *
  * Para granularidad 'd' (diaria):
  * - currentDate: ayer (currentDay - 1)
@@ -9,6 +10,8 @@ import type { Granularity } from "@/lib/types";
  *
  * Para otras granularidades:
  * - Usa las fechas tal como están
+ * 
+ * ⚠️ MIGRADO A UTC - Usa addDaysUTC y toISO en lugar de .setDate()
  */
 export function getCorrectDatesForGranularity(
   endDate: Date,
@@ -19,22 +22,19 @@ export function getCorrectDatesForGranularity(
   previousEndISO: string;
 } {
   if (granularity === "d" && mode === "granularity") {
-    // Para granularidad diaria, usar ayer como fecha actual y anteayer como anterior
-    const yesterday = new Date(endDate);
-    yesterday.setDate(yesterday.getDate() - 1);
-
-    const dayBeforeYesterday = new Date(endDate);
-    dayBeforeYesterday.setDate(dayBeforeYesterday.getDate() - 2);
+    // Para granularidad diaria, usar ayer como fecha actual y anteayer como anterior (UTC)
+    const yesterday = addDaysUTC(endDate, -1);
+    const dayBeforeYesterday = addDaysUTC(endDate, -2);
 
     return {
-      currentEndISO: yesterday.toISOString().split("T")[0],
-      previousEndISO: dayBeforeYesterday.toISOString().split("T")[0],
+      currentEndISO: toISO(yesterday),
+      previousEndISO: toISO(dayBeforeYesterday),
     };
   }
 
   // Para otras granularidades o modo range, usar las fechas tal como están
   return {
-    currentEndISO: endDate.toISOString().split("T")[0],
-    previousEndISO: endDate.toISOString().split("T")[0],
+    currentEndISO: toISO(endDate),
+    previousEndISO: toISO(endDate),
   };
 }

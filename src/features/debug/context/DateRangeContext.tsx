@@ -1,10 +1,13 @@
 /**
  * Contexto para manejar fechas con nueva lógica de rangos
+ * 
+ * ⚠️ MIGRADO A UTC - Reemplaza new Date() y .setDate() por addDaysUTC()
  */
 
 "use client";
 
 import type { Granularity } from "@/lib/types";
+import { addDaysUTC, todayUTC, toISO } from "@/lib/utils/time/datetime";
 import { calculatePreviousPeriodAndGranularity } from "@/lib/utils/time/rangeCalculations";
 import { createContext, useContext, useState, type ReactNode } from "react";
 
@@ -30,15 +33,13 @@ export type DateContextValue = {
 };
 
 /**
- * Calcula el rango de fechas según el período seleccionado
+ * Calcula el rango de fechas según el período seleccionado (UTC)
  */
 function calculateRangeForPeriod(period: "dia" | "semana" | "mes" | "ano"): {
   start: Date;
   end: Date;
 } {
-  const today = new Date();
-  const yesterday = new Date(today);
-  yesterday.setDate(yesterday.getDate() - 1);
+  const yesterday = addDaysUTC(todayUTC(), -1);
 
   switch (period) {
     case "dia": {
@@ -47,20 +48,17 @@ function calculateRangeForPeriod(period: "dia" | "semana" | "mes" | "ano"): {
     }
     case "semana": {
       // Semana: últimos 7 días terminando ayer
-      const start = new Date(yesterday);
-      start.setDate(start.getDate() - 6); // 7 días incluyendo el final
+      const start = addDaysUTC(yesterday, -6); // 7 días incluyendo el final
       return { start, end: yesterday };
     }
     case "mes": {
       // Mes: últimos 30 días terminando ayer
-      const start = new Date(yesterday);
-      start.setDate(start.getDate() - 29); // 30 días incluyendo el final
+      const start = addDaysUTC(yesterday, -29); // 30 días incluyendo el final
       return { start, end: yesterday };
     }
     case "ano": {
       // Año: últimos 365 días terminando ayer
-      const start = new Date(yesterday);
-      start.setDate(start.getDate() - 364); // 365 días incluyendo el final
+      const start = addDaysUTC(yesterday, -364); // 365 días incluyendo el final
       return { start, end: yesterday };
     }
     default:
@@ -134,8 +132,8 @@ export function DateRangeProvider({
   };
 
   const getCurrentPeriod = () => ({
-    start: startDate.toISOString().split("T")[0],
-    end: endDate.toISOString().split("T")[0],
+    start: toISO(startDate),
+    end: toISO(endDate),
   });
 
   const getPreviousPeriod = () => {
@@ -147,10 +145,9 @@ export function DateRangeProvider({
       );
       return calculation.prevRange;
     } catch {
-      // Fallback: día anterior
-      const fallbackDate = new Date(startDate);
-      fallbackDate.setDate(fallbackDate.getDate() - 1);
-      const fallbackStr = fallbackDate.toISOString().split("T")[0];
+      // Fallback: día anterior (UTC)
+      const fallbackDate = addDaysUTC(startDate, -1);
+      const fallbackStr = toISO(fallbackDate);
       return { start: fallbackStr, end: fallbackStr };
     }
   };

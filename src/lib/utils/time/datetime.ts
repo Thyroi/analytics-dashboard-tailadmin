@@ -31,14 +31,61 @@ export {
 
 /* ==================== Helpers base UTC ==================== */
 
+/**
+ * Convierte un objeto Date a formato ISO (YYYY-MM-DD).
+ * 
+ * @param d - Date object to convert
+ * @returns String in YYYY-MM-DD format (UTC timezone)
+ * 
+ * @example
+ * const date = new Date('2025-01-21T15:30:00Z');
+ * const iso = toISO(date);
+ * console.log(iso); // "2025-01-21"
+ * 
+ * @remarks
+ * ⚠️ Uses UTC timezone. For local timezone, use date.toISOString().split('T')[0]
+ * which may give different date depending on user's timezone.
+ */
 export function toISO(d: Date): string {
   return d.toISOString().split("T")[0];
 }
 
+/**
+ * Parsea una fecha ISO (YYYY-MM-DD) a Date object en UTC.
+ * 
+ * @param iso - Date string in YYYY-MM-DD format
+ * @returns Date object representing midnight UTC for the given date
+ * 
+ * @example
+ * const date = parseISO('2025-01-21');
+ * console.log(date); // 2025-01-21T00:00:00.000Z
+ * 
+ * @remarks
+ * ⚠️ ALWAYS use this instead of `new Date("YYYY-MM-DD")` which uses local timezone
+ * and can result in off-by-one-day errors.
+ * 
+ * @throws Will create invalid Date if iso is not in YYYY-MM-DD format
+ */
 export function parseISO(iso: string): Date {
   return new Date(`${iso}T00:00:00Z`);
 }
 
+/**
+ * Retorna la fecha actual (hoy) a medianoche UTC.
+ * 
+ * @returns Date object representing today at 00:00:00 UTC
+ * 
+ * @example
+ * const today = todayUTC();
+ * console.log(today); // 2025-01-21T00:00:00.000Z (if today is Jan 21)
+ * console.log(toISO(today)); // "2025-01-21"
+ * 
+ * @remarks
+ * ⚠️ ALWAYS use this instead of `new Date()` for date calculations to avoid
+ * timezone-related bugs. `new Date()` includes time component and local timezone.
+ * 
+ * Use case: Default "end date" for reports, date range calculations.
+ */
 export function todayUTC(): Date {
   const now = new Date();
   return new Date(
@@ -46,6 +93,27 @@ export function todayUTC(): Date {
   );
 }
 
+/**
+ * Suma o resta días a una fecha en UTC.
+ * 
+ * @param d - Base date
+ * @param n - Number of days to add (positive) or subtract (negative)
+ * @returns New Date object with days added/subtracted
+ * 
+ * @example
+ * const today = todayUTC(); // 2025-01-21
+ * const yesterday = addDaysUTC(today, -1); // 2025-01-20
+ * const nextWeek = addDaysUTC(today, 7); // 2025-01-28
+ * 
+ * @remarks
+ * ⚠️ ALWAYS use this instead of `date.setDate(date.getDate() + n)` which
+ * mutates the original date and can cause timezone drift.
+ * 
+ * This function:
+ * - Does NOT mutate the input date
+ * - Uses UTC methods exclusively
+ * - Handles month/year rollovers correctly
+ */
 export function addDaysUTC(d: Date, n: number): Date {
   const x = new Date(
     Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())
@@ -54,6 +122,26 @@ export function addDaysUTC(d: Date, n: number): Date {
   return x;
 }
 
+/**
+ * Suma o resta meses a una fecha en UTC.
+ * 
+ * @param d - Base date
+ * @param n - Number of months to add (positive) or subtract (negative)
+ * @returns New Date object with months added/subtracted
+ * 
+ * @example
+ * const today = todayUTC(); // 2025-01-21
+ * const lastMonth = addMonthsUTC(today, -1); // 2024-12-21
+ * const nextYear = addMonthsUTC(today, 12); // 2026-01-21
+ * 
+ * @remarks
+ * ⚠️ Day component is preserved. If the resulting month doesn't have that day
+ * (e.g., Jan 31 + 1 month), JavaScript will roll over to the next month.
+ * 
+ * Example: Jan 31 + 1 month = Mar 3 (since Feb doesn't have 31 days)
+ * 
+ * Use this for year-over-year or month-over-month comparisons.
+ */
 export function addMonthsUTC(d: Date, n: number): Date {
   const y = d.getUTCFullYear();
   const m = d.getUTCMonth();

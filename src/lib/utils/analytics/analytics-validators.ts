@@ -2,10 +2,12 @@
  * /lib/utils/analytics-validators.ts
  * Guards y validadores para endpoints de analytics
  * Hace el código más robusto y seguro
+ * 
+ * ⚠️ MIGRADO A UTC - Usa addDaysUTC, todayUTC en lugar de .setDate()
  */
 
 import type { Granularity } from "@/lib/types";
-import { parseISO, toISO } from "@/lib/utils/time/datetime";
+import { addDaysUTC, parseISO, todayUTC, toISO } from "@/lib/utils/time/datetime";
 
 /* =================== TIPOS PARA VALIDACIÓN =================== */
 
@@ -82,9 +84,8 @@ export function validateISODate(
       };
     }
 
-    // Verificar que no sea una fecha muy antigua (más de 5 años)
-    const fiveYearsAgo = new Date();
-    fiveYearsAgo.setFullYear(fiveYearsAgo.getFullYear() - 5);
+    // Verificar que no sea una fecha muy antigua (más de 5 años) - UTC
+    const fiveYearsAgo = addDaysUTC(todayUTC(), -365 * 5);
 
     if (parsed < fiveYearsAgo) {
       return {
@@ -94,9 +95,8 @@ export function validateISODate(
       };
     }
 
-    // Verificar que no sea fecha futura
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
+    // Verificar que no sea fecha futura - UTC
+    const tomorrow = addDaysUTC(todayUTC(), 1);
 
     if (parsed > tomorrow) {
       return {

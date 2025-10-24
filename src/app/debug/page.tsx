@@ -3,6 +3,7 @@
 import StickyHeaderSection from "@/components/common/StickyHeaderSection";
 import { useResumenTown } from "@/features/home/hooks/useResumenTown";
 import type { Granularity } from "@/lib/types";
+import { addDaysUTC, todayUTC, toISO } from "@/lib/utils/time/datetime";
 import { getCorrectDatesForGranularity } from "@/lib/utils/time/deltaDateCalculation";
 import { useState } from "react";
 
@@ -11,18 +12,12 @@ export default function DebugPage() {
   const [mode, setMode] = useState<"granularity" | "range">("granularity");
   const [granularity, setGranularity] = useState<Granularity>("d");
   const [startDate, setStartDate] = useState<Date>(() => {
-    // Simular el contexto TagTimeframe: terminar en ayer por defecto
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    yesterday.setHours(0, 0, 0, 0);
-    return yesterday;
+    // Simular el contexto TagTimeframe: terminar en ayer por defecto (UTC)
+    return addDaysUTC(todayUTC(), -1);
   });
   const [endDate, setEndDate] = useState<Date>(() => {
-    // Simular el contexto TagTimeframe: terminar en ayer por defecto
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    yesterday.setHours(0, 0, 0, 0);
-    return yesterday;
+    // Simular el contexto TagTimeframe: terminar en ayer por defecto (UTC)
+    return addDaysUTC(todayUTC(), -1);
   });
 
   // Simular la lógica de getCorrectDatesForGranularity
@@ -36,12 +31,10 @@ export default function DebugPage() {
   // Para el nuevo API, siempre necesitamos start y end
   const startDateStr =
     mode === "range"
-      ? startDate.toISOString().split("T")[0]
-      : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
-          .toISOString()
-          .split("T")[0]; // 30 días atrás por defecto
+      ? toISO(startDate)
+      : toISO(addDaysUTC(todayUTC(), -30)); // 30 días atrás por defecto
   const endDateStr =
-    mode === "range" ? endDate.toISOString().split("T")[0] : currentEndISO;
+    mode === "range" ? toISO(endDate) : currentEndISO;
 
   // Obtener datos de towns con los parámetros
   const townHookResult = useResumenTown({
@@ -55,21 +48,15 @@ export default function DebugPage() {
     setGranularity(newGranularity);
     setMode("granularity");
 
-    // Simular preset del contexto TagTimeframe para nueva granularidad
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    yesterday.setHours(0, 0, 0, 0);
-
+    // Simular preset del contexto TagTimeframe para nueva granularidad (UTC)
+    const yesterday = addDaysUTC(todayUTC(), -1);
     setStartDate(yesterday);
     setEndDate(yesterday);
   };
 
   const handleRangeChange = (start: Date, end: Date) => {
-    // Clamp end to yesterday (como hace el contexto TagTimeframe)
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    yesterday.setHours(0, 0, 0, 0);
-
+    // Clamp end to yesterday (como hace el contexto TagTimeframe) - UTC
+    const yesterday = addDaysUTC(todayUTC(), -1);
     const clampedEnd = end > yesterday ? yesterday : end;
     const clampedStart = start > clampedEnd ? clampedEnd : start;
 
@@ -81,11 +68,8 @@ export default function DebugPage() {
   const handleClearRange = () => {
     setMode("granularity");
 
-    // Volver al preset por granularidad
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    yesterday.setHours(0, 0, 0, 0);
-
+    // Volver al preset por granularidad (UTC)
+    const yesterday = addDaysUTC(todayUTC(), -1);
     setStartDate(yesterday);
     setEndDate(yesterday);
   };
