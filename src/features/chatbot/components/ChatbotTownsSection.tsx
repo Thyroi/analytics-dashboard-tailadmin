@@ -8,7 +8,11 @@ import {
 
 import { useRef, useState } from "react";
 
-import { type TownCardData, useChatbotTowns } from "../hooks/useChatbotTowns";
+import {
+  useChatbotTownHandlers,
+  useChatbotTownTotals,
+  type TownCardData,
+} from "../hooks/useChatbotTownTotals";
 import TopTownsKPI from "./TopTownsKPI";
 import TownCard from "./TownCard";
 import TownExpandedCard from "./TownExpandedCard";
@@ -23,6 +27,9 @@ function ChatbotTownsSectionContent() {
     setRange,
     clearRange,
   } = useTagTimeframe();
+
+  // Obtener handlers para invalidación/refetch
+  const handlers = useChatbotTownHandlers();
 
   // Convertir fechas de manera segura
   let startDateStr: string | null = null;
@@ -46,12 +53,11 @@ function ChatbotTownsSectionContent() {
   // Ref para hacer scroll al drilldown
   const drilldownRef = useRef<HTMLDivElement>(null);
 
-  // Obtener datos de towns
-  const { towns, isLoading, isError, error, refetch } = useChatbotTowns({
+  // Hook principal con React Query (sin useEffect)
+  const { towns, isLoading, isError, error, refetch } = useChatbotTownTotals({
     granularity,
     startDate: startDateStr,
     endDate: endDateStr,
-    enabled: true,
   });
 
   // Función para manejar click en town con scroll automático
@@ -88,9 +94,18 @@ function ChatbotTownsSectionContent() {
         granularity={granularity}
         startDate={startDate}
         endDate={endDate}
-        onGranularityChange={setGranularity}
-        onRangeChange={setRange}
-        onClearRange={clearRange}
+        onGranularityChange={(newGranularity) => {
+          setGranularity(newGranularity);
+          handlers.onGranularityChange();
+        }}
+        onRangeChange={(start, end) => {
+          setRange(start, end);
+          handlers.onRangeChange();
+        }}
+        onClearRange={() => {
+          clearRange();
+          handlers.onClearRange();
+        }}
       />
 
       {/* KPI Section - Top Towns */}

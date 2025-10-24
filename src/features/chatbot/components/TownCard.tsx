@@ -1,5 +1,5 @@
 import DeltaCard from "@/components/common/DeltaCard";
-import type { TownCardData } from "../hooks/useChatbotTowns";
+import type { TownCardData } from "../hooks/useChatbotTownTotals";
 
 type Props = {
   data: TownCardData;

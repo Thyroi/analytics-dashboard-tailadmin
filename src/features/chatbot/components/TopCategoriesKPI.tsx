@@ -1,7 +1,7 @@
 import KPIStatGrid from "@/components/dashboard/KPIStatGrid";
 import { ChartBarIcon } from "@heroicons/react/24/solid";
 
-import { type CategoryCardData } from "../hooks/useChatbotCategories";
+import { type CategoryCardData } from "../hooks/useChatbotCategoryTotals";
 
 export default function TopCategoriesKPI({
   categories,

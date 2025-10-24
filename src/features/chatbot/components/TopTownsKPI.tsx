@@ -1,7 +1,7 @@
 import KPIStatGrid from "@/components/dashboard/KPIStatGrid";
 import { MapPinIcon } from "@heroicons/react/24/solid";
 
-import { type TownCardData } from "../hooks/useChatbotTowns";
+import { type TownCardData } from "../hooks/useChatbotTownTotals";
 
 export default function TopTownsKPI({
   towns,

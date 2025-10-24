@@ -15,9 +15,10 @@ import {
 import type { CategoryId } from "@/lib/taxonomy/categories";
 import { useRef, useState } from "react";
 import {
-  useChatbotCategories,
+  useChatbotCategoryHandlers,
+  useChatbotCategoryTotals,
   type CategoryCardData,
-} from "../hooks/useChatbotCategories";
+} from "../hooks/useChatbotCategoryTotals";
 import CategoryExpandedCard from "./CategoryExpandedCard";
 import TopCategoriesKPI from "./TopCategoriesKPI";
 
@@ -32,9 +33,10 @@ function ChatbotCategoriesSectionContent() {
     clearRange,
   } = useTagTimeframe();
 
-  // Debug info disponible en el componente DebugDataSection
+  // Obtener handlers para invalidación/refetch
+  const handlers = useChatbotCategoryHandlers();
 
-  // Convertir fechas de manera segura con logs esenciales
+  // Convertir fechas de manera segura
   let startDateStr: string | null = null;
   let endDateStr: string | null = null;
 
@@ -53,10 +55,9 @@ function ChatbotCategoriesSectionContent() {
     endDateStr = null;
   }
 
-  // Fechas disponibles en DebugDataSection
-
+  // Hook principal con React Query (sin useEffect)
   const { categories, isLoading, isError, error, refetch } =
-    useChatbotCategories({
+    useChatbotCategoryTotals({
       granularity,
       startDate: startDateStr,
       endDate: endDateStr,
@@ -94,9 +95,18 @@ function ChatbotCategoriesSectionContent() {
         granularity={granularity}
         startDate={startDate}
         endDate={endDate}
-        onGranularityChange={setGranularity}
-        onRangeChange={setRange}
-        onClearRange={clearRange}
+        onGranularityChange={(newGranularity) => {
+          setGranularity(newGranularity);
+          handlers.onGranularityChange();
+        }}
+        onRangeChange={(start, end) => {
+          setRange(start, end);
+          handlers.onRangeChange();
+        }}
+        onClearRange={() => {
+          clearRange();
+          handlers.onClearRange();
+        }}
       />
 
       {/* Top Categories KPI entre header y categorías */}
