@@ -18,7 +18,7 @@ import {
   CATEGORY_SYNONYMS,
   type CategoryId,
 } from "@/lib/taxonomy/categories";
-import type { Granularity } from "@/lib/types";
+import type { WindowGranularity } from "@/lib/types";
 import { computeRangesForKPI } from "@/lib/utils/time/timeWindows";
 
 /* ==================== Tipos ==================== */
@@ -36,7 +36,7 @@ export type CategoryTotalData = {
 export type CategoryTotalsResponse = {
   categories: CategoryTotalData[];
   meta: {
-    granularity: Granularity;
+    granularity: WindowGranularity;
     timezone: string;
     range: {
       current: { start: string; end: string };
@@ -46,7 +46,7 @@ export type CategoryTotalsResponse = {
 };
 
 export type FetchCategoryTotalsParams = {
-  granularity?: Granularity;
+  granularity?: WindowGranularity;
   startDate?: string | null;
   endDate?: string | null;
   db?: string;

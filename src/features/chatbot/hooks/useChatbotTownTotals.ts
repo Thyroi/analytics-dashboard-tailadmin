@@ -14,7 +14,7 @@ import {
   type TownTotalsResponse,
 } from "@/lib/services/chatbot/townTotals";
 import type { TownId } from "@/lib/taxonomy/towns";
-import type { Granularity } from "@/lib/types";
+import type { WindowGranularity } from "@/lib/types";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 /* ==================== Tipos ==================== */
@@ -30,7 +30,7 @@ export type TownCardData = {
 };
 
 export type UseChatbotTownTotalsParams = {
-  granularity: Granularity;
+  granularity: WindowGranularity;
   startDate?: string | null;
   endDate?: string | null;
   db?: string;

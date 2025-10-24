@@ -18,7 +18,7 @@ import {
   TOWN_SYNONYMS,
   type TownId,
 } from "@/lib/taxonomy/towns";
-import type { Granularity } from "@/lib/types";
+import type { WindowGranularity } from "@/lib/types";
 import { computeRangesForKPI } from "@/lib/utils/time/timeWindows";
 
 /* ==================== Tipos ==================== */
@@ -36,7 +36,7 @@ export type TownTotalData = {
 export type TownTotalsResponse = {
   towns: TownTotalData[];
   meta: {
-    granularity: Granularity;
+    granularity: WindowGranularity;
     timezone: string;
     range: {
       current: { start: string; end: string };
@@ -46,7 +46,7 @@ export type TownTotalsResponse = {
 };
 
 export type FetchTownTotalsParams = {
-  granularity?: Granularity;
+  granularity?: WindowGranularity;
   startDate?: string | null;
   endDate?: string | null;
   db?: string;

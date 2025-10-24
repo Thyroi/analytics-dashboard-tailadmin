@@ -14,7 +14,7 @@ import {
   type CategoryTotalsResponse,
 } from "@/lib/services/chatbot/categoryTotals";
 import type { CategoryId } from "@/lib/taxonomy/categories";
-import type { Granularity } from "@/lib/types";
+import type { WindowGranularity } from "@/lib/types";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 /* ==================== Tipos ==================== */
@@ -30,7 +30,7 @@ export type CategoryCardData = {
 };
 
 export type UseChatbotCategoryTotalsParams = {
-  granularity: Granularity;
+  granularity: WindowGranularity;
   startDate?: string | null;
   endDate?: string | null;
   db?: string;
