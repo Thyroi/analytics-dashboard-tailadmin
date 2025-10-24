@@ -33,16 +33,21 @@ export default function DebugPage() {
   );
 
   // Convertir fechas a strings para el hook
+  // Para el nuevo API, siempre necesitamos start y end
   const startDateStr =
-    mode === "range" ? startDate.toISOString().split("T")[0] : undefined;
+    mode === "range"
+      ? startDate.toISOString().split("T")[0]
+      : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+          .toISOString()
+          .split("T")[0]; // 30 días atrás por defecto
   const endDateStr =
     mode === "range" ? endDate.toISOString().split("T")[0] : currentEndISO;
 
   // Obtener datos de towns con los parámetros
   const townHookResult = useResumenTown({
     granularity,
-    startDate: startDateStr || null,
-    endDate: endDateStr || null,
+    startDate: startDateStr,
+    endDate: endDateStr,
   });
 
   // Handlers para el sticky header

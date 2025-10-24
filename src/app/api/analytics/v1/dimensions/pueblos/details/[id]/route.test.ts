@@ -246,7 +246,7 @@ describe("/api/analytics/v1/dimensions/pueblos/details/[id]", () => {
     const data = await response.json();
     expect(data.range).toMatchObject({
       current: { start: "2025-10-01", end: "2025-10-05" },
-      previous: { start: "2025-10-01", end: "2025-10-05" },
+      previous: { start: "2025-09-26", end: "2025-09-30" }, // Nueva lógica: período anterior real
     });
   });
 

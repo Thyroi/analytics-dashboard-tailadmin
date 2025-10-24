@@ -55,7 +55,7 @@ export function useResumenCategory(params: UseResumenCategoryParams = {}) {
     }
 
     // Convertir datos de Analytics al formato CategoryGrid
-    return categoryTotalsQuery.data.items.map((category) => {
+    return categoryTotalsQuery.data.data.items.map((category) => {
       // Buscar datos correspondientes del chatbot
       const chatbotCategory = chatbotAggregated?.categories.find(
         (c) => c.id === category.id

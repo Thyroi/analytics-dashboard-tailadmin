@@ -6,14 +6,13 @@ import {
   TagTimeProvider,
   useTagTimeframe,
 } from "@/features/analytics/context/TagTimeContext";
-import {
-  useCategoriesTotals,
-  useCategoryDetails,
-} from "@/features/analytics/hooks/categorias";
+import { useCategoriesTotals } from "@/features/analytics/hooks/categorias";
+// TEMPORALMENTE: Usar directamente el hook principal, no el legacy
+import { useCategoriaDetails } from "@/features/analytics/hooks/categorias/useCategoriaDetails";
 import { CATEGORY_ID_ORDER, type CategoryId } from "@/lib/taxonomy/categories";
 import type { TownId } from "@/lib/taxonomy/towns";
 import { labelToTownId } from "@/lib/utils/core/sector";
-import { getCorrectDatesForGranularity } from "@/lib/utils/time/deltaDateCalculation";
+
 import { useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 
@@ -28,29 +27,26 @@ function AnalyticsByTagSectionInner() {
     endDate,
     setRange,
     clearRange,
-    endISO, // YYYY-MM-DD cuando estás en "range"; undefined si estás en "granularity"
+
+    getCurrentPeriod,
+
+    getCalculatedGranularity,
   } = useTagTimeframe();
 
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  // Calcular fechas correctas según granularidad
-  const { currentEndISO } = getCorrectDatesForGranularity(
-    endDate,
-    granularity,
-    mode
-  );
+  // Obtener períodos usando nueva lógica
+  const currentPeriod = getCurrentPeriod();
+  const calculatedGranularity = getCalculatedGranularity();
 
-  // Usar fechas corregidas para deltas/KPIs
-  const timeParams =
-    mode === "range"
-      ? {
-          startISO: startDate.toISOString().split("T")[0],
-          endISO: endDate.toISOString().split("T")[0],
-        }
-      : { endISO: currentEndISO };
+  // Usar períodos calculados para deltas/KPIs - formato legacy
+  const timeParams = {
+    startISO: currentPeriod.start,
+    endISO: currentPeriod.end,
+  };
 
   const { state, ids, itemsById } = useCategoriesTotals(
-    granularity,
+    calculatedGranularity,
     timeParams
   );
 
@@ -67,13 +63,18 @@ function AnalyticsByTagSectionInner() {
   const [drill, setDrill] = useState<Drill | null>(null);
   const catId = expandedId as CategoryId | null;
 
-  // NIVEL 1 (base) - usar fecha corregida para detalles
-  const { series: seriesCat, donutData: donutCat } = useCategoryDetails(
-    (drill?.kind === "category" ? drill.categoryId : catId) ??
+  // NIVEL 1 - usar granularidad CALCULADA y rango del contexto - USANDO HOOK PRINCIPAL DE ANALYTICS
+  const categoryDetailsState = useCategoriaDetails({
+    categoryId:
+      (drill?.kind === "category" ? drill.categoryId : catId) ??
       ("naturaleza" as CategoryId),
-    granularity,
-    mode === "range" ? endISO : currentEndISO
-  );
+    granularity: calculatedGranularity, // ✅ CORREGIDO: Usar granularidad calculada, no la del UI
+    startDate: currentPeriod.start, // startISO
+    endDate: currentPeriod.end, // endISO
+  });
+
+  const seriesCat = categoryDetailsState.series;
+  const donutCat = categoryDetailsState.donutData;
 
   const getDeltaPctFor = (id: string) =>
     state.status === "ready"
@@ -81,12 +82,23 @@ function AnalyticsByTagSectionInner() {
       : null;
 
   const getSeriesFor = (_id: string) => {
-    if (catId && _id === catId) return seriesCat;
+    if (catId && _id === catId) {
+      // Verificación defensiva: asegurar que seriesCat tiene la estructura correcta
+      return seriesCat &&
+        typeof seriesCat === "object" &&
+        seriesCat.current &&
+        seriesCat.previous
+        ? seriesCat
+        : { current: [], previous: [] };
+    }
     return { current: [], previous: [] };
   };
 
   const getDonutFor = (_id: string) => {
-    if (catId && _id === catId) return donutCat;
+    if (catId && _id === catId) {
+      // Verificación defensiva: asegurar que donutCat es un array
+      return Array.isArray(donutCat) ? donutCat : [];
+    }
     return [];
   };
 
@@ -121,11 +133,11 @@ function AnalyticsByTagSectionInner() {
       ? {
           townId: drill.townId,
           categoryId: drill.categoryId,
-          granularity,
-          endISO: mode === "range" ? endISO : currentEndISO,
+          granularity: calculatedGranularity,
+          endISO: currentPeriod.end,
         }
       : undefined;
-  }, [drill, granularity, mode, endISO, currentEndISO]);
+  }, [drill, calculatedGranularity, currentPeriod.end]);
 
   return (
     <section className="max-w-[1560px]">
@@ -158,7 +170,7 @@ function AnalyticsByTagSectionInner() {
         }}
         onSliceClick={handleSliceClick}
         isDeltaLoading={state.status !== "ready"}
-        // NIVEL 2 (drill) - usar fecha corregida
+        // NIVEL 2 (drill) - usar período calculado
         level2Data={level2Data}
         startDate={startDate}
         endDate={endDate}

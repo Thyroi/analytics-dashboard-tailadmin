@@ -49,11 +49,11 @@ export type LoadingState =
   | ReadyState;
 
 /**
- * Hook principal con React Query
+ * Hook principal con React Query - usa nueva lógica de calculatePreviousPeriodAndGranularity
  */
 export function usePueblosTotalsNew(options: UsePueblosTotalsOptions = {}) {
   const {
-    granularity = "d",
+    granularity,
     startDate,
     endDate,
     enabled = true,
@@ -61,12 +61,24 @@ export function usePueblosTotalsNew(options: UsePueblosTotalsOptions = {}) {
     refetchInterval,
   } = options;
 
+  // Construir parámetros - granularity es opcional (API lo calcula automáticamente)
+  const params = {
+    ...(granularity && { granularity }),
+    startDate,
+    endDate,
+  };
+
+  // Validar que tenemos fechas requeridas
+  const hasRequiredDates = !!(startDate && endDate);
+
   return useQuery({
-    queryKey: ["pueblos-totals", { granularity, startDate, endDate }],
-    queryFn: () => fetchPueblosTotals({ granularity, startDate, endDate }),
-    enabled,
+    queryKey: ["pueblos-totals", params],
+    queryFn: () => fetchPueblosTotals(params),
+    enabled: Boolean(enabled && hasRequiredDates),
     staleTime,
     refetchInterval,
+    retry: 2,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
   });
 }
 
@@ -107,9 +119,9 @@ export function usePueblosTotals(
     ? {
         status: "ready" as const,
         data: query.data,
-        ids: query.data.items.map((item) => item.id),
+        ids: query.data.data.items.map((item) => item.id),
         itemsById: Object.fromEntries(
-          query.data.items.map((item) => [
+          query.data.data.items.map((item) => [
             item.id,
             {
               title: item.title,
@@ -153,7 +165,7 @@ export function usePueblosTotals(
  */
 export function usePueblosTotalsCurrent(options: UsePueblosTotalsOptions = {}) {
   const query = usePueblosTotalsNew(options);
-  return query.data?.items || [];
+  return query.data?.data.items || [];
 }
 
 /**
@@ -194,6 +206,7 @@ export function usePueblosTotalsToday(options: UsePueblosTotalsOptions = {}) {
 
   return usePueblosTotalsNew({
     granularity: "d",
+    startDate: today,
     endDate: today,
     ...options,
   });
@@ -205,16 +218,15 @@ export function usePueblosTotalsToday(options: UsePueblosTotalsOptions = {}) {
 export function usePueblosTotalsLastMonth(
   options: UsePueblosTotalsOptions = {}
 ) {
-  const today = new Date();
-  const lastMonth = new Date(
-    today.getFullYear(),
-    today.getMonth() - 1,
-    today.getDate()
-  );
+  const endDate = new Date().toISOString().split("T")[0];
+  const startDate = new Date();
+  startDate.setMonth(startDate.getMonth() - 1);
+  const start = startDate.toISOString().split("T")[0];
 
   return usePueblosTotalsNew({
-    granularity: "m",
-    endDate: lastMonth.toISOString().split("T")[0],
+    granularity: "d",
+    startDate: start,
+    endDate,
     ...options,
   });
 }

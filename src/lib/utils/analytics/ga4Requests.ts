@@ -117,13 +117,20 @@ export function buildPageViewWithFilterUnionRequest(params: {
   current: DateRange;
   previous: DateRange;
   additionalFilter: analyticsdata_v1beta.Schema$FilterExpression;
+  granularity?: string; // ✅ NUEVO: Agregar soporte para granularidad
   metrics?: { name: string }[];
   limit?: string;
 }): analyticsdata_v1beta.Schema$RunReportRequest {
+  // Elegir dimensiones según granularidad (igual que buildPageViewUnionRequest)
+  const dimensions =
+    params.granularity === "y"
+      ? GA4_DIMENSIONS.TEMPORAL_MONTHLY_WITH_URL
+      : GA4_DIMENSIONS.TEMPORAL_WITH_URL;
+
   return buildUnionRunReportRequest({
     ...params,
     metrics: params.metrics || [{ name: "eventCount" }],
-    dimensions: GA4_DIMENSIONS.TEMPORAL_WITH_URL,
+    dimensions,
     dimensionFilter: {
       andGroup: {
         expressions: [GA4_FILTERS.PAGE_VIEW_ONLY, params.additionalFilter],

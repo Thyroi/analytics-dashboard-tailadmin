@@ -107,7 +107,7 @@ describe("useDrilldownDetails", () => {
 
     // Verify correct endpoint was called (categoria endpoint with townId filter)
     expect(mockFetchJSON).toHaveBeenCalledWith(
-      "/api/analytics/v1/dimensions/categorias/details/naturaleza?g=d&townId=almonte"
+      "/api/analytics/v1/dimensions/categorias/details/naturaleza?granularity=d&townId=almonte"
     );
   });
 

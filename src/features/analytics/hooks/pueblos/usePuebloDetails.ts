@@ -3,6 +3,7 @@
  * Hook para obtener detalles de un pueblo específico con React Query
  */
 
+import { useTownTimeframe } from "@/features/analytics/context/TownTimeContext";
 import {
   fetchPuebloDetails,
   type DonutData,
@@ -169,18 +170,20 @@ export function usePuebloDetails(
 /**
  * Hook legacy para compatibilidad con la interfaz existente
  * Usado por componentes que esperan series y donutData directamente
+ * ACTUALIZADO: Ahora usa el contexto de tiempo unificado como las categorías
  */
 export function useTownDetails(
   townId: TownId,
-  granularity: Granularity,
-  endISO?: string,
-  startISO?: string
+  granularity: Granularity
 ): { series: SeriesData; donutData: DonutData } {
+  const { getCurrentPeriod } = useTownTimeframe();
+  const currentPeriod = getCurrentPeriod();
+
   const detailsState = usePuebloDetails({
     townId,
     granularity,
-    startDate: startISO,
-    endDate: endISO,
+    startDate: currentPeriod.start,
+    endDate: currentPeriod.end,
   });
 
   return {

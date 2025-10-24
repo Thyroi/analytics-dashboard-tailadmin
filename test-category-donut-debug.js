@@ -15,7 +15,7 @@ async function testCategoryDonutData() {
   try {
     // 1. Test GA4 API directamente
     console.log("\n📊 Testing GA4 API...");
-    const ga4Url = `${baseUrl}/api/analytics/v1/dimensions/categorias/details/${categoryId}?g=${granularity}`;
+    const ga4Url = `${baseUrl}/api/analytics/v1/dimensions/categorias/details/${categoryId}?granularity=${granularity}&startDate=2025-10-22&endDate=2025-10-22`;
     console.log("GA4 URL:", ga4Url);
 
     const ga4Response = await fetch(ga4Url);

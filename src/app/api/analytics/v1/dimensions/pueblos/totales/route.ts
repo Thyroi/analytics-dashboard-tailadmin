@@ -17,10 +17,8 @@ import {
 } from "@/lib/utils/analytics/ga";
 import { buildPageViewWithFilterUnionRequest } from "@/lib/utils/analytics/ga4Requests";
 import { safeUrlPathname } from "@/lib/utils/routing/pathMatching";
-import {
-  computeDeltaPct,
-  computeRangesForKPI,
-} from "@/lib/utils/time/timeWindows";
+import { calculatePreviousPeriodAndGranularity } from "@/lib/utils/time/rangeCalculations";
+import { computeDeltaPct } from "@/lib/utils/time/timeWindows";
 import { google } from "googleapis";
 import { NextResponse } from "next/server";
 
@@ -80,19 +78,36 @@ function matchTownFromPath(path: string, towns: TownId[]): TownId | null {
   return null;
 }
 
-/* -------- Main handler -------- */
+/* -------- Main handler con nueva lógica de rangos -------- */
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
-    const g = (searchParams.get("g") || "d")
-      .trim()
-      .toLowerCase() as Granularity;
-    const startQ = searchParams.get("start");
-    const endQ = searchParams.get("end");
+    const startQ = searchParams.get("startDate");
+    const endQ = searchParams.get("endDate");
+    const granularityOverride = searchParams.get(
+      "granularity"
+    ) as Granularity | null;
 
-    // Calcular rangos con comportamiento KPI estandarizado
-    // Towns = KPI: granularidad "d" = 1 día, shift estándar
-    const ranges = computeRangesForKPI(g, startQ, endQ);
+    // Validar que tenemos fechas requeridas
+    if (!startQ || !endQ) {
+      return NextResponse.json(
+        {
+          error: "Missing required parameters: startDate and endDate",
+        },
+        { status: 400 }
+      );
+    }
+
+    // Calcular rangos usando la nueva función
+    const calculation = calculatePreviousPeriodAndGranularity(startQ, endQ);
+
+    // Usar granularidad calculada o override
+    const finalGranularity = granularityOverride || calculation.granularity;
+
+    const ranges = {
+      current: calculation.currentRange,
+      previous: calculation.prevRange,
+    };
     const towns: TownId[] = [...TOWN_ID_ORDER];
 
     // Configurar GA4
@@ -104,6 +119,7 @@ export async function GET(req: Request) {
     const requestBody = buildPageViewWithFilterUnionRequest({
       current: ranges.current,
       previous: ranges.previous,
+      granularity: finalGranularity, // ✅ AGREGAR: Pasar granularidad para consistencia
       additionalFilter: {
         filter: {
           fieldName: "pageLocation",
@@ -170,10 +186,26 @@ export async function GET(req: Request) {
 
     return NextResponse.json(
       {
-        granularity: g,
-        range: ranges,
-        property,
-        items,
+        success: true,
+        calculation: {
+          requestedGranularity: finalGranularity,
+          finalGranularity,
+          granularityReason: granularityOverride
+            ? "overridden by query param"
+            : "calculated automatically",
+          currentPeriod: {
+            start: ranges.current.start,
+            end: ranges.current.end,
+          },
+          previousPeriod: {
+            start: ranges.previous.start,
+            end: ranges.previous.end,
+          },
+        },
+        data: {
+          property,
+          items,
+        },
       },
       { status: 200 }
     );

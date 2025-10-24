@@ -31,19 +31,24 @@ export interface TownGridData {
 
 // Tipo para la respuesta de la API /api/analytics/v1/dimensions/pueblos/totales
 interface TownTotalesResponse {
-  granularity: Granularity;
-  range: {
-    current: { start: string; end: string };
-    previous: { start: string; end: string };
+  success: boolean;
+  calculation: {
+    requestedGranularity: Granularity;
+    finalGranularity: Granularity;
+    granularityReason: string;
+    currentPeriod: { start: string; end: string };
+    previousPeriod: { start: string; end: string };
   };
-  property: string;
-  items: Array<{
-    id: string;
-    title: string;
-    total: number;
-    previousTotal: number;
-    deltaPct: number | null;
-  }>;
+  data: {
+    property: string;
+    items: Array<{
+      id: string;
+      title: string;
+      total: number;
+      previousTotal: number;
+      deltaPct: number | null;
+    }>;
+  };
 }
 
 /**
@@ -59,12 +64,17 @@ export function useResumenTown({
   const townTotalesQuery = useQuery({
     queryKey: ["townTotales", granularity, startDate, endDate],
     queryFn: async (): Promise<TownTotalesResponse> => {
-      const params = new URLSearchParams({
-        g: granularity,
-      });
+      // El nuevo API requiere startDate y endDate obligatorios
+      if (!startDate || !endDate) {
+        throw new Error(
+          "startDate and endDate are required for townTotales API"
+        );
+      }
 
-      if (startDate) params.set("start", startDate);
-      if (endDate) params.set("end", endDate);
+      const params = new URLSearchParams({
+        startDate,
+        endDate,
+      });
 
       const apiUrl = `/api/analytics/v1/dimensions/pueblos/totales?${params}`;
 
@@ -76,7 +86,7 @@ export function useResumenTown({
 
       return response.json();
     },
-    enabled: true,
+    enabled: Boolean(startDate && endDate),
   });
 
   // Query para datos raw del chatbot usando un solo llamado optimizado
@@ -104,7 +114,7 @@ export function useResumenTown({
   const processedData: TownGridData[] = useMemo(() => {
     return TOWN_ID_ORDER.map((townId) => {
       // Datos GA4
-      const ga4Item = townTotalesQuery.data?.items.find(
+      const ga4Item = townTotalesQuery.data?.data.items.find(
         (item) => item.id === townId
       );
       const ga4Current = ga4Item?.total ?? 0;

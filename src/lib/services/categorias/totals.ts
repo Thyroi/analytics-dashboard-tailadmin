@@ -8,19 +8,24 @@ import type { Granularity } from "@/lib/types";
 
 /** Respuesta del endpoint de totales de categorías */
 export type CategoriesTotalsResponse = {
-  granularity: Granularity;
-  range: {
-    current: { start: string; end: string };
-    previous: { start: string; end: string };
+  success: boolean;
+  calculation: {
+    requestedGranularity: Granularity;
+    finalGranularity: Granularity;
+    granularityReason: string;
+    currentPeriod: { start: string; end: string };
+    previousPeriod: { start: string; end: string };
   };
-  property: string;
-  items: Array<{
-    id: CategoryId;
-    title: string;
-    total: number;
-    previousTotal: number; // ✨ NUEVO: valor del período anterior
-    deltaPct: number | null;
-  }>;
+  data: {
+    property: string;
+    items: Array<{
+      id: CategoryId;
+      title: string;
+      total: number;
+      previousTotal: number;
+      deltaPct: number | null;
+    }>;
+  };
 };
 
 /** Parámetros para el servicio de totales */
@@ -34,26 +39,27 @@ export type CategoriesTotalsParams = {
 const ENDPOINT_URL = "/api/analytics/v1/dimensions/categorias/totales";
 
 /**
- * Obtiene totales de categorías desde GA4
+ * Obtiene totales de categorías desde GA4 con nueva lógica de rangos
  */
 export async function fetchCategoriesTotals(
   params: CategoriesTotalsParams = {}
 ): Promise<CategoriesTotalsResponse> {
-  const { granularity = "d", startDate, endDate } = params;
+  const { granularity, startDate, endDate } = params;
+
+  // Validar que tenemos las fechas requeridas
+  if (!startDate || !endDate) {
+    throw new Error("Both startDate and endDate are required");
+  }
 
   // Construir URL con parámetros
   const searchParams = new URLSearchParams();
 
+  searchParams.set("startDate", startDate);
+  searchParams.set("endDate", endDate);
+
+  // Granularidad es opcional - si no se pasa, se calcula automáticamente
   if (granularity) {
-    searchParams.set("g", granularity);
-  }
-
-  if (startDate) {
-    searchParams.set("start", startDate);
-  }
-
-  if (endDate) {
-    searchParams.set("end", endDate);
+    searchParams.set("granularity", granularity);
   }
 
   const url = `${ENDPOINT_URL}?${searchParams.toString()}`;
@@ -78,7 +84,7 @@ export async function fetchCategoriesTotalsCurrent(
 ): Promise<Array<{ id: CategoryId; title: string; total: number }>> {
   const data = await fetchCategoriesTotals(params);
 
-  return data.items.map((item) => ({
+  return data.data.items.map((item) => ({
     id: item.id,
     title: item.title,
     total: item.total,
@@ -90,8 +96,8 @@ export async function fetchCategoriesTotalsCurrent(
  */
 export async function fetchCategoriesTotalsWithData(
   params: CategoriesTotalsParams = {}
-): Promise<CategoriesTotalsResponse["items"]> {
+): Promise<CategoriesTotalsResponse["data"]["items"]> {
   const data = await fetchCategoriesTotals(params);
 
-  return data.items.filter((item) => item.total > 0);
+  return data.data.items.filter((item) => item.total > 0);
 }

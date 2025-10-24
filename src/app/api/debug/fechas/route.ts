@@ -1,6 +1,6 @@
 /**
- * /api/analytics/v1/dimensions/categorias/totales/route.ts
- * Endpoint EXACTO como el original pero usando taxonomía oficial
+ * /api/debug/fechas/route.ts
+ * Debug endpoint para probar cálculo de fechas basado en categorías totales
  */
 
 import {
@@ -19,54 +19,80 @@ import {
   matchCategoryIdFromPath,
   safeUrlPathname,
 } from "@/lib/utils/routing/pathMatching";
-import { calculatePreviousPeriodOnly } from "@/lib/utils/time/rangeCalculations";
+import { calculatePreviousPeriodAndGranularity } from "@/lib/utils/time/rangeCalculations";
 import { computeDeltaPct } from "@/lib/utils/time/timeWindows";
 import { google } from "googleapis";
 import { NextResponse } from "next/server";
 
-/* -------- handler con nueva lógica de rangos -------- */
+/* -------- handler debug -------- */
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
-    const startQ = searchParams.get("startDate");
-    const endQ = searchParams.get("endDate");
+    const startQ = searchParams.get("start");
+    const endQ = searchParams.get("end");
     const granularityOverride = searchParams.get(
       "granularity"
     ) as Granularity | null;
 
-    // Validar que tenemos fechas requeridas
+    // Debug info - parámetros recibidos
+    const debugParams = {
+      receivedParams: {
+        start: startQ,
+        end: endQ,
+        granularity: granularityOverride,
+      },
+      timestamp: new Date().toISOString(),
+    };
+
+    // Validar que tenemos fechas
     if (!startQ || !endQ) {
       return NextResponse.json(
         {
-          error: "Missing required parameters: startDate and endDate",
+          error: "Missing start or end date",
+          debug: debugParams,
         },
         { status: 400 }
       );
     }
 
-    // Calcular solo rangos (sin granularidad automática para totales)
-    const calculation = calculatePreviousPeriodOnly(startQ, endQ);
+    // Calcular rangos usando la nueva función
+    const calculation = calculatePreviousPeriodAndGranularity(startQ, endQ);
 
-    // Para totales: usar granularidad override o default 'd' (no auto-calcular)
-    const finalGranularity = granularityOverride || "d";
+    // Si viene granularidad override, usarla
+    const finalGranularity = granularityOverride || calculation.granularity;
 
     const ranges = {
       current: calculation.currentRange,
       previous: calculation.prevRange,
     };
 
-    // GA
+    // Debug info - cálculos
+    const debugCalculation = {
+      originalGranularity: calculation.granularity,
+      finalGranularity,
+      durationDays: calculation.durationDays,
+      ranges,
+      granularityReason: granularityOverride
+        ? "overridden by query param"
+        : "calculated automatically",
+    };
+
+    // GA4 Query
     const auth = getAuth();
     const analytics = google.analyticsdata({ version: "v1beta", auth });
     const property = normalizePropertyId(resolvePropertyId());
 
-    // Usar helper común para page_view requests (pasar granularidad UI para decidir dimensiones)
     const requestBody = buildPageViewUnionRequest({
       current: ranges.current,
       previous: ranges.previous,
-      granularity: finalGranularity, // ✅ Para totales también necesitamos elegir dimensiones correctas
       metrics: [{ name: "eventCount" }],
     });
+
+    // Debug info - GA4 request
+    const debugGA4Request = {
+      property,
+      requestBody: JSON.parse(JSON.stringify(requestBody)), // Deep copy para debug
+    };
 
     const resp = await analytics.properties.runReport({
       property,
@@ -74,7 +100,7 @@ export async function GET(req: Request) {
     });
     const rows = resp.data.rows ?? [];
 
-    // Inicializar totales usando las categorías de la taxonomía
+    // Procesar datos (igual que el original)
     const currentTotals: Record<CategoryId, number> = Object.fromEntries(
       CATEGORY_ID_ORDER.map((k) => [k, 0])
     ) as Record<CategoryId, number>;
@@ -82,9 +108,8 @@ export async function GET(req: Request) {
       CATEGORY_ID_ORDER.map((k) => [k, 0])
     ) as Record<CategoryId, number>;
 
-    // Procesar filas (EXACTO como el original)
     for (const r of rows) {
-      const dateRaw = String(r.dimensionValues?.[0]?.value ?? ""); // YYYYMMDD
+      const dateRaw = String(r.dimensionValues?.[0]?.value ?? "");
       if (dateRaw.length !== 8) continue;
       const iso = `${dateRaw.slice(0, 4)}-${dateRaw.slice(
         4,
@@ -105,46 +130,66 @@ export async function GET(req: Request) {
       }
     }
 
-    // Crear items usando los títulos de la taxonomía
     const items = CATEGORY_ID_ORDER.map((id) => {
       const curr = currentTotals[id] ?? 0;
       const prev = previousTotals[id] ?? 0;
       return {
         id,
-        title: getCategoryLabel(id), // Usa el título oficial de la taxonomía
+        title: getCategoryLabel(id),
         total: curr,
-        previousTotal: prev, // ✨ NUEVO: agregar valor anterior
+        previousTotal: prev,
         deltaPct: computeDeltaPct(curr, prev),
       };
     });
 
+    // Debug info - respuesta GA4
+    const debugGA4Response = {
+      totalRows: rows.length,
+      sampleResponse: rows.slice(0, 3), // Primeras 3 filas como muestra
+      processedCategories: Object.keys(currentTotals).length,
+    };
+
+    // Respuesta completa con debug
     return NextResponse.json(
       {
-        success: true,
-        calculation: {
-          requestedGranularity: finalGranularity,
-          finalGranularity,
-          granularityReason: granularityOverride
-            ? "overridden by query param"
-            : "default daily granularity",
-          currentPeriod: {
-            start: ranges.current.start,
-            end: ranges.current.end,
+        // Data normal
+        granularity: finalGranularity,
+        range: ranges,
+        property,
+        items,
+
+        // Debug information
+        debug: {
+          params: debugParams,
+          calculation: debugCalculation,
+          ga4Request: debugGA4Request,
+          ga4Response: debugGA4Response,
+          summary: {
+            totalCurrentEvents: Object.values(currentTotals).reduce(
+              (a, b) => a + b,
+              0
+            ),
+            totalPreviousEvents: Object.values(previousTotals).reduce(
+              (a, b) => a + b,
+              0
+            ),
+            categoriesWithData: items.filter((i) => i.total > 0).length,
           },
-          previousPeriod: {
-            start: ranges.previous.start,
-            end: ranges.previous.end,
-          },
-        },
-        data: {
-          property,
-          items,
         },
       },
       { status: 200 }
     );
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : "Unknown error";
-    return NextResponse.json({ error: msg }, { status: 500 });
+    return NextResponse.json(
+      {
+        error: msg,
+        debug: {
+          timestamp: new Date().toISOString(),
+          errorType: err instanceof Error ? err.constructor.name : "Unknown",
+        },
+      },
+      { status: 500 }
+    );
   }
 }

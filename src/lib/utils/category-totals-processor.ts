@@ -5,7 +5,7 @@
 
 import type { CategoriesTotalsResponse } from "@/lib/services/categorias/totals";
 
-type CategoryTotalItem = CategoriesTotalsResponse["items"][0];
+type CategoryTotalItem = CategoriesTotalsResponse["data"]["items"][0];
 
 interface CategoryGridData {
   categoryId: string;

@@ -17,33 +17,42 @@ export type DonutData = Array<{ label: string; value: number }>;
 
 /** Respuesta del endpoint de detalles de categorías */
 export type CategoriaDetailsResponse = {
-  granularity: Granularity;
-  actualGranularity: Granularity; // Nueva granularidad efectiva usada
-  range: {
-    current: { start: string; end: string };
-    previous: { start: string; end: string };
+  success: boolean;
+  calculation: {
+    requestedGranularity: Granularity;
+    finalGranularity: Granularity;
+    granularityReason: string;
+    currentPeriod: { start: string; end: string };
+    previousPeriod: { start: string; end: string };
   };
-  property: string;
-  id: CategoryId;
-  title: string;
-  series: SeriesData;
-  donutData: DonutData;
-  deltaPct: number | null;
-  debug?: {
-    totalRows: number;
-    matchedRows: number;
-    xLabelsCount: number;
-    currentTotal: number;
-    previousTotal: number;
+  data: {
+    property: string;
+    id: CategoryId;
+    title: string;
+    series: SeriesData;
+    donutData: DonutData;
+    deltaPct: number | null;
+    totals: {
+      current: number;
+      previous: number;
+    };
+    debug?: {
+      totalRows: number;
+      filteredRows: number;
+      townFilter: string | null;
+      matchedRows: number;
+      xLabelsCount: number;
+    };
   };
 };
 
 /** Parámetros para el servicio de detalles */
 export type CategoriaDetailsParams = {
   categoryId: CategoryId;
-  granularity?: Granularity;
-  startDate?: string | null;
-  endDate?: string | null;
+  granularity?: Granularity; // Opcional, se calcula automáticamente
+  startDate: string; // YYYY-MM-DD
+  endDate: string; // YYYY-MM-DD
+  townId?: string; // Para drilldown
 };
 
 /** URL base del endpoint */
@@ -55,21 +64,20 @@ const ENDPOINT_BASE_URL = "/api/analytics/v1/dimensions/categorias/details";
 export async function fetchCategoriaDetails(
   params: CategoriaDetailsParams
 ): Promise<CategoriaDetailsResponse> {
-  const { categoryId, granularity = "d", startDate, endDate } = params;
+  const { categoryId, granularity, startDate, endDate, townId } = params;
 
-  // Construir URL con parámetros
+  // Construir URL con parámetros nuevos
   const searchParams = new URLSearchParams();
 
+  searchParams.set("startDate", startDate);
+  searchParams.set("endDate", endDate);
+
   if (granularity) {
-    searchParams.set("g", granularity);
+    searchParams.set("granularity", granularity);
   }
 
-  if (startDate) {
-    searchParams.set("start", startDate);
-  }
-
-  if (endDate) {
-    searchParams.set("end", endDate);
+  if (townId) {
+    searchParams.set("townId", townId);
   }
 
   const url = `${ENDPOINT_BASE_URL}/${categoryId}?${searchParams.toString()}`;
@@ -84,5 +92,6 @@ export async function fetchCategoriaDetails(
   }
 
   const data: CategoriaDetailsResponse = await response.json();
+
   return data;
 }

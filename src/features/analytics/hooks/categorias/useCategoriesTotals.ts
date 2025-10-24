@@ -40,28 +40,33 @@ type ReadyState = {
 
 /**
  * Hook principal para obtener totales de categorías desde GA4
+ * Usa nueva lógica de calculatePreviousPeriodAndGranularity
  */
 export function useCategoriesTotalsNew(
   options: UseCategoriesTotalsOptions = {}
 ) {
   const {
-    granularity = "d",
+    granularity,
     startDate,
     endDate,
     enabled = true,
     refetchInterval,
   } = options;
 
+  // Construir parámetros de la query - granularity es opcional (API lo calcula automáticamente)
   const params: CategoriesTotalsParams = {
-    granularity,
+    ...(granularity && { granularity }),
     startDate,
     endDate,
   };
 
+  // Validación: necesitamos startDate y endDate para la nueva API
+  const isEnabled = Boolean(enabled && startDate && endDate);
+
   return useQuery({
     queryKey: ["analytics", "categorias", "totals", params],
     queryFn: () => fetchCategoriesTotals(params),
-    enabled,
+    enabled: isEnabled,
     refetchInterval,
     staleTime: 5 * 60 * 1000, // 5 minutos
     gcTime: 10 * 60 * 1000, // 10 minutos (antes cacheTime)
@@ -107,8 +112,8 @@ export function useCategoriesTotals(
     ? {
         status: "ready" as const,
         data: query.data,
-        ids: query.data.items.map((item) => item.id),
-        itemsById: query.data.items.reduce((acc, item) => {
+        ids: query.data.data.items.map((item) => item.id),
+        itemsById: query.data.data.items.reduce((acc, item) => {
           acc[item.id] = {
             title: item.title,
             total: Number.isFinite(item.total) ? item.total : 0,
@@ -144,7 +149,7 @@ export function useCategoriesTotalsCurrent(
 
   return {
     ...query,
-    data: query.data?.items.map((item) => ({
+    data: query.data?.data.items.map((item) => ({
       id: item.id,
       title: item.title,
       total: item.total,
@@ -162,7 +167,7 @@ export function useCategoriesTotalsWithData(
 
   return {
     ...query,
-    data: query.data?.items.filter((item) => item.total > 0),
+    data: query.data?.data.items.filter((item) => item.total > 0),
   };
 }
 

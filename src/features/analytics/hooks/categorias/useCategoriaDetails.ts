@@ -79,17 +79,24 @@ export function useCategoriaDetails(
     endDate,
   ];
 
-  const queryParams: CategoriaDetailsParams = {
-    categoryId,
-    granularity,
-    startDate,
-    endDate,
-  };
+  // Solo crear queryParams si tenemos fechas válidas
+  const queryParams: CategoriaDetailsParams | null =
+    startDate && endDate
+      ? {
+          categoryId,
+          granularity,
+          startDate,
+          endDate,
+        }
+      : null;
 
   const query = useQuery({
     queryKey,
-    queryFn: () => fetchCategoriaDetails(queryParams),
-    enabled: enabled && !!categoryId,
+    queryFn: () => {
+      return fetchCategoriaDetails(queryParams!);
+    },
+    enabled:
+      enabled && !!categoryId && !!startDate && !!endDate && !!queryParams,
     refetchInterval,
     staleTime: 1000 * 60 * 5, // 5 minutos
     gcTime: 1000 * 60 * 10, // 10 minutos
@@ -120,9 +127,9 @@ export function useCategoriaDetails(
     return {
       status: "ready",
       data: query.data,
-      series: query.data.series,
-      donutData: query.data.donutData,
-      deltaPct: query.data.deltaPct,
+      series: query.data.data.series,
+      donutData: query.data.data.donutData,
+      deltaPct: query.data.data.deltaPct,
     };
   }
 
@@ -146,11 +153,15 @@ export function useCategoryDetails(
   endISO?: string,
   startISO?: string
 ): { series: SeriesData; donutData: DonutData } {
+  // Validar que tenemos las fechas requeridas
+  const hasValidDates = Boolean(startISO && endISO);
+
   const detailsState = useCategoriaDetails({
     categoryId,
     granularity,
-    startDate: startISO,
-    endDate: endISO,
+    startDate: startISO || "",
+    endDate: endISO || "",
+    enabled: hasValidDates, // Solo ejecutar si tenemos fechas válidas
   });
 
   return {

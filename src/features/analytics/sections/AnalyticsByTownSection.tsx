@@ -15,7 +15,7 @@ import type { TownId } from "@/lib/taxonomy/towns";
 import { TOWN_ID_ORDER } from "@/lib/taxonomy/towns";
 import type { SeriesPoint } from "@/lib/types";
 import { labelToCategoryId } from "@/lib/utils/core/sector";
-import { getCorrectDatesForGranularity } from "@/lib/utils/time/deltaDateCalculation";
+
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useMemo, useState } from "react";
 
@@ -30,29 +30,24 @@ function AnalyticsByTownSectionInner() {
     endDate,
     setRange,
     clearRange,
-    endISO,
+    getCurrentPeriod,
+    getCalculatedGranularity,
   } = useTownTimeframe();
 
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  // Calcular fechas correctas según granularidad
-  const { currentEndISO } = getCorrectDatesForGranularity(
-    endDate,
-    granularity,
-    mode
-  );
+  // Obtener períodos usando nueva lógica
+  const currentPeriod = getCurrentPeriod();
+  const calculatedGranularity = getCalculatedGranularity();
 
-  // Usar fechas corregidas para deltas/KPIs
-  const timeParams =
-    mode === "range"
-      ? {
-          startISO: startDate.toISOString().split("T")[0],
-          endISO: endDate.toISOString().split("T")[0],
-        }
-      : { endISO: currentEndISO };
+  // Usar períodos calculados para deltas/KPIs - formato legacy
+  const timeParams = {
+    startISO: currentPeriod.start,
+    endISO: currentPeriod.end,
+  };
 
   const { state, ids, itemsById, isInitialLoading, isFetching } =
-    usePueblosTotals(granularity, timeParams);
+    usePueblosTotals(calculatedGranularity, timeParams);
 
   const displayedIds = useMemo<string[]>(
     () => (state.status === "ready" ? (ids as string[]) : [...TOWN_ID_ORDER]),
@@ -66,12 +61,10 @@ function AnalyticsByTownSectionInner() {
   const [drill, setDrill] = useState<Drill | null>(null);
   const townId = expandedId as TownId | null;
 
-  // ⚠️ DONA SUPERIOR: SIEMPRE categorías del pueblo (NO pasar categoryId)
+  // NIVEL 1 - usar granularidad CALCULADA (respeta selección del usuario)
   const { series: seriesTown, donutData: donutTown } = useTownDetails(
     (drill?.kind === "town" ? drill.townId : townId) ?? ("almonte" as TownId),
-    granularity,
-    mode === "range" ? endDate.toISOString().split("T")[0] : currentEndISO, // endISO corregido
-    mode === "range" ? startDate.toISOString().split("T")[0] : undefined // startISO
+    calculatedGranularity // ✅ Usar granularidad calculada (que ahora respeta la selección del usuario)
   );
 
   // --- getters ---
@@ -148,20 +141,22 @@ function AnalyticsByTownSectionInner() {
       ? {
           townId: drill.townId,
           categoryId: drill.categoryId,
-          granularity,
-          endISO: mode === "range" ? endISO : currentEndISO,
+          granularity: calculatedGranularity, // ✅ Usar granularidad calculada para nivel 2
+          endISO: currentPeriod.end,
         }
       : undefined;
-  }, [drill, granularity, mode, endISO, currentEndISO]);
+  }, [drill, calculatedGranularity, currentPeriod.end]);
 
-  // Remonta el grid si cambian exp/drill/granularidad/rango
+  // Remonta el grid si cambian exp/drill/granularidad/período
   const gridKey = useMemo(() => {
-    const base = `g=${granularity}|end=${endISO ?? ""}|exp=${expandedId ?? ""}`;
+    const base = `g=${calculatedGranularity}|end=${currentPeriod.end}|exp=${
+      expandedId ?? ""
+    }`;
     if (drill?.kind === "town+cat")
       return `${base}|town=${drill.townId}|cat=${drill.categoryId}`;
     if (drill?.kind === "town") return `${base}|town=${drill.townId}`;
     return base;
-  }, [granularity, endISO, expandedId, drill]);
+  }, [calculatedGranularity, currentPeriod.end, expandedId, drill]);
 
   return (
     <section className="max-w-[1560px]">

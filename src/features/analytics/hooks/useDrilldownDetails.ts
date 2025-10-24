@@ -49,14 +49,23 @@ export function useDrilldownDetails(
   config: DrilldownConfig & {
     granularity: Granularity;
     endISO?: string;
+    startISO?: string; // Nueva propiedad opcional
   }
 ): Ready | Pending {
-  const { granularity, endISO, ...drilldownConfig } = config;
+  const { granularity, endISO, startISO, ...drilldownConfig } = config;
 
   // Build query key and URL based on drilldown type
   let url: string;
-  const qs = new URLSearchParams({ g: granularity });
-  if (endISO) qs.set("end", endISO);
+  const qs = new URLSearchParams({ granularity });
+
+  // Si tenemos tanto startISO como endISO, usar ambos
+  if (startISO && endISO) {
+    qs.set("startDate", startISO);
+    qs.set("endDate", endISO);
+  } else if (endISO) {
+    // Usar solo endDate para compatibilidad con el comportamiento original
+    qs.set("endDate", endISO);
+  }
 
   if (drilldownConfig.type === "pueblo-category") {
     // Query pueblo endpoint with category filter

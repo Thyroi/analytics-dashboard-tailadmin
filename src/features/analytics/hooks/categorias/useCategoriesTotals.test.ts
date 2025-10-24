@@ -50,24 +50,37 @@ describe("useCategoriesTotalsNew", () => {
           id: "naturaleza" as CategoryId,
           title: "Naturaleza",
           total: 100,
-          previousTotal: 87, // Agregado para compatibilidad
+          previousTotal: 87,
           deltaPct: 15.5,
         },
         {
           id: "playas" as CategoryId,
           title: "Playas",
           total: 75,
-          previousTotal: 83, // Agregado para compatibilidad
+          previousTotal: 83,
           deltaPct: -10.2,
         },
       ],
+      calculation: {
+        originalGranularity: "d" as const,
+        finalGranularity: "d" as const,
+        durationDays: 1,
+        granularityReason: "1-31 days: using daily granularity",
+      },
     };
 
     mockFetchCategoriesTotals.mockResolvedValue(mockResponse);
 
-    const { result } = renderHook(() => useCategoriesTotalsNew(), {
-      wrapper: createWrapper(),
-    });
+    const { result } = renderHook(
+      () =>
+        useCategoriesTotalsNew({
+          startDate: "2024-10-10",
+          endDate: "2024-10-11",
+        }),
+      {
+        wrapper: createWrapper(),
+      }
+    );
 
     expect(result.current.isLoading).toBe(true);
 
@@ -77,9 +90,8 @@ describe("useCategoriesTotalsNew", () => {
 
     expect(result.current.data).toEqual(mockResponse);
     expect(mockFetchCategoriesTotals).toHaveBeenCalledWith({
-      granularity: "d",
-      startDate: undefined,
-      endDate: undefined,
+      startDate: "2024-10-10",
+      endDate: "2024-10-11",
     });
   });
 
@@ -92,6 +104,12 @@ describe("useCategoriesTotalsNew", () => {
       },
       property: "test-property",
       items: [],
+      calculation: {
+        originalGranularity: "w" as const,
+        finalGranularity: "w" as const,
+        durationDays: 7,
+        granularityReason: "32-90 days: using weekly granularity",
+      },
     };
 
     mockFetchCategoriesTotals.mockResolvedValue(mockResponse);
@@ -119,7 +137,12 @@ describe("useCategoriesTotalsNew", () => {
 
   it("should handle disabled state", () => {
     const { result } = renderHook(
-      () => useCategoriesTotalsNew({ enabled: false }),
+      () =>
+        useCategoriesTotalsNew({
+          enabled: false,
+          startDate: "2024-10-01",
+          endDate: "2024-10-07",
+        }),
       { wrapper: createWrapper() }
     );
 
@@ -137,13 +160,26 @@ describe("useCategoriesTotalsNew", () => {
       },
       property: "test-property",
       items: [],
+      calculation: {
+        originalGranularity: "d" as const,
+        finalGranularity: "d" as const,
+        durationDays: 1,
+        granularityReason: "1-31 days: using daily granularity",
+      },
     };
 
     mockFetchCategoriesTotals.mockResolvedValue(mockResponse);
 
-    const { result } = renderHook(() => useCategoriesTotalsNew(), {
-      wrapper: createWrapper(),
-    });
+    const { result } = renderHook(
+      () =>
+        useCategoriesTotalsNew({
+          startDate: "2024-10-10",
+          endDate: "2024-10-11",
+        }),
+      {
+        wrapper: createWrapper(),
+      }
+    );
 
     await waitFor(() => {
       expect(result.current.isSuccess).toBe(true);
@@ -163,12 +199,23 @@ describe("useCategoriesTotalsNew", () => {
         },
         property: "test-property",
         items: [],
+        calculation: {
+          originalGranularity: granularity,
+          finalGranularity: granularity,
+          durationDays: 7,
+          granularityReason: `Testing ${granularity} granularity`,
+        },
       };
 
       mockFetchCategoriesTotals.mockResolvedValue(mockResponse);
 
       const { result } = renderHook(
-        () => useCategoriesTotalsNew({ granularity }),
+        () =>
+          useCategoriesTotalsNew({
+            granularity,
+            startDate: "2024-10-01",
+            endDate: "2024-10-07",
+          }),
         { wrapper: createWrapper() }
       );
 
@@ -178,8 +225,8 @@ describe("useCategoriesTotalsNew", () => {
 
       expect(mockFetchCategoriesTotals).toHaveBeenCalledWith({
         granularity,
-        startDate: undefined,
-        endDate: undefined,
+        startDate: "2024-10-01",
+        endDate: "2024-10-07",
       });
     }
   );

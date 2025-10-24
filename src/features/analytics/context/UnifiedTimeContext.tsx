@@ -1,12 +1,8 @@
 "use client";
 
 import type { Granularity } from "@/lib/types";
-import {
-  addDaysUTC,
-  deriveRangeEndingYesterday,
-  todayUTC,
-  toISO,
-} from "@/lib/utils/time/datetime";
+import { addDaysUTC, todayUTC, toISO } from "@/lib/utils/time/datetime";
+import { calculatePreviousPeriodAndGranularity } from "@/lib/utils/time/rangeCalculations";
 import {
   createContext,
   ReactNode,
@@ -36,25 +32,80 @@ export type TimeframeContextValue = TimeframeState & {
   endISO?: string;
   /** YYYY-MM-DD siempre disponible para algunos contextos */
   startISO?: string;
+
+  // Nuevos métodos para rangos calculados
+  getCurrentPeriod: () => { start: string; end: string };
+  getPreviousPeriod: () => { start: string; end: string };
+  getCalculatedGranularity: () => Granularity;
+  getDurationDays: () => number;
 } & TimeframeActions;
 
 /* ========= Shared Helpers ========= */
-function toUTCDate(iso: string): Date {
-  return new Date(`${iso}T00:00:00Z`);
-}
-
 function yesterdayUTC(): Date {
   return addDaysUTC(todayUTC(), -1);
 }
 
+/**
+ * Calcula el rango de fechas según el período seleccionado
+ */
+function calculateRangeForPeriod(period: "dia" | "semana" | "mes" | "ano"): {
+  start: Date;
+  end: Date;
+} {
+  const today = new Date();
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+
+  switch (period) {
+    case "dia": {
+      // Día: solo ayer
+      return { start: yesterday, end: yesterday };
+    }
+    case "semana": {
+      // Semana: últimos 7 días terminando ayer
+      const start = new Date(yesterday);
+      start.setDate(start.getDate() - 6); // 7 días incluyendo el final
+      return { start, end: yesterday };
+    }
+    case "mes": {
+      // Mes: últimos 30 días terminando ayer
+      const start = new Date(yesterday);
+      start.setDate(start.getDate() - 29); // 30 días incluyendo el final
+      return { start, end: yesterday };
+    }
+    case "ano": {
+      // Año: últimos 365 días terminando ayer
+      const start = new Date(yesterday);
+      start.setDate(start.getDate() - 364); // 365 días incluyendo el final
+      return { start, end: yesterday };
+    }
+    default:
+      return { start: yesterday, end: yesterday };
+  }
+}
+
 /** Preset por granularidad, terminando AYER */
 function presetForGranularity(g: Granularity) {
-  const endTime = yesterdayUTC();
-  const range = deriveRangeEndingYesterday(g);
-  return {
-    startDate: toUTCDate(range.start),
-    endDate: endTime,
-  };
+  // Mapear granularidad a período
+  let period: "dia" | "semana" | "mes" | "ano";
+  switch (g) {
+    case "d":
+      period = "dia";
+      break;
+    case "w":
+      period = "semana";
+      break;
+    case "m":
+      period = "mes";
+      break;
+    case "y":
+      period = "ano";
+      break;
+    default:
+      period = "dia";
+  }
+
+  return calculateRangeForPeriod(period);
 }
 
 /* ========= Factory Function ========= */
@@ -73,17 +124,17 @@ export function createTimeContext(contextName: string) {
     const [granularity, setGranularityState] =
       useState<Granularity>(defaultGranularity);
     const [startDate, setStartDate] = useState<Date>(
-      () => presetForGranularity(defaultGranularity).startDate
+      () => presetForGranularity(defaultGranularity).start
     );
     const [endDate, setEndDate] = useState<Date>(
-      () => presetForGranularity(defaultGranularity).endDate
+      () => presetForGranularity(defaultGranularity).end
     );
 
     const setGranularity = useCallback((g: Granularity) => {
       const preset = presetForGranularity(g);
       setGranularityState(g);
-      setStartDate(preset.startDate);
-      setEndDate(preset.endDate);
+      setStartDate(preset.start);
+      setEndDate(preset.end);
       setMode("granularity");
     }, []);
 
@@ -100,10 +151,69 @@ export function createTimeContext(contextName: string) {
 
     const clearRange = useCallback(() => {
       const preset = presetForGranularity(granularity);
-      setStartDate(preset.startDate);
-      setEndDate(preset.endDate);
+      setStartDate(preset.start);
+      setEndDate(preset.end);
       setMode("granularity");
     }, [granularity]);
+
+    // Nuevos métodos para cálculos de rangos
+    const getCurrentPeriod = useCallback(
+      () => ({
+        start: startDate.toISOString().split("T")[0],
+        end: endDate.toISOString().split("T")[0],
+      }),
+      [startDate, endDate]
+    );
+
+    const getPreviousPeriod = useCallback(() => {
+      const current = getCurrentPeriod();
+      try {
+        const calculation = calculatePreviousPeriodAndGranularity(
+          current.start,
+          current.end
+        );
+        return calculation.prevRange;
+      } catch {
+        // Fallback: día anterior
+        const fallbackDate = new Date(startDate);
+        fallbackDate.setDate(fallbackDate.getDate() - 1);
+        const fallbackStr = fallbackDate.toISOString().split("T")[0];
+        return { start: fallbackStr, end: fallbackStr };
+      }
+    }, [getCurrentPeriod, startDate]);
+
+    const getCalculatedGranularity = useCallback((): Granularity => {
+      if (mode === "granularity") {
+        // Para modo granularidad, usar EXACTAMENTE la granularidad que seleccionó el usuario
+        // NO hacer correcciones automáticas - respetar la intención del usuario
+        return granularity;
+      }
+
+      // Modo range: calcular automáticamente según duración
+      const current = getCurrentPeriod();
+      try {
+        const calculation = calculatePreviousPeriodAndGranularity(
+          current.start,
+          current.end
+        );
+        return calculation.granularity;
+      } catch {
+        return "d"; // Fallback
+      }
+    }, [mode, granularity, getCurrentPeriod]);
+
+    const getDurationDays = useCallback((): number => {
+      const current = getCurrentPeriod();
+      try {
+        const calculation = calculatePreviousPeriodAndGranularity(
+          current.start,
+          current.end
+        );
+        return calculation.durationDays;
+      } catch {
+        return 1; // Fallback
+      }
+    }, [getCurrentPeriod]);
 
     const contextValue = useMemo<TimeframeContextValue>(
       () => ({
@@ -116,6 +226,10 @@ export function createTimeContext(contextName: string) {
         setGranularity,
         setRange,
         clearRange,
+        getCurrentPeriod,
+        getPreviousPeriod,
+        getCalculatedGranularity,
+        getDurationDays,
       }),
       [
         mode,
@@ -125,6 +239,10 @@ export function createTimeContext(contextName: string) {
         setGranularity,
         setRange,
         clearRange,
+        getCurrentPeriod,
+        getPreviousPeriod,
+        getCalculatedGranularity,
+        getDurationDays,
       ]
     );
 

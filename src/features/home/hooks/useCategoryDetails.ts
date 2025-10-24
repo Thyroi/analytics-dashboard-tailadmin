@@ -1,5 +1,6 @@
 "use client";
 
+import { fetchCategoriaDetails } from "@/lib/services/categorias/details";
 import {
   fetchChatbotTotals,
   type ChatbotTotalsResponse,
@@ -7,7 +8,7 @@ import {
 import type { CategoryId } from "@/lib/taxonomy/categories";
 import type { DonutDatum, Granularity, SeriesPoint } from "@/lib/types";
 import { buildSeriesAndDonutFocused } from "@/lib/utils/data/seriesAndDonuts";
-import { computeRangesByGranularityForSeries } from "@/lib/utils/time/granularityRanges";
+import { calculatePreviousPeriodWithGranularity } from "@/lib/utils/time/rangeCalculations";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 
@@ -78,44 +79,116 @@ function useCategoryDetailsImpl(
   // - Series: computeRangesForSeries (g==="d" usa 7 días, otros usan duración estándar)
   // - Donut: computeRangesForKPI (g==="d" usa último día, otros usan rango completo)
 
-  // Query para GA4 data
+  // Calcular rangos usando la función correcta de rangeCalculations.ts
+  const ranges = useMemo(() => {
+    if (startISO && endISO) {
+      // Usar la función correcta para calcular rangos
+      const calculation = calculatePreviousPeriodWithGranularity(
+        startISO,
+        endISO,
+        granularity
+      );
+
+      const calculatedRanges = {
+        current: calculation.currentRange,
+        previous: calculation.prevRange,
+      };
+
+      return calculatedRanges;
+    } else {
+      // Para casos sin rango completo, usar fecha por defecto
+      const endDate =
+        endISO ||
+        new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+
+      // Para casos automáticos, necesitamos generar un rango basado en granularidad
+      let currentStart: string;
+      const currentEnd = endDate;
+
+      switch (granularity) {
+        case "d":
+          // 7 días para series diarias
+          currentStart = new Date(
+            new Date(endDate).getTime() - 6 * 24 * 60 * 60 * 1000
+          )
+            .toISOString()
+            .split("T")[0];
+          break;
+        case "w":
+          // 4 semanas
+          currentStart = new Date(
+            new Date(endDate).getTime() - 27 * 24 * 60 * 60 * 1000
+          )
+            .toISOString()
+            .split("T")[0];
+          break;
+        case "m":
+          // 12 meses
+          currentStart = new Date(
+            new Date(endDate).getTime() - 364 * 24 * 60 * 60 * 1000
+          )
+            .toISOString()
+            .split("T")[0];
+          break;
+        case "y":
+          // 3 años
+          currentStart = new Date(
+            new Date(endDate).getTime() - 1094 * 24 * 60 * 60 * 1000
+          )
+            .toISOString()
+            .split("T")[0];
+          break;
+        default:
+          currentStart = new Date(
+            new Date(endDate).getTime() - 6 * 24 * 60 * 60 * 1000
+          )
+            .toISOString()
+            .split("T")[0];
+      }
+
+      const calculation = calculatePreviousPeriodWithGranularity(
+        currentStart,
+        currentEnd,
+        granularity
+      );
+
+      const autoRanges = {
+        current: calculation.currentRange,
+        previous: calculation.prevRange,
+      };
+
+      return autoRanges;
+    }
+  }, [granularity, startISO, endISO]);
+
+  // Query para GA4 data usando el nuevo servicio
   const ga4Query = useQuery({
-    queryKey: ["categoryDetails", "ga4", id, granularity, startISO, endISO],
+    queryKey: [
+      "categoryDetails",
+      "ga4",
+      id,
+      granularity,
+      ranges.current.start,
+      ranges.current.end,
+    ],
     queryFn: async () => {
       if (!id) throw new Error("Category ID is required");
 
-      // Construir URL con parámetros apropiados
-      const params = new URLSearchParams();
-      params.set("g", granularity);
+      const response = await fetchCategoriaDetails({
+        categoryId: id,
+        granularity,
+        startDate: ranges.current.start,
+        endDate: ranges.current.end,
+      });
 
-      if (startISO && endISO) {
-        // Rango personalizado
-        params.set("start", startISO);
-        params.set("end", endISO);
-      } else if (endISO) {
-        // Solo fecha final
-        params.set("end", endISO);
-      }
+      console.log("[useCategoryDetails] Service response:", response);
 
-      // Nota: La API route maneja automáticamente las reglas de granularidad:
-      // - Series: computeRangesByGranularityForSeries (7 días para g='d')
-      // - Donut: computeRangesByGranularity (1 día para g='d')
-      const url = `/api/analytics/v1/dimensions/categorias/details/${id}?${params}`;
-
-      const response = await fetch(url);
-      if (!response.ok) {
-        throw new Error(
-          `Failed to fetch GA4 category details: ${response.statusText}`
-        );
-      }
-
-      const data = await response.json();
       return {
-        series: data.series || { current: [], previous: [] },
-        donutData: data.donutData || [],
+        series: response.data.series || { current: [], previous: [] },
+        donutData: response.data.donutData || [],
       };
     },
-    enabled: !!id,
+    enabled: !!id && !!ranges.current.start && !!ranges.current.end,
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
   });
@@ -135,18 +208,61 @@ function useCategoryDetailsImpl(
         });
       } else {
         // Usar la fecha final y dejar que fetchChatbotTotals calcule los rangos correctos
-        // con computeRangesByGranularityForSeries para series (igual que GA4)
+        // Calcular rangos usando la misma lógica que GA4
         const endDate =
           endISO ||
           new Date(Date.now() - 24 * 60 * 60 * 1000)
             .toISOString()
             .split("T")[0];
 
-        // Calcular rangos para series usando la misma función que GA4
-        const ranges = computeRangesByGranularityForSeries(
-          granularity,
-          endDate
+        // Generar rango basado en granularidad para chatbot
+        let currentStart: string;
+        switch (granularity) {
+          case "d":
+            currentStart = new Date(
+              new Date(endDate).getTime() - 6 * 24 * 60 * 60 * 1000
+            )
+              .toISOString()
+              .split("T")[0];
+            break;
+          case "w":
+            currentStart = new Date(
+              new Date(endDate).getTime() - 27 * 24 * 60 * 60 * 1000
+            )
+              .toISOString()
+              .split("T")[0];
+            break;
+          case "m":
+            currentStart = new Date(
+              new Date(endDate).getTime() - 364 * 24 * 60 * 60 * 1000
+            )
+              .toISOString()
+              .split("T")[0];
+            break;
+          case "y":
+            currentStart = new Date(
+              new Date(endDate).getTime() - 1094 * 24 * 60 * 60 * 1000
+            )
+              .toISOString()
+              .split("T")[0];
+            break;
+          default:
+            currentStart = new Date(
+              new Date(endDate).getTime() - 6 * 24 * 60 * 60 * 1000
+            )
+              .toISOString()
+              .split("T")[0];
+        }
+
+        const calculation = calculatePreviousPeriodWithGranularity(
+          currentStart,
+          endDate,
+          granularity
         );
+        const ranges = {
+          current: calculation.currentRange,
+          previous: calculation.prevRange,
+        };
 
         // Pasar el rango completo que incluye current + previous periods
         return fetchChatbotTotals({
@@ -171,7 +287,55 @@ function useCategoryDetailsImpl(
       const endDate =
         endISO ||
         new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split("T")[0];
-      const ranges = computeRangesByGranularityForSeries(granularity, endDate);
+
+      // Generar rango basado en granularidad
+      let currentStart: string;
+      switch (granularity) {
+        case "d":
+          currentStart = new Date(
+            new Date(endDate).getTime() - 6 * 24 * 60 * 60 * 1000
+          )
+            .toISOString()
+            .split("T")[0];
+          break;
+        case "w":
+          currentStart = new Date(
+            new Date(endDate).getTime() - 27 * 24 * 60 * 60 * 1000
+          )
+            .toISOString()
+            .split("T")[0];
+          break;
+        case "m":
+          currentStart = new Date(
+            new Date(endDate).getTime() - 364 * 24 * 60 * 60 * 1000
+          )
+            .toISOString()
+            .split("T")[0];
+          break;
+        case "y":
+          currentStart = new Date(
+            new Date(endDate).getTime() - 1094 * 24 * 60 * 60 * 1000
+          )
+            .toISOString()
+            .split("T")[0];
+          break;
+        default:
+          currentStart = new Date(
+            new Date(endDate).getTime() - 6 * 24 * 60 * 60 * 1000
+          )
+            .toISOString()
+            .split("T")[0];
+      }
+
+      const calculation = calculatePreviousPeriodWithGranularity(
+        currentStart,
+        endDate,
+        granularity
+      );
+      const ranges = {
+        current: calculation.currentRange,
+        previous: calculation.prevRange,
+      };
 
       // Usar buildSeriesAndDonutFocused para procesar los datos del chatbot
       const result = buildSeriesAndDonutFocused(

@@ -1,5 +1,6 @@
 "use client";
 
+import ComparisonBarChart from "@/components/charts/ComparisonBarChart";
 import GroupedBarChart, {
   type GroupedBarSeries,
 } from "@/components/charts/GroupedBarChart";
@@ -126,6 +127,25 @@ function LineSide({
   series: { current: SeriesPoint[]; previous: SeriesPoint[] };
   granularity?: Granularity;
 }) {
+  // Si es granularidad diaria, usar el gráfico de barras comparativas
+  if (granularity === "d") {
+    return (
+      <div className="w-full h-full">
+        <ComparisonBarChart
+          series={series}
+          title="Comparación diaria"
+          subtitle="Periodo anterior vs Periodo actual"
+          height={350}
+          showLegend={true}
+          tooltipFormatter={(value) => value.toLocaleString()}
+          yAxisFormatter={(value) => value.toString()}
+          granularity={granularity}
+        />
+      </div>
+    );
+  }
+
+  // Para otras granularidades, usar el gráfico de líneas original
   // categorías originales desde la serie current (ya viene bucketizada por backend)
   const rawCats = series.current.map((p) => p.label);
 

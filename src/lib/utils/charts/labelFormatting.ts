@@ -152,16 +152,76 @@ export function formatChartLabelsSimple(
       }
       return dateStr;
     } else {
-      // For d, w, m: show only day number
-      const date = new Date(dateStr);
-      if (!isNaN(date.getTime())) {
-        return date.getDate().toString();
+      // Para granularidad diaria, mostrar formato completo dd-mmm-yyyy
+      if (granularity === "d") {
+        if (dateStr.includes("-")) {
+          const parts = dateStr.split("-");
+          if (parts.length === 3) {
+            const year = parts[0];
+            const month = parseInt(parts[1]);
+            const day = parts[2];
+
+            const monthNames = [
+              "Ene",
+              "Feb",
+              "Mar",
+              "Abr",
+              "May",
+              "Jun",
+              "Jul",
+              "Ago",
+              "Sep",
+              "Oct",
+              "Nov",
+              "Dic",
+            ];
+
+            const monthName = monthNames[month - 1] || `M${month}`;
+            return `${day}-${monthName}-${year}`;
+          }
+        }
+
+        // Fallback usando Date
+        const date = new Date(dateStr + "T12:00:00Z");
+        if (!isNaN(date.getTime())) {
+          const monthNames = [
+            "Ene",
+            "Feb",
+            "Mar",
+            "Abr",
+            "May",
+            "Jun",
+            "Jul",
+            "Ago",
+            "Sep",
+            "Oct",
+            "Nov",
+            "Dic",
+          ];
+          const day = date.getUTCDate();
+          const month = monthNames[date.getUTCMonth()];
+          const year = date.getUTCFullYear();
+          return `${day}-${month}-${year}`;
+        }
+      } else {
+        // For w, m: show only day number
+        // Evitar problemas de timezone usando parsing directo de string ISO
+        if (dateStr.includes("-")) {
+          const parts = dateStr.split("-");
+          if (parts.length === 3) {
+            // YYYY-MM-DD format - tomar el día directamente
+            return parts[2];
+          }
+          return parts[parts.length - 1]; // Last part should be day
+        }
+
+        // Fallback: try Date parsing as last resort
+        const date = new Date(dateStr + "T12:00:00Z"); // Add noon UTC to avoid timezone issues
+        if (!isNaN(date.getTime())) {
+          return date.getUTCDate().toString();
+        }
       }
-      // Fallback: extract day from various formats
-      if (dateStr.includes("-")) {
-        const parts = dateStr.split("-");
-        return parts[parts.length - 1]; // Last part should be day
-      }
+
       return dateStr;
     }
   });

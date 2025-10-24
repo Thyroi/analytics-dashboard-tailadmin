@@ -31,6 +31,10 @@ import {
   computeRangesByGranularityForSeries,
   debugRanges,
 } from "@/lib/utils/time/granularityRanges";
+import {
+  calculatePreviousPeriodOnly,
+  determineGA4Granularity,
+} from "@/lib/utils/time/rangeCalculations";
 import { computeDeltaPct } from "@/lib/utils/time/timeWindows";
 import { google } from "googleapis";
 import { NextRequest, NextResponse } from "next/server";
@@ -60,32 +64,60 @@ export async function GET(
     const endQ = searchParams.get("end");
     const categoryFilter = searchParams.get("categoryId"); // Filter by specific category for drilldown
 
-    // Calcular rangos usando función específica por granularidad
-    let ranges; // Rangos para SERIES (7 días en g='d')
-    let donutRanges; // Rangos para DONUTS (1 día en g='d')
+    // Calcular rangos usando nueva función automática
+    let ranges; // Rangos para SERIES
+    let donutRanges; // Rangos para DONUTS
     let actualGranularity = g; // Granularidad efectiva que se usará
 
     if (startQ && endQ) {
-      // Rango personalizado: determinar granularidad automáticamente
-      const customRangeInfo = computeCustomRanges(startQ, endQ);
-      actualGranularity = customRangeInfo.optimalGranularity;
+      // Usar nueva función para solo calcular rangos
+      try {
+        const calculation = calculatePreviousPeriodOnly(startQ, endQ);
+        // Usar granularidad del query param o default 'd'
+        actualGranularity = g || "d";
 
-      ranges = {
-        current: { start: startQ, end: endQ },
-        previous: { start: startQ, end: endQ }, // Para rangos personalizados, no hay previous
-      };
-      donutRanges = ranges; // En rangos custom, donut usa lo mismo
+        ranges = {
+          current: calculation.currentRange,
+          previous: calculation.prevRange,
+        };
+        donutRanges = ranges; // Para series y donuts usar los mismos rangos
+      } catch (error) {
+        console.error("Error calculating ranges:", error);
+        // Fallback a lógica antigua para rangos custom
+        const customRangeInfo = computeCustomRanges(startQ, endQ);
+        actualGranularity = customRangeInfo.optimalGranularity;
+
+        ranges = {
+          current: { start: startQ, end: endQ },
+          previous: { start: startQ, end: endQ },
+        };
+        donutRanges = ranges;
+      }
     } else {
-      // Usar función específica por granularidad
+      // Sin fechas específicas: usar ayer como endDate y calcular automáticamente
       const endDate =
         endQ ||
-        new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split("T")[0]; // ayer por defecto
+        new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split("T")[0];
 
-      // SERIES: usar 7 días para granularidad 'd'
-      ranges = computeRangesByGranularityForSeries(actualGranularity, endDate);
+      try {
+        const calculation = calculatePreviousPeriodOnly(endDate, endDate);
+        // Usar granularidad del query param o default 'd'
+        actualGranularity = g || "d";
 
-      // DONUTS: usar 1 día para granularidad 'd'
-      donutRanges = computeRangesByGranularity(actualGranularity, endDate);
+        ranges = {
+          current: calculation.currentRange,
+          previous: calculation.prevRange,
+        };
+        donutRanges = ranges;
+      } catch (error) {
+        console.error("Error calculating default ranges:", error);
+        // Fallback a lógica antigua
+        ranges = computeRangesByGranularityForSeries(
+          actualGranularity,
+          endDate
+        );
+        donutRanges = computeRangesByGranularity(actualGranularity, endDate);
+      }
     }
 
     // DEBUG: Log de rangos calculados
@@ -96,11 +128,12 @@ export async function GET(
     const analytics = google.analyticsdata({ version: "v1beta", auth });
     const property = normalizePropertyId(resolvePropertyId());
 
-    // Usar helper común para page_view requests
+    // Usar helper común para page_view requests con granularidad para GA4
+    const ga4Granularity = determineGA4Granularity(actualGranularity);
     const requestBody = buildPageViewUnionRequest({
       current: ranges.current,
       previous: ranges.previous,
-      granularity: actualGranularity,
+      granularity: ga4Granularity, // ✅ Usar granularidad correcta para GA4
       metrics: [{ name: "eventCount" }],
     });
 
