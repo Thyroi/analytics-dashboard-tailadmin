@@ -1,29 +1,8 @@
+import type { WindowGranularity } from "@/lib/types";
+import { computeRangesForKPI } from "@/lib/utils/time/timeWindows";
 import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
-
-type Gran = "d" | "w" | "m" | "y";
-
-/* ==================== utils fecha UTC ==================== */
-function toISO(d: Date): string {
-  return d.toISOString().slice(0, 10);
-}
-function addDaysUTC(d: Date, days: number): Date {
-  const x = new Date(
-    Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())
-  );
-  x.setUTCDate(x.getUTCDate() + days);
-  return x;
-}
-function todayUTC(): Date {
-  const now = new Date();
-  return new Date(
-    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
-  );
-}
-function yesterdayUTC(): Date {
-  return addDaysUTC(todayUTC(), -1);
-}
 
 /* ==================== parseo de query ==================== */
 function parsePatterns(sp: URLSearchParams): string[] {
@@ -36,42 +15,16 @@ function parsePatterns(sp: URLSearchParams): string[] {
   return Array.from(new Set(flat));
 }
 
-/* ==================== rangos según consigna ====================
-
-  - d (day-as-week): 7 días terminando en end (incl.), previous = [end-7, end-1]
-  - w (igual que d, por tu ejemplo)
-  - m (mensual "autobucket"): 33 días terminando en end, previous = [end-33, end-1]
-  - y (anual 12 buckets): 365 días terminando en end, previous = [end-365, end-1]
-
-  Nota: todos los rangos SON inclusivos.
-*/
-function computeRanges(gran: Gran, endISO?: string) {
-  const end = endISO ? new Date(`${endISO}T00:00:00Z`) : yesterdayUTC();
-
-  const spanByG: Record<Gran, number> = {
-    d: 7, // 7 días (como tu ejemplo para day)
-    w: 7, // igual que day (como indicaste)
-    m: 33, // ventana "mensual" de 33 días (según tu ejemplo)
-    y: 365, // ventana anual exacta de 365 días
-  };
-
-  const span = spanByG[gran];
-  const currentStart = addDaysUTC(end, -(span - 1));
-  const previousStart = addDaysUTC(end, -span);
-  const previousEnd = addDaysUTC(end, -1);
-
-  return {
-    current: { start: toISO(currentStart), end: toISO(end) },
-    previous: { start: toISO(previousStart), end: toISO(previousEnd) },
-  };
-}
-
 export async function GET(req: Request) {
   try {
     const url = new URL(req.url);
     const sp = url.searchParams;
 
-    const gran = (sp.get("granularity") || sp.get("g") || "d").trim() as Gran;
+    const gran = (
+      sp.get("granularity") ||
+      sp.get("g") ||
+      "d"
+    ).trim() as WindowGranularity;
     if (!["d", "w", "m", "y"].includes(gran)) {
       return NextResponse.json(
         { code: 400, error: "granularity inválida. Usa d|w|m|y" },
@@ -91,12 +44,13 @@ export async function GET(req: Request) {
       );
     }
 
-    // Permite fijar el ancla de fin por query (?end=YYYY-MM-DD); si no, ayer UTC
-    const endISO = sp.get("end") || undefined;
+    // Permite fijar start/end por query; si no, usa defaults (ayer UTC)
+    const startISO = sp.get("start") || null;
+    const endISO = sp.get("end") || null;
     const db = sp.get("db") || undefined;
 
-    // 1) Calcula los rangos con la política pedida
-    const range = computeRanges(gran, endISO);
+    // 1) Calcula los rangos usando computeRangesForKPI (política estándar)
+    const ranges = computeRangesForKPI(gran, startISO, endISO);
 
     // 2) Convierte fechas YYYY-MM-DD a YYYYMMDD para el API de Mindsaic
     const formatDateForMindsaic = (dateISO: string) =>
@@ -110,11 +64,11 @@ export async function GET(req: Request) {
     const payload = {
       patterns,
       granularity: "d", // SIEMPRE "d" para Mindsaic (granularity del usuario solo afecta rangos)
-      ...(range.current.start
-        ? { startTime: formatDateForMindsaic(range.current.start) }
+      ...(ranges.current.start
+        ? { startTime: formatDateForMindsaic(ranges.current.start) }
         : null),
-      ...(range.current.end
-        ? { endTime: formatDateForMindsaic(range.current.end) }
+      ...(ranges.current.end
+        ? { endTime: formatDateForMindsaic(ranges.current.end) }
         : null),
       ...(db ? { db } : null),
     };
@@ -144,7 +98,7 @@ export async function GET(req: Request) {
       ...json,
       meta: {
         ...(json?.meta ?? {}),
-        range,
+        range: ranges,
         granularity: gran,
         timezone: "UTC",
       },
