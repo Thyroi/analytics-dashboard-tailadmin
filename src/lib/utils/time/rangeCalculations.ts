@@ -4,8 +4,12 @@
  * ⚠️ MIGRADO A UTC - Usa parseISO, toISO, addDaysUTC en lugar de new Date() y .setDate()
  */
 
-import type { Granularity } from "@/lib/types";
+import type { Granularity, WindowGranularity } from "@/lib/types";
 import { addDaysUTC, parseISO, toISO } from "./datetime";
+import {
+  determineVisualizationGranularityByDuration as determineGranularityByDuration,
+  toRequestGranularity,
+} from "./granularityHelpers";
 
 export type DateRange = {
   start: string; // YYYY-MM-DD
@@ -33,30 +37,15 @@ function calculateDurationDays(startDate: string, endDate: string): number {
 }
 
 /**
- * Determina la granularidad automática para VISUALIZACIÓN basada en la duración
- * NOTA: Esta es granularidad de BUCKETS/SERIES, NO granularidad de GA4 requests
- */
-function determineVisualizationGranularityByDuration(
-  durationDays: number
-): Granularity {
-  if (durationDays <= 32) {
-    return "d"; // día: 1-31 días
-  } else if (durationDays <= 90) {
-    return "w"; // semana: 32-90 días
-  } else {
-    return "m"; // mes: 91+ días (incluyendo años, hasta 32 buckets)
-  }
-}
-
-/**
  * Determina la granularidad de GA4 request basada en la granularidad del UI
  * REGLA: Solo 'y' usa yearMonth dimension, todo lo demás usa date dimension
+ *
+ * @deprecated Use toRequestGranularity(uiGranularity, { target: "ga4" }) from granularityHelpers instead
  */
-function determineGA4Granularity(uiGranularity: Granularity): Granularity {
-  // Para GA4 requests:
-  // - UI granularidades d, w, m → GA4 usa "d" (date dimension)
-  // - UI granularidad y → GA4 usa "y" (yearMonth dimension)
-  return uiGranularity === "y" ? "y" : "d";
+export function determineGA4Granularity(uiGranularity: Granularity): "d" | "y" {
+  return toRequestGranularity(uiGranularity as WindowGranularity, {
+    target: "ga4",
+  });
 }
 
 /**
@@ -116,7 +105,7 @@ export function calculatePreviousPeriodAndGranularity(
   }
 
   // Determinar granularidad automática para visualización
-  const granularity = determineVisualizationGranularityByDuration(durationDays);
+  const granularity = determineGranularityByDuration(durationDays);
 
   // Calcular rango anterior
   const prevRange = calculatePreviousRange(
@@ -192,6 +181,6 @@ export function calculatePreviousPeriodOnly(
 }
 
 /**
- * Exportar utilidades de granularidad
+ * Re-exportar utilidades de granularidad para compatibilidad
  */
-export { determineGA4Granularity, determineVisualizationGranularityByDuration };
+export { determineVisualizationGranularityByDuration } from "./granularityHelpers";

@@ -9,11 +9,28 @@ import type * as React from "react";
 export type Granularity = "d" | "w" | "m" | "y";
 export type KPIBucket = "day" | "week" | "month" | "year";
 
+/**
+ * WindowGranularity: granularidad para ventana de visualización (UI/charts)
+ * Soporta todas las opciones: día, semana, mes, año
+ */
+export type WindowGranularity = "d" | "w" | "m" | "y";
+
+/**
+ * RequestGranularity: granularidad enviada a APIs externas (GA4, Chatbot)
+ * Solo soporta: día o año (las APIs solo trabajan con estas dos)
+ */
+export type RequestGranularity = "d" | "y";
+
 /** Serie simple para gráficos (línea/área/barras) */
 export type SeriesPoint = { label: string; value: number };
 
 /** Pie/Donut datum */
-export type DonutDatum = { id?: string; label: string; value: number; color?: string };
+export type DonutDatum = {
+  id?: string;
+  label: string;
+  value: number;
+  color?: string;
+};
 
 /** URLs asociadas a un tag/pueblo (navegación interna/externa) */
 export type Urls = {
@@ -37,7 +54,9 @@ export type SeriesDict = Record<string, Record<string, number>>;
 export type StaticImageImport = { src: string };
 
 /** Type guard para StaticImageImport */
-export function isStaticImageImport(value: unknown): value is StaticImageImport {
+export function isStaticImageImport(
+  value: unknown
+): value is StaticImageImport {
   return typeof value === "object" && value !== null && "src" in value;
 }
 
