@@ -1,7 +1,7 @@
 # PR #2: StickyHeaderBar - Clamp Único a Yesterday UTC
 
-**Branch:** main (direct commit)  
-**Título:** `feat(date-picker): clamp único a ayer UTC y coordinación con granularidad`  
+**Branch:** main (direct commit)
+**Título:** `feat(date-picker): clamp único a ayer UTC y coordinación con granularidad`
 **Commit:** `feat(sticky-header): end clamp a yesterdayUTC y handlers de granularidad con lock`
 
 ---
@@ -17,9 +17,10 @@ Implementar una única capa responsable del clamp a yesterday (DatePicker), elim
 ### 1. DateRangePicker - Única Capa de Clamp (`DateRangePicker.tsx`)
 
 **ANTES:**
+
 ```typescript
 // DatePicker clampaba con maxDate
-maxDate: yesterdayUTC()
+maxDate: yesterdayUTC();
 
 // Pero otros layers TAMBIÉN restaban días:
 // - UnifiedTimeContext.setRange() clampaba a yesterday
@@ -28,10 +29,11 @@ maxDate: yesterdayUTC()
 ```
 
 **DESPUÉS:**
+
 ```typescript
 /**
  * DateRangePicker - Única capa responsable de clamp a yesterday
- * 
+ *
  * POLÍTICA DE CLAMP:
  * - maxDate: yesterdayUTC() - Bloquea selección de fechas futuras
  * - onChange: Clamp end a yesterdayUTC() si excede
@@ -42,23 +44,24 @@ const maxDateLimit = yesterdayUTC();
 onChange: (dates) => {
   if (dates.length === 2) {
     let [start, end] = dates;
-    
+
     // CLAMP ÚNICO: Si end > yesterday, clampar a yesterday
     if (end > maxDateLimit) {
       end = maxDateLimit;
     }
-    
+
     // CLAMP: Si start > end después del clamp, ajustar start
     if (start > end) {
       start = end;
     }
-    
+
     onRangeChange(start, end);
   }
-}
+};
 ```
 
 **Beneficios:**
+
 - ✅ Una sola fuente de verdad para el límite superior de fechas
 - ✅ Elimina posible doble offset (DatePicker -1 + Context -1 = -2 días)
 - ✅ Las capas downstream confían en las fechas sin modificaciones
@@ -68,6 +71,7 @@ onChange: (dates) => {
 ### 2. Sistema de Lock de Granularidad
 
 **Nuevo campo en TimeframeState:**
+
 ```typescript
 type TimeframeState = {
   mode: Mode;
@@ -79,6 +83,7 @@ type TimeframeState = {
 ```
 
 **Estados del Lock:**
+
 - `false` (UNLOCKED): La granularidad se recalcula automáticamente según duración del rango
 - `true` (LOCKED): El usuario forzó una granularidad específica, no recalcular
 
@@ -91,7 +96,7 @@ type TimeframeState = {
 ```typescript
 /**
  * setGranularity: Usuario fuerza una granularidad específica
- * 
+ *
  * POLÍTICA:
  * - Activa LOCK de granularidad (no recalcular automáticamente)
  * - Aplica preset de fechas según granularidad
@@ -108,6 +113,7 @@ const setGranularity = useCallback((g: Granularity) => {
 ```
 
 **Ejemplo:**
+
 1. Usuario clickea tab "Semana" → granularity='w', lock=true
 2. Usuario selecciona rango custom de 45 días → mantiene 'w' (locked)
 3. Usuario clickea "Limpiar" → vuelve a preset y lock=false
@@ -119,32 +125,36 @@ const setGranularity = useCallback((g: Granularity) => {
 ```typescript
 /**
  * setRange: Usuario selecciona rango custom en DatePicker
- * 
+ *
  * POLÍTICA:
  * - DatePicker ya clampó end a yesterdayUTC() (NO hacer clamp adicional)
  * - Si lock=false → recalcular windowGranularity automáticamente
  * - Si lock=true → mantener granularidad del usuario
  * - Cambia a modo "range"
  */
-const setRange = useCallback((start: Date, end: Date) => {
-  // NO CLAMPAR AQUÍ - DatePicker ya lo hizo
-  // Confiar en las fechas que vienen del DatePicker
-  setStartDate(start);
-  setEndDate(end);
-  setMode("range");
+const setRange = useCallback(
+  (start: Date, end: Date) => {
+    // NO CLAMPAR AQUÍ - DatePicker ya lo hizo
+    // Confiar en las fechas que vienen del DatePicker
+    setStartDate(start);
+    setEndDate(end);
+    setMode("range");
 
-  // Si granularidad NO está locked, recalcular automáticamente por duración
-  if (!isGranularityLocked) {
-    const startISO = toISO(start);
-    const endISO = toISO(end);
-    const autoGranularity = getWindowGranularityFromRange(startISO, endISO);
-    setGranularityState(autoGranularity);
-  }
-  // Si está locked, mantener granularidad actual del usuario
-}, [isGranularityLocked]);
+    // Si granularidad NO está locked, recalcular automáticamente por duración
+    if (!isGranularityLocked) {
+      const startISO = toISO(start);
+      const endISO = toISO(end);
+      const autoGranularity = getWindowGranularityFromRange(startISO, endISO);
+      setGranularityState(autoGranularity);
+    }
+    // Si está locked, mantener granularidad actual del usuario
+  },
+  [isGranularityLocked]
+);
 ```
 
 **Ejemplo:**
+
 1. Usuario selecciona rango de 20 días (lock=false) → auto-calcula granularity='d'
 2. Usuario selecciona rango de 60 días (lock=false) → auto-calcula granularity='w'
 3. Usuario clickea tab "Mes" (lock=true), luego selecciona rango de 20 días → mantiene 'm' (locked)
@@ -156,7 +166,7 @@ const setRange = useCallback((start: Date, end: Date) => {
 ```typescript
 /**
  * clearRange: Limpiar rango custom y volver a preset
- * 
+ *
  * POLÍTICA:
  * - Volver a preset según granularidad actual
  * - DESBLOQUEAR lock (permitir recálculo automático)
@@ -180,7 +190,7 @@ Nueva utilidad para calcular granularidad automática basada en duración:
 ```typescript
 /**
  * Cálculo de Window Granularity basado en duración de rango
- * 
+ *
  * REGLAS:
  * - Duración ≤ 32 días → 'd' (diaria)
  * - Duración 33-90 días → 'w' (semanal)
@@ -207,6 +217,7 @@ export function getWindowGranularityFromRange(
 ```
 
 **Separación de Conceptos:**
+
 - **Window Granularity**: Controla tamaño de ventana y bucketing de series (d/w/m)
 - **Request Granularity**: Granularidad del API request (puede ser diferente)
 
@@ -286,11 +297,13 @@ export function getWindowGranularityFromRange(
 ## 🔍 Archivos Modificados
 
 ### 1. **src/components/common/DateRangePicker.tsx**
+
 - ✅ Agregado clamp explícito en onChange
 - ✅ JSDoc con advertencia de única capa de clamp
 - ✅ Validación de start/end después de clamp
 
 ### 2. **src/features/analytics/context/UnifiedTimeContext.tsx**
+
 - ✅ Agregado `isGranularityLocked` al state
 - ✅ `setGranularity()` activa lock
 - ✅ `setRange()` respeta lock, recalcula si unlocked
@@ -299,11 +312,13 @@ export function getWindowGranularityFromRange(
 - ✅ Import de `getWindowGranularityFromRange`
 
 ### 3. **src/features/debug/context/DateRangeContext.tsx**
+
 - ✅ Mismos cambios que UnifiedTimeContext
 - ✅ Agregado `isGranularityLocked` al type
 - ✅ Handlers actualizados con lock
 
 ### 4. **src/lib/utils/time/windowGranularity.ts** (NUEVO)
+
 - ✅ `calculateDurationDays()` - Calcula días entre fechas
 - ✅ `calculateWindowGranularity()` - d/w/m según duración
 - ✅ `getWindowGranularityFromRange()` - Helper directo desde ISOs
@@ -330,16 +345,19 @@ npm run test:run
 ## 📈 Impacto
 
 ### Archivos Modificados: 4
+
 1. `DateRangePicker.tsx` - Clamp único implementado
 2. `UnifiedTimeContext.tsx` - Lock de granularidad + handlers mejorados
 3. `DateRangeContext.tsx` - Lock de granularidad
 4. `windowGranularity.ts` - Nueva utilidad (creada)
 
 ### Líneas Modificadas: ~200 líneas
+
 - ~120 líneas de código refactorizado
 - ~80 líneas de JSDoc y comentarios
 
 ### Beneficios:
+
 1. ✅ **Elimina doble offset** - Solo DatePicker clampea a yesterday
 2. ✅ **Granularidad inteligente** - Auto-calcula según duración cuando no está locked
 3. ✅ **Respeta intención del usuario** - Lock preserva granularidad forzada
@@ -351,14 +369,17 @@ npm run test:run
 ## 🚀 Próximos Pasos (Futuros PRs)
 
 ### PR-3: Eliminar offsets redundantes en servicios
+
 - Buscar y eliminar `.getDate() - 1` en hooks/servicios
 - Confiar en fechas del contexto sin modificaciones
 
 ### PR-4: Agregar indicador visual de lock
+
 - Mostrar icono de 🔒 cuando granularidad está locked
 - Tooltip explicando comportamiento
 
 ### PR-5: Tests de integración para lock
+
 - Test: Forzar 'm', seleccionar 10 días → mantiene 'm'
 - Test: No forzar, seleccionar 60 días → auto-calcula 'w'
 - Test: Limpiar → desbloquea lock
@@ -370,11 +391,13 @@ npm run test:run
 ### Diferencia con PR-1:
 
 **PR-1 (UTC Migration):**
+
 - Migró cálculos de fechas a UTC
 - Reemplazó `new Date()` y `.setDate()` por `addDaysUTC()`
 - Enfoque: Consistency timezone
 
 **PR-2 (Clamp Único + Lock):**
+
 - Establece DatePicker como única capa de clamp
 - Agrega lock de granularidad
 - Enfoque: Single source of truth + Smart granularity
@@ -382,6 +405,7 @@ npm run test:run
 ### Por qué el lock es importante:
 
 Sin lock, cada selección de rango recalcularía granularidad:
+
 ```
 Usuario: "Quiero ver año completo en buckets mensuales"
 1. Clickea tab "Mes" → granularity='m'
@@ -405,7 +429,7 @@ Sin lock:
 
 ---
 
-**Status:** ✅ READY TO MERGE  
-**Tests:** ✅ 132/132 passing  
-**TypeScript:** ✅ No errors  
+**Status:** ✅ READY TO MERGE
+**Tests:** ✅ 132/132 passing
+**TypeScript:** ✅ No errors
 **Breaking Changes:** ❌ None (backward compatible - isGranularityLocked es internal state)

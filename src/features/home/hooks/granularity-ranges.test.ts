@@ -59,7 +59,7 @@ describe("Granularity Ranges Debug", () => {
     });
   });
 
-  it("should ensure week includes 7 days and previous week is shifted correctly", () => {
+  it("should ensure week includes 7 days and previous week is contiguo correctly", () => {
     // Para granularidad "w", usar solo endDate para obtener una semana completa
     const ranges = computeRangesForSeries("w", null, testDate);
 
@@ -76,26 +76,21 @@ describe("Granularity Ranges Debug", () => {
     expect(currentDays).toBe(7);
     expect(previousDays).toBe(7);
 
-    // Verificar que el período anterior está correctamente desplazado
-    // shiftPrevRange con shiftDays=1 para granularity "w" desplaza todo el rango 1 día atrás
+    // Verificar que el período anterior es contiguo al actual
+    // NUEVO COMPORTAMIENTO: Previous termina 1 día antes de que inicie current
     const currentStart = new Date(ranges.current.start);
-    const currentEnd = new Date(ranges.current.end);
-    const previousStart = new Date(ranges.previous.start);
     const previousEnd = new Date(ranges.previous.end);
 
-    // Previous debería ser Current desplazado -1 día en ambos extremos
-    const expectedPrevStart = new Date(currentStart);
-    expectedPrevStart.setUTCDate(expectedPrevStart.getUTCDate() - 1);
-
-    const expectedPrevEnd = new Date(currentEnd);
+    // Previous.end debe ser exactamente 1 día antes de current.start
+    const expectedPrevEnd = new Date(currentStart);
     expectedPrevEnd.setUTCDate(expectedPrevEnd.getUTCDate() - 1);
 
-    expect(previousStart.toISOString().split("T")[0]).toBe(
-      expectedPrevStart.toISOString().split("T")[0]
-    );
     expect(previousEnd.toISOString().split("T")[0]).toBe(
       expectedPrevEnd.toISOString().split("T")[0]
     );
+
+    // Verificar que previous tiene la misma duración que current (ventana contigua)
+    expect(previousDays).toBe(currentDays);
   });
 });
 

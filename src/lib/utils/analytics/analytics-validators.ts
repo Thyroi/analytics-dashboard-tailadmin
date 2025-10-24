@@ -2,12 +2,17 @@
  * /lib/utils/analytics-validators.ts
  * Guards y validadores para endpoints de analytics
  * Hace el código más robusto y seguro
- * 
+ *
  * ⚠️ MIGRADO A UTC - Usa addDaysUTC, todayUTC en lugar de .setDate()
  */
 
 import type { Granularity } from "@/lib/types";
-import { addDaysUTC, parseISO, todayUTC, toISO } from "@/lib/utils/time/datetime";
+import {
+  addDaysUTC,
+  parseISO,
+  todayUTC,
+  toISO,
+} from "@/lib/utils/time/datetime";
 
 /* =================== TIPOS PARA VALIDACIÓN =================== */
 

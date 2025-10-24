@@ -1,7 +1,7 @@
 # PR #1: Normalización a UTC y Utilidades Unificadas
 
-**Branch:** main (direct commit)  
-**Título:** `feat(time): normalizar a UTC y utilidades unificadas`  
+**Branch:** main (direct commit)
+**Título:** `feat(time): normalizar a UTC y utilidades unificadas`
 **Commit:** `feat(time): centraliza todayUTC/yesterdayUTC/addDaysUTC/parseISO/toISO y reemplaza usos locales`
 
 ---
@@ -25,6 +25,7 @@ Agregado JSDoc completo con ejemplos y advertencias:
 - ✅ `addMonthsUTC(date, months)` - Suma/resta meses (UTC)
 
 **Advertencias agregadas:**
+
 - ⚠️ "SIEMPRE usa `parseISO()` en lugar de `new Date("YYYY-MM-DD")` para evitar timezone drift"
 - ⚠️ "SIEMPRE usa `addDaysUTC()` en lugar de `.setDate()` para evitar mutaciones"
 - ⚠️ "SIEMPRE usa `todayUTC()` en lugar de `new Date()` para cálculos de fechas"
@@ -34,7 +35,9 @@ Agregado JSDoc completo con ejemplos y advertencias:
 ### 2. Archivos Migrados a UTC
 
 #### **Contextos** (CRÍTICO - High Risk)
+
 - ✅ `src/features/analytics/context/UnifiedTimeContext.tsx`
+
   - Reemplazado `new Date()` → `todayUTC()` / `addDaysUTC()`
   - Reemplazado `.setDate()` → `addDaysUTC()`
   - Reemplazado `.toISOString().split('T')[0]` → `toISO()`
@@ -46,7 +49,9 @@ Agregado JSDoc completo con ejemplos y advertencias:
   - Importa `addDaysUTC`, `todayUTC`, `toISO`
 
 #### **Utilidades de Tiempo** (CRÍTICO)
+
 - ✅ `src/lib/utils/time/rangeCalculations.ts`
+
   - Agregado import: `import { addDaysUTC, parseISO, toISO } from "./datetime"`
   - Función `calculateDurationDays` usa `parseISO` en lugar de `new Date(string)`
   - Función `calculatePreviousRange` usa `addDaysUTC` en lugar de `.setDate()`
@@ -58,6 +63,7 @@ Agregado JSDoc completo con ejemplos y advertencias:
   - Agregado JSDoc con advertencia de migración UTC
 
 #### **Hooks** (MEDIUM)
+
 - ✅ `src/features/analytics/hooks/useTopPagesTable.ts`
   - Import agregado: `import { addDaysUTC, toISO } from "@/lib/utils/time/datetime"`
   - Reemplazado `new Date(startDate)` → uso directo con `addDaysUTC`
@@ -65,6 +71,7 @@ Agregado JSDoc completo con ejemplos y advertencias:
   - Reemplazado `.toISOString().split('T')[0]` → `toISO()`
 
 #### **Pages** (MEDIUM)
+
 - ✅ `src/app/debug/page.tsx`
   - Import agregado: `import { addDaysUTC, todayUTC, toISO } from "@/lib/utils/time/datetime"`
   - Reemplazado `new Date()` + `.setDate()` → `addDaysUTC(todayUTC(), -1)`
@@ -72,6 +79,7 @@ Agregado JSDoc completo con ejemplos y advertencias:
   - Eliminado `.setHours(0, 0, 0, 0)` (ya manejado por UTC)
 
 #### **API Routes** (HIGH)
+
 - ✅ `src/app/api/analytics/v1/top-pages-table/route.ts`
   - Import agregado: `import { addDaysUTC, addMonthsUTC, parseISO, toISO } from "@/lib/utils/time/datetime"`
   - Función `calculateShiftedPeriod` completamente refactorizada:
@@ -81,6 +89,7 @@ Agregado JSDoc completo con ejemplos y advertencias:
   - Agregado JSDoc con advertencia de migración UTC
 
 #### **Validators** (MEDIUM)
+
 - ✅ `src/lib/utils/analytics/analytics-validators.ts`
   - Import agregado: `import { addDaysUTC, todayUTC } from "@/lib/utils/time/datetime"`
   - Reemplazado `.setFullYear()` → `addDaysUTC(todayUTC(), -365 * 5)` para 5 años atrás
@@ -92,6 +101,7 @@ Agregado JSDoc completo con ejemplos y advertencias:
 ## 🔍 Archivos NO Migrados (Por Diseño)
 
 ### Formateo de Ejes X (NO TOCAR - Fuera de Scope)
+
 - ❌ `src/lib/analytics/format.ts` - Formateo de labels para gráficos
 - ❌ `src/lib/utils/charts/formatChartLabels*.ts` - Formateo de ejes
 - ❌ `src/lib/utils/time/timeAxis*.ts` - Generación de ticks para ejes
@@ -99,6 +109,7 @@ Agregado JSDoc completo con ejemplos y advertencias:
 **Razón:** Estos archivos solo formatean strings para display, no manipulan fechas ni crean rangos. Cambiarlos podría romper visualización de gráficos.
 
 ### Archivos Legacy con `.setDate()` (Fuera de Scope del PR-1)
+
 - ⏸️ `src/lib/utils/data/seriesAndDonuts.ts` - Loop con `.setDate(current.getDate() + 1)`
 - ⏸️ `src/lib/utils/core/granularityMapping.ts` - Múltiples loops con `.setDate()`
 
@@ -119,6 +130,7 @@ npm run test:run
 ```
 
 **Tests ejecutados:**
+
 - ✅ API routes tests
 - ✅ Analytics hooks tests
 - ✅ Time utilities tests
@@ -133,6 +145,7 @@ npm run test:run
 ## 📊 Impacto
 
 ### Archivos Modificados: 10
+
 - 2 Contextos críticos (UnifiedTimeContext, DateRangeContext)
 - 3 Utilidades de tiempo (datetime.ts, rangeCalculations.ts, deltaDateCalculation.ts)
 - 1 Hook (useTopPagesTable)
@@ -142,10 +155,12 @@ npm run test:run
 - 1 Documentación (datetime.ts JSDoc)
 
 ### Líneas Modificadas: ~250 líneas
+
 - ~150 líneas de código migrado
 - ~100 líneas de JSDoc agregado
 
 ### Beneficios:
+
 1. ✅ **Elimina timezone drift** - Todos usan UTC consistentemente
 2. ✅ **Elimina mutaciones** - addDaysUTC retorna nueva instancia
 3. ✅ **Mejor documentación** - JSDoc con ejemplos y advertencias
@@ -157,14 +172,17 @@ npm run test:run
 ## 🚀 Próximos Pasos (Futuros PRs)
 
 ### PR-2: Migrar seriesAndDonuts.ts y granularityMapping.ts
+
 - Refactor loops con `.setDate()` → `addDaysUTC()`
 - Requiere análisis de lógica de bucketing
 
 ### PR-3: Agregar helper `yesterdayUTC()` exportado
+
 - Actualmente local en varios archivos
 - Centralizar en datetime.ts como función exportada
 
 ### PR-4: Agregar tests específicos de timezone
+
 - Test: parseISO retorna UTC midnight
 - Test: addDaysUTC no causa timezone drift
 - Test: comparar behavior local Date vs UTC
@@ -176,13 +194,15 @@ npm run test:run
 ### Patrón de Migración Usado:
 
 **ANTES:**
+
 ```typescript
 const yesterday = new Date();
 yesterday.setDate(yesterday.getDate() - 1);
-const iso = yesterday.toISOString().split('T')[0];
+const iso = yesterday.toISOString().split("T")[0];
 ```
 
 **DESPUÉS:**
+
 ```typescript
 import { addDaysUTC, todayUTC, toISO } from "@/lib/utils/time/datetime";
 
@@ -191,6 +211,7 @@ const iso = toISO(yesterday);
 ```
 
 ### Beneficios del Patrón:
+
 - ✅ Más corto (3 líneas → 1 línea)
 - ✅ Inmutable (no muta variables)
 - ✅ Sin timezone issues (UTC explícito)
@@ -206,7 +227,7 @@ const iso = toISO(yesterday);
 
 ---
 
-**Status:** ✅ READY TO MERGE  
-**Tests:** ✅ 132/132 passing  
-**TypeScript:** ✅ No errors  
+**Status:** ✅ READY TO MERGE
+**Tests:** ✅ 132/132 passing
+**TypeScript:** ✅ No errors
 **Breaking Changes:** ❌ None (internal refactor only)

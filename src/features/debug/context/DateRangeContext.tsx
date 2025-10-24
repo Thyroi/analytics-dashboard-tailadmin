@@ -1,6 +1,6 @@
 /**
  * Contexto para manejar fechas con nueva lógica de rangos
- * 
+ *
  * ⚠️ MIGRADO A UTC - Reemplaza new Date() y .setDate() por addDaysUTC()
  * ⚠️ PR-2: Agregado lock de granularidad y recálculo automático por duración
  */
@@ -129,7 +129,7 @@ export function DateRangeProvider({
   const handleSetGranularity = (g: Granularity) => {
     setGranularity(g);
     setIsGranularityLocked(true); // LOCK cuando usuario fuerza granularidad
-    
+
     if (mode === "granularity") {
       // Mapear granularidad a período y ajustar fechas
       let period: "dia" | "semana" | "mes" | "ano";

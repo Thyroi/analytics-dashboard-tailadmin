@@ -3,7 +3,12 @@ import {
   normalizePropertyId,
   resolvePropertyId,
 } from "@/lib/utils/analytics/ga";
-import { addDaysUTC, addMonthsUTC, parseISO, toISO } from "@/lib/utils/time/datetime";
+import {
+  addDaysUTC,
+  addMonthsUTC,
+  parseISO,
+  toISO,
+} from "@/lib/utils/time/datetime";
 import { analyticsdata_v1beta, google } from "googleapis";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -29,7 +34,7 @@ export type TopPagesTableResponse = {
 
 /**
  * Calcula el período anterior con shift (UTC)
- * 
+ *
  * ⚠️ MIGRADO A UTC - Usa parseISO, addDaysUTC, addMonthsUTC en lugar de .setDate()
  */
 function calculateShiftedPeriod(

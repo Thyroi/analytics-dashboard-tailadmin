@@ -20,7 +20,7 @@ export type UseTopPagesTableParams = {
 
 /**
  * Hook para tabla de Top Pages (UTC)
- * 
+ *
  * ⚠️ MIGRADO A UTC - Usa addDaysUTC y toISO en lugar de .setDate()
  */
 export function useTopPagesTable(params: UseTopPagesTableParams = {}) {

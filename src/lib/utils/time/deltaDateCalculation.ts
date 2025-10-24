@@ -10,7 +10,7 @@ import { addDaysUTC, toISO } from "./datetime";
  *
  * Para otras granularidades:
  * - Usa las fechas tal como están
- * 
+ *
  * ⚠️ MIGRADO A UTC - Usa addDaysUTC y toISO en lugar de .setDate()
  */
 export function getCorrectDatesForGranularity(

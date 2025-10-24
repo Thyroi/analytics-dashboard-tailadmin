@@ -30,11 +30,8 @@ export default function DebugPage() {
   // Convertir fechas a strings para el hook
   // Para el nuevo API, siempre necesitamos start y end
   const startDateStr =
-    mode === "range"
-      ? toISO(startDate)
-      : toISO(addDaysUTC(todayUTC(), -30)); // 30 días atrás por defecto
-  const endDateStr =
-    mode === "range" ? toISO(endDate) : currentEndISO;
+    mode === "range" ? toISO(startDate) : toISO(addDaysUTC(todayUTC(), -30)); // 30 días atrás por defecto
+  const endDateStr = mode === "range" ? toISO(endDate) : currentEndISO;
 
   // Obtener datos de towns con los parámetros
   const townHookResult = useResumenTown({

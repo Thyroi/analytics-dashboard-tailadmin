@@ -50,7 +50,7 @@ function yesterdayUTC(): Date {
 
 /**
  * Calcula el rango de fechas según el período seleccionado (UTC)
- * 
+ *
  * ⚠️ Migrado a UTC - Reemplaza new Date() y .setDate() por addDaysUTC()
  */
 function calculateRangeForPeriod(period: "dia" | "semana" | "mes" | "ano"): {
@@ -133,7 +133,7 @@ export function createTimeContext(contextName: string) {
 
     /**
      * setGranularity: Usuario fuerza una granularidad específica
-     * 
+     *
      * POLÍTICA:
      * - Activa LOCK de granularidad (no recalcular automáticamente)
      * - Aplica preset de fechas según granularidad
@@ -150,33 +150,39 @@ export function createTimeContext(contextName: string) {
 
     /**
      * setRange: Usuario selecciona rango custom en DatePicker
-     * 
+     *
      * POLÍTICA:
      * - DatePicker ya clampó end a yesterdayUTC() (NO hacer clamp adicional)
      * - Si lock=false → recalcular windowGranularity automáticamente
      * - Si lock=true → mantener granularidad del usuario
      * - Cambia a modo "range"
      */
-    const setRange = useCallback((start: Date, end: Date) => {
-      // NO CLAMPAR AQUÍ - DatePicker ya lo hizo
-      // Confiar en las fechas que vienen del DatePicker
-      setStartDate(start);
-      setEndDate(end);
-      setMode("range");
+    const setRange = useCallback(
+      (start: Date, end: Date) => {
+        // NO CLAMPAR AQUÍ - DatePicker ya lo hizo
+        // Confiar en las fechas que vienen del DatePicker
+        setStartDate(start);
+        setEndDate(end);
+        setMode("range");
 
-      // Si granularidad NO está locked, recalcular automáticamente por duración
-      if (!isGranularityLocked) {
-        const startISO = toISO(start);
-        const endISO = toISO(end);
-        const autoGranularity = getWindowGranularityFromRange(startISO, endISO);
-        setGranularityState(autoGranularity);
-      }
-      // Si está locked, mantener granularidad actual del usuario
-    }, [isGranularityLocked]);
+        // Si granularidad NO está locked, recalcular automáticamente por duración
+        if (!isGranularityLocked) {
+          const startISO = toISO(start);
+          const endISO = toISO(end);
+          const autoGranularity = getWindowGranularityFromRange(
+            startISO,
+            endISO
+          );
+          setGranularityState(autoGranularity);
+        }
+        // Si está locked, mantener granularidad actual del usuario
+      },
+      [isGranularityLocked]
+    );
 
     /**
      * clearRange: Limpiar rango custom y volver a preset
-     * 
+     *
      * POLÍTICA:
      * - Volver a preset según granularidad actual
      * - DESBLOQUEAR lock (permitir recálculo automático)

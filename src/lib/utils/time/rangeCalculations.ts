@@ -1,6 +1,6 @@
 /**
  * Cálculo de rangos de fechas y granularidad automática
- * 
+ *
  * ⚠️ MIGRADO A UTC - Usa parseISO, toISO, addDaysUTC en lugar de new Date() y .setDate()
  */
 
@@ -21,7 +21,7 @@ export type PeriodCalculation = {
 
 /**
  * Calcula la duración en días entre dos fechas (UTC)
- * 
+ *
  * ⚠️ Usa parseISO para evitar timezone drift
  */
 function calculateDurationDays(startDate: string, endDate: string): number {
@@ -61,7 +61,7 @@ function determineGA4Granularity(uiGranularity: Granularity): Granularity {
 
 /**
  * Calcula el rango anterior del mismo tamaño (UTC)
- * 
+ *
  * ⚠️ Usa addDaysUTC en lugar de .setDate() para evitar mutaciones y timezone drift
  */
 function calculatePreviousRange(
@@ -83,7 +83,7 @@ function calculatePreviousRange(
 
 /**
  * Función principal: calcula período anterior y granularidad automática (UTC)
- * 
+ *
  * ⚠️ Validaciones usan parseISO para evitar timezone drift
  */
 export function calculatePreviousPeriodAndGranularity(
