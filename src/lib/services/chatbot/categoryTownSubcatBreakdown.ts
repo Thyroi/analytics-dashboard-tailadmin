@@ -1,11 +1,11 @@
 /**
- * Servicio para obtener breakdown de subcategorías dentro de un town+categoría
+ * Servicio para obtener breakdown de subcategorías dentro de categoría+town
  *
- * NIVEL 2: Town+Categoría → Subcategorías
+ * NIVEL 2: Categoría+Town → Subcategorías (category-first)
  *
  * Reglas:
- * - Pattern: "root.<townId>.<categoryId>.*" (town + categoría específica)
- * - Filtro: profundidad === 4 (root.<town>.<cat>.<subcat>)
+ * - Pattern: "root.<categoriaRaw>.<townRaw>.*" (categoría + town específico)
+ * - Filtro: profundidad === 4 (root.<categoria>.<town>.<subcat>)
  * - POST dual: current + previous con granularity="d"
  * - Subcategorías: texto crudo normalizado (trim, espacios, preservar acentos)
  * - Renderizar todas las subcategorías encontradas (vacío si no hay)
@@ -26,7 +26,7 @@ import { computeRangesForKPI } from "@/lib/utils/time/timeWindows";
 
 /* ==================== Tipos ==================== */
 
-export type TownCategorySubcatData = {
+export type CategoryTownSubcatData = {
   subcategoryName: string; // Texto crudo normalizado
   currentTotal: number;
   prevTotal: number;
@@ -35,10 +35,10 @@ export type TownCategorySubcatData = {
   series?: Array<{ time: string; value: number }>; // Series para comparativa
 };
 
-export type TownCategorySubcatBreakdownResponse = {
-  townId: TownId;
+export type CategoryTownSubcatBreakdownResponse = {
   categoryId: CategoryId;
-  subcategories: TownCategorySubcatData[];
+  townId: TownId;
+  subcategories: CategoryTownSubcatData[];
   meta: {
     granularity: WindowGranularity;
     timezone: string;
@@ -63,15 +63,17 @@ export type TownCategorySubcatBreakdownResponse = {
   };
 };
 
-export type FetchTownCategorySubcatBreakdownParams = {
-  townId: TownId;
+export type FetchCategoryTownSubcatBreakdownParams = {
   categoryId: CategoryId;
+  townId: TownId;
   startISO?: string | null;
   endISO?: string | null;
   windowGranularity?: WindowGranularity;
   db?: string;
-  /** Optional: representative raw segment token (from L1) to query instead of canonical categoryId */
-  representativeRawSegment?: string | null;
+  /** Optional: representative raw segment token for the category (from L1) */
+  representativeCategoryRaw?: string | null;
+  /** Optional: representative raw segment token for the town (from L1) */
+  representativeTownRaw?: string | null;
 };
 
 /* ==================== Helpers ==================== */
@@ -91,15 +93,15 @@ function normalizeSubcategoryName(raw: string): string {
 }
 
 /**
- * Filtra solo claves con profundidad 4: root.<town>.<cat>.<subcat>
+ * Filtra solo claves con profundidad 4: root.<categoria>.<town>.<subcat>
  */
 function parseSubcategories(
   data: Record<string, Array<{ time: string; value: number }>>,
   opts: {
-    townToken: string;
-    townWildcard: boolean;
     categoryToken: string;
     categoryWildcard: boolean;
+    townToken: string;
+    townWildcard: boolean;
   }
 ): Map<string, Array<{ time: string; value: number }>> {
   const result = new Map<string, Array<{ time: string; value: number }>>();
@@ -120,9 +122,9 @@ function parseSubcategories(
     const parts = key.split(".");
     if (parts.length !== 4) continue; // Solo profundidad 4
     if (parts[0] !== "root") continue;
-    if (!matchSeg(parts[1], opts.townToken, opts.townWildcard)) continue;
-    if (!matchSeg(parts[2], opts.categoryToken, opts.categoryWildcard))
+    if (!matchSeg(parts[1], opts.categoryToken, opts.categoryWildcard))
       continue;
+    if (!matchSeg(parts[2], opts.townToken, opts.townWildcard)) continue;
 
     const rawSubcat = parts[3];
     if (!rawSubcat || rawSubcat === "") continue;
@@ -185,7 +187,7 @@ async function fetchMindsaicData(
   signal: AbortSignal
 ): Promise<Record<string, Array<{ time: string; value: number }>>> {
   const payload = {
-    patterns: pattern, // ✅ API espera "patterns" no "pattern"
+    patterns: pattern,
     granularity,
     startTime,
     endTime,
@@ -217,37 +219,40 @@ async function fetchMindsaicData(
 /* ==================== Servicio Principal ==================== */
 
 /**
- * Obtiene breakdown de subcategorías para un town+categoría específico
+ * Obtiene breakdown de subcategorías para categoría+town específico
  */
-export async function fetchTownCategorySubcatBreakdown({
-  townId,
+export async function fetchCategoryTownSubcatBreakdown({
   categoryId,
+  townId,
   startISO = null,
   endISO = null,
   windowGranularity = "d",
   db = "project_huelva",
-  representativeRawSegment = null,
-}: FetchTownCategorySubcatBreakdownParams): Promise<TownCategorySubcatBreakdownResponse> {
-  // 1. Calcular rangos
+  representativeCategoryRaw = null,
+  representativeTownRaw = null,
+}: FetchCategoryTownSubcatBreakdownParams): Promise<CategoryTownSubcatBreakdownResponse> {
+  // 1. Determinar tokens y wildcard para categoría y town
+  const catPat = representativeCategoryRaw
+    ? { token: representativeCategoryRaw, wildcard: false }
+    : getCategorySearchPattern(categoryId);
+  const townPat = representativeTownRaw
+    ? { token: representativeTownRaw, wildcard: false }
+    : getTownSearchPattern(townId);
+
+  // 2. Calcular rangos
   const ranges = computeRangesForKPI(windowGranularity, startISO, endISO);
 
-  // 2. Timeout controller
+  // 3. Timeout controller
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 15000);
 
   try {
-    // 3. Determinar tokens y wildcard para town y categoría
-    const townPat = getTownSearchPattern(townId);
-    const catPat = representativeRawSegment
-      ? { token: representativeRawSegment, wildcard: false }
-      : getCategorySearchPattern(categoryId);
+    // 4. Pattern para Nivel 2 con wildcard selectivo
+    const pattern = `root.${catPat.token}${catPat.wildcard ? "*" : ""}.${
+      townPat.token
+    }${townPat.wildcard ? "*" : ""}.*`;
 
-    // Construir pattern con wildcard selectivo
-    const townPart = `${townPat.token}${townPat.wildcard ? "*" : ""}`;
-    const catPart = `${catPat.token}${catPat.wildcard ? "*" : ""}`;
-    const pattern = `root.${townPart}.${catPart}.*`;
-
-    // 4. POST dual (current + previous) con granularity="d"
+    // 5. POST dual (current + previous) con granularity="d"
     const startTimeCurrent = ranges.current.start.replace(/-/g, "");
     const endTimeCurrent = ranges.current.end.replace(/-/g, "");
     const startTimePrevious = ranges.previous.start.replace(/-/g, "");
@@ -272,28 +277,28 @@ export async function fetchTownCategorySubcatBreakdown({
       ),
     ]);
 
-    // 5. Parsear subcategorías (profundidad 4)
+    // 6. Parsear subcategorías (profundidad 4)
     const currentSubcats = parseSubcategories(currentData, {
-      townToken: townPat.token,
-      townWildcard: townPat.wildcard,
       categoryToken: catPat.token,
       categoryWildcard: catPat.wildcard,
+      townToken: townPat.token,
+      townWildcard: townPat.wildcard,
     });
     const previousSubcats = parseSubcategories(previousData, {
-      townToken: townPat.token,
-      townWildcard: townPat.wildcard,
       categoryToken: catPat.token,
       categoryWildcard: catPat.wildcard,
+      townToken: townPat.token,
+      townWildcard: townPat.wildcard,
     });
 
-    // 6. Obtener todas las subcategorías únicas
+    // 7. Obtener todas las subcategorías únicas
     const allSubcatNames = new Set<string>([
       ...currentSubcats.keys(),
       ...previousSubcats.keys(),
     ]);
 
-    // 7. Construir lista de subcategorías con totales y deltas
-    const subcategories: TownCategorySubcatData[] = Array.from(allSubcatNames)
+    // 8. Construir lista de subcategorías con totales y deltas
+    const subcategories: CategoryTownSubcatData[] = Array.from(allSubcatNames)
       .map((subcatName) => {
         const currentSeries = currentSubcats.get(subcatName) || [];
         const prevSeries = previousSubcats.get(subcatName) || [];
@@ -320,10 +325,10 @@ export async function fetchTownCategorySubcatBreakdown({
       })
       .sort((a, b) => b.currentTotal - a.currentTotal); // Ordenar por total descendente
 
-    // 8. Metadata
+    // 9. Metadata
     return {
-      townId,
       categoryId,
+      townId,
       subcategories,
       meta: {
         granularity: windowGranularity,

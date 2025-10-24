@@ -43,6 +43,7 @@ export type UseChatbotTownTotalsResult = {
   error: Error | null;
   refetch: () => void;
   meta: TownTotalsResponse["meta"] | null;
+  raw: TownTotalsResponse["raw"] | null;
 };
 
 /* ==================== Helper Functions ==================== */
@@ -125,6 +126,7 @@ export function useChatbotTownTotals(
     error: query.error,
     refetch: query.refetch,
     meta: query.data?.meta || null,
+    raw: query.data?.raw || null,
   };
 }
 

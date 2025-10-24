@@ -29,6 +29,8 @@ type Props = {
   subtitle?: string;
   /** Mostrar leyenda */
   showLegend?: boolean;
+  /** Posición de la leyenda (top | bottom) */
+  legendPosition?: "top" | "bottom";
   /** Colores por defecto si no se especifican en series */
   defaultColors?: string[];
   /** Formato personalizado para tooltips */
@@ -57,6 +59,7 @@ export default function GroupedBarChart({
   title,
   subtitle,
   showLegend = true,
+  legendPosition = "top",
   defaultColors = DEFAULT_COLORS,
   tooltipFormatter,
   yAxisFormatter,
@@ -159,9 +162,9 @@ export default function GroupedBarChart({
       },
       legend: {
         show: showLegend,
-        position: "top",
-        horizontalAlign: "left",
-        offsetY: -10,
+        position: legendPosition,
+        horizontalAlign: legendPosition === "bottom" ? "center" : "left",
+        offsetY: legendPosition === "bottom" ? 8 : -10,
         fontSize: "12px",
         fontWeight: 500,
         markers: {
@@ -244,6 +247,7 @@ export default function GroupedBarChart({
     colors,
     height,
     showLegend,
+    legendPosition,
     tooltipFormatter,
     yAxisFormatter,
     optionsExtra,

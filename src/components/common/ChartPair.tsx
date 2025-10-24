@@ -63,6 +63,8 @@ type GroupedBarMode = Base & {
   /** Formato del eje Y */
   yAxisFormatter?: (val: number) => string;
   loading?: boolean;
+  /** Posición de la leyenda del gráfico */
+  legendPosition?: "top" | "bottom";
 };
 
 type Props = LineChartMode | MultiLineMode | GroupedBarMode;
@@ -102,6 +104,7 @@ export default function ChartPair(props: Props) {
             tooltipFormatter={props.tooltipFormatter}
             yAxisFormatter={props.yAxisFormatter}
             loading={props.loading}
+            legendPosition={props.legendPosition}
           />
         )}
       </div>
@@ -175,6 +178,7 @@ function GroupedBarSide({
   tooltipFormatter,
   yAxisFormatter,
   loading = false,
+  legendPosition = "top",
 }: {
   categories: string[];
   groupedSeries: GroupedBarSeries[];
@@ -184,6 +188,7 @@ function GroupedBarSide({
   tooltipFormatter?: (val: number) => string;
   yAxisFormatter?: (val: number) => string;
   loading?: boolean;
+  legendPosition?: "top" | "bottom";
 }) {
   if (loading) {
     return (
@@ -207,6 +212,7 @@ function GroupedBarSide({
       series={groupedSeries}
       height={chartHeight}
       showLegend={true}
+      legendPosition={legendPosition}
       tooltipFormatter={tooltipFormatter}
       yAxisFormatter={yAxisFormatter}
     />

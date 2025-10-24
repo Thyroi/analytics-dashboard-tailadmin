@@ -31,6 +31,7 @@ function ChatbotCategoriesSectionContent() {
     setGranularity,
     setRange,
     clearRange,
+    getCalculatedGranularity,
   } = useTagTimeframe();
 
   // Obtener handlers para invalidación/refetch
@@ -56,9 +57,11 @@ function ChatbotCategoriesSectionContent() {
   }
 
   // Hook principal con React Query (sin useEffect)
+  const effectiveGranularity = getCalculatedGranularity();
+
   const { categories, isLoading, isError, error, refetch } =
     useChatbotCategoryTotals({
-      granularity,
+      granularity: effectiveGranularity,
       startDate: startDateStr,
       endDate: endDateStr,
     });
@@ -123,7 +126,7 @@ function ChatbotCategoriesSectionContent() {
         <div ref={drilldownRef} className="px-4 mb-6">
           <CategoryExpandedCard
             categoryId={selectedCategoryId}
-            granularity={granularity}
+            granularity={effectiveGranularity}
             startDate={startDateStr}
             endDate={endDateStr}
             onClose={handleBackToCategories}

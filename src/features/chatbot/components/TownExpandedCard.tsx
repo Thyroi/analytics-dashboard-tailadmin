@@ -1,16 +1,26 @@
-import ChartPair from "@/components/common/ChartPair";
-import { useMemo, useState } from "react";
+/**
+ * Componente de drilldown expandido para towns (TOWN-FIRST)
+ *
+ * NIVEL 1: Town → Categorías (usando pattern root.<townId>.*)
+ * NIVEL 2: Town+Categoría → Subcategorías (usando pattern root.<townId>.<categoriaRaw>.*)
+ *
+ * Navegación reactiva: Nivel 2 aparece DEBAJO de Nivel 1 (no reemplaza)
+ */
 
-import type { GroupedBarSeries } from "@/components/charts/GroupedBarChart";
+"use client";
+
+import ChartPair from "@/components/common/ChartPair";
 import { CATEGORY_META, type CategoryId } from "@/lib/taxonomy/categories";
 import { TOWN_META, type TownId } from "@/lib/taxonomy/towns";
-import type { DonutDatum, Granularity } from "@/lib/types";
+import type { DonutDatum, WindowGranularity } from "@/lib/types";
+import Image from "next/image";
+import { useMemo, useState } from "react";
 import { useTownCategoryBreakdown } from "../hooks/useTownCategoryBreakdown";
 import TownCategorySubcatDrilldownView from "./TownCategorySubcatDrilldownView";
 
 type Props = {
   townId: string;
-  granularity: Granularity;
+  granularity: WindowGranularity;
   startDate?: string | null;
   endDate?: string | null;
   onClose: () => void;
@@ -22,21 +32,45 @@ function Header({
   subtitle,
   imgSrc,
   onClose,
+  onBack,
 }: {
   title: string;
   subtitle: string;
   imgSrc?: string;
   onClose: () => void;
+  onBack?: () => void;
 }) {
   return (
     <div className="flex items-start justify-between mb-4">
       <div className="flex items-center space-x-3">
+        {onBack && (
+          <button
+            onClick={onBack}
+            className="flex-shrink-0 p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+            aria-label="Volver"
+          >
+            <svg
+              className="w-5 h-5 text-gray-500 dark:text-gray-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M10 19l-7-7m0 0l7-7m-7 7h18"
+              />
+            </svg>
+          </button>
+        )}
         {imgSrc && (
           <div className="flex-shrink-0">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
+            <Image
               src={imgSrc}
               alt={title}
+              width={32}
+              height={32}
               className="w-8 h-8 rounded-lg object-cover"
             />
           </div>
@@ -90,7 +124,7 @@ export default function TownExpandedCard({
   const [selectedCategoryId, setSelectedCategoryId] =
     useState<CategoryId | null>(null);
 
-  // Usar el nuevo hook de breakdown por categorías
+  // NIVEL 1: Datos de categorías del town (town-first)
   const { data, isLoading, isError, error } = useTownCategoryBreakdown({
     townId: townId as TownId,
     startISO: startDate,
@@ -99,73 +133,66 @@ export default function TownExpandedCard({
     enabled: true,
   });
 
-  // Transformar datos a formato ChartPair
-  const { donutData, groupedSeries, totalInteractions, categoriesForXAxis } =
+  // Transformar datos Nivel 1 (categorías) a formato ChartPair
+  const { donutData, lineSeriesData, lineSeriesPrev, totalInteractions } =
     useMemo(() => {
       const categories = data?.categories || [];
 
       if (!categories || categories.length === 0) {
         return {
           donutData: [],
-          groupedSeries: [],
+          lineSeriesData: [],
+          lineSeriesPrev: [],
           totalInteractions: 0,
-          categoriesForXAxis: [],
         };
       }
 
-      // Donut: participación por categoría (current totals)
+      // Donut: participación por categoría
       const donut: DonutDatum[] = categories
         .filter((cat) => cat.currentTotal > 0)
         .map((cat) => ({
-          label: CATEGORY_META[cat.categoryId].label,
+          label:
+            cat.categoryId !== "otros"
+              ? CATEGORY_META[cat.categoryId as CategoryId]?.label || cat.label
+              : cat.label,
           value: cat.currentTotal,
-          color: undefined, // ChartPair asigna colores automáticamente
+          color: undefined,
         }));
 
-      // Grouped Bar: Top categorías (ordenadas por current total)
-      const topN = 8; // Configurable
-      const topCategories = [...categories]
-        .sort((a, b) => b.currentTotal - a.currentTotal)
-        .slice(0, topN);
-
-      const grouped: GroupedBarSeries[] = [
-        {
-          name: "Interacciones",
-          data: topCategories.map((cat) => cat.currentTotal),
-          color: "#3b82f6", // blue-500
-        },
-      ];
+      // Line series: usar series agregadas por día retornadas por el servicio
+      const lineSeries = data?.series?.current ?? [];
+      const lineSeriesPrevious = data?.series?.previous ?? [];
 
       const total = categories.reduce((sum, cat) => sum + cat.currentTotal, 0);
 
-      const xAxisLabels = topCategories.map(
-        (cat) => CATEGORY_META[cat.categoryId].label
-      );
-
       return {
         donutData: donut,
-        groupedSeries: grouped,
+        lineSeriesData: lineSeries,
+        lineSeriesPrev: lineSeriesPrevious,
         totalInteractions: total,
-        categoriesForXAxis: xAxisLabels,
       };
-    }, [data?.categories]);
+    }, [data?.categories, data?.series]);
 
-  // Subtítulo con información detallada
-  const subtitle = `Análisis por categorías • ${totalInteractions.toLocaleString()} interacciones totales`;
+  // Subtítulo dinámico
+  const subtitle = selectedCategoryId
+    ? `${townLabel} › ${CATEGORY_META[selectedCategoryId]?.label} • Análisis de subcategorías`
+    : `Análisis por categorías • ${totalInteractions.toLocaleString()} interacciones totales`;
 
-  // Handler para click en categoría (donut o barra)
   const handleCategoryClick = (label: string) => {
     if (!data?.categories) return;
 
     // Buscar categoryId por label
-    const category = data.categories.find(
-      (cat) => CATEGORY_META[cat.categoryId].label === label
+    const category = data.categories.find((cat) =>
+      cat.categoryId !== "otros"
+        ? (CATEGORY_META[cat.categoryId as CategoryId]?.label || cat.label) ===
+          label
+        : cat.label === label
     );
-    if (category) {
-      setSelectedCategoryId(category.categoryId);
+    if (category && category.categoryId !== "otros") {
+      setSelectedCategoryId(category.categoryId as CategoryId);
       // También llamar al callback externo si existe
       if (onSelectCategory) {
-        onSelectCategory(category.categoryId);
+        onSelectCategory(category.categoryId as CategoryId);
       }
     }
   };
@@ -177,7 +204,7 @@ export default function TownExpandedCard({
 
   if (isError) {
     return (
-      <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-6">
+      <div className="rounded-2xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 p-6 shadow-sm w-full">
         <Header
           title="Error cargando datos"
           subtitle={error?.message || "Error desconocido"}
@@ -189,7 +216,7 @@ export default function TownExpandedCard({
 
   if (isLoading) {
     return (
-      <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+      <div className="rounded-2xl border border-gray-200 dark:border-white/10 bg-[#fff7ed] dark:bg-[#0c1116] p-3 shadow-sm w-full">
         <Header
           title={townLabel}
           subtitle="Cargando datos..."
@@ -210,7 +237,7 @@ export default function TownExpandedCard({
     totalInteractions === 0
   ) {
     return (
-      <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+      <div className="rounded-2xl border border-gray-200 dark:border-white/10 bg-[#fff7ed] dark:bg-[#0c1116] p-3 shadow-sm w-full">
         <Header
           title={townLabel}
           subtitle={subtitle}
@@ -240,48 +267,44 @@ export default function TownExpandedCard({
     );
   }
 
-  // Si hay una categoría seleccionada, mostrar Nivel 2 (subcategorías)
-  if (selectedCategoryId) {
-    return (
-      <TownCategorySubcatDrilldownView
-        townId={townId as TownId}
-        categoryId={selectedCategoryId}
-        startISO={startDate}
-        endISO={endDate}
-        windowGranularity={granularity}
-        onBack={handleBackToLevel1}
-      />
-    );
-  }
-
-  // Nivel 1: Categorías
   return (
-    <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-      {/* Header con X para cerrar */}
+    <div className="rounded-2xl border border-gray-200 dark:border-white/10 bg-[#fff7ed] dark:bg-[#0c1116] p-3 shadow-sm w-full">
       <Header
         title={townLabel}
         subtitle={subtitle}
         imgSrc={townIcon}
         onClose={onClose}
+        onBack={selectedCategoryId ? handleBackToLevel1 : undefined}
       />
 
-      {/* Gráficas */}
-      <div className="px-4">
-        <ChartPair
-          mode="grouped"
-          categories={categoriesForXAxis}
-          groupedSeries={groupedSeries}
-          donutData={donutData}
-          deltaPct={null}
-          onDonutSlice={handleCategoryClick}
-          donutCenterLabel={townLabel}
-          showActivityButton={false}
-          chartTitle="Top Categorías"
-          chartSubtitle={`${totalInteractions.toLocaleString()} interacciones totales`}
-          chartHeight={400}
-          className=""
-        />
-      </div>
+      <ChartPair
+        mode="line"
+        series={{
+          current: lineSeriesData,
+          previous: lineSeriesPrev,
+        }}
+        donutData={donutData}
+        deltaPct={null}
+        onDonutSlice={handleCategoryClick}
+        donutCenterLabel={townLabel}
+        showActivityButton={false}
+        granularity={granularity}
+        className=""
+      />
+
+      {/* NIVEL 2: Subcategorías (aparece DEBAJO cuando hay categoría seleccionada) */}
+      {selectedCategoryId && (
+        <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
+          <TownCategorySubcatDrilldownView
+            townId={townId as TownId}
+            categoryId={selectedCategoryId}
+            startISO={startDate}
+            endISO={endDate}
+            windowGranularity={granularity}
+            onBack={handleBackToLevel1}
+          />
+        </div>
+      )}
     </div>
   );
 }

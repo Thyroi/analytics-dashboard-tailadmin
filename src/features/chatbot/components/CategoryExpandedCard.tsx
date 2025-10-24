@@ -1,6 +1,10 @@
 /**
- * Componente de drilldown expandido similar a SectorExpandedCard
- * Muestra ChartPair con datos de subcategorías por fechas
+ * Componente de drilldown expandido para categorías (CATEGORY-FIRST)
+ *
+ * NIVEL 1: Categoría → Pueblos (usando pattern root.<categoriaRaw>.*)
+ * NIVEL 2: Categoría+Pueblo → Subcategorías (usando pattern root.<categoriaRaw>.<puebloRaw>.*)
+ *
+ * Navegación reactiva: Nivel 2 aparece DEBAJO de Nivel 1 (no reemplaza)
  */
 
 "use client";
@@ -8,17 +12,20 @@
 import ChartPair from "@/components/common/ChartPair";
 import type { CategoryId } from "@/lib/taxonomy/categories";
 import { CATEGORY_META } from "@/lib/taxonomy/categories";
+import { TOWN_META, type TownId } from "@/lib/taxonomy/towns";
+import type { DonutDatum, WindowGranularity } from "@/lib/types";
 import Image from "next/image";
-import { useCategoryDrilldown } from "../hooks/useCategoryDrilldownReal";
-import type { Granularity } from "../types";
+import { useMemo, useState } from "react";
+import { useCategoryTownBreakdown } from "../hooks/useCategoryTownBreakdown";
+import CategoryTownSubcatDrilldownView from "./CategoryTownSubcatDrilldownView";
 
 type Props = {
   categoryId: CategoryId;
-  granularity: Granularity;
+  granularity: WindowGranularity;
   startDate?: string | null;
   endDate?: string | null;
   onClose: () => void;
-  onSubcategoryClick?: (subcategory: string) => void;
+  onTownClick?: (townId: TownId) => void;
 };
 
 function Header({
@@ -26,15 +33,38 @@ function Header({
   subtitle,
   imgSrc,
   onClose,
+  onBack,
 }: {
   title: string;
   subtitle: string;
   imgSrc?: string;
   onClose: () => void;
+  onBack?: () => void;
 }) {
   return (
     <div className="flex items-start justify-between mb-4">
       <div className="flex items-center space-x-3">
+        {onBack && (
+          <button
+            onClick={onBack}
+            className="flex-shrink-0 p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+            aria-label="Volver"
+          >
+            <svg
+              className="w-5 h-5 text-gray-500 dark:text-gray-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M10 19l-7-7m0 0l7-7m-7 7h18"
+              />
+            </svg>
+          </button>
+        )}
         {imgSrc && (
           <div className="flex-shrink-0">
             <Image
@@ -85,43 +115,147 @@ export default function CategoryExpandedCard({
   startDate,
   endDate,
   onClose,
-  onSubcategoryClick,
+  onTownClick,
 }: Props) {
-  const drilldownData = useCategoryDrilldown({
-    categoryId,
-    granularity,
-    startDate,
-    endDate,
-  });
-
   const categoryMeta = CATEGORY_META[categoryId];
   const categoryLabel = categoryMeta?.label || categoryId;
   const categoryIcon = categoryMeta?.iconSrc;
 
-  const { lineSeriesData, donutData, totalInteractions, error } = drilldownData;
+  // Estado para navegación Nivel 1 <-> Nivel 2
+  const [selectedTownId, setSelectedTownId] = useState<TownId | null>(null);
 
-  // Subtítulo con información detallada
-  const subtitle = `Análisis detallado por subcategorías • ${totalInteractions.toLocaleString()} interacciones totales`;
+  // NIVEL 1: Datos de towns por categoría (category-first)
+  const { data, isLoading, isError, error } = useCategoryTownBreakdown({
+    categoryId,
+    startISO: startDate,
+    endISO: endDate,
+    windowGranularity: granularity,
+    enabled: true,
+  });
 
-  const handleDonutSlice = (label: string) => {
-    onSubcategoryClick?.(label);
+  // Transformar datos Nivel 1 (towns) a formato ChartPair
+  const { donutData, lineSeriesData, lineSeriesPrev, totalInteractions } =
+    useMemo(() => {
+      const towns = data?.towns || [];
+
+      if (!towns || towns.length === 0) {
+        return {
+          donutData: [],
+          lineSeriesData: [],
+          lineSeriesPrev: [],
+          totalInteractions: 0,
+        };
+      }
+
+      // Donut: participación por town
+      const donut: DonutDatum[] = towns
+        .filter((town) => town.currentTotal > 0)
+        .map((town) => ({
+          label:
+            town.townId !== "otros"
+              ? TOWN_META[town.townId as TownId]?.label || town.label
+              : town.label,
+          value: town.currentTotal,
+          color: undefined,
+        }));
+
+      // Line series: usar series agregadas por día retornadas por el servicio
+      const lineSeries = data?.series?.current ?? [];
+      const lineSeriesPrevious = data?.series?.previous ?? [];
+
+      const total = towns.reduce((sum, town) => sum + town.currentTotal, 0);
+
+      return {
+        donutData: donut,
+        lineSeriesData: lineSeries,
+        lineSeriesPrev: lineSeriesPrevious,
+        totalInteractions: total,
+      };
+    }, [data?.towns, data?.series]);
+
+  // Subtítulo dinámico
+  const subtitle = selectedTownId
+    ? `${categoryLabel} › ${TOWN_META[selectedTownId]?.label} • Análisis de subcategorías`
+    : `Análisis por pueblos • ${totalInteractions.toLocaleString()} interacciones totales`;
+
+  const handleTownClick = (label: string) => {
+    if (!data?.towns) return;
+
+    // Buscar townId por label
+    const town = data.towns.find((t) =>
+      t.townId !== "otros"
+        ? (TOWN_META[t.townId as TownId]?.label || t.label) === label
+        : t.label === label
+    );
+    if (town && town.townId !== "otros") {
+      setSelectedTownId(town.townId as TownId);
+      // También llamar al callback externo si existe
+      if (onTownClick) {
+        onTownClick(town.townId as TownId);
+      }
+    }
   };
 
-  if (error) {
+  // Handler para volver de Nivel 2 a Nivel 1
+  const handleBackToLevel1 = () => {
+    setSelectedTownId(null);
+  };
+
+  if (isError) {
     return (
       <div className="rounded-2xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 p-6 shadow-sm w-full">
         <Header
+          title="Error cargando datos"
+          subtitle={error?.message || "Error desconocido"}
+          onClose={onClose}
+        />
+      </div>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <div className="rounded-2xl border border-gray-200 dark:border-white/10 bg-[#fff7ed] dark:bg-[#0c1116] p-3 shadow-sm w-full">
+        <Header
           title={categoryLabel}
-          subtitle="Error al cargar datos"
+          subtitle="Cargando datos..."
           imgSrc={categoryIcon}
           onClose={onClose}
         />
-        <div className="text-center py-8">
-          <div className="text-red-600 dark:text-red-400 mb-2">
-            Error al cargar datos de {categoryLabel}
-          </div>
-          <p className="text-red-500 dark:text-red-300 text-sm">
-            {error.message}
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+        </div>
+      </div>
+    );
+  }
+
+  // Empty state
+  if (!data?.towns || data.towns.length === 0 || totalInteractions === 0) {
+    return (
+      <div className="rounded-2xl border border-gray-200 dark:border-white/10 bg-[#fff7ed] dark:bg-[#0c1116] p-3 shadow-sm w-full">
+        <Header
+          title={categoryLabel}
+          subtitle={subtitle}
+          imgSrc={categoryIcon}
+          onClose={onClose}
+        />
+        <div className="flex flex-col items-center justify-center h-64 text-gray-500 dark:text-gray-400">
+          <svg
+            className="w-16 h-16 mb-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={1.5}
+              d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+            />
+          </svg>
+          <p className="text-center">
+            No hay datos de pueblos para esta categoría en el período
+            seleccionado
           </p>
         </div>
       </div>
@@ -135,23 +269,37 @@ export default function CategoryExpandedCard({
         subtitle={subtitle}
         imgSrc={categoryIcon}
         onClose={onClose}
+        onBack={selectedTownId ? handleBackToLevel1 : undefined}
       />
 
       <ChartPair
         mode="line"
         series={{
           current: lineSeriesData,
-          previous: [],
+          previous: lineSeriesPrev,
         }}
         donutData={donutData}
         deltaPct={null}
-        onDonutSlice={handleDonutSlice}
+        onDonutSlice={handleTownClick}
         donutCenterLabel={categoryLabel}
         showActivityButton={false}
-        actionButtonTarget={`/chatbot/category/${categoryId}/activity`}
         granularity={granularity}
         className=""
       />
+
+      {/* NIVEL 2: Subcategorías (aparece DEBAJO cuando hay town seleccionado) */}
+      {selectedTownId && (
+        <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
+          <CategoryTownSubcatDrilldownView
+            categoryId={categoryId}
+            townId={selectedTownId}
+            granularity={granularity}
+            startDate={startDate}
+            endDate={endDate}
+            onBack={handleBackToLevel1}
+          />
+        </div>
+      )}
     </div>
   );
 }

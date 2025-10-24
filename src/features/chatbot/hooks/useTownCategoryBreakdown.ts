@@ -68,14 +68,15 @@ export function useTownCategoryBreakdown({
 
   const query = useQuery({
     queryKey,
-    queryFn: () =>
-      fetchTownCategoryBreakdown({
+    queryFn: () => {
+      return fetchTownCategoryBreakdown({
         townId,
         startISO,
         endISO,
         windowGranularity,
         db,
-      }),
+      });
+    },
     enabled: enabled && !!townId, // Solo ejecutar si townId está presente
     staleTime: 5 * 60 * 1000, // 5 minutos
     gcTime: 10 * 60 * 1000, // 10 minutos (antes cacheTime)

@@ -43,6 +43,11 @@ export type CategoryTotalsResponse = {
       previous: { start: string; end: string };
     };
   };
+  /** Opcional: respuestas crudas del origen (solo para debug) */
+  raw?: {
+    current: MindsaicResponse;
+    previous: MindsaicResponse;
+  };
 };
 
 export type FetchCategoryTotalsParams = {
@@ -52,9 +57,9 @@ export type FetchCategoryTotalsParams = {
   db?: string;
 };
 
-type MindsaicPoint = { time: string; value: number };
-type MindsaicOutput = Record<string, MindsaicPoint[]>;
-type MindsaicResponse = {
+export type MindsaicPoint = { time: string; value: number };
+export type MindsaicOutput = Record<string, MindsaicPoint[]>;
+export type MindsaicResponse = {
   code: number;
   output: MindsaicOutput;
 };
@@ -280,6 +285,10 @@ export async function fetchChatbotCategoryTotals(
           current: ranges.current,
           previous: ranges.previous,
         },
+      },
+      raw: {
+        current: currentResponse,
+        previous: prevResponse,
       },
     };
   } catch (error) {

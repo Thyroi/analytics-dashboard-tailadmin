@@ -1,6 +1,6 @@
 "use client";
 
-import { addDaysUTC, todayUTC } from "@/lib/utils/time/datetime";
+// No usar helpers UTC aquí: el calendario trabaja en horario LOCAL
 import { CalendarIcon } from "@heroicons/react/24/outline";
 import flatpickr from "flatpickr";
 import "flatpickr/dist/flatpickr.css";
@@ -14,13 +14,27 @@ type Props = {
 };
 
 /**
- * Retorna yesterday UTC - Única capa que debe clampar a ayer
- *
- * ⚠️ CRÍTICO: Esta es la ÚNICA función que debe determinar el límite superior de fechas.
- * Ninguna otra capa debe restar días adicionales.
+ * Normaliza un Date (posiblemente en UTC) a medianoche LOCAL del mismo día
+ * para interacción correcta con flatpickr (que usa timezone local).
  */
-function yesterdayUTC(): Date {
-  return addDaysUTC(todayUTC(), -1);
+function toLocalMidnightFromUTC(d: Date): Date {
+  return new Date(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+}
+
+/**
+ * Retorna "ayer" en horario LOCAL (medianoche local)
+ *
+ * - Esto evita que el calendario muestre el día anterior por desfase de zona horaria
+ * - El clamp lógico a UTC se maneja en el contexto/servicios; aquí solo UI
+ */
+function yesterdayLocal(): Date {
+  const now = new Date();
+  const todayLocalMidnight = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate()
+  );
+  return new Date(todayLocalMidnight.getTime() - 24 * 60 * 60 * 1000);
 }
 
 /**
@@ -46,12 +60,16 @@ export default function DateRangePicker({
   useEffect(() => {
     if (!inputRef.current) return;
 
-    const maxDateLimit = yesterdayUTC();
+    const maxDateLimit = yesterdayLocal();
+
+    // Normalizar fechas por defecto a medianoche LOCAL
+    const defaultStartLocal = toLocalMidnightFromUTC(startDate);
+    const defaultEndLocal = toLocalMidnightFromUTC(endDate);
 
     const fp = flatpickr(inputRef.current, {
       mode: "range",
       dateFormat: "M d, Y",
-      defaultDate: [startDate, endDate],
+      defaultDate: [defaultStartLocal, defaultEndLocal],
       monthSelectorType: "static",
       static: true,
       disableMobile: true,
@@ -77,9 +95,9 @@ export default function DateRangePicker({
 
     // Mostrar el rango actual en el input cuando cambian props
     const formatted = `${flatpickr.formatDate(
-      startDate,
+      defaultStartLocal,
       "M d, Y"
-    )} - ${flatpickr.formatDate(endDate, "M d, Y")}`;
+    )} - ${flatpickr.formatDate(defaultEndLocal, "M d, Y")}`;
     inputRef.current.value = formatted;
 
     return () => fp.destroy();

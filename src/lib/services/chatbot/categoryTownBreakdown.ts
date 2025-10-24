@@ -1,14 +1,14 @@
 /**
- * Servicio para obtener breakdown de categorías dentro de un town específico
+ * Servicio para obtener breakdown de towns dentro de una categoría específica
  *
- * NIVEL 1: Town → Categorías
+ * NIVEL 1: Categoría → Towns (category-first)
  *
  * Reglas:
- * - Pattern: "root.<townId>.*" (solo ese town)
- * - Filtro: profundidad === 3 (root.<town>.<categoria>)
+ * - Pattern: "root.<categoriaRaw>.*" (solo esa categoría, usando segmento crudo)
+ * - Filtro: profundidad === 3 (root.<categoria>.<pueblo>)
  * - POST dual: current + previous con granularity="d"
- * - Mapeo CATEGORY_SYNONYMS case-insensitive
- * - Renderizar TODAS las categorías (0 si no hay datos)
+ * - Mapeo TOWN_SYNONYMS case-insensitive
+ * - Renderizar TODOS los towns (TOWN_ID_ORDER) con 0 si no hay datos
  * - Delta null si prev <= 0
  * - Timeout 15s con AbortController
  * - UTC total, computeRangesForKPI
@@ -20,22 +20,17 @@ import {
   CATEGORY_SYNONYMS,
   type CategoryId,
 } from "@/lib/taxonomy/categories";
-import { matchCategoryId } from "@/lib/taxonomy/normalize";
-import { getTownSearchPattern } from "@/lib/taxonomy/patterns";
-import {
-  TOWN_ID_ORDER,
-  TOWN_META,
-  TOWN_SYNONYMS,
-  type TownId,
-} from "@/lib/taxonomy/towns";
+import { matchTownId } from "@/lib/taxonomy/normalize";
+import { getCategorySearchPattern } from "@/lib/taxonomy/patterns";
+import { TOWN_ID_ORDER, TOWN_META, type TownId } from "@/lib/taxonomy/towns";
 import type { SeriesPoint, WindowGranularity } from "@/lib/types";
 import { addDaysUTC, parseISO, toISO } from "@/lib/utils/time/datetime";
 import { computeRangesForKPI } from "@/lib/utils/time/timeWindows";
 
 /* ==================== Tipos ==================== */
 
-export type TownCategoryData = {
-  categoryId: CategoryId | "otros";
+export type CategoryTownData = {
+  townId: TownId | "otros";
   label: string;
   iconSrc: string;
   currentTotal: number;
@@ -44,17 +39,17 @@ export type TownCategoryData = {
   deltaPercent: number | null;
 };
 
-export type TownCategoryBreakdownResponse = {
-  townId: TownId;
-  categories: TownCategoryData[];
-  seriesByCategory?: Record<string, Array<{ time: string; value: number }>>; // Opcional para futura comparativa
-  /** Series agregadas por día para el pueblo completo (para la gráfica de la izquierda) */
+export type CategoryTownBreakdownResponse = {
+  categoryId: CategoryId;
+  towns: CategoryTownData[];
+  seriesByTown?: Record<string, Array<{ time: string; value: number }>>; // Opcional para futura comparativa
+  /** Series agregadas por día para la categoría completa (para la gráfica de la izquierda) */
   series?: {
     current: SeriesPoint[];
     previous: SeriesPoint[];
   };
-  /** Raw segments observed grouped by canonical CategoryId with totals (to pick representative raw segment for Nivel 2) */
-  categoryRawSegmentsById?: Record<CategoryId, Record<string, number>>;
+  /** Raw segments observed grouped by canonical TownId with totals (to pick representative raw segment for Nivel 2) */
+  townRawSegmentsById?: Record<TownId, Record<string, number>>;
   meta: {
     granularity: WindowGranularity;
     timezone: string;
@@ -70,12 +65,14 @@ export type TownCategoryBreakdownResponse = {
   };
 };
 
-export type FetchTownCategoryBreakdownParams = {
-  townId: TownId;
+export type FetchCategoryTownBreakdownParams = {
+  categoryId: CategoryId;
   startISO?: string | null;
   endISO?: string | null;
   windowGranularity?: WindowGranularity;
   db?: string;
+  /** Optional: representative raw segment token for the category */
+  representativeCategoryRaw?: string | null;
 };
 
 export type MindsaicPoint = { time: string; value: number };
@@ -95,42 +92,6 @@ function formatDateForMindsaic(dateISO: string): string {
 }
 
 /**
- * Normaliza texto para comparación (lowercase, sin acentos, sin guiones)
- */
-function normalize(raw: string): string {
-  return raw
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "") // quitar diacríticos
-    .replace(/[._-]/g, "")
-    .replace(/\s+/g, "")
-    .trim();
-}
-
-/**
- * Construye índice de sinónimos para mapear tokens a CategoryId
- */
-function buildCategorySynonymIndex(): Map<string, CategoryId> {
-  const index = new Map<string, CategoryId>();
-
-  for (const categoryId of CATEGORY_ID_ORDER) {
-    // Agregar el ID mismo
-    index.set(normalize(categoryId), categoryId);
-
-    // Agregar label oficial
-    index.set(normalize(CATEGORY_META[categoryId].label), categoryId);
-
-    // Agregar todos los sinónimos
-    const synonyms = CATEGORY_SYNONYMS[categoryId] || [];
-    for (const synonym of synonyms) {
-      index.set(normalize(synonym), categoryId);
-    }
-  }
-
-  return index;
-}
-
-/**
  * Calcula deltaPercent según reglas:
  * - null si prev <= 0 o falta dato
  * - ((current - prev) / prev) * 100 en otro caso
@@ -141,31 +102,40 @@ function computeDeltaPercent(current: number, prev: number): number | null {
 }
 
 /**
- * Parsea respuesta de Mindsaic y suma valores por categoría
- * Solo cuenta claves root.<townId>.<token> (profundidad 3)
+ * Parsea respuesta de Mindsaic y suma valores por town
+ * Solo cuenta claves root.<categoria>.<town> (profundidad 3)
  */
-function buildTownSynonymIndex(): Map<string, TownId> {
-  const index = new Map<string, TownId>();
-  for (const townId of TOWN_ID_ORDER) {
-    index.set(normalize(townId), townId);
-    index.set(normalize(TOWN_META[townId].label), townId);
-    const synonyms = TOWN_SYNONYMS[townId] || [];
-    for (const s of synonyms) index.set(normalize(s), townId);
+function normalize(raw: string): string {
+  return raw
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[._-]/g, "")
+    .replace(/\s+/g, "")
+    .trim();
+}
+
+function buildCategorySynonymIndex(): Map<string, CategoryId> {
+  const index = new Map<string, CategoryId>();
+  for (const categoryId of CATEGORY_ID_ORDER) {
+    index.set(normalize(categoryId), categoryId);
+    index.set(normalize(CATEGORY_META[categoryId].label), categoryId);
+    const syns = CATEGORY_SYNONYMS[categoryId] || [];
+    for (const s of syns) index.set(normalize(s), categoryId);
   }
   return index;
 }
 
-function parseTownCategories(
+function parseCategoryTowns(
   response: MindsaicResponse,
-  townId: TownId,
-  categorySynIndex: Map<string, CategoryId>,
-  townSynIndex: Map<string, TownId>
-): Map<CategoryId | "otros", number> {
-  const totals = new Map<CategoryId | "otros", number>();
+  categoryId: CategoryId,
+  categorySynIndex: Map<string, CategoryId>
+): Map<TownId | "otros", number> {
+  const totals = new Map<TownId | "otros", number>();
 
-  // Inicializar todas las categorías en 0
-  for (const categoryId of CATEGORY_ID_ORDER) {
-    totals.set(categoryId, 0);
+  // Inicializar todos los towns en 0
+  for (const townId of TOWN_ID_ORDER) {
+    totals.set(townId, 0);
   }
   totals.set("otros", 0);
 
@@ -174,42 +144,37 @@ function parseTownCategories(
   let matchedAny = false;
   for (const [key, series] of Object.entries(output)) {
     const parts = key.split(".");
-    if (parts.length !== 3) continue; // Solo profundidad 3
-    const townToken = parts[1];
-    const catToken = parts[2];
-    if (!townToken || !catToken) continue;
+    if (parts.length !== 3) continue; // root.<categoria>.<town>
+    const catToken = parts[1];
+    const townToken = parts[2];
+    if (!catToken || !townToken) continue;
 
-    // Validar que el townToken pertenece al townId seleccionado
-    const mappedTown = townSynIndex.get(normalize(townToken));
-    if (mappedTown !== townId) continue;
+    const mappedCategory = categorySynIndex.get(normalize(catToken));
+    if (mappedCategory !== categoryId) continue;
 
-    // Mapear token de categoría a CategoryId usando sinónimos
-    const categoryId = categorySynIndex.get(normalize(catToken)) || "otros";
-
-    // Sumar toda la serie
+    const townId = matchTownId(townToken) || "otros";
     const total = series.reduce((sum, point) => sum + (point.value || 0), 0);
-    const currentTotal = totals.get(categoryId) || 0;
-    totals.set(categoryId, currentTotal + total);
+    const prev = totals.get(townId) || 0;
+    totals.set(townId, prev + total);
     matchedAny = true;
   }
 
-  // Fallback: si no matcheó nada por sinónimos de pueblo, usar prefijo del patrón de búsqueda (token)
+  // Fallback: si no matchea por sinónimos de categoría, usar prefijo del token elegido
   if (!matchedAny) {
-    const { token } = getTownSearchPattern(townId);
+    const { token } = getCategorySearchPattern(categoryId);
     const tokenNorm = normalize(token);
     for (const [key, series] of Object.entries(output)) {
       const parts = key.split(".");
       if (parts.length !== 3) continue;
-      const townToken = parts[1];
-      const catToken = parts[2];
-      if (!townToken || !catToken) continue;
-      const townNorm = normalize(townToken);
-      if (!townNorm.startsWith(tokenNorm)) continue;
-
-      const categoryId = categorySynIndex.get(normalize(catToken)) || "otros";
+      const catToken = parts[1];
+      const townToken = parts[2];
+      if (!catToken || !townToken) continue;
+      const catNorm = normalize(catToken);
+      if (!catNorm.startsWith(tokenNorm)) continue;
+      const townId = matchTownId(townToken) || "otros";
       const total = series.reduce((sum, point) => sum + (point.value || 0), 0);
-      const currentTotal = totals.get(categoryId) || 0;
-      totals.set(categoryId, currentTotal + total);
+      const prev = totals.get(townId) || 0;
+      totals.set(townId, prev + total);
     }
   }
 
@@ -217,24 +182,23 @@ function parseTownCategories(
 }
 
 /**
- * Agrega totales diarios a nivel de town (profundidad 3) → { ISO: total }
+ * Agrega totales diarios a nivel de category (profundidad 3) → { ISO: total }
  */
 function aggregateDailyTotals(
   output: MindsaicOutput,
-  townId: TownId,
-  townSynIndex: Map<string, TownId>
+  categoryId: CategoryId,
+  categorySynIndex: Map<string, CategoryId>
 ): Map<string, number> {
   const totals = new Map<string, number>();
 
   let matchedAny = false;
   for (const [key, series] of Object.entries(output)) {
     const parts = key.split(".");
-    if (parts.length !== 3) continue; // Solo profundidad 3
-    const townToken = parts[1];
-    if (!townToken) continue;
-    const mappedTown = townSynIndex.get(normalize(townToken));
-    if (mappedTown !== townId) continue;
-
+    if (parts.length !== 3) continue;
+    const catToken = parts[1];
+    if (!catToken) continue;
+    const mappedCategory = categorySynIndex.get(normalize(catToken));
+    if (mappedCategory !== categoryId) continue;
     for (const point of series) {
       const y = point.time;
       if (!y || y.length !== 8) continue;
@@ -245,17 +209,16 @@ function aggregateDailyTotals(
     matchedAny = true;
   }
 
-  // Fallback por prefijo del token si no hubo match por sinónimos
   if (!matchedAny) {
-    const { token } = getTownSearchPattern(townId);
+    const { token } = getCategorySearchPattern(categoryId);
     const tokenNorm = normalize(token);
     for (const [key, series] of Object.entries(output)) {
       const parts = key.split(".");
       if (parts.length !== 3) continue;
-      const townToken = parts[1];
-      if (!townToken) continue;
-      const townNorm = normalize(townToken);
-      if (!townNorm.startsWith(tokenNorm)) continue;
+      const catToken = parts[1];
+      if (!catToken) continue;
+      const catNorm = normalize(catToken);
+      if (!catNorm.startsWith(tokenNorm)) continue;
       for (const point of series) {
         const y = point.time;
         if (!y || y.length !== 8) continue;
@@ -298,16 +261,15 @@ function buildSeriesForRange(
  * Hace un POST a /api/chatbot/audit/tags con los parámetros dados
  */
 async function fetchMindsaicData(
-  townId: TownId,
+  categoryId: CategoryId,
   startTime: string,
   endTime: string,
   db: string,
   signal: AbortSignal
 ): Promise<MindsaicResponse> {
-  const { token, wildcard } = getTownSearchPattern(townId);
+  const { token, wildcard } = getCategorySearchPattern(categoryId);
   const payload = {
     db,
-    // Patrón basado en token + wildcard condicional
     patterns: `root.${token}${wildcard ? "*" : ""}.*`,
     granularity: "d", // Siempre "d" para Mindsaic
     startTime,
@@ -334,30 +296,41 @@ async function fetchMindsaicData(
 /* ==================== Servicio Principal ==================== */
 
 /**
- * Obtiene breakdown de categorías dentro de un town específico
+ * Obtiene breakdown de towns dentro de una categoría específica
  *
  * Hace dos llamadas paralelas (current + previous) y calcula deltas.
- * Renderiza TODAS las categorías aunque no tengan datos (0 y null).
+ * Renderiza TODOS los towns aunque no tengan datos (0 y null).
+ * Usa segmento crudo representativo para la categoría.
  *
- * NIVEL 1: root.<townId>.<categoria> (profundidad 3)
+ * NIVEL 1: root.<categoria>.<town> (profundidad 3, category-first)
  */
-export async function fetchTownCategoryBreakdown(
-  params: FetchTownCategoryBreakdownParams
-): Promise<TownCategoryBreakdownResponse> {
+export async function fetchCategoryTownBreakdown(
+  params: FetchCategoryTownBreakdownParams
+): Promise<CategoryTownBreakdownResponse> {
   const {
-    townId,
+    categoryId,
     windowGranularity = "d",
     startISO = null,
     endISO = null,
     db = "project_huelva",
+    representativeCategoryRaw = null,
   } = params;
 
-  // 1. Calcular rangos usando comportamiento KPI
-  const ranges = computeRangesForKPI(windowGranularity, startISO, endISO);
+  // Debug: parámetros de entrada (Nivel 1)
+  console.log("📊 [CategoryL1 fetchCategoryTownBreakdown] Called with params", {
+    categoryId,
+    representativeCategoryRaw,
+    windowGranularity,
+    startISO,
+    endISO,
+    db,
+  });
 
-  // 2. Construir índice de sinónimos
-  const categorySynonymIndex = buildCategorySynonymIndex();
-  const townSynonymIndex = buildTownSynonymIndex();
+  // 1. Determinar el segmento a usar (representativo manual o mapping por categoría)
+  // Nota: representativeCategoryRaw ya no se usa para el patrón; mantenemos compat por si lo reintroducimos en Nivel 2
+
+  // 2. Calcular rangos usando comportamiento KPI
+  const ranges = computeRangesForKPI(windowGranularity, startISO, endISO);
 
   // 3. Formatear fechas para Mindsaic (YYYYMMDD)
   const currentStartFormatted = formatDateForMindsaic(ranges.current.start);
@@ -372,14 +345,14 @@ export async function fetchTownCategoryBreakdown(
   try {
     const [currentResponse, prevResponse] = await Promise.all([
       fetchMindsaicData(
-        townId,
+        categoryId,
         currentStartFormatted,
         currentEndFormatted,
         db,
         controller.signal
       ),
       fetchMindsaicData(
-        townId,
+        categoryId,
         prevStartFormatted,
         prevEndFormatted,
         db,
@@ -389,35 +362,35 @@ export async function fetchTownCategoryBreakdown(
 
     clearTimeout(timeoutId);
 
-    // 5. Parsear y sumar totales por categoría (depth=3)
-    const currentTotals = parseTownCategories(
+    // 5. Parsear y sumar totales por town (depth=3)
+    const categorySynonymIndex = buildCategorySynonymIndex();
+    const currentTotals = parseCategoryTowns(
       currentResponse,
-      townId,
-      categorySynonymIndex,
-      townSynonymIndex
+      categoryId,
+      categorySynonymIndex
     );
-    const prevTotals = parseTownCategories(
+    const prevTotals = parseCategoryTowns(
       prevResponse,
-      townId,
-      categorySynonymIndex,
-      townSynonymIndex
+      categoryId,
+      categorySynonymIndex
     );
 
-    // 5b. Construir mapa de raw segments por CategoryId para Nivel 2
-    const categoryRawSegmentsById: Record<
-      CategoryId,
+    // 5b. Construir mapa de raw segments por TownId para Nivel 2
+    const townRawSegmentsById: Record<
+      TownId,
       Record<string, number>
-    > = {} as Record<CategoryId, Record<string, number>>;
+    > = {} as Record<TownId, Record<string, number>>;
 
-    // Recorrer todas las claves de output y agrupar por categoryId
-    const addRawToCategory = (key: string, total: number) => {
+    // Recorrer todas las claves de output y agrupar por townId
+    const addRawToTown = (key: string, total: number) => {
       const parts = key.split(".");
       if (parts.length !== 3) return; // only depth 3
       const rawSegment = parts[2];
-      const catId = matchCategoryId(rawSegment) || ("otros" as CategoryId);
-      categoryRawSegmentsById[catId] = categoryRawSegmentsById[catId] || {};
-      const prev = categoryRawSegmentsById[catId][rawSegment] || 0;
-      categoryRawSegmentsById[catId][rawSegment] = prev + total;
+      const townId = matchTownId(rawSegment);
+      if (!townId) return; // No mapear si no se puede normalizar
+      townRawSegmentsById[townId] = townRawSegmentsById[townId] || {};
+      const prev = townRawSegmentsById[townId][rawSegment] || 0;
+      townRawSegmentsById[townId][rawSegment] = prev + total;
     };
 
     for (const [k, series] of Object.entries(currentResponse.output || {})) {
@@ -425,35 +398,33 @@ export async function fetchTownCategoryBreakdown(
       const parts = k.split(".");
       if (parts.length !== 3) continue;
       const total = series.reduce((s, p) => s + (p.value || 0), 0);
-      addRawToCategory(k, total);
+      addRawToTown(k, total);
     }
 
-    // 6. Construir resultado final con TODAS las categorías (sin "otros" si está en 0)
-    const categories: TownCategoryData[] = CATEGORY_ID_ORDER.map(
-      (categoryId) => {
-        const currentTotal = currentTotals.get(categoryId) || 0;
-        const prevTotal = prevTotals.get(categoryId) || 0;
-        const deltaAbs = currentTotal - prevTotal;
-        const deltaPercent = computeDeltaPercent(currentTotal, prevTotal);
+    // 6. Construir resultado final con TODOS los towns (sin "otros" si está en 0)
+    const towns: CategoryTownData[] = TOWN_ID_ORDER.map((townId) => {
+      const currentTotal = currentTotals.get(townId) || 0;
+      const prevTotal = prevTotals.get(townId) || 0;
+      const deltaAbs = currentTotal - prevTotal;
+      const deltaPercent = computeDeltaPercent(currentTotal, prevTotal);
 
-        return {
-          categoryId,
-          label: CATEGORY_META[categoryId].label,
-          iconSrc: CATEGORY_META[categoryId].iconSrc,
-          currentTotal,
-          prevTotal,
-          deltaAbs,
-          deltaPercent,
-        };
-      }
-    );
+      return {
+        townId,
+        label: TOWN_META[townId].label,
+        iconSrc: TOWN_META[townId].iconSrc,
+        currentTotal,
+        prevTotal,
+        deltaAbs,
+        deltaPercent,
+      };
+    });
 
     // Agregar "otros" si tiene datos
     const otrosCurrentTotal = currentTotals.get("otros") || 0;
     const otrosPrevTotal = prevTotals.get("otros") || 0;
     if (otrosCurrentTotal > 0 || otrosPrevTotal > 0) {
-      categories.push({
-        categoryId: "otros",
+      towns.push({
+        townId: "otros",
         label: "Otros",
         iconSrc: "/icons/otros.svg", // Placeholder
         currentTotal: otrosCurrentTotal,
@@ -463,16 +434,16 @@ export async function fetchTownCategoryBreakdown(
       });
     }
 
-    // 7. Series agregadas por día para el pueblo
+    // 7. Series agregadas por día para la categoría
     const currentTotalsByISO = aggregateDailyTotals(
       currentResponse.output || {},
-      townId,
-      townSynonymIndex
+      categoryId,
+      categorySynonymIndex
     );
     const prevTotalsByISO = aggregateDailyTotals(
       prevResponse.output || {},
-      townId,
-      townSynonymIndex
+      categoryId,
+      categorySynonymIndex
     );
     const currentSeries: SeriesPoint[] = buildSeriesForRange(
       currentTotalsByISO,
@@ -486,13 +457,13 @@ export async function fetchTownCategoryBreakdown(
     );
 
     return {
-      townId,
-      categories,
+      categoryId,
+      towns,
       series: {
         current: currentSeries,
         previous: previousSeries,
       },
-      categoryRawSegmentsById,
+      townRawSegmentsById,
       meta: {
         granularity: windowGranularity,
         timezone: "UTC",
@@ -511,7 +482,7 @@ export async function fetchTownCategoryBreakdown(
 
     if (error instanceof Error && error.name === "AbortError") {
       throw new Error(
-        `Timeout al consultar categorías del town ${townId} (15s)`
+        `Timeout al consultar towns de la categoría ${categoryId} (15s)`
       );
     }
 

@@ -35,11 +35,11 @@ vi.mock("@/components/common/ChartPair", () => ({
     donutData: Array<{ label: string; value: number }>;
     groupedSeries: Array<{ name: string; data: number[] }>;
     onDonutSlice?: (label: string) => void;
-    categories: string[];
+    categories?: string[];
   }) => (
     <div data-testid="chart-pair">
       <div data-testid="donut-section">
-        {donutData.map((item) => (
+        {donutData?.map((item) => (
           <button
             key={item.label}
             data-testid={`donut-slice-${item.label}`}
@@ -50,9 +50,9 @@ vi.mock("@/components/common/ChartPair", () => ({
         ))}
       </div>
       <div data-testid="grouped-bar">
-        {categories.map((cat, idx) => (
+        {categories?.map((cat, idx) => (
           <div key={cat} data-testid={`bar-${cat}`}>
-            {cat}: {groupedSeries[0]?.data[idx]}
+            {cat}: {groupedSeries?.[0]?.data?.[idx]}
           </div>
         ))}
       </div>

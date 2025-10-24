@@ -59,6 +59,7 @@ src/
 ### Patrones de datos
 
 **Nivel 1 (Categorías):**
+
 ```
 Pattern: root.<townId>.*
 Profundidad: 3
@@ -66,6 +67,7 @@ Ejemplo: root.almonte.playas
 ```
 
 **Nivel 2 (Subcategorías):**
+
 ```
 Pattern: root.<townId>.<categoryId>.*
 Profundidad: 4
@@ -91,6 +93,7 @@ const handleSelectTown = (town: TownCardData) => {
 ```
 
 **Vista:** `TownExpandedCard`
+
 - Muestra donut chart con breakdown por categorías
 - Muestra bar chart agrupado (current vs previous)
 - Cada categoría tiene botón "Ver desglose"
@@ -100,7 +103,8 @@ const handleSelectTown = (town: TownCardData) => {
 **Componente:** `TownExpandedCard`
 
 ```tsx
-const [drilldownCategoryId, setDrilldownCategoryId] = useState<CategoryId | null>(null);
+const [drilldownCategoryId, setDrilldownCategoryId] =
+  useState<CategoryId | null>(null);
 
 if (drilldownCategoryId) {
   return (
@@ -115,6 +119,7 @@ if (drilldownCategoryId) {
 ```
 
 **Vista:** `TownCategorySubcatDrilldownView`
+
 - Muestra todas las subcategorías encontradas
 - Renderiza bar chart comparativo (current vs previous)
 - Botón "Volver" regresa a Nivel 1
@@ -156,14 +161,16 @@ if (drilldownCategoryId) {
 ### Delta Percentage (deltaPct / deltaPercent)
 
 **Fórmula:**
+
 ```typescript
 function computeDeltaPercent(current: number, prev: number): number | null {
-  if (prev <= 0) return null;  // Evitar división por cero
+  if (prev <= 0) return null; // Evitar división por cero
   return ((current - prev) / prev) * 100;
 }
 ```
 
 **Ejemplos:**
+
 - current=150, prev=100 → `deltaPct = 50%` (incremento de 50%)
 - current=80, prev=100 → `deltaPct = -20%` (decremento de 20%)
 - current=50, prev=0 → `deltaPct = null` (sin datos previos)
@@ -173,6 +180,7 @@ function computeDeltaPercent(current: number, prev: number): number | null {
 El sistema calcula automáticamente un rango "previous" contiguo al rango "current" para comparaciones.
 
 **Ejemplo con 15 días:**
+
 ```
 Current:  2024-10-15 → 2024-10-29 (15 días)
 Previous: 2024-09-30 → 2024-10-14 (15 días, contiguo)
@@ -181,6 +189,7 @@ Previous: 2024-09-30 → 2024-10-14 (15 días, contiguo)
 **Función:** `computeRangesForKPI(windowGranularity, startISO, endISO)`
 
 **Reglas importantes:**
+
 - ✅ Previous es **contiguo** (sin gap)
 - ✅ Previous tiene **misma duración** que current
 - ✅ **No hay doble offset** (error común en implementaciones naive)
@@ -188,6 +197,7 @@ Previous: 2024-09-30 → 2024-10-14 (15 días, contiguo)
 ### Totales por Categoría/Subcategoría
 
 **Nivel 1 (Categorías):**
+
 1. Fetch data con pattern `root.<town>.*`
 2. Filtrar solo keys con profundidad === 3
 3. Extraer token categoría (ej: `root.almonte.playas` → `playas`)
@@ -195,6 +205,7 @@ Previous: 2024-09-30 → 2024-10-14 (15 días, contiguo)
 5. Sumar valores de todas las series
 
 **Nivel 2 (Subcategorías):**
+
 1. Fetch data con pattern `root.<town>.<category>.*`
 2. Filtrar solo keys con profundidad === 4
 3. Extraer token subcategoría (ej: `root.almonte.playas.carabeo` → `carabeo`)
@@ -217,6 +228,7 @@ Cuando `windowGranularity="y"`, las series se agrupan automáticamente por mes (
 ### Ejemplo
 
 **Input (granularity="d"):**
+
 ```typescript
 [
   { time: "20241001", value: 10 },
@@ -224,15 +236,16 @@ Cuando `windowGranularity="y"`, las series se agrupan automáticamente por mes (
   { time: "20241020", value: 15 },
   { time: "20241101", value: 25 },
   { time: "20241115", value: 30 },
-]
+];
 ```
 
 **Output (agrupado a YYYY-MM):**
+
 ```typescript
 [
-  { time: "2024-10", value: 45 },  // 10 + 20 + 15
-  { time: "2024-11", value: 55 },  // 25 + 30
-]
+  { time: "2024-10", value: 45 }, // 10 + 20 + 15
+  { time: "2024-11", value: 55 }, // 25 + 30
+];
 ```
 
 ### Función de agrupación
@@ -264,13 +277,23 @@ function groupSeriesByMonth(
 ### QueryKeys
 
 **Nivel 1 (Categorías):**
+
 ```typescript
-["townCategoryBreakdown", townId, startISO, endISO, windowGranularity, db]
+["townCategoryBreakdown", townId, startISO, endISO, windowGranularity, db];
 ```
 
 **Nivel 2 (Subcategorías):**
+
 ```typescript
-["townCategorySubcatBreakdown", townId, categoryId, startISO, endISO, windowGranularity, db]
+[
+  "townCategorySubcatBreakdown",
+  townId,
+  categoryId,
+  startISO,
+  endISO,
+  windowGranularity,
+  db,
+];
 ```
 
 ### Invalidación manual
@@ -289,7 +312,7 @@ const { invalidate, refetch } = useTownCategoryBreakdown({
 const handleRangeChange = (start: string, end: string) => {
   setRange(start, end);
   invalidate(); // Invalida cache
-  refetch();    // Refetch inmediato
+  refetch(); // Refetch inmediato
 };
 ```
 
@@ -311,21 +334,22 @@ const handleRangeChange = (start: string, end: string) => {
 
 ### Tabla de Problemas Comunes
 
-| Problema | Causa | Solución |
-|----------|-------|----------|
-| **Categoría no aparece en donut** | Token no coincide con sinónimos | Verificar `category-synonyms.ts`, añadir variante |
-| **Subcategoría con nombre extraño** | Mayúsculas/minúsculas inconsistentes | Normalización automática (lowercase, trim) |
-| **Town sin datos** | Pattern incorrecto o town sin visitas | Verificar pattern `root.<townId>.*` en request |
-| **Delta siempre null** | Previous period sin datos | Normal si no hay histórico, verificar rango |
-| **Request timeout** | Rango muy amplio o DB lenta | Reducir rango, verificar timeout (15s) |
-| **Profundidad incorrecta** | Filtro prof !== 3 o 4 | Verificar `parts.length` en parsers |
-| **Series no agrupadas en anual** | `windowGranularity` no es "y" | Pasar prop correcta desde StickyHeader |
-| **Cache no invalida** | QueryKey no incluye fechas | Verificar que startISO/endISO estén en queryKey |
-| **Doble offset en previous** | Cálculo manual incorrecto | Usar `computeRangesForKPI()` |
+| Problema                            | Causa                                 | Solución                                          |
+| ----------------------------------- | ------------------------------------- | ------------------------------------------------- |
+| **Categoría no aparece en donut**   | Token no coincide con sinónimos       | Verificar `category-synonyms.ts`, añadir variante |
+| **Subcategoría con nombre extraño** | Mayúsculas/minúsculas inconsistentes  | Normalización automática (lowercase, trim)        |
+| **Town sin datos**                  | Pattern incorrecto o town sin visitas | Verificar pattern `root.<townId>.*` en request    |
+| **Delta siempre null**              | Previous period sin datos             | Normal si no hay histórico, verificar rango       |
+| **Request timeout**                 | Rango muy amplio o DB lenta           | Reducir rango, verificar timeout (15s)            |
+| **Profundidad incorrecta**          | Filtro prof !== 3 o 4                 | Verificar `parts.length` en parsers               |
+| **Series no agrupadas en anual**    | `windowGranularity` no es "y"         | Pasar prop correcta desde StickyHeader            |
+| **Cache no invalida**               | QueryKey no incluye fechas            | Verificar que startISO/endISO estén en queryKey   |
+| **Doble offset en previous**        | Cálculo manual incorrecto             | Usar `computeRangesForKPI()`                      |
 
 ### Debug checklist
 
 **Si no aparecen datos:**
+
 1. ✅ Verificar network tab: ¿request se envía?
 2. ✅ Verificar response.code === 200
 3. ✅ Verificar response.output (Nivel 1) o response.data (Nivel 2)
@@ -334,11 +358,13 @@ const handleRangeChange = (start: string, end: string) => {
 6. ✅ Verificar sinónimos en `category-synonyms.ts`
 
 **Si delta es incorrecto:**
+
 1. ✅ Verificar que previous period tiene datos
 2. ✅ Verificar cálculo: `(current - prev) / prev * 100`
 3. ✅ Verificar que prev > 0 (si no, debe ser null)
 
 **Si modo anual no agrupa:**
+
 1. ✅ Verificar `windowGranularity === "y"`
 2. ✅ Verificar que `groupSeriesByMonth()` se llama
 3. ✅ Verificar formato de series: `{ time: "YYYYMMDD", value: number }`
@@ -350,25 +376,29 @@ const handleRangeChange = (start: string, end: string) => {
 ### ✅ Checklist Nivel 1 (Categorías)
 
 - [ ] **Datos básicos**
+
   - [ ] Donut chart muestra todas las categorías con datos > 0
   - [ ] Bar chart agrupado muestra current vs previous
   - [ ] Categorías sin datos NO aparecen (solo las con currentTotal > 0)
-  
+
 - [ ] **Navegación**
+
   - [ ] Click en town abre TownExpandedCard
   - [ ] Botón "Cerrar" vuelve al grid
   - [ ] Scroll position se preserva al volver
-  
+
 - [ ] **Métricas**
+
   - [ ] deltaPct es null cuando prevTotal <= 0
   - [ ] deltaPct es correcto cuando prevTotal > 0
   - [ ] Totales suman correctamente (verificar contra raw data)
-  
+
 - [ ] **Rangos**
+
   - [ ] Cambiar rango en DatePicker → refetch automático
   - [ ] Previous period es contiguo (sin gap)
   - [ ] Previous period tiene misma duración que current
-  
+
 - [ ] **Patterns**
   - [ ] Request usa pattern `root.<townId>.*`
   - [ ] Solo keys con profundidad === 3 se incluyen
@@ -377,20 +407,23 @@ const handleRangeChange = (start: string, end: string) => {
 ### ✅ Checklist Nivel 2 (Subcategorías)
 
 - [ ] **Datos básicos**
+
   - [ ] Bar chart muestra todas las subcategorías encontradas
   - [ ] Subcategorías con 0 datos se muestran (currentTotal = 0)
   - [ ] Nombres normalizados (lowercase, sin espacios extras)
-  
+
 - [ ] **Navegación**
+
   - [ ] Click "Ver desglose" abre vista Nivel 2
   - [ ] Botón "Volver" regresa a Nivel 1
   - [ ] Estado de Nivel 1 se preserva al volver
-  
+
 - [ ] **Métricas**
+
   - [ ] deltaPct es null cuando prevTotal <= 0
   - [ ] deltaPct es correcto cuando prevTotal > 0
   - [ ] Totales correctos por subcategoría
-  
+
 - [ ] **Patterns**
   - [ ] Request usa pattern `root.<townId>.<categoryId>.*`
   - [ ] Solo keys con profundidad === 4 se incluyen
@@ -399,14 +432,16 @@ const handleRangeChange = (start: string, end: string) => {
 ### ✅ Checklist Modo Anual
 
 - [ ] **Agrupación mensual**
+
   - [ ] Series se agrupan a YYYY-MM
   - [ ] Máximo 12 buckets
   - [ ] Valores se suman correctamente por mes
-  
+
 - [ ] **Request**
+
   - [ ] Request sigue usando granularity="d"
   - [ ] Agrupación ocurre en cliente, no en API
-  
+
 - [ ] **Visualización**
   - [ ] Chart muestra labels YYYY-MM
   - [ ] Tooltips muestran total mensual
@@ -415,13 +450,15 @@ const handleRangeChange = (start: string, end: string) => {
 ### ✅ Checklist Granularidad Automática
 
 - [ ] **15 días → granularity="d"**
+
   - [ ] Request usa "d"
   - [ ] Chart muestra datos diarios
-  
+
 - [ ] **45 días → granularity="w"**
+
   - [ ] Request usa "w"
   - [ ] Chart muestra datos semanales
-  
+
 - [ ] **120 días → granularity="m"**
   - [ ] Request usa "m"
   - [ ] Chart muestra datos mensuales
@@ -429,9 +466,10 @@ const handleRangeChange = (start: string, end: string) => {
 ### ✅ Checklist Lock de Granularidad
 
 - [ ] **Lock OFF (automático)**
+
   - [ ] Cambiar rango recalcula granularity
   - [ ] 15d→"d", 45d→"w", 120d→"m"
-  
+
 - [ ] **Lock ON (manual)**
   - [ ] Cambiar rango NO cambia granularity
   - [ ] Selector de granularity habilitado
@@ -440,15 +478,17 @@ const handleRangeChange = (start: string, end: string) => {
 ### ✅ Checklist Timeouts y Errores
 
 - [ ] **Timeout (15s)**
+
   - [ ] Request se cancela después de 15s
   - [ ] Error message se muestra al usuario
   - [ ] Skeleton loader se oculta
-  
+
 - [ ] **Error de API**
+
   - [ ] 4xx/5xx muestra mensaje de error
   - [ ] Error no rompe la aplicación
   - [ ] Retry button disponible
-  
+
 - [ ] **Sin datos**
   - [ ] Empty state se muestra correctamente
   - [ ] Mensaje informativo al usuario
@@ -457,15 +497,17 @@ const handleRangeChange = (start: string, end: string) => {
 ### ✅ Checklist Invalidación de Cache
 
 - [ ] **Cambio de rango**
+
   - [ ] Cache se invalida
   - [ ] Refetch automático
   - [ ] Loader se muestra durante refetch
-  
+
 - [ ] **Cambio de granularidad**
+
   - [ ] Cache se invalida
   - [ ] Refetch automático
   - [ ] QueryKey incluye granularity
-  
+
 - [ ] **Navegación**
   - [ ] Volver a Nivel 1 → datos en cache
   - [ ] No refetch innecesario
@@ -478,14 +520,17 @@ const handleRangeChange = (start: string, end: string) => {
 ### Archivos clave
 
 - **Servicios:**
+
   - `src/lib/services/chatbot/townCategoryBreakdown.ts`
   - `src/lib/services/chatbot/townCategorySubcatBreakdown.ts`
 
 - **Hooks:**
+
   - `src/features/chatbot/hooks/useTownCategoryBreakdown.ts`
   - `src/features/chatbot/hooks/useTownCategorySubcatBreakdown.ts`
 
 - **Componentes:**
+
   - `src/features/chatbot/components/ChatbotTownsSection.tsx`
   - `src/features/chatbot/components/TownExpandedCard.tsx`
   - `src/features/chatbot/components/TownCategorySubcatDrilldownView.tsx`
@@ -536,6 +581,6 @@ const handleRangeChange = (start: string, end: string) => {
 
 ---
 
-**Última actualización:** 2025-10-24  
-**Versión:** 1.0.0  
+**Última actualización:** 2025-10-24
+**Versión:** 1.0.0
 **PRs relacionados:** #11, #12, #13, #14

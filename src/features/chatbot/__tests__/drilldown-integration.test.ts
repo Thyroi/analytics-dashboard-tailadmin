@@ -392,7 +392,7 @@ describe("Drilldown Integration Tests", () => {
 
       for (const call of calls) {
         const body = JSON.parse((call[1] as RequestInit).body as string);
-        expect(body.pattern).toBe("root.almonte.playas.*");
+        expect(body.patterns).toBe("root.almonte.playas.*"); // ✅ API usa "patterns" no "pattern"
       }
     });
   });

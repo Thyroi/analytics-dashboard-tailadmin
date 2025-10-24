@@ -5,7 +5,9 @@ import {
   TagTimeProvider,
   useTagTimeframe,
 } from "@/features/analytics/context/TagTimeContext";
+import { type CategoryId } from "@/lib/taxonomy/categories";
 
+import { toISO } from "@/lib/utils/time/datetime";
 import { useRef, useState } from "react";
 
 import {
@@ -26,27 +28,15 @@ function ChatbotTownsSectionContent() {
     setGranularity,
     setRange,
     clearRange,
+    getCalculatedGranularity,
   } = useTagTimeframe();
 
   // Obtener handlers para invalidación/refetch
   const handlers = useChatbotTownHandlers();
 
-  // Convertir fechas de manera segura
-  let startDateStr: string | null = null;
-  let endDateStr: string | null = null;
-
-  try {
-    startDateStr =
-      startDate instanceof Date && !isNaN(startDate.getTime())
-        ? startDate.toISOString().split("T")[0]
-        : null;
-    endDateStr =
-      endDate instanceof Date && !isNaN(endDate.getTime())
-        ? endDate.toISOString().split("T")[0]
-        : null;
-  } catch (error) {
-    console.error("Error converting dates:", { startDate, endDate, error });
-  }
+  // Usar las fechas del contexto (ya normalizadas a medianoche UTC en el Provider)
+  const startDateStr: string | null = startDate ? toISO(startDate) : null;
+  const endDateStr: string | null = endDate ? toISO(endDate) : null;
 
   const [selectedTownId, setSelectedTownId] = useState<string | null>(null);
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -58,8 +48,10 @@ function ChatbotTownsSectionContent() {
   const drilldownRef = useRef<HTMLDivElement>(null);
 
   // Hook principal con React Query (sin useEffect)
+  const effectiveGranularity = getCalculatedGranularity();
+
   const { towns, isLoading, isError, error, refetch } = useChatbotTownTotals({
-    granularity,
+    granularity: effectiveGranularity,
     startDate: startDateStr,
     endDate: endDateStr,
   });
@@ -126,14 +118,14 @@ function ChatbotTownsSectionContent() {
         <div ref={drilldownRef} className="px-4 mb-6">
           <TownExpandedCard
             townId={selectedTownId}
-            granularity={granularity}
+            granularity={effectiveGranularity}
             startDate={startDateStr}
             endDate={endDateStr}
             onClose={() => {
               setSelectedTownId(null);
               setSelectedCategoryId(null);
             }}
-            onSelectCategory={(categoryId) => {
+            onSelectCategory={(categoryId: CategoryId) => {
               setSelectedCategoryId(categoryId);
               // TownExpandedCard ya maneja la navegación Nivel 1→2 internamente
             }}

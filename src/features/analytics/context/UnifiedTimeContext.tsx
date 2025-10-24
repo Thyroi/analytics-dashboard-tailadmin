@@ -160,15 +160,22 @@ export function createTimeContext(contextName: string) {
     const setRange = useCallback(
       (start: Date, end: Date) => {
         // NO CLAMPAR AQUÍ - DatePicker ya lo hizo
-        // Confiar en las fechas que vienen del DatePicker
-        setStartDate(start);
-        setEndDate(end);
+        // Normalizar a medianoche UTC para evitar desfases por zona horaria
+        const startUTC = new Date(
+          Date.UTC(start.getFullYear(), start.getMonth(), start.getDate())
+        );
+        const endUTC = new Date(
+          Date.UTC(end.getFullYear(), end.getMonth(), end.getDate())
+        );
+
+        setStartDate(startUTC);
+        setEndDate(endUTC);
         setMode("range");
 
         // Si granularidad NO está locked, recalcular automáticamente por duración
         if (!isGranularityLocked) {
-          const startISO = toISO(start);
-          const endISO = toISO(end);
+          const startISO = toISO(startUTC);
+          const endISO = toISO(endUTC);
           const autoGranularity = getWindowGranularityFromRange(
             startISO,
             endISO

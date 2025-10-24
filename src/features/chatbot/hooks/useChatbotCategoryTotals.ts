@@ -43,6 +43,7 @@ export type UseChatbotCategoryTotalsResult = {
   error: Error | null;
   refetch: () => void;
   meta: CategoryTotalsResponse["meta"] | null;
+  raw: CategoryTotalsResponse["raw"] | null;
 };
 
 /* ==================== Helper Functions ==================== */
@@ -125,6 +126,7 @@ export function useChatbotCategoryTotals(
     error: query.error,
     refetch: query.refetch,
     meta: query.data?.meta || null,
+    raw: query.data?.raw || null,
   };
 }
 

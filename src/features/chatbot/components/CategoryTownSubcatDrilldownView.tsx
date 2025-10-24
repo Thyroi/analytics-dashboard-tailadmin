@@ -1,8 +1,8 @@
 /**
- * Componente para Nivel 2: Town + Categoría → Subcategorías
+ * Componente para Nivel 2: Categoría + Town → Subcategorías
  *
- * Muestra el drilldown de subcategorías para un town+categoría específico
- * usando pattern root.<townId>.<categoriaRaw>.*
+ * Muestra el drilldown de subcategorías para una categoría+town específico
+ * usando pattern root.<categoriaRaw>.<townRaw>.*
  */
 
 "use client";
@@ -12,37 +12,37 @@ import { CATEGORY_META, type CategoryId } from "@/lib/taxonomy/categories";
 import { TOWN_META, type TownId } from "@/lib/taxonomy/towns";
 import type { DonutDatum, WindowGranularity } from "@/lib/types";
 import { useMemo } from "react";
-import { useTownCategorySubcatBreakdown } from "../hooks/useTownCategorySubcatBreakdown";
+import { useCategoryTownSubcatBreakdown } from "../hooks/useCategoryTownSubcatBreakdown";
 
 type Props = {
-  townId: TownId;
   categoryId: CategoryId;
-  startISO?: string | null;
-  endISO?: string | null;
-  windowGranularity: WindowGranularity;
+  townId: TownId;
+  granularity: WindowGranularity;
+  startDate?: string | null;
+  endDate?: string | null;
   onBack: () => void;
   onSubcategoryClick?: (subcategory: string) => void;
 };
 
-export default function TownCategorySubcatDrilldownView({
-  townId,
+export default function CategoryTownSubcatDrilldownView({
   categoryId,
-  startISO,
-  endISO,
-  windowGranularity,
+  townId,
+  granularity,
+  startDate,
+  endDate,
   onBack,
   onSubcategoryClick,
 }: Props) {
-  const townLabel = TOWN_META[townId]?.label || townId;
   const categoryLabel = CATEGORY_META[categoryId]?.label || categoryId;
+  const townLabel = TOWN_META[townId]?.label || townId;
 
   // Fetch data usando el hook de nivel 2
-  const { data, isLoading } = useTownCategorySubcatBreakdown({
-    townId,
+  const { data, isLoading, isError, error } = useCategoryTownSubcatBreakdown({
     categoryId,
-    startISO,
-    endISO,
-    windowGranularity,
+    townId,
+    startISO: startDate,
+    endISO: endDate,
+    windowGranularity: granularity,
     enabled: true,
   });
 
@@ -106,11 +106,11 @@ export default function TownCategorySubcatDrilldownView({
       }
     }
 
-    // Decide bucketization to cap to ~30 buckets.
+    // Decide bucketization to cap to ~30 buckets
     // Override: if global granularity is monthly, we want weekly buckets only for this chart.
     let bucketMode: "d" | "w" | "m" =
       dates.length > 120 ? "m" : dates.length > 45 ? "w" : "d";
-    if (windowGranularity === "m") {
+    if (granularity === "m") {
       bucketMode = "w";
     }
     const toBucketKey = (isoDate: string) => {
@@ -123,19 +123,18 @@ export default function TownCategorySubcatDrilldownView({
           "0"
         )}`;
       }
-      // week bucket (ISO week-ish label)
-      // Compute Monday of week
-      const day = date.getDay(); // 0-6 Sun-Sat
-      const diffToMonday = (day === 0 ? -6 : 1) - day; // days to Monday
+      // week bucket (label by week start date)
+      const day = date.getDay();
+      const diffToMonday = (day === 0 ? -6 : 1) - day;
       const monday = new Date(date);
       monday.setDate(date.getDate() + diffToMonday);
       const wy = monday.getFullYear();
       const wMonth = String(monday.getMonth() + 1).padStart(2, "0");
       const wDay = String(monday.getDate()).padStart(2, "0");
-      return `${wy}-W${wMonth}${wDay}`; // label by week start date
+      return `${wy}-W${wMonth}${wDay}`;
     };
 
-    // Ordered unique bucket labels
+    // Ordered bucket labels
     const bucketLabels: string[] = [];
     const seen = new Set<string>();
     for (const d of dates) {
@@ -146,7 +145,7 @@ export default function TownCategorySubcatDrilldownView({
       }
     }
 
-    // Helper: parse raw maps from data.raw (keys depth 4: root.<town>.<cat>.<subcat>)
+    // Helper: parse raw maps from data.raw (keys depth 4: root.<category>.<town>.<subcat>)
     const parseRawToMap = (
       raw: Record<string, Array<{ time: string; value: number }>> | undefined
     ) => {
@@ -173,23 +172,22 @@ export default function TownCategorySubcatDrilldownView({
         const parts = key.split(".");
         if (parts.length !== 4) continue;
         if (parts[0] !== "root") continue;
-        const tId = parts[1];
-        const cId = parts[2];
+        const cId = parts[1];
+        const tId = parts[2];
 
         // Normalizar para comparación
-        const normalizedTId = normalize(tId);
         const normalizedCId = normalize(cId);
+        const normalizedTId = normalize(tId);
 
-        // Ensure matches this town/category ordering (con normalización)
-        if (normalizedTId !== normalizedTownId) continue;
+        // Ensure matches this category/town ordering (con normalización)
         if (normalizedCId !== normalizedCategoryToken) continue;
+        if (normalizedTId !== normalizedTownId) continue;
 
         const rawSub = parts[3];
         if (!rawSub) continue;
         const sub = rawSub.trim().toLowerCase();
         const dateMap: Record<string, number> = map.get(sub) || {};
         for (const p of series) {
-          // p.time is YYYYMMDD
           const dIso = `${p.time.slice(0, 4)}-${p.time.slice(
             4,
             6
@@ -214,14 +212,11 @@ export default function TownCategorySubcatDrilldownView({
       new Set([...rawCurrentMap.keys(), ...Array.from(nameMap.keys())])
     );
 
-    // Limit to top-K subcategories to reduce series count
+    // Limit to top-K subcategories
     const totalBySub: Array<{ key: string; total: number }> = subKeys.map(
       (k) => {
         const cur = rawCurrentMap.get(k) || {};
-        const t = Object.values(cur as Record<string, number>).reduce(
-          (a: number, b: number) => a + b,
-          0
-        );
+        const t = Object.values(cur).reduce((a, b) => a + b, 0);
         return { key: k, total: t };
       }
     );
@@ -238,20 +233,19 @@ export default function TownCategorySubcatDrilldownView({
       "#EF4444",
       "#8B5CF6",
       "#06B6D4",
-    ]; // 6 stable colors
+    ]; // 6 colors
     const colorsByName: Record<string, string> = {};
     topKeys.forEach((k, idx) => {
       colorsByName[k] = palette[idx % palette.length];
     });
-    const otherColor = "#9CA3AF"; // gray for Otros
+    const otherColor = "#9CA3AF";
 
-    // Build grouped series: for each subkey, produce current series arrays across dates
+    // Build grouped series: current-only per latest requirement
     const groupedSeries: Array<{
       name: string;
       data: number[];
       color?: string;
     }> = [];
-    // First, top keys
     for (const k of topKeys) {
       const label = nameMap.get(k) || k;
       const curMap = rawCurrentMap.get(k) || {};
@@ -259,7 +253,6 @@ export default function TownCategorySubcatDrilldownView({
       const color = colorsByName[k];
       groupedSeries.push({ name: label, data: curData, color });
     }
-    // Aggregate others if any
     if (otherKeys.length > 0) {
       const curAgg: Record<string, number> = {};
       for (const k of otherKeys) {
@@ -279,7 +272,7 @@ export default function TownCategorySubcatDrilldownView({
       groupedCategories: bucketLabels,
       groupedSeries,
     };
-  }, [data, townId, categoryId, windowGranularity]);
+  }, [data, categoryId, townId, granularity]);
 
   const handleDonutSlice = (label: string) => {
     onSubcategoryClick?.(label);
@@ -290,7 +283,7 @@ export default function TownCategorySubcatDrilldownView({
       <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-            {townLabel} › {categoryLabel}
+            {categoryLabel} › {townLabel}
           </h3>
           <button
             onClick={onBack}
@@ -306,12 +299,33 @@ export default function TownCategorySubcatDrilldownView({
     );
   }
 
+  if (isError) {
+    return (
+      <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-red-800 dark:text-red-400">
+            Error al cargar subcategorías
+          </h3>
+          <button
+            onClick={onBack}
+            className="text-sm text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
+          >
+            ← Volver
+          </button>
+        </div>
+        <p className="text-red-600 dark:text-red-300 text-sm">
+          {error?.message || "Error desconocido"}
+        </p>
+      </div>
+    );
+  }
+
   if (totalInteractions === 0) {
     return (
       <div className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-            {townLabel} › {categoryLabel}
+            {categoryLabel} › {townLabel}
           </h3>
           <button
             onClick={onBack}
@@ -337,7 +351,7 @@ export default function TownCategorySubcatDrilldownView({
       <div className="flex items-center justify-between mb-4">
         <div>
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-            {townLabel} › {categoryLabel}
+            {categoryLabel} › {townLabel}
           </h3>
           <p className="text-sm text-gray-600 dark:text-gray-400">
             Subcategorías • {totalInteractions.toLocaleString()} interacciones
@@ -369,16 +383,16 @@ export default function TownCategorySubcatDrilldownView({
         categories={groupedCategories}
         groupedSeries={groupedSeries}
         chartTitle="Subcategorías por intervalo"
-        chartSubtitle={`${townLabel} • ${categoryLabel} • ${groupedCategories.length} intervalos`}
+        chartSubtitle={`${categoryLabel} • ${townLabel} • ${groupedCategories.length} intervalos`}
         chartHeight={350}
         tooltipFormatter={(val) => val.toLocaleString()}
         yAxisFormatter={(val) => val.toLocaleString()}
         donutData={donutData}
         deltaPct={null}
         onDonutSlice={handleDonutSlice}
-        donutCenterLabel={categoryLabel}
+        donutCenterLabel={townLabel}
         showActivityButton={false}
-        granularity={windowGranularity}
+        granularity={granularity}
         legendPosition="bottom"
         className=""
       />
