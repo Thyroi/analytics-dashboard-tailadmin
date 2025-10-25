@@ -41,7 +41,10 @@ export default function GeneralDataBody({
   }, [kpiSeries, granularity]);
 
   // Obtener labels según granularidad
-  const seriesLabels = useMemo(() => getSeriesLabels(granularity), [granularity]);
+  const seriesLabels = useMemo(
+    () => getSeriesLabels(granularity),
+    [granularity]
+  );
 
   // Para granularidad 'd': usar GroupedBarChart para comparar día actual vs anterior
   if (granularity === "d") {
@@ -99,9 +102,9 @@ export default function GeneralDataBody({
             height="100%"
             showLegend={false}
             smooth
-            colorsByName={{ 
-              [seriesLabels.current]: "#16A34A", 
-              [seriesLabels.previous]: "#9CA3AF" 
+            colorsByName={{
+              [seriesLabels.current]: "#16A34A",
+              [seriesLabels.previous]: "#9CA3AF",
             }}
             className="w-full h-full"
           />

@@ -8,11 +8,7 @@ import {
   normalizePropertyId,
   resolvePropertyId,
 } from "@/lib/utils/analytics/ga";
-import {
-  addDaysUTC,
-  parseISO,
-  toISO,
-} from "@/lib/utils/time/datetime";
+import { addDaysUTC, parseISO, toISO } from "@/lib/utils/time/datetime";
 import { computeRangesForSeries } from "@/lib/utils/time/timeWindows";
 import { analyticsdata_v1beta, google } from "googleapis";
 
@@ -59,14 +55,23 @@ function listYearMonthKeys(startISO: string, endISO: string): string[] {
   const end = parseISO(endISO);
   const out: string[] = [];
 
-  let current = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth(), 1));
-  const endMonth = new Date(Date.UTC(end.getUTCFullYear(), end.getUTCMonth(), 1));
+  let current = new Date(
+    Date.UTC(start.getUTCFullYear(), start.getUTCMonth(), 1)
+  );
+  const endMonth = new Date(
+    Date.UTC(end.getUTCFullYear(), end.getUTCMonth(), 1)
+  );
 
   while (current.getTime() <= endMonth.getTime()) {
     out.push(
-      `${current.getUTCFullYear()}-${String(current.getUTCMonth() + 1).padStart(2, "0")}`
+      `${current.getUTCFullYear()}-${String(current.getUTCMonth() + 1).padStart(
+        2,
+        "0"
+      )}`
     );
-    current = new Date(Date.UTC(current.getUTCFullYear(), current.getUTCMonth() + 1, 1));
+    current = new Date(
+      Date.UTC(current.getUTCFullYear(), current.getUTCMonth() + 1, 1)
+    );
   }
 
   return out;

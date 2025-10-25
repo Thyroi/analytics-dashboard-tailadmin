@@ -97,9 +97,9 @@ export function formatTooltipValue(
 ): string {
   const labels = getSeriesLabels(granularity);
   const label = seriesName === "Actual" ? labels.current : labels.previous;
-  
+
   // Formatear número con separadores de miles
   const formattedValue = value.toLocaleString("es-ES");
-  
+
   return `${label}: ${formattedValue}`;
 }

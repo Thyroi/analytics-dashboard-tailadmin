@@ -52,7 +52,7 @@ export default function useOverviewCompare(
       metric === "users" || metric === "visits"
         ? currentData.series.usersByBucketPrev
         : currentData.series.interactionsByBucketPrev;
-    
+
     return {
       bucket: currentData.meta.granularity,
       current: curr.map((p) => ({ label: p.label, value: p.value })),
