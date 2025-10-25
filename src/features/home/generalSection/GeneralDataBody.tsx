@@ -1,8 +1,10 @@
 "use client";
 
+import GroupedBarChart from "@/components/charts/GroupedBarChart";
 import LineChart from "@/components/charts/LineChart";
 import type { Granularity, KPISeries } from "@/lib/types"; // ⬅️ ACTUALIZADO
 import { formatChartLabelsSimple } from "@/lib/utils/charts/labelFormatting";
+import { getSeriesLabels } from "@/lib/utils/charts/tooltipLabels";
 import { useMemo } from "react";
 
 type Props = {
@@ -38,6 +40,49 @@ export default function GeneralDataBody({
     };
   }, [kpiSeries, granularity]);
 
+  // Obtener labels según granularidad
+  const seriesLabels = useMemo(() => getSeriesLabels(granularity), [granularity]);
+
+  // Para granularidad 'd': usar GroupedBarChart para comparar día actual vs anterior
+  if (granularity === "d") {
+    return (
+      <div
+        className={`w-full bg-amber-50/60 dark:bg-gray-900/50 rounded-b-xl border-t border-gray-200 dark:border-gray-600 ${className}`}
+      >
+        <div className="px-6 pb-6 pt-4">
+          <GroupedBarChart
+            categories={categories}
+            series={[
+              { name: seriesLabels.previous, data: prevData, color: "#9CA3AF" },
+              { name: seriesLabels.current, data: currData, color: "#16A34A" },
+            ]}
+            height={300}
+            showLegend={true}
+            legendPosition="top"
+            tooltipFormatter={(val) => val.toLocaleString("es-ES")}
+            yAxisFormatter={(val) => `${Math.round(val)}`}
+            optionsExtra={{
+              states: {
+                hover: {
+                  filter: {
+                    type: "none", // Desactivar efecto de hover
+                  },
+                },
+                active: {
+                  filter: {
+                    type: "none", // Desactivar efecto de active
+                  },
+                },
+              },
+            }}
+            className="w-full"
+          />
+        </div>
+      </div>
+    );
+  }
+
+  // Para otras granularidades: mantener LineChart
   return (
     <div
       className={`w-full bg-amber-50/60 dark:bg-gray-900/50 rounded-b-xl border-t border-gray-200 dark:border-gray-600 ${className}`}
@@ -47,14 +92,17 @@ export default function GeneralDataBody({
           <LineChart
             categories={categories}
             series={[
-              { name: "Actual", data: currData },
-              { name: "Anterior", data: prevData },
+              { name: seriesLabels.current, data: currData },
+              { name: seriesLabels.previous, data: prevData },
             ]}
             type="area"
             height="100%"
             showLegend={false}
             smooth
-            colorsByName={{ Actual: "#16A34A", Anterior: "#9CA3AF" }}
+            colorsByName={{ 
+              [seriesLabels.current]: "#16A34A", 
+              [seriesLabels.previous]: "#9CA3AF" 
+            }}
             className="w-full h-full"
           />
         </div>

@@ -12,9 +12,8 @@ import {
   addDaysUTC,
   parseISO,
   toISO,
-  todayUTC,
 } from "@/lib/utils/time/datetime";
-import { buildLaggedAxisForGranularity } from "@/lib/utils/time/timeAxis";
+import { computeRangesForSeries } from "@/lib/utils/time/timeWindows";
 import { analyticsdata_v1beta, google } from "googleapis";
 
 /* ================= Tipos ================= */
@@ -44,27 +43,6 @@ export type OverviewResponse = {
 };
 
 /* ================= Helpers ================= */
-function yesterdayISO(): string {
-  const y = addDaysUTC(todayUTC(), -1);
-  return toISO(y);
-}
-
-function minusOneDayISO(iso: string): string {
-  return toISO(addDaysUTC(parseISO(iso), -1));
-}
-
-function plusOneDayISO(iso: string): string {
-  return toISO(addDaysUTC(parseISO(iso), 1));
-}
-
-function daysInMonthOf(iso: string): number {
-  const d = parseISO(iso);
-  const y = d.getUTCFullYear();
-  const m = d.getUTCMonth();
-  const last = new Date(Date.UTC(y, m + 1, 0));
-  return last.getUTCDate();
-}
-
 function listDatesISO(startISO: string, endISO: string): string[] {
   const out: string[] = [];
   let cur = parseISO(startISO);
@@ -76,101 +54,64 @@ function listDatesISO(startISO: string, endISO: string): string[] {
   return out;
 }
 
-function addMonthsISO(iso: string, delta: number): string {
-  const d = parseISO(iso);
-  const d2 = new Date(
-    Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + delta, d.getUTCDate())
-  );
-  return toISO(d2);
-}
-
-function firstDayOfMonthISO(anchorISO: string, monthsBack: number): string {
-  const d = parseISO(anchorISO);
-  const d2 = new Date(
-    Date.UTC(d.getUTCFullYear(), d.getUTCMonth() - monthsBack, 1)
-  );
-  return toISO(d2);
-}
-
-function lastDayOfMonthISO(anchorISO: string): string {
-  const d = parseISO(anchorISO);
-  const last = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0));
-  return toISO(last);
-}
-
-function listLast12YearMonthKeys(endISO: string): string[] {
+function listYearMonthKeys(startISO: string, endISO: string): string[] {
+  const start = parseISO(startISO);
   const end = parseISO(endISO);
   const out: string[] = [];
-  for (let i = 11; i >= 0; i--) {
-    const d = new Date(
-      Date.UTC(end.getUTCFullYear(), end.getUTCMonth() - i, 1)
-    );
-    out.push(
-      `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`
-    );
-  }
-  return out;
-}
 
-function plusOneMonthYM(ym: string): string {
-  const [y, m] = ym.split("-").map(Number);
-  const d = new Date(Date.UTC(y, m - 1, 1));
-  const d2 = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1));
-  return `${d2.getUTCFullYear()}-${String(d2.getUTCMonth() + 1).padStart(
-    2,
-    "0"
-  )}`;
+  let current = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth(), 1));
+  const endMonth = new Date(Date.UTC(end.getUTCFullYear(), end.getUTCMonth(), 1));
+
+  while (current.getTime() <= endMonth.getTime()) {
+    out.push(
+      `${current.getUTCFullYear()}-${String(current.getUTCMonth() + 1).padStart(2, "0")}`
+    );
+    current = new Date(Date.UTC(current.getUTCFullYear(), current.getUTCMonth() + 1, 1));
+  }
+
+  return out;
 }
 
 /* ================= Query Principal ================= */
 export async function queryOverview(
   granularity: Granularity,
+  startISO?: string,
   endISO?: string
 ): Promise<OverviewResponse> {
   const gParam = granularity.toLowerCase() as Granularity;
-  const finalEndISO = endISO || yesterdayISO();
 
-  // Config por granularidad
+  // Usar computeRangesForSeries para obtener current y previous
+  // Para series, granularidad "d" = 7 días, resto = duración estándar
+  const { current, previous } = computeRangesForSeries(
+    gParam,
+    startISO,
+    endISO
+  );
+
+  const curRange: Range = current;
+  const prevRange: Range = previous;
+
+  // Config por granularidad para GA
   type DimName = "date" | "yearMonth";
   let dimensionTime: DimName;
-  let curRange: Range;
-  let prevRange: Range;
   let dictKeys: string[];
   let outLabels: string[];
 
   if (gParam === "m") {
-    // MES: buckets DIARIOS del MES de endISO
+    // MES: buckets DIARIOS del rango current
     dimensionTime = "date";
-    const nDays = daysInMonthOf(finalEndISO);
-    const startCur = toISO(addDaysUTC(parseISO(finalEndISO), -(nDays - 1)));
-    curRange = { start: startCur, end: finalEndISO };
-    prevRange = {
-      start: minusOneDayISO(startCur),
-      end: minusOneDayISO(finalEndISO),
-    };
     dictKeys = listDatesISO(curRange.start, curRange.end);
     outLabels = dictKeys.map((k) => k.slice(8, 10)); // "DD"
   } else if (gParam === "y") {
-    // AÑO: 12 buckets MENSUALES
+    // AÑO: 12 buckets MENSUALES del rango current
     dimensionTime = "yearMonth";
-    const curStart = firstDayOfMonthISO(finalEndISO, 11);
-    curRange = { start: curStart, end: finalEndISO };
-    const prevStart = firstDayOfMonthISO(finalEndISO, 12);
-    const prevEnd = lastDayOfMonthISO(addMonthsISO(finalEndISO, -1));
-    prevRange = { start: prevStart, end: prevEnd };
-    dictKeys = listLast12YearMonthKeys(finalEndISO);
+    dictKeys = listYearMonthKeys(curRange.start, curRange.end);
     outLabels = dictKeys.map((k) => k.slice(5, 7)); // "MM"
   } else {
-    // D / W: eje diario + previous desfase -1 día
-    const axis = buildLaggedAxisForGranularity(gParam, { endISO: finalEndISO });
-    curRange = axis.curRange as Range;
-    prevRange = {
-      start: minusOneDayISO(curRange.start),
-      end: minusOneDayISO(curRange.end),
-    };
-    dictKeys = axis.xLabels as string[];
+    // D / W: buckets diarios del rango current
     dimensionTime = "date";
-    outLabels = dictKeys;
+    dictKeys = listDatesISO(curRange.start, curRange.end);
+    outLabels = dictKeys.map((k) => k.slice(5, 10)); // "MM-DD"
   }
 
   // GA
@@ -188,8 +129,33 @@ export async function queryOverview(
     return raw.length === 6 ? `${raw.slice(0, 4)}-${raw.slice(4)}` : raw;
   };
 
-  const translatePrevToCur = (key: string) =>
-    dimensionTime === "yearMonth" ? plusOneMonthYM(key) : plusOneDayISO(key);
+  // Para previous, alinear las claves al eje current usando offset
+  const calculateOffset = (currentRange: Range, previousRange: Range) => {
+    const curStart = parseISO(currentRange.start);
+    const prevStart = parseISO(previousRange.start);
+    const diffTime = curStart.getTime() - prevStart.getTime();
+    return Math.round(diffTime / (1000 * 60 * 60 * 24)); // días de diferencia
+  };
+
+  const offsetDays = calculateOffset(curRange, prevRange);
+
+  const translatePrevToCur = (key: string) => {
+    if (dimensionTime === "yearMonth") {
+      // Para yearMonth, calcular offset en meses
+      const [y, m] = key.split("-").map(Number);
+      const d = new Date(Date.UTC(y, m - 1, 1));
+      const monthsOffset = Math.round(offsetDays / 30);
+      const d2 = new Date(
+        Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + monthsOffset, 1)
+      );
+      return `${d2.getUTCFullYear()}-${String(d2.getUTCMonth() + 1).padStart(
+        2,
+        "0"
+      )}`;
+    }
+    // Para date, sumar offsetDays
+    return toISO(addDaysUTC(parseISO(key), offsetDays));
+  };
 
   async function fetchUsersSeries(
     range: Range,
@@ -295,7 +261,8 @@ export async function handleOverviewRequest(
     "d"
   ).toLowerCase() as Granularity;
 
-  const endISO = searchParams.get("end") || yesterdayISO();
+  const startISO = searchParams.get("start") || undefined;
+  const endISO = searchParams.get("end") || undefined;
 
-  return queryOverview(gParam, endISO);
+  return queryOverview(gParam, startISO, endISO);
 }
