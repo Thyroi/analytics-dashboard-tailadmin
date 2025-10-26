@@ -51,18 +51,35 @@ export default function DeltaCard(props: Props) {
     loading = false,
   } = props;
 
+  // Determinar si la card debe ser clickeable basado en el artifact
+  const hasInsufficientData = useMemo(() => {
+    if (!deltaArtifact) return false;
+    // No clickeable cuando:
+    // - zero_vs_zero: sin datos en ambos períodos
+    // - no_current: sin datos actuales
+    return deltaArtifact.state === "zero_vs_zero" || deltaArtifact.state === "no_current";
+  }, [deltaArtifact]);
+
   const { ringBackground } = useMemo(() => ringVisuals(deltaPct), [deltaPct]);
+
+  // Determinar estilos y comportamiento basado en si hay datos insuficientes
+  const isClickable = !hasInsufficientData && typeof onClick === "function";
+  const tooltipMessage = hasInsufficientData ? "No hay datos suficientes para mostrar detalles" : title;
 
   // ⬇️ Estilo mejorado para consistencia con GeneralDataCards
   const baseClasses =
     "box-border w-full h-full rounded-2xl border bg-white dark:bg-gray-800 shadow-sm " +
-    "border-gray-200/50 dark:border-gray-700/50 ring-1 ring-black/5 dark:ring-white/10 overflow-hidden hover:border-red-300";
-  const interactiveClasses =
-    typeof onClick === "function"
-      ? "cursor-pointer hover:shadow-md transition-shadow focus:outline-none " +
-        "focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-1 " +
-        "focus-visible:ring-offset-white dark:focus-visible:ring-offset-gray-800 appearance-none"
-      : "";
+    "border-gray-200/50 dark:border-gray-700/50 ring-1 ring-black/5 dark:ring-white/10 overflow-hidden " +
+    (hasInsufficientData ? "opacity-60" : "hover:border-red-300");
+  
+  const interactiveClasses = isClickable
+    ? "cursor-pointer hover:shadow-md transition-shadow focus:outline-none " +
+      "focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-1 " +
+      "focus-visible:ring-offset-white dark:focus-visible:ring-offset-gray-800 appearance-none"
+    : hasInsufficientData
+    ? "cursor-default"
+    : "";
+  
   const selectedRing = expanded
     ? "ring-2 ring-emerald-400 ring-offset-1"
     : "ring-0";
@@ -113,15 +130,16 @@ export default function DeltaCard(props: Props) {
     return (
       <motion.button
         type="button"
-        onClick={onClick}
+        onClick={hasInsufficientData ? undefined : onClick}
         aria-pressed={expanded}
         className={wrapperClass}
         style={{ height, minHeight: height }}
         aria-busy={loading || undefined}
         aria-label={title}
-        title={title}
-        whileHover={{ scale: 1.02, y: -2 }}
-        whileTap={{ scale: 0.98 }}
+        title={tooltipMessage}
+        disabled={hasInsufficientData}
+        whileHover={hasInsufficientData ? undefined : { scale: 1.02, y: -2 }}
+        whileTap={hasInsufficientData ? undefined : { scale: 0.98 }}
       >
         {content}
       </motion.button>
@@ -134,7 +152,7 @@ export default function DeltaCard(props: Props) {
       style={{ height, minHeight: height }}
       aria-busy={loading || undefined}
       aria-label={title}
-      title={title}
+      title={tooltipMessage}
       whileHover={{ scale: 1.02, y: -2 }}
       whileTap={{ scale: 0.98 }}
     >
