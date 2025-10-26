@@ -13,6 +13,7 @@ Anteriormente, todas las tarjetas eran clickeables independientemente de si ten�
 ### Cambios en `DeltaCard`
 
 **Lógica de deshabilitación:**
+
 - ✅ Cards con `deltaArtifact.state === "zero_vs_zero"` → **No clickeable** (0 vs 0, sin datos en ambos períodos)
 - ✅ Cards con `deltaArtifact.state === "no_current"` → **No clickeable** (sin datos actuales)
 - ✅ Cards con `deltaArtifact.state === "ok"` y `deltaPct = 0` → **Clickeable** (datos válidos pero sin cambio = 0.0%)
@@ -20,6 +21,7 @@ Anteriormente, todas las tarjetas eran clickeables independientemente de si ten�
 - ✅ Cards con `deltaArtifact.state === "no_prev"` → **Clickeable** (datos actuales pero sin previos)
 
 **Cambios visuales:**
+
 - **Cursor:** `cursor-default` (normal, no prohibido) cuando hay datos insuficientes
 - **Opacidad:** `opacity-60` para indicar estado deshabilitado
 - **Hover:** Sin efectos de animación o hover cuando está deshabilitada
@@ -28,6 +30,7 @@ Anteriormente, todas las tarjetas eran clickeables independientemente de si ten�
 ## 🔍 Comportamiento esperado
 
 ### Cards deshabilitadas (sin datos)
+
 ```typescript
 // Ejemplo: zero_vs_zero
 {
@@ -39,6 +42,7 @@ Anteriormente, todas las tarjetas eran clickeables independientemente de si ten�
   }
 }
 ```
+
 - ❌ No responde al click
 - 🖱️ Cursor normal (no pointer)
 - 🎨 Opacidad reducida (60%)
@@ -46,6 +50,7 @@ Anteriormente, todas las tarjetas eran clickeables independientemente de si ten�
 - ⏹️ Sin animaciones de hover
 
 ### Cards habilitadas (con datos pero sin cambio)
+
 ```typescript
 // Ejemplo: ok con deltaPct = 0
 {
@@ -57,6 +62,7 @@ Anteriormente, todas las tarjetas eran clickeables independientemente de si ten�
   }
 }
 ```
+
 - ✅ Clickeable normalmente
 - 🖱️ Cursor pointer
 - 🎨 Opacidad normal (100%)
@@ -70,6 +76,7 @@ Anteriormente, todas las tarjetas eran clickeables independientemente de si ten�
 ## 🧪 Testing
 
 ### Manual
+
 1. Navegar a página Home, Analytics o Chatbot
 2. Verificar que cards con "Sin datos suficientes":
    - No responden al click
@@ -78,6 +85,7 @@ Anteriormente, todas las tarjetas eran clickeables independientemente de si ten�
 3. Verificar que cards con "0.0%" (pero con datos) siguen siendo clickeables
 
 ### Estados a probar
+
 - [ ] `zero_vs_zero`: Card completamente deshabilitada
 - [ ] `no_current`: Card deshabilitada
 - [ ] `ok` con `deltaPct = 0`: Card habilitada mostrando "0.0%"
@@ -87,10 +95,12 @@ Anteriormente, todas las tarjetas eran clickeables independientemente de si ten�
 ## 🎨 Capturas
 
 **Antes:**
+
 - Todas las cards clickeables
 - Sin diferenciación visual entre "sin datos" y "sin cambios"
 
 **Después:**
+
 - Cards sin datos: opacidad 60%, cursor-default, tooltip informativo
 - Cards con cambio 0%: completamente funcionales
 - UX más clara y predecible

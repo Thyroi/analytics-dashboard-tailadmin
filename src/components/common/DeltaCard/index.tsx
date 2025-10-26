@@ -57,21 +57,26 @@ export default function DeltaCard(props: Props) {
     // No clickeable cuando:
     // - zero_vs_zero: sin datos en ambos períodos
     // - no_current: sin datos actuales
-    return deltaArtifact.state === "zero_vs_zero" || deltaArtifact.state === "no_current";
+    return (
+      deltaArtifact.state === "zero_vs_zero" ||
+      deltaArtifact.state === "no_current"
+    );
   }, [deltaArtifact]);
 
   const { ringBackground } = useMemo(() => ringVisuals(deltaPct), [deltaPct]);
 
   // Determinar estilos y comportamiento basado en si hay datos insuficientes
   const isClickable = !hasInsufficientData && typeof onClick === "function";
-  const tooltipMessage = hasInsufficientData ? "No hay datos suficientes para mostrar detalles" : title;
+  const tooltipMessage = hasInsufficientData
+    ? "No hay datos suficientes para mostrar detalles"
+    : title;
 
   // ⬇️ Estilo mejorado para consistencia con GeneralDataCards
   const baseClasses =
     "box-border w-full h-full rounded-2xl border bg-white dark:bg-gray-800 shadow-sm " +
     "border-gray-200/50 dark:border-gray-700/50 ring-1 ring-black/5 dark:ring-white/10 overflow-hidden " +
     (hasInsufficientData ? "opacity-60" : "hover:border-red-300");
-  
+
   const interactiveClasses = isClickable
     ? "cursor-pointer hover:shadow-md transition-shadow focus:outline-none " +
       "focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-1 " +
@@ -79,7 +84,7 @@ export default function DeltaCard(props: Props) {
     : hasInsufficientData
     ? "cursor-default"
     : "";
-  
+
   const selectedRing = expanded
     ? "ring-2 ring-emerald-400 ring-offset-1"
     : "ring-0";

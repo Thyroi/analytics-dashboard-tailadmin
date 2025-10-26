@@ -17,16 +17,16 @@ import { usePageSelection } from "./hooks/usePageSelection";
 import { useTableState } from "./hooks/useTableState";
 
 // Components
+import { MagnifyingGlassIcon } from "@heroicons/react/24/outline";
 import { ChartSection } from "./components/ChartSection";
 import { DataTable } from "./components/DataTable";
 import { ErrorState } from "./components/ErrorState";
 import { SelectedPills } from "./components/SelectedPills";
-import { MagnifyingGlassIcon } from "@heroicons/react/24/outline";
 
 export default function ComparativeTopPages() {
   const queryClient = useQueryClient();
   const tableRef = useRef<HTMLDivElement>(null);
-  const [isTableOpen, setIsTableOpen] = useState(true);
+  const [isTableOpen, setIsTableOpen] = useState(false);
 
   // Force invalidation of old cache on mount
   useEffect(() => {
@@ -134,9 +134,10 @@ export default function ComparativeTopPages() {
           className="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden"
         >
           {/* Accordion Header with Pills */}
-          <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-            <div className="flex items-center justify-between gap-4 mb-3">
-              <div className="flex-shrink-0">
+          <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 space-y-3">
+            {/* Row 1: Title + Toggle Button */}
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex-1">
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
                   Páginas Top
                 </h3>
@@ -145,47 +146,45 @@ export default function ComparativeTopPages() {
                 </p>
               </div>
 
-              {/* Search Bar */}
-              <div className="flex items-center gap-3 flex-1 max-w-md">
-                <div className="relative flex-1">
-                  <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-                  <input
-                    type="text"
-                    placeholder="Buscar páginas..."
-                    value={searchTerm}
-                    onChange={(e) => handleSearchChange(e.target.value)}
-                    onClick={(e) => e.stopPropagation()}
-                    className="pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-red-500 focus:border-transparent w-full"
-                  />
-                </div>
-
-                {/* Toggle Button */}
-                <button
-                  onClick={() => setIsTableOpen(!isTableOpen)}
-                  className="flex-shrink-0 p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
-                  aria-expanded={isTableOpen}
-                  aria-label={isTableOpen ? "Colapsar tabla" : "Expandir tabla"}
+              {/* Toggle Button */}
+              <button
+                onClick={() => setIsTableOpen(!isTableOpen)}
+                className="flex-shrink-0 p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                aria-expanded={isTableOpen}
+                aria-label={isTableOpen ? "Colapsar tabla" : "Expandir tabla"}
+              >
+                <svg
+                  className={`w-5 h-5 text-gray-500 dark:text-gray-400 transition-transform duration-200 ${
+                    isTableOpen ? "rotate-180" : ""
+                  }`}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
                 >
-                  <svg
-                    className={`w-5 h-5 text-gray-500 dark:text-gray-400 transition-transform duration-200 ${
-                      isTableOpen ? "rotate-180" : ""
-                    }`}
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M19 9l-7 7-7-7"
-                    />
-                  </svg>
-                </button>
-              </div>
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M19 9l-7 7-7-7"
+                  />
+                </svg>
+              </button>
             </div>
 
-            {/* Selected Pills - Same row, below header text */}
+            {/* Row 2: Search Bar */}
+            <div className="relative w-full">
+              <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Buscar páginas..."
+                value={searchTerm}
+                onChange={(e) => handleSearchChange(e.target.value)}
+                onClick={(e) => e.stopPropagation()}
+                className="pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-red-500 focus:border-transparent w-full"
+              />
+            </div>
+
+            {/* Row 3: Selected Pills */}
             {selectedPaths.length > 0 && (
               <SelectedPills
                 selectedPaths={selectedPaths}

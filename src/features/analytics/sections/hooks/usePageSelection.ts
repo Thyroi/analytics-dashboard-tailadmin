@@ -21,7 +21,7 @@ export function usePageSelection(options: UsePageSelectionOptions = {}) {
       const topPaths = topItems
         .slice(0, Math.min(autoSelectCount, 8))
         .map((item) => item.path);
-      
+
       setSelectedPaths(topPaths);
       setHasAutoSelected(true);
     }

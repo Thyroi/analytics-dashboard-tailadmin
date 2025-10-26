@@ -32,11 +32,11 @@ export function SelectedPills({
             <div
               key={path}
               className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-sm font-medium text-white shadow-sm hover:shadow-md transform hover:scale-105 transition-all duration-200 animate-in fade-in slide-in-from-left-2"
-              style={{ 
+              style={{
                 backgroundColor: color,
                 animationDelay: `${index * 50}ms`,
-                animationDuration: '300ms',
-                animationFillMode: 'both'
+                animationDuration: "300ms",
+                animationFillMode: "both",
               }}
             >
               <span className="truncate max-w-32" title={label}>
