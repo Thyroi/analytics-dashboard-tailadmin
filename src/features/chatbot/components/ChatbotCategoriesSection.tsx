@@ -243,10 +243,21 @@ function ChatbotCategoryCard({
   onCategoryClick: (categoryId: string) => void;
   isSelected: boolean;
 }) {
+  console.log("🎴 ChatbotCategoryCard RENDER:", data.id, {
+    label: data.label,
+    currentValue: data.currentValue,
+    previousValue: data.previousValue,
+    delta: data.delta,
+    deltaPercent: data.deltaPercent,
+    "artifact.deltaPct": data.deltaArtifact.deltaPct,
+    "artifact.state": data.deltaArtifact.state,
+  });
+
   return (
     <DeltaCard
       title={data.label}
       deltaPct={data.deltaPercent ?? null}
+      deltaArtifact={data.deltaArtifact}
       imgSrc={data.iconSrc}
       onClick={() => onCategoryClick(data.id)}
       className={`h-full cursor-pointer transition-all ${

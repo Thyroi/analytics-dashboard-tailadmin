@@ -8,7 +8,7 @@ type Props = {
 };
 
 export default function TownCard({ data, onClick, isSelected }: Props) {
-  const { label, iconSrc, deltaPercent } = data;
+  const { label, iconSrc, deltaPercent, deltaArtifact } = data;
 
   return (
     <div
@@ -23,6 +23,7 @@ export default function TownCard({ data, onClick, isSelected }: Props) {
         title={label}
         imgSrc={iconSrc}
         deltaPct={deltaPercent ?? null}
+        deltaArtifact={deltaArtifact}
         loading={false}
         isTown={true}
         className="h-full"

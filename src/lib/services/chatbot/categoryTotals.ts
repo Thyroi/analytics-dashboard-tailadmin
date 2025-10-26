@@ -264,6 +264,17 @@ export async function fetchChatbotCategoryTotals(
         const deltaAbs = currentTotal - prevTotal;
         const deltaPercent = computeDeltaPercent(currentTotal, prevTotal);
 
+        console.log("📦 BACKEND categoryTotals:", categoryId, {
+          currentTotal,
+          prevTotal,
+          deltaAbs,
+          deltaPercent,
+          calculation:
+            prevTotal > 0
+              ? `((${currentTotal} - ${prevTotal}) / ${prevTotal}) * 100 = ${deltaPercent}`
+              : "prev <= 0, null",
+        });
+
         return {
           id: categoryId,
           label: CATEGORY_META[categoryId].label,

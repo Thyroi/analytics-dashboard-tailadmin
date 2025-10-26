@@ -15,6 +15,7 @@ import {
 } from "@/lib/services/chatbot/townTotals";
 import type { TownId } from "@/lib/taxonomy/towns";
 import type { WindowGranularity } from "@/lib/types";
+import { computeDeltaArtifact, type DeltaArtifact } from "@/lib/utils/delta";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 /* ==================== Tipos ==================== */
@@ -27,6 +28,7 @@ export type TownCardData = {
   previousValue: number;
   delta: number;
   deltaPercent: number | null;
+  deltaArtifact: DeltaArtifact; // Nuevo: artifact completo
 };
 
 export type UseChatbotTownTotalsParams = {
@@ -68,6 +70,21 @@ function buildQueryKey(params: UseChatbotTownTotalsParams): unknown[] {
  * Transforma TownTotalData a TownCardData para compatibilidad con UI
  */
 function transformToCardData(data: TownTotalData): TownCardData {
+  // Calcular deltaArtifact usando valores actuales y anteriores
+  const deltaArtifact = computeDeltaArtifact(data.currentTotal, data.prevTotal);
+
+  console.log("🏘️ CHATBOT TOWN:", data.id, {
+    label: data.label,
+    currentTotal: data.currentTotal,
+    prevTotal: data.prevTotal,
+    deltaAbs: data.deltaAbs,
+    deltaPercent: data.deltaPercent,
+    "artifact.state": deltaArtifact.state,
+    "artifact.deltaAbs": deltaArtifact.deltaAbs,
+    "artifact.deltaPct": deltaArtifact.deltaPct,
+    "artifact.baseInfo": deltaArtifact.baseInfo,
+  });
+
   return {
     id: data.id,
     label: data.label,
@@ -76,6 +93,7 @@ function transformToCardData(data: TownTotalData): TownCardData {
     previousValue: data.prevTotal,
     delta: data.deltaAbs,
     deltaPercent: data.deltaPercent,
+    deltaArtifact, // Incluir artifact completo
   };
 }
 
