@@ -3,10 +3,29 @@
  */
 
 import { getContrastingColors } from "@/lib/analytics/colors";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
-export function usePageSelection() {
+interface UsePageSelectionOptions {
+  topItems?: Array<{ path: string }>;
+  autoSelectCount?: number;
+}
+
+export function usePageSelection(options: UsePageSelectionOptions = {}) {
+  const { topItems = [], autoSelectCount = 5 } = options;
   const [selectedPaths, setSelectedPaths] = useState<string[]>([]);
+  const [hasAutoSelected, setHasAutoSelected] = useState(false);
+
+  // Auto-select top N items when data loads (only once)
+  useEffect(() => {
+    if (!hasAutoSelected && topItems.length > 0 && selectedPaths.length === 0) {
+      const topPaths = topItems
+        .slice(0, Math.min(autoSelectCount, 8))
+        .map((item) => item.path);
+      
+      setSelectedPaths(topPaths);
+      setHasAutoSelected(true);
+    }
+  }, [topItems, autoSelectCount, hasAutoSelected, selectedPaths.length]);
 
   // Handle selection toggle
   const handleItemToggle = useCallback((path: string) => {

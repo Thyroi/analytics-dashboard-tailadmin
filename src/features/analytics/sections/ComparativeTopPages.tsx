@@ -7,7 +7,7 @@
 import { colorForPath } from "@/lib/analytics/colors";
 import { formatNumber } from "@/lib/analytics/format";
 import { useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 // Hooks
 import { useTopComparativePagesSeries } from "../hooks/useTopComparativePagesSeries";
@@ -21,11 +21,12 @@ import { ChartSection } from "./components/ChartSection";
 import { DataTable } from "./components/DataTable";
 import { ErrorState } from "./components/ErrorState";
 import { SelectedPills } from "./components/SelectedPills";
-import { TableHeader } from "./components/TableHeader";
+import { MagnifyingGlassIcon } from "@heroicons/react/24/outline";
 
 export default function ComparativeTopPages() {
   const queryClient = useQueryClient();
   const tableRef = useRef<HTMLDivElement>(null);
+  const [isTableOpen, setIsTableOpen] = useState(true);
 
   // Force invalidation of old cache on mount
   useEffect(() => {
@@ -61,9 +62,6 @@ export default function ComparativeTopPages() {
     }, 100);
   };
 
-  const { selectedPaths, pillColors, handleItemToggle, handlePillRemove } =
-    usePageSelection();
-
   // Data fetching
   const {
     data: tableData,
@@ -77,6 +75,12 @@ export default function ComparativeTopPages() {
     sortDir,
     enabled: true,
   });
+
+  const { selectedPaths, pillColors, handleItemToggle, handlePillRemove } =
+    usePageSelection({
+      topItems: tableData?.data || [],
+      autoSelectCount: 5,
+    });
 
   const { data: seriesData, isLoading: seriesLoading } =
     useTopComparativePagesSeries(
@@ -125,35 +129,89 @@ export default function ComparativeTopPages() {
           isLoading={seriesLoading && selectedPaths.length > 0}
         />
 
-        <SelectedPills
-          selectedPaths={selectedPaths}
-          pillColors={pillColors}
-          colorForPath={colorForPath}
-          onPillRemove={handlePillRemove}
-        />
-
         <div
           ref={tableRef}
-          className="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700"
+          className="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden"
         >
-          <TableHeader
-            searchTerm={searchTerm}
-            onSearchChange={handleSearchChange}
-          />
+          {/* Accordion Header with Pills */}
+          <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+            <div className="flex items-center justify-between gap-4 mb-3">
+              <div className="flex-shrink-0">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  Páginas Top
+                </h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                  Selecciona páginas para comparar (máximo 8)
+                </p>
+              </div>
 
-          <div className="overflow-x-auto">
-            <DataTable
-              data={data}
-              isLoading={tableLoading}
-              selectedPaths={selectedPaths}
-              sortBy={sortBy}
-              sortDir={sortDir}
-              searchTerm={searchTerm}
-              onSort={handleSort}
-              onToggle={handleItemToggle}
-              onPageChange={handlePageChangeWithScroll}
-            />
+              {/* Search Bar */}
+              <div className="flex items-center gap-3 flex-1 max-w-md">
+                <div className="relative flex-1">
+                  <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Buscar páginas..."
+                    value={searchTerm}
+                    onChange={(e) => handleSearchChange(e.target.value)}
+                    onClick={(e) => e.stopPropagation()}
+                    className="pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-red-500 focus:border-transparent w-full"
+                  />
+                </div>
+
+                {/* Toggle Button */}
+                <button
+                  onClick={() => setIsTableOpen(!isTableOpen)}
+                  className="flex-shrink-0 p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                  aria-expanded={isTableOpen}
+                  aria-label={isTableOpen ? "Colapsar tabla" : "Expandir tabla"}
+                >
+                  <svg
+                    className={`w-5 h-5 text-gray-500 dark:text-gray-400 transition-transform duration-200 ${
+                      isTableOpen ? "rotate-180" : ""
+                    }`}
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 9l-7 7-7-7"
+                    />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            {/* Selected Pills - Same row, below header text */}
+            {selectedPaths.length > 0 && (
+              <SelectedPills
+                selectedPaths={selectedPaths}
+                pillColors={pillColors}
+                colorForPath={colorForPath}
+                onPillRemove={handlePillRemove}
+              />
+            )}
           </div>
+
+          {/* Accordion Content - Collapsible */}
+          {isTableOpen && (
+            <div className="overflow-x-auto">
+              <DataTable
+                data={data}
+                isLoading={tableLoading}
+                selectedPaths={selectedPaths}
+                sortBy={sortBy}
+                sortDir={sortDir}
+                searchTerm={searchTerm}
+                onSort={handleSort}
+                onToggle={handleItemToggle}
+                onPageChange={handlePageChangeWithScroll}
+              />
+            </div>
+          )}
         </div>
       </div>
     </div>
