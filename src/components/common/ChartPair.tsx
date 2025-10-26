@@ -1,6 +1,5 @@
 "use client";
 
-import ComparisonBarChart from "@/components/charts/ComparisonBarChart";
 import GroupedBarChart, {
   type GroupedBarSeries,
 } from "@/components/charts/GroupedBarChart";
@@ -75,6 +74,10 @@ type Props = LineChartMode | MultiLineMode | GroupedBarMode;
  *  - Derecha : DonutSection
  */
 export default function ChartPair(props: Props) {
+  // Si es modo multi con granularidad día, convertir a grouped bar
+  const shouldUseGroupedBar =
+    props.mode === "multi" && props.granularity === "d";
+
   return (
     <div
       className={`grid grid-cols-1 xl:grid-cols-2 gap-4 xl:items-stretch w-full ${
@@ -85,15 +88,22 @@ export default function ChartPair(props: Props) {
         {props.mode === "line" ? (
           <LineSide series={props.series} granularity={props.granularity} />
         ) : props.mode === "multi" ? (
-          <div className="w-full h-full">
-            <DrilldownMultiLineSection
-              xLabels={props.xLabels}
+          shouldUseGroupedBar ? (
+            <MultiAsGroupedBar
               seriesBySub={props.seriesBySub}
               loading={props.loading}
-              colorsByName={props.colorsByName}
-              granularity={props.granularity}
             />
-          </div>
+          ) : (
+            <div className="w-full h-full">
+              <DrilldownMultiLineSection
+                xLabels={props.xLabels}
+                seriesBySub={props.seriesBySub}
+                loading={props.loading}
+                colorsByName={props.colorsByName}
+                granularity={props.granularity}
+              />
+            </div>
+          )
         ) : (
           <GroupedBarSide
             categories={props.categories}
@@ -130,19 +140,38 @@ function LineSide({
   series: { current: SeriesPoint[]; previous: SeriesPoint[] };
   granularity?: Granularity;
 }) {
-  // Si es granularidad diaria, usar el gráfico de barras comparativas
+  // ✅ Para granularidad "d": GroupedBarChart con 1 fecha, 2 barras (current vs previous)
   if (granularity === "d") {
+    // Tomar SOLO el último punto (ayer)
+    const lastCurrent = series.current[series.current.length - 1];
+    const lastPrevious = series.previous[series.previous.length - 1];
+
+    if (!lastCurrent || !lastPrevious) {
+      return (
+        <div className="w-full h-full bg-white dark:bg-gray-800 rounded-lg p-6">
+          <p className="text-gray-500 dark:text-gray-400">No hay datos</p>
+        </div>
+      );
+    }
+
+    const categories = [lastCurrent.label]; // ["2025-10-25"]
+    const groupedSeries: GroupedBarSeries[] = [
+      { name: "Periodo actual", data: [lastCurrent.value] },
+      { name: "Periodo anterior", data: [lastPrevious.value] },
+    ];
+
     return (
       <div className="w-full h-full">
-        <ComparisonBarChart
-          series={series}
+        <GroupedBarChart
           title="Comparación diaria"
-          subtitle="Periodo anterior vs Periodo actual"
+          subtitle="Ayer vs Anteayer"
+          categories={categories}
+          series={groupedSeries}
           height={350}
           showLegend={true}
-          tooltipFormatter={(value) => value.toLocaleString()}
-          yAxisFormatter={(value) => value.toString()}
-          granularity={granularity}
+          legendPosition="top"
+          tooltipFormatter={(val) => val.toLocaleString()}
+          yAxisFormatter={(val) => val.toString()}
         />
       </div>
     );
@@ -169,6 +198,58 @@ function LineSide({
 }
 
 /* ===== left side (grouped bar) ===== */
+function MultiAsGroupedBar({
+  seriesBySub,
+  loading = false,
+}: {
+  seriesBySub: UrlSeries[];
+  loading?: boolean;
+}) {
+  if (loading) {
+    return (
+      <div className="w-full bg-white dark:bg-gray-800 rounded-lg">
+        <div className="p-6">
+          <div className="animate-pulse">
+            <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/3 mb-2"></div>
+            <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2 mb-4"></div>
+            <div className="h-80 bg-gray-200 dark:bg-gray-700 rounded"></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Convertir seriesBySub a formato GroupedBar
+  // Cada URL es una categoría, y solo tomamos el último valor (día actual)
+  const categories = seriesBySub.map((s) => s.name);
+  const values = seriesBySub.map((s) => {
+    // Tomar el último valor de la serie (día actual)
+    const lastValue = s.data[s.data.length - 1];
+    return lastValue || 0;
+  });
+
+  const groupedSeries: GroupedBarSeries[] = [
+    {
+      name: "Interacciones",
+      data: values,
+    },
+  ];
+
+  return (
+    <GroupedBarChart
+      title="Sub-actividades (comparativa por URL)"
+      subtitle="Interacciones en el día seleccionado"
+      categories={categories}
+      series={groupedSeries}
+      height={350}
+      showLegend={false}
+      legendPosition="top"
+      tooltipFormatter={(val) => val.toLocaleString()}
+      yAxisFormatter={(val) => val.toString()}
+    />
+  );
+}
+
 function GroupedBarSide({
   categories,
   groupedSeries,

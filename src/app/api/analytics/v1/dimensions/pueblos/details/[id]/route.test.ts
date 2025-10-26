@@ -158,7 +158,7 @@ describe("/api/analytics/v1/dimensions/pueblos/details/[id]", () => {
 
   test("returns pueblo data without filters (categories donut)", async () => {
     const request = createMockRequest(
-      "/api/analytics/v1/dimensions/pueblos/details/almonte?g=d"
+      "/api/analytics/v1/dimensions/pueblos/details/almonte?granularity=d&startDate=2025-10-25&endDate=2025-10-25"
     );
     const context = createMockContext("almonte");
 
@@ -199,7 +199,7 @@ describe("/api/analytics/v1/dimensions/pueblos/details/[id]", () => {
 
   test("returns pueblo data with categoryId filter (URLs donut)", async () => {
     const request = createMockRequest(
-      "/api/analytics/v1/dimensions/pueblos/details/almonte?g=d&categoryId=naturaleza"
+      "/api/analytics/v1/dimensions/pueblos/details/almonte?granularity=d&startDate=2025-10-25&endDate=2025-10-25&categoryId=naturaleza"
     );
     const context = createMockContext("almonte");
 
@@ -236,7 +236,7 @@ describe("/api/analytics/v1/dimensions/pueblos/details/[id]", () => {
 
   test("handles custom date ranges", async () => {
     const request = createMockRequest(
-      "/api/analytics/v1/dimensions/pueblos/details/almonte?g=d&start=2025-10-01&end=2025-10-05"
+      "/api/analytics/v1/dimensions/pueblos/details/almonte?granularity=d&startDate=2025-10-01&endDate=2025-10-05"
     );
     const context = createMockContext("almonte");
 
@@ -268,7 +268,7 @@ describe("/api/analytics/v1/dimensions/pueblos/details/[id]", () => {
 
     for (const granularity of testCases) {
       const request = createMockRequest(
-        `/api/analytics/v1/dimensions/pueblos/details/almonte?g=${granularity}`
+        `/api/analytics/v1/dimensions/pueblos/details/almonte?granularity=${granularity}&startDate=2025-10-25&endDate=2025-10-25`
       );
       const context = createMockContext("almonte");
 
@@ -282,7 +282,7 @@ describe("/api/analytics/v1/dimensions/pueblos/details/[id]", () => {
 
   test("includes debug information", async () => {
     const request = createMockRequest(
-      "/api/analytics/v1/dimensions/pueblos/details/almonte?g=d"
+      "/api/analytics/v1/dimensions/pueblos/details/almonte?granularity=d&startDate=2025-10-25&endDate=2025-10-25"
     );
     const context = createMockContext("almonte");
 

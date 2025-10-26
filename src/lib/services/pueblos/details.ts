@@ -61,15 +61,15 @@ export async function fetchPuebloDetails(
   const searchParams = new URLSearchParams();
 
   if (granularity) {
-    searchParams.set("g", granularity);
+    searchParams.set("granularity", granularity);
   }
 
   if (startDate) {
-    searchParams.set("start", startDate);
+    searchParams.set("startDate", startDate);
   }
 
   if (endDate) {
-    searchParams.set("end", endDate);
+    searchParams.set("endDate", endDate);
   }
 
   const url = `${ENDPOINT_BASE_URL}/${townId}?${searchParams.toString()}`;

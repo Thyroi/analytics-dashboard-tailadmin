@@ -6,6 +6,10 @@ import {
   resolvePropertyId,
 } from "@/lib/utils/analytics/ga";
 import { safePathname } from "@/lib/utils/routing/url";
+import {
+  calculatePreviousRangeForAxis,
+  generateLabelsForRange,
+} from "@/lib/utils/time/axisHelpers";
 import { addDaysUTC, todayUTC } from "@/lib/utils/time/datetime";
 import { determineGA4Granularity } from "@/lib/utils/time/rangeCalculations";
 import {
@@ -211,9 +215,9 @@ export async function GET(req: Request) {
   try {
     const url = new URL(req.url);
     const rawPath = url.searchParams.get("path") || ""; // URL completa
-    const g = (url.searchParams.get("g") || "d") as Granularity;
-    const endISOParam = url.searchParams.get("end") || undefined;
-    const startISOParam = url.searchParams.get("start") || undefined;
+    const g = (url.searchParams.get("granularity") || "d") as Granularity;
+    const endISOParam = url.searchParams.get("endDate") || undefined;
+    const startISOParam = url.searchParams.get("startDate") || undefined;
 
     if (!rawPath) {
       return NextResponse.json(
@@ -237,28 +241,38 @@ export async function GET(req: Request) {
         return `${yyyy}-${mm}-${dd}`;
       })();
 
-    // Si viene startISO, usar eso en vez de buildLaggedAxisForGranularity
+    // ===== CONSTRUCCIÓN DEL AXIS CON FIX =====
     let axis: AxisLagged;
     if (startISOParam) {
-      // Usar rango personalizado desde septiembre
-      const customRange = {
-        start: startISOParam,
-        end: endISO,
-      };
-      // Aplicar nueva lógica de granularidad para GA4
+      // ✅ FIX: Generar xLabels completos para custom range
+      const customRange = { start: startISOParam, end: endISO };
       const ga4Granularity = determineGA4Granularity(g);
 
-      // Crear un axis simple sin lag para usar el rango completo
+      // Generar labels completos según granularidad
+      const xLabels = generateLabelsForRange(startISOParam, endISO, g);
+
+      // Calcular previous range (ventana contigua del mismo tamaño)
+      const prevRange = calculatePreviousRangeForAxis(customRange);
+      const prevLabels = generateLabelsForRange(
+        prevRange.start,
+        prevRange.end,
+        g
+      );
+
+      // Convertir labels a keys (sin guiones)
+      const curKeys = xLabels.map((label) => label.replace(/-/g, ""));
+      const prevKeys = prevLabels.map((label) => label.replace(/-/g, ""));
+
       axis = {
         dimensionTime: ga4Granularity === "y" ? "yearMonth" : "date",
-        queryRange: customRange,
+        queryRange: { start: prevRange.start, end: customRange.end },
         curRange: customRange,
-        prevRange: { start: startISOParam, end: endISO }, // Mismo rango para evitar errores
-        xLabels: [customRange.start], // Simplified para el test
-        curKeys: [customRange.start.replace(/-/g, "")],
-        prevKeys: [],
-        curIndexByKey: new Map([[customRange.start.replace(/-/g, ""), 0]]),
-        prevIndexByKey: new Map(),
+        prevRange: prevRange,
+        xLabels: xLabels, // ✅ Array completo
+        curKeys: curKeys, // ✅ Array completo
+        prevKeys: prevKeys, // ✅ Array completo
+        curIndexByKey: new Map(curKeys.map((k, i) => [k, i])),
+        prevIndexByKey: new Map(prevKeys.map((k, i) => [k, i])),
       };
     } else {
       // ===== EJE / BUCKETS (ventanas "lagged" solapadas) =====
@@ -369,12 +383,9 @@ export async function GET(req: Request) {
 
       let slotKey: string | null = null;
       if (axis.dimensionTime === "date") {
-        // YYYYMMDD -> YYYY-MM-DD
+        // YYYYMMDD -> YYYYMMDD (sin guiones para matching)
         if (slotRaw.length === 8) {
-          slotKey = `${slotRaw.slice(0, 4)}-${slotRaw.slice(
-            4,
-            6
-          )}-${slotRaw.slice(6, 8)}`;
+          slotKey = slotRaw; // Mantener sin guiones
         }
       } else {
         // "yearMonth" → YYYYMM

@@ -23,7 +23,9 @@ type Props = {
   headline: "town" | "category";
   headlinePercent?: number;
   color?: "dark" | "primary" | "secondary";
-  /** Fin del rango si el contexto está en modo "range" */
+  /** Inicio del rango (YYYY-MM-DD) */
+  startISO?: string;
+  /** Fin del rango (YYYY-MM-DD) */
   endISO?: string;
 };
 
@@ -34,6 +36,7 @@ export default function TownCategoryDrilldownPanel({
   headline,
   headlinePercent,
   color = "dark",
+  startISO,
   endISO,
 }: Props) {
   // Nivel 2: sub-actividades (series por URL + donut)
@@ -42,18 +45,22 @@ export default function TownCategoryDrilldownPanel({
     townId,
     categoryId,
     granularity,
+    startISO, // ✅ Ahora pasamos startISO
     endISO,
   });
 
-  // Estabilizar las URLs para evitar re-renders infinitos
-  const urlsToFetch = useMemo(() => {
+  // ✅ TOP-5 URLs para gráfica (no para donut - donut muestra todas)
+  const top5Urls = useMemo(() => {
     if (drilldown.loading) return [];
-    return drilldown.donut.map((item) => item.label);
+    const urls = drilldown.donut.slice(0, 5).map((item) => item.label);
+    return urls;
   }, [drilldown]);
 
+  // ✅ Solo fetch TOP-5 para la gráfica
   const urlSeries = useUrlSeries({
-    urls: urlsToFetch,
+    urls: top5Urls, // ✅ Solo top-5
     granularity,
+    startISO,
     endISO,
   });
 
@@ -71,7 +78,12 @@ export default function TownCategoryDrilldownPanel({
     [townId, categoryId, selectedPath]
   );
 
-  const url = useUrlDrilldown({ path: selectedPath, granularity, endISO });
+  const url = useUrlDrilldown({
+    path: selectedPath,
+    granularity,
+    startISO, // ✅ Pasar startISO
+    endISO,
+  });
 
   // Safe data extraction - keep it simple
   const isLoaded =
@@ -167,6 +179,7 @@ export default function TownCategoryDrilldownPanel({
               key={level3Key}
               path={selectedPath}
               granularity={granularity}
+              startISO={startISO}
               endISO={endISO}
               kpis={kpis}
               seriesAvgEngagement={seriesAvgEngagement}

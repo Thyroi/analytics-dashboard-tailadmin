@@ -316,16 +316,6 @@ export async function fetchCategoryTownBreakdown(
     representativeCategoryRaw = null,
   } = params;
 
-  // Debug: parámetros de entrada (Nivel 1)
-  console.log("📊 [CategoryL1 fetchCategoryTownBreakdown] Called with params", {
-    categoryId,
-    representativeCategoryRaw,
-    windowGranularity,
-    startISO,
-    endISO,
-    db,
-  });
-
   // 1. Determinar el segmento a usar (representativo manual o mapping por categoría)
   // Nota: representativeCategoryRaw ya no se usa para el patrón; mantenemos compat por si lo reintroducimos en Nivel 2
 

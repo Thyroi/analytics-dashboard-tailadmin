@@ -91,7 +91,8 @@ export function useDrilldownDetails(
       endISO,
     ],
     queryFn: async (): Promise<DrilldownResponse> => {
-      return fetchJSON<DrilldownResponse>(url);
+      const result = await fetchJSON<DrilldownResponse>(url);
+      return result;
     },
     staleTime: 5 * 60 * 1000, // 5 minutos
     retry: (failureCount, error) => {

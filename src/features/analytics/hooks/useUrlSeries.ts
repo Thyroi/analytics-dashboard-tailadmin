@@ -43,10 +43,12 @@ type UseUrlSeriesReturn =
 export function useUrlSeries({
   urls,
   granularity,
+  startISO,
   endISO,
 }: {
   urls: string[];
   granularity: Granularity;
+  startISO?: string;
   endISO?: string;
 }): UseUrlSeriesReturn {
   const queryClient = useQueryClient();
@@ -54,7 +56,7 @@ export function useUrlSeries({
   // Optimización: Verificar qué URLs ya están en caché para evitar queries duplicadas
   const cachedUrls = new Set<string>();
   const uncachedUrls = urls.filter((url) => {
-    const queryKey = ["url-series", url, granularity, endISO];
+    const queryKey = ["url-series", url, granularity, startISO, endISO];
     const cachedData = queryClient.getQueryData(queryKey);
     if (cachedData) {
       cachedUrls.add(url);
@@ -66,18 +68,19 @@ export function useUrlSeries({
   // Solo ejecutar queries para URLs que no están en caché
   const queries = useQueries({
     queries: uncachedUrls.map((url) => ({
-      queryKey: ["url-series", url, granularity, endISO],
+      queryKey: ["url-series", url, granularity, startISO, endISO],
       queryFn: async (): Promise<UrlDrilldownResponse> => {
         if (!url) throw new Error("No URL provided");
 
         const params = new URLSearchParams();
         params.set("path", url);
-        params.set("g", granularity);
-        if (endISO) params.set("end", endISO);
+        params.set("granularity", granularity);
+        if (startISO) params.set("startDate", startISO);
+        if (endISO) params.set("endDate", endISO);
 
-        return fetchJSON<UrlDrilldownResponse>(
-          `/api/analytics/v1/drilldown/url?${params.toString()}`
-        );
+        const fullUrl = `/api/analytics/v1/drilldown/url?${params.toString()}`;
+
+        return fetchJSON<UrlDrilldownResponse>(fullUrl);
       },
       enabled: Boolean(url),
       staleTime: 5 * 60 * 1000,
@@ -91,7 +94,7 @@ export function useUrlSeries({
   // Combinar datos cacheados con queries en progreso
   const allQueries = urls.map((url) => {
     if (cachedUrls.has(url)) {
-      const queryKey = ["url-series", url, granularity, endISO];
+      const queryKey = ["url-series", url, granularity, startISO, endISO];
       const cachedData =
         queryClient.getQueryData<UrlDrilldownResponse>(queryKey);
       return {

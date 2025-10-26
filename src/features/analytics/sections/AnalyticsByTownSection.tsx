@@ -16,6 +16,7 @@ import { TOWN_ID_ORDER } from "@/lib/taxonomy/towns";
 import type { SeriesPoint } from "@/lib/types";
 import { labelToCategoryId } from "@/lib/utils/core/sector";
 
+import { computeRangesForKPI } from "@/lib/utils/time/timeWindows";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useMemo, useState } from "react";
 
@@ -118,6 +119,7 @@ function AnalyticsByTownSectionInner() {
     (label: string) => {
       // En nivel 1 (pueblo) las etiquetas son CATEGORÍAS
       const categoryId = labelToCategoryId(label);
+
       if (categoryId && expandedId) {
         const newDrill = {
           kind: "town+cat" as const,
@@ -145,15 +147,28 @@ function AnalyticsByTownSectionInner() {
 
   // Memoizar level2Data para mejor tracking de dependencias
   const level2Data = useMemo(() => {
-    return drill?.kind === "town+cat"
-      ? {
-          townId: drill.townId,
-          categoryId: drill.categoryId,
-          granularity: calculatedGranularity, // ✅ Usar granularidad calculada para nivel 2
-          endISO: currentPeriod.end,
-        }
-      : undefined;
-  }, [drill, calculatedGranularity, currentPeriod.end]);
+    if (!drill || drill.kind !== "town+cat") return undefined;
+
+    // ✅ USAR computeRangesForKPI para calcular rangos correctos
+    const ranges =
+      mode === "range"
+        ? computeRangesForKPI(
+            calculatedGranularity,
+            startDate.toISOString().split("T")[0],
+            endDate.toISOString().split("T")[0]
+          )
+        : computeRangesForKPI(calculatedGranularity); // Preset según granularidad
+
+    const result = {
+      townId: drill.townId,
+      categoryId: drill.categoryId,
+      granularity: calculatedGranularity,
+      startISO: ranges.current.start,
+      endISO: ranges.current.end,
+    };
+
+    return result;
+  }, [drill, calculatedGranularity, mode, startDate, endDate]);
 
   // Remonta el grid si cambian exp/drill/granularidad/período
   const gridKey = useMemo(() => {

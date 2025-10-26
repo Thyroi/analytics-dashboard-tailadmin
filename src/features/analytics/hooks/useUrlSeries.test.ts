@@ -85,7 +85,7 @@ describe("useUrlSeries", () => {
     });
 
     expect(mockFetchJSON).toHaveBeenCalledWith(
-      "/api/analytics/v1/drilldown/url?path=https%3A%2F%2Fwp.ideanto.com%2Fbollullos%2Fnaturaleza%2F&g=d"
+      "/api/analytics/v1/drilldown/url?path=https%3A%2F%2Fwp.ideanto.com%2Fbollullos%2Fnaturaleza%2F&granularity=d"
     );
 
     expect(result.current).toEqual({
@@ -131,7 +131,7 @@ describe("useUrlSeries", () => {
 
     await waitFor(() => {
       expect(mockFetchJSON).toHaveBeenCalledWith(
-        "/api/analytics/v1/drilldown/url?path=https%3A%2F%2Fexample.com%2Ftest&g=w&end=2025-10-15"
+        "/api/analytics/v1/drilldown/url?path=https%3A%2F%2Fexample.com%2Ftest&granularity=w&endDate=2025-10-15"
       );
     });
   });
@@ -178,7 +178,7 @@ describe("useUrlSeries", () => {
     expect(mockFetchJSON).toHaveBeenCalledTimes(1);
     expect(mockFetchJSON).toHaveBeenNthCalledWith(
       1,
-      "/api/analytics/v1/drilldown/url?path=https%3A%2F%2Fexample.com%2Ftest1&g=d"
+      "/api/analytics/v1/drilldown/url?path=https%3A%2F%2Fexample.com%2Ftest1&granularity=d"
     );
 
     // Change URLs
@@ -187,7 +187,7 @@ describe("useUrlSeries", () => {
     expect(mockFetchJSON).toHaveBeenCalledTimes(2);
     expect(mockFetchJSON).toHaveBeenNthCalledWith(
       2,
-      "/api/analytics/v1/drilldown/url?path=https%3A%2F%2Fexample.com%2Ftest2&g=d"
+      "/api/analytics/v1/drilldown/url?path=https%3A%2F%2Fexample.com%2Ftest2&granularity=d"
     );
   });
 
@@ -226,7 +226,7 @@ describe("useUrlSeries", () => {
     await waitFor(() => {
       // Should only call API with first URL
       expect(mockFetchJSON).toHaveBeenCalledWith(
-        "/api/analytics/v1/drilldown/url?path=https%3A%2F%2Fexample.com%2Ftest1&g=d"
+        "/api/analytics/v1/drilldown/url?path=https%3A%2F%2Fexample.com%2Ftest1&granularity=d"
       );
     });
   });

@@ -72,16 +72,19 @@ export async function getUrlDrilldown(params: {
   /** Puede ser URL completa o pathname; el backend normaliza */
   path: string;
   granularity: Granularity;
-  /** Si se pasa, ancla la ventana para que termine en `endISO` (AYER relativo) */
+  /** Inicio del rango (YYYY-MM-DD) */
+  startISO?: string;
+  /** Fin del rango (YYYY-MM-DD) */
   endISO?: string;
   signal?: AbortSignal;
 }): Promise<UrlDrilldownResponse> {
-  const { path, granularity, endISO, signal } = params;
+  const { path, granularity, startISO, endISO, signal } = params;
 
   const qs = buildQS({
     path,
-    g: granularity,
-    ...(endISO ? { end: endISO } : null),
+    granularity,
+    ...(startISO ? { startDate: startISO } : null),
+    ...(endISO ? { endDate: endISO } : null),
   });
 
   const url = `/api/analytics/v1/drilldown/url?${qs}`;

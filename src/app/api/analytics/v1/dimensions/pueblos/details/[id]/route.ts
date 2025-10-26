@@ -25,12 +25,7 @@ import {
   matchTownIdFromPath,
   safeUrlPathname,
 } from "@/lib/utils/routing/pathMatching";
-import {
-  computeCustomRanges,
-  computeRangesByGranularity,
-  computeRangesByGranularityForSeries,
-  debugRanges,
-} from "@/lib/utils/time/granularityRanges";
+import { debugRanges } from "@/lib/utils/time/granularityRanges";
 import {
   calculatePreviousPeriodOnly,
   determineGA4Granularity,
@@ -57,81 +52,38 @@ export async function GET(
 
     const townId = id as TownId;
     const { searchParams } = new URL(req.url);
-    const g = (searchParams.get("g") || "d")
-      .trim()
-      .toLowerCase() as Granularity;
-    const startQ = searchParams.get("start");
-    const endQ = searchParams.get("end");
+
+    // ✅ NUEVO: Recibir startDate y endDate (como totales)
+    const startQ = searchParams.get("startDate");
+    const endQ = searchParams.get("endDate");
+    const granularityParam = searchParams.get(
+      "granularity"
+    ) as Granularity | null;
     const categoryFilter = searchParams.get("categoryId"); // Filter by specific category for drilldown
 
-    // Calcular rangos usando nueva función automática
-    let ranges; // Rangos para SERIES
-    let donutRanges; // Rangos para DONUTS
-    let actualGranularity = g; // Granularidad efectiva que se usará
-
-    if (startQ && endQ) {
-      // Usar nueva función para solo calcular rangos
-      try {
-        const calculation = calculatePreviousPeriodOnly(startQ, endQ);
-        // Usar granularidad del query param o default 'd'
-        actualGranularity = g || "d";
-
-        ranges = {
-          current: calculation.currentRange,
-          previous: calculation.prevRange,
-        };
-        donutRanges = ranges; // Para series y donuts usar los mismos rangos
-      } catch (error) {
-        console.error("Error calculating ranges:", error);
-        // Fallback a lógica antigua para rangos custom
-        const customRangeInfo = computeCustomRanges(startQ, endQ);
-        actualGranularity = customRangeInfo.optimalGranularity;
-
-        const calculation = calculatePreviousPeriodOnly(startQ, endQ);
-        actualGranularity = g || "d";
-
-        ranges = {
-          current: calculation.currentRange,
-          previous: calculation.prevRange,
-        };
-
-        // Para granularidad diaria, la donut debe usar solo el último día
-        if (actualGranularity === "d") {
-          donutRanges = {
-            current: { start: endQ, end: endQ },
-            previous: { start: endQ, end: endQ },
-          };
-        } else {
-          // Para otras granularidades, usar el rango completo
-          donutRanges = ranges;
-        }
-      }
-    } else {
-      // Sin fechas específicas: usar ayer como endDate y calcular automáticamente
-      const endDate =
-        endQ ||
-        new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split("T")[0];
-
-      try {
-        const calculation = calculatePreviousPeriodOnly(endDate, endDate);
-        // Usar granularidad del query param o default 'd'
-        actualGranularity = g || "d";
-
-        ranges = {
-          current: calculation.currentRange,
-          previous: calculation.prevRange,
-        };
-        donutRanges = ranges;
-      } catch (error) {
-        console.error("Error calculating default ranges:", error);
-        // Fallback a lógica antigua
-        ranges = computeRangesByGranularityForSeries(
-          actualGranularity,
-          endDate
-        );
-        donutRanges = computeRangesByGranularity(actualGranularity, endDate);
-      }
+    // Validar que tenemos fechas requeridas
+    if (!startQ || !endQ) {
+      return NextResponse.json(
+        {
+          error: "Missing required parameters: startDate and endDate",
+        },
+        { status: 400 }
+      );
     }
+
+    // ✅ NUEVO: Usar calculatePreviousPeriodOnly para obtener rangos
+    const calculation = calculatePreviousPeriodOnly(startQ, endQ);
+
+    // ✅ NUEVO: Granularidad viene del parámetro (el frontend ya la calculó)
+    const actualGranularity = granularityParam || "d";
+
+    const ranges = {
+      current: calculation.currentRange,
+      previous: calculation.prevRange,
+    };
+
+    // Para series y donuts usar los mismos rangos (sin lógica especial para 'd')
+    const donutRanges = ranges;
 
     // DEBUG: Log de rangos calculados
     debugRanges(actualGranularity, ranges);
@@ -192,10 +144,6 @@ export async function GET(
       previousLabels,
     });
 
-    // IMPORTANTE: donutRanges ya está definido arriba con la lógica correcta:
-    // - Para g='d': donut usa 1 día (ayer), series usa 7 días
-    // - Para otras granularidades: donut y series usan lo mismo
-
     // Generar donut de categorías para este pueblo usando función utilitaria
     // Si hay filtro de categoría, el donut mostrará URLs; sino, mostrará categorías
     const donutData = categoryFilter
@@ -224,7 +172,7 @@ export async function GET(
 
     return NextResponse.json(
       {
-        granularity: g, // Granularidad original solicitada
+        granularity: granularityParam, // Granularidad original solicitada
         actualGranularity: actualGranularity, // Granularidad efectiva usada
         range: ranges,
         property,

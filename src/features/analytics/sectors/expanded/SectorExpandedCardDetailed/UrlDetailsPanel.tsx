@@ -89,6 +89,7 @@ type Props = {
   countries: DonutDatum[];
   deltaPct: number;
   granularity: Granularity;
+  startISO?: string;
   endISO?: string;
   onClose?: () => void;
   activityName?: string;
@@ -169,6 +170,7 @@ export default function UrlDetailsPanel({
     const cur = safeSeries.current.slice(-n);
     const prev = safeSeries.previous.slice(-n);
     const rawCategories = cur.map((p) => p.label);
+
     return {
       categories: formatChartLabelsSimple(rawCategories, granularity),
       currData: cur.map((p) => p.value),

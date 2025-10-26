@@ -10,6 +10,7 @@ import {
 type Args = {
   path: string | null; // puede ser null mientras no haya selección
   granularity: Granularity;
+  startISO?: string;
   endISO?: string;
 };
 
@@ -56,12 +57,12 @@ type State =
       deltaPct: number;
     };
 
-export function useUrlDrilldown({ path, granularity, endISO }: Args) {
+export function useUrlDrilldown({ path, granularity, startISO, endISO }: Args) {
   const { data, isLoading, error } = useQuery({
-    queryKey: ["url-drilldown", path, granularity, endISO],
+    queryKey: ["url-drilldown", path, granularity, startISO, endISO],
     queryFn: async (): Promise<UrlDrilldownResponse> => {
       if (!path) throw new Error("Path is required");
-      return getUrlDrilldown({ path, granularity, endISO });
+      return getUrlDrilldown({ path, granularity, startISO, endISO });
     },
     enabled: Boolean(path),
     staleTime: 5 * 60 * 1000, // 5 minutos

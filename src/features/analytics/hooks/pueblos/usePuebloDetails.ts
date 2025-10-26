@@ -13,6 +13,7 @@ import {
 } from "@/lib/services/pueblos/details";
 import type { TownId } from "@/lib/taxonomy/towns";
 import type { Granularity } from "@/lib/types";
+import { computeRangesForSeries } from "@/lib/utils/time/timeWindows";
 import { useQuery } from "@tanstack/react-query";
 
 /** Opciones del hook */
@@ -170,20 +171,29 @@ export function usePuebloDetails(
 /**
  * Hook legacy para compatibilidad con la interfaz existente
  * Usado por componentes que esperan series y donutData directamente
- * ACTUALIZADO: Ahora usa el contexto de tiempo unificado como las categorías
+ * ACTUALIZADO: Usa computeRangesForSeries para calcular fechas correctas según granularidad
  */
 export function useTownDetails(
   townId: TownId,
   granularity: Granularity
 ): { series: SeriesData; donutData: DonutData } {
-  const { getCurrentPeriod } = useTownTimeframe();
-  const currentPeriod = getCurrentPeriod();
+  const { mode, startDate, endDate } = useTownTimeframe();
+
+  // ✅ Calcular rangos correctos según mode y granularity
+  const ranges =
+    mode === "range"
+      ? computeRangesForSeries(
+          granularity,
+          startDate.toISOString().split("T")[0],
+          endDate.toISOString().split("T")[0]
+        )
+      : computeRangesForSeries(granularity); // Preset según granularidad
 
   const detailsState = usePuebloDetails({
     townId,
     granularity,
-    startDate: currentPeriod.start,
-    endDate: currentPeriod.end,
+    startDate: ranges.current.start,
+    endDate: ranges.current.end,
   });
 
   return {

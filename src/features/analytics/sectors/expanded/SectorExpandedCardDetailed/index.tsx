@@ -30,6 +30,7 @@ type BaseProps = {
     townId: TownId;
     categoryId: CategoryId;
     granularity: Granularity;
+    startISO?: string;
     endISO?: string;
   };
 };
@@ -110,6 +111,7 @@ export default function SectorExpandedCardDetailed(props: Props) {
             categoryId={level2.categoryId}
             granularity={level2.granularity}
             headline="category"
+            startISO={level2.startISO}
             endISO={level2.endISO}
           />
         </div>

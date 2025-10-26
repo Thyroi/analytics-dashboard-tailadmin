@@ -13,6 +13,10 @@ import { CATEGORY_ID_ORDER, type CategoryId } from "@/lib/taxonomy/categories";
 import type { TownId } from "@/lib/taxonomy/towns";
 import { labelToTownId } from "@/lib/utils/core/sector";
 
+import {
+  computeRangesForKPI,
+  computeRangesForSeries,
+} from "@/lib/utils/time/timeWindows";
 import { useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 
@@ -35,7 +39,7 @@ function AnalyticsByTagSectionInner() {
 
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  // Obtener períodos usando nueva lógica
+  // Obtener períodos actuales usando contexto
   const currentPeriod = getCurrentPeriod();
   const calculatedGranularity = getCalculatedGranularity();
 
@@ -63,14 +67,24 @@ function AnalyticsByTagSectionInner() {
   const [drill, setDrill] = useState<Drill | null>(null);
   const catId = expandedId as CategoryId | null;
 
-  // NIVEL 1 - usar granularidad CALCULADA y rango del contexto - USANDO HOOK PRINCIPAL DE ANALYTICS
+  // ✅ Calcular rangos correctos para SERIES según mode y granularity
+  const seriesRanges =
+    mode === "range"
+      ? computeRangesForSeries(
+          calculatedGranularity,
+          startDate.toISOString().split("T")[0],
+          endDate.toISOString().split("T")[0]
+        )
+      : computeRangesForSeries(calculatedGranularity);
+
+  // NIVEL 1 - usar granularidad CALCULADA y rangos correctos - USANDO HOOK PRINCIPAL DE ANALYTICS
   const categoryDetailsState = useCategoriaDetails({
     categoryId:
       (drill?.kind === "category" ? drill.categoryId : catId) ??
       ("naturaleza" as CategoryId),
     granularity: calculatedGranularity, // ✅ CORREGIDO: Usar granularidad calculada, no la del UI
-    startDate: currentPeriod.start, // startISO
-    endDate: currentPeriod.end, // endISO
+    startDate: seriesRanges.current.start, // ✅ startISO calculado por computeRangesForSeries
+    endDate: seriesRanges.current.end, // ✅ endISO calculado por computeRangesForSeries
   });
 
   const seriesCat = categoryDetailsState.series;
@@ -118,6 +132,7 @@ function AnalyticsByTagSectionInner() {
 
   const handleSliceClick = (label: string) => {
     const townId = labelToTownId(label);
+
     if (townId && expandedId) {
       const newDrill = {
         kind: "town+cat" as const,
@@ -138,15 +153,28 @@ function AnalyticsByTagSectionInner() {
 
   // Memoizar level2Data para mejor tracking de dependencias
   const level2Data = useMemo(() => {
-    return drill?.kind === "town+cat"
-      ? {
-          townId: drill.townId,
-          categoryId: drill.categoryId,
-          granularity: calculatedGranularity,
-          endISO: currentPeriod.end,
-        }
-      : undefined;
-  }, [drill, calculatedGranularity, currentPeriod.end]);
+    if (!drill || drill.kind !== "town+cat") return undefined;
+
+    // ✅ USAR computeRangesForKPI para calcular rangos correctos
+    const ranges =
+      mode === "range"
+        ? computeRangesForKPI(
+            calculatedGranularity,
+            startDate.toISOString().split("T")[0],
+            endDate.toISOString().split("T")[0]
+          )
+        : computeRangesForKPI(calculatedGranularity); // Preset según granularidad
+
+    const result = {
+      townId: drill.townId,
+      categoryId: drill.categoryId,
+      granularity: calculatedGranularity,
+      startISO: ranges.current.start,
+      endISO: ranges.current.end,
+    };
+
+    return result;
+  }, [drill, calculatedGranularity, mode, startDate, endDate]);
 
   return (
     <section className="max-w-[1560px]">

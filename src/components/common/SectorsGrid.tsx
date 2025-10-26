@@ -58,6 +58,7 @@ type DetailedProps = BaseProps & {
     townId: TownId;
     categoryId: CategoryId;
     granularity: Granularity;
+    startISO?: string;
     endISO?: string;
   };
 };
@@ -163,6 +164,7 @@ export default function SectorsGrid(props: Props) {
                             townId: props.level2Data.townId,
                             categoryId: props.level2Data.categoryId,
                             granularity: props.level2Data.granularity,
+                            startISO: props.level2Data.startISO,
                             endISO: props.level2Data.endISO,
                           }
                         : undefined
