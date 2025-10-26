@@ -9,6 +9,7 @@ import type { UrlSeries } from "@/features/analytics/services/drilldown";
 import ChartSection from "@/features/home/sectors/SectorExpandedCard/ChartSection";
 import type { DonutDatum, Granularity, SeriesPoint } from "@/lib/types";
 import { formatChartLabelsSimple } from "@/lib/utils/charts/labelFormatting";
+import { getSeriesLabels } from "@/lib/utils/charts/tooltipLabels";
 
 /* ===== helpers internos ===== */
 function minLen(series: {
@@ -154,10 +155,13 @@ function LineSide({
       );
     }
 
+    // Obtener labels dinámicas según granularidad
+    const labels = getSeriesLabels(granularity);
+
     const categories = [lastCurrent.label]; // ["2025-10-25"]
     const groupedSeries: GroupedBarSeries[] = [
-      { name: "Periodo actual", data: [lastCurrent.value] },
-      { name: "Periodo anterior", data: [lastPrevious.value] },
+      { name: labels.current, data: [lastCurrent.value] },
+      { name: labels.previous, data: [lastPrevious.value] },
     ];
 
     return (
@@ -192,7 +196,12 @@ function LineSide({
 
   return (
     <div className="w-full h-full">
-      <ChartSection categories={cats} currData={curr} prevData={prev} />
+      <ChartSection
+        categories={cats}
+        currData={curr}
+        prevData={prev}
+        granularity={granularity}
+      />
     </div>
   );
 }

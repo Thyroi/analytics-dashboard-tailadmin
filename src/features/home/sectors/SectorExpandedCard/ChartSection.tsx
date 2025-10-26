@@ -1,19 +1,27 @@
 "use client";
 
 import LineChart from "@/components/charts/LineChart";
+import type { Granularity } from "@/lib/types";
+import { getSeriesLabels } from "@/lib/utils/charts/tooltipLabels";
 import { motion } from "motion/react";
+import { useMemo } from "react";
 
 type ChartSectionProps = {
   categories: string[];
   currData: number[];
   prevData: number[];
+  granularity?: Granularity;
 };
 
 export default function ChartSection({
   categories,
   currData,
   prevData,
+  granularity = "d",
 }: ChartSectionProps) {
+  // Obtener labels dinámicas según granularidad
+  const labels = useMemo(() => getSeriesLabels(granularity), [granularity]);
+
   return (
     <motion.div
       whileHover={{ scale: 1.01 }}
@@ -26,14 +34,17 @@ export default function ChartSection({
         <LineChart
           categories={categories}
           series={[
-            { name: "Actual", data: currData },
-            { name: "Anterior", data: prevData },
+            { name: labels.current, data: currData },
+            { name: labels.previous, data: prevData },
           ]}
           type="area"
           height="100%"
           showLegend={false}
           smooth
-          colorsByName={{ Actual: "#dc2626", Anterior: "#e5e7eb" }}
+          colorsByName={{
+            [labels.current]: "#dc2626",
+            [labels.previous]: "#e5e7eb",
+          }}
           className="w-full h-full"
         />
       </div>

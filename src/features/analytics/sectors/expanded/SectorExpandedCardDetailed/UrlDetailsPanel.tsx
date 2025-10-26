@@ -232,6 +232,7 @@ export default function UrlDetailsPanel({
             categories={categories}
             currData={currData}
             prevData={prevData}
+            granularity={granularity}
           />
           {categories.length === 0 && (
             <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">

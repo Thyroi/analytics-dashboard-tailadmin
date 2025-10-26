@@ -8,6 +8,7 @@
 
 import type { SeriesPoint } from "@/lib/types";
 import { formatChartLabelsSimple } from "@/lib/utils/charts/labelFormatting";
+import { getSeriesLabels } from "@/lib/utils/charts/tooltipLabels";
 import { generateBrandGradient } from "@/lib/utils/formatting/colors";
 import type { ApexOptions } from "apexcharts";
 import dynamic from "next/dynamic";
@@ -53,21 +54,27 @@ export default function ComparisonBarChart({
     return formatChartLabelsSimple(rawLabels, granularity);
   }, [series, granularity]);
 
+  // Obtener labels dinámicas según granularidad
+  const seriesLabels = useMemo(
+    () => getSeriesLabels(granularity),
+    [granularity]
+  );
+
   // Preparar datos para ApexCharts
   const chartSeries = useMemo(() => {
     return [
       {
-        name: "Periodo anterior",
+        name: seriesLabels.previous,
         data: series.previous.map((point) => point.value),
         color: COMPARISON_COLORS[0],
       },
       {
-        name: "Periodo actual",
+        name: seriesLabels.current,
         data: series.current.map((point) => point.value),
         color: COMPARISON_COLORS[1],
       },
     ];
-  }, [series]);
+  }, [series, seriesLabels]);
 
   const options: ApexOptions = useMemo(() => {
     return {

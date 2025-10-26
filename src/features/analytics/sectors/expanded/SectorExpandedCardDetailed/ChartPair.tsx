@@ -98,5 +98,12 @@ function LineSide({
   const curr = series.current.slice(-n).map((p) => p.value);
   const prev = series.previous.slice(-n).map((p) => p.value);
 
-  return <ChartSection categories={cats} currData={curr} prevData={prev} />;
+  return (
+    <ChartSection
+      categories={cats}
+      currData={curr}
+      prevData={prev}
+      granularity={granularity}
+    />
+  );
 }
