@@ -10,6 +10,7 @@ import {
   sectorIconSrc,
   sectorTitle,
 } from "@/lib/utils/core/sector";
+import type { DeltaArtifact } from "@/lib/utils/delta";
 import { MapPinIcon } from "@heroicons/react/24/solid";
 import { useEffect, useMemo, useRef, useState } from "react";
 
@@ -32,6 +33,8 @@ type BaseProps = {
   getDonutFor: (id: string) => DonutDatum[];
   /** puede devolver null (no formateado) */
   getDeltaPctFor: (id: string) => number | null;
+  /** Opcional: artifact completo */
+  getDeltaArtifactFor?: (id: string) => DeltaArtifact | null;
 
   expandedId?: string | null;
   onOpen?: (id: string) => void;
@@ -76,6 +79,7 @@ export default function SectorsGrid(props: Props) {
     getSeriesFor,
     getDonutFor,
     getDeltaPctFor,
+    getDeltaArtifactFor,
     expandedId: controlledExpandedId,
     onOpen,
     onClose,
@@ -126,6 +130,7 @@ export default function SectorsGrid(props: Props) {
               };
 
         const deltaPct = getDeltaPctFor(id);
+        const deltaArtifact = getDeltaArtifactFor?.(id) ?? undefined;
         const isExpanded = expandedId === id;
 
         return (
@@ -181,6 +186,7 @@ export default function SectorsGrid(props: Props) {
               <DeltaCard
                 title={title}
                 deltaPct={deltaPct}
+                deltaArtifact={deltaArtifact}
                 onClick={() => handleOpen(id)}
                 loading={isDeltaLoading}
                 imgSrc={
@@ -193,6 +199,7 @@ export default function SectorsGrid(props: Props) {
               <DeltaCard
                 title={title}
                 deltaPct={deltaPct}
+                deltaArtifact={deltaArtifact}
                 onClick={() => handleOpen(id)}
                 loading={isDeltaLoading}
                 Icon={variant.Icon}

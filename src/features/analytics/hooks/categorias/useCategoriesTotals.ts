@@ -10,6 +10,7 @@ import {
 } from "@/lib/services/categorias/totals";
 import type { CategoryId } from "@/lib/taxonomy/categories";
 import type { Granularity } from "@/lib/types";
+import { computeDeltaArtifact, type DeltaArtifact } from "@/lib/utils/delta";
 import { useQuery } from "@tanstack/react-query";
 
 /** Opciones del hook */
@@ -34,7 +35,12 @@ type ReadyState = {
   ids: CategoryId[];
   itemsById: Record<
     CategoryId,
-    { title: string; total: number; deltaPct: number | null }
+    {
+      title: string;
+      total: number;
+      deltaPct: number | null;
+      deltaArtifact: DeltaArtifact;
+    }
   >;
 };
 
@@ -114,6 +120,12 @@ export function useCategoriesTotals(
         data: query.data,
         ids: query.data.data.items.map((item) => item.id),
         itemsById: query.data.data.items.reduce((acc, item) => {
+          // Calcular deltaArtifact usando los valores actuales y anteriores
+          const deltaArtifact = computeDeltaArtifact(
+            item.total,
+            item.previousTotal
+          );
+
           acc[item.id] = {
             title: item.title,
             total: Number.isFinite(item.total) ? item.total : 0,
@@ -122,6 +134,7 @@ export function useCategoriesTotals(
               Number.isFinite(item.deltaPct)
                 ? item.deltaPct
                 : null,
+            deltaArtifact, // Agregar artifact
           };
           return acc;
         }, {} as ReadyState["itemsById"]),

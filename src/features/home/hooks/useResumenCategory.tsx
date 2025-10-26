@@ -7,7 +7,7 @@ import {
 } from "@/lib/services/chatbot/totals";
 import type { Granularity } from "@/lib/types";
 import { computeCategoryAndTownTotals } from "@/lib/utils/chatbot/aggregate";
-import { computeDeltaPct } from "@/lib/utils/time/timeWindows";
+import { computeDeltaArtifact } from "@/lib/utils/delta";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 
@@ -67,8 +67,8 @@ export function useResumenCategory(params: UseResumenCategoryParams = {}) {
       const totalPrevious =
         category.previousTotal + (chatbotCategory?.prevTotal || 0);
 
-      // Calcular delta combinado usando función oficial (retorna null si prev <= 0)
-      const combinedDelta = computeDeltaPct(totalCurrent, totalPrevious);
+      // Calcular delta combinado usando artifact system
+      const deltaArtifact = computeDeltaArtifact(totalCurrent, totalPrevious);
 
       return {
         categoryId: category.id,
@@ -76,8 +76,8 @@ export function useResumenCategory(params: UseResumenCategoryParams = {}) {
         ga4PrevValue: category.previousTotal,
         chatbotValue: chatbotCategory?.currentTotal || 0,
         chatbotPrevValue: chatbotCategory?.prevTotal || 0,
-        delta:
-          combinedDelta !== null ? Math.round(combinedDelta * 10) / 10 : null, // null = "sin datos suficientes"
+        deltaArtifact, // Nuevo: artifact completo
+        delta: deltaArtifact.deltaPct, // Mantener compatibilidad con deltaPct
       };
     });
   }, [categoryTotalsQuery.data, chatbotAggregated]);

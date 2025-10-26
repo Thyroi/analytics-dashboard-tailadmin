@@ -10,6 +10,7 @@ import { useResumenCategory } from "@/features/home/hooks/useResumenCategory";
 import type { CategoryId } from "@/lib/taxonomy/categories";
 import { CATEGORY_ID_ORDER } from "@/lib/taxonomy/categories";
 import type { Granularity } from "@/lib/types";
+import type { DeltaArtifact } from "@/lib/utils/delta";
 import { getCorrectDatesForGranularity } from "@/lib/utils/time/deltaDateCalculation";
 import { useMemo, useState } from "react";
 
@@ -41,10 +42,20 @@ export default function SectorsByTagSection({ granularity }: Props) {
 
   // Convertir datos a formato compatible con SectorsGrid
   const itemsById = useMemo(() => {
-    const result: Record<string, { deltaPct: number | null }> = {};
+    const result: Record<
+      string,
+      { deltaPct: number | null; deltaArtifact: DeltaArtifact }
+    > = {};
     categoriesData.forEach(
-      (item: { categoryId: string; delta: number | null }) => {
-        result[item.categoryId] = { deltaPct: item.delta };
+      (item: {
+        categoryId: string;
+        delta: number | null;
+        deltaArtifact: DeltaArtifact;
+      }) => {
+        result[item.categoryId] = {
+          deltaPct: item.delta,
+          deltaArtifact: item.deltaArtifact,
+        };
       }
     );
     return result;
@@ -74,6 +85,9 @@ export default function SectorsByTagSection({ granularity }: Props) {
 
   const getDeltaPctFor = (id: string) => itemsById[id]?.deltaPct ?? null;
 
+  const getDeltaArtifactFor = (id: string) =>
+    itemsById[id]?.deltaArtifact ?? null;
+
   const getSeriesFor = (_id: string) =>
     catId && _id === catId ? series : { current: [], previous: [] };
 
@@ -89,6 +103,7 @@ export default function SectorsByTagSection({ granularity }: Props) {
         granularity={granularity}
         onGranularityChange={() => {}} // No usado, controlado por el sticky header
         getDeltaPctFor={getDeltaPctFor}
+        getDeltaArtifactFor={getDeltaArtifactFor}
         getSeriesFor={getSeriesFor}
         getDonutFor={getDonutFor}
         expandedId={expandedId}

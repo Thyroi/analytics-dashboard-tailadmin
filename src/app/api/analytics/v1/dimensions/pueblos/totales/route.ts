@@ -147,16 +147,25 @@ export async function GET(req: Request) {
       towns.map((t) => [t, 0])
     ) as Record<TownId, number>;
 
-    // Procesar datos GA4
-
+    // Procesar datos GA4 con soporte para yearMonth (6 dígitos) y date (8 dígitos)
     for (const row of rows) {
       const dateRaw = String(row.dimensionValues?.[0]?.value ?? "");
-      if (dateRaw.length !== 8) continue;
 
-      const iso = `${dateRaw.slice(0, 4)}-${dateRaw.slice(
-        4,
-        6
-      )}-${dateRaw.slice(6, 8)}`;
+      // Convertir a formato ISO según longitud
+      let iso: string;
+      if (dateRaw.length === 8) {
+        // date dimension: YYYYMMDD
+        iso = `${dateRaw.slice(0, 4)}-${dateRaw.slice(4, 6)}-${dateRaw.slice(
+          6,
+          8
+        )}`;
+      } else if (dateRaw.length === 6) {
+        // yearMonth dimension: YYYYMM → usar primer día del mes
+        iso = `${dateRaw.slice(0, 4)}-${dateRaw.slice(4, 6)}-01`;
+      } else {
+        continue; // Formato desconocido, saltar
+      }
+
       const url = String(row.dimensionValues?.[1]?.value ?? "");
       const path = safeUrlPathname(url);
       const value = Number(row.metricValues?.[0]?.value ?? 0);

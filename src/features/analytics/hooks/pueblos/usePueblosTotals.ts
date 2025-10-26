@@ -9,6 +9,7 @@ import {
 } from "@/lib/services/pueblos/totals";
 import type { TownId } from "@/lib/taxonomy/towns";
 import type { Granularity } from "@/lib/types";
+import { computeDeltaArtifact, type DeltaArtifact } from "@/lib/utils/delta";
 import { useQuery } from "@tanstack/react-query";
 
 export type UsePueblosTotalsOptions = {
@@ -38,6 +39,7 @@ export type ReadyState = {
       title: string;
       total: number;
       deltaPct: number | null;
+      deltaArtifact: DeltaArtifact;
     }
   >;
 };
@@ -121,20 +123,30 @@ export function usePueblosTotals(
         data: query.data,
         ids: query.data.data.items.map((item) => item.id),
         itemsById: Object.fromEntries(
-          query.data.data.items.map((item) => [
-            item.id,
-            {
-              title: item.title,
-              total: item.total,
-              deltaPct: item.deltaPct,
-            },
-          ])
+          query.data.data.items.map((item) => {
+            // Calcular deltaArtifact
+            const deltaArtifact = computeDeltaArtifact(
+              item.total,
+              item.previousTotal
+            );
+
+            return [
+              item.id,
+              {
+                title: item.title,
+                total: item.total,
+                deltaPct: item.deltaPct,
+                deltaArtifact,
+              },
+            ];
+          })
         ) as Record<
           TownId,
           {
             title: string;
             total: number;
             deltaPct: number | null;
+            deltaArtifact: DeltaArtifact;
           }
         >,
       }
@@ -153,7 +165,12 @@ export function usePueblosTotals(
       ready?.itemsById ||
       ({} as Record<
         TownId,
-        { title: string; total: number; deltaPct: number | null }
+        {
+          title: string;
+          total: number;
+          deltaPct: number | null;
+          deltaArtifact: DeltaArtifact;
+        }
       >),
     isInitialLoading: query.isLoading,
     isFetching: query.isFetching,

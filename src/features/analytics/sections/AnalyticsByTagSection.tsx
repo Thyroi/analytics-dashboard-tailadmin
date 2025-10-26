@@ -81,6 +81,15 @@ function AnalyticsByTagSectionInner() {
       ? itemsById[id as CategoryId]?.deltaPct ?? null
       : null;
 
+  const getDeltaArtifactFor = (id: string) => {
+    const artifact =
+      state.status === "ready"
+        ? itemsById[id as CategoryId]?.deltaArtifact ?? null
+        : null;
+
+    return artifact;
+  };
+
   const getSeriesFor = (_id: string) => {
     if (catId && _id === catId) {
       // Verificación defensiva: asegurar que seriesCat tiene la estructura correcta
@@ -160,6 +169,7 @@ function AnalyticsByTagSectionInner() {
         granularity={granularity}
         onGranularityChange={setGranularity}
         getDeltaPctFor={getDeltaPctFor}
+        getDeltaArtifactFor={getDeltaArtifactFor}
         getSeriesFor={getSeriesFor}
         getDonutFor={getDonutFor}
         expandedId={expandedId}

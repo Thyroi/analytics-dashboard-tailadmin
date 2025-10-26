@@ -1,30 +1,50 @@
 "use client";
 
-import { coerceDelta } from "@/lib/utils/core/delta";
-import { formatPct } from "@/lib/utils/formatting/format";
+import type { DeltaArtifact } from "@/lib/utils/delta";
+import { getDeltaColor, getDeltaMainText } from "@/lib/utils/delta";
 
-type Props = { deltaPct: number | null; loading: boolean };
+type Props = {
+  deltaPct: number | null;
+  loading: boolean;
+  deltaArtifact?: DeltaArtifact; // Nuevo: artifact opcional
+};
 
-export default function CardDelta({ deltaPct, loading }: Props) {
-  const num = coerceDelta(deltaPct);
+export default function CardDelta({ deltaPct, loading, deltaArtifact }: Props) {
+  // Si tenemos artifact, usarlo; si no, fallback al sistema anterior
+  const displayText = deltaArtifact
+    ? getDeltaMainText(deltaArtifact)
+    : deltaPct !== null && deltaPct !== undefined && Number.isFinite(deltaPct)
+    ? `${deltaPct > 0 ? "+" : deltaPct < 0 ? "−" : ""}${Math.abs(
+        deltaPct
+      ).toLocaleString("es-ES", { maximumFractionDigits: 0 })}%`
+    : "Sin datos suficientes";
 
-  const cls =
-    num === null
-      ? "text-gray-400"
-      : num >= 0
-      ? "text-[#35C759]"
-      : "text-[#E74C3C]";
+  const colorClass = deltaArtifact
+    ? getDeltaColor(deltaArtifact)
+    : deltaPct === null
+    ? "text-gray-400"
+    : deltaPct >= 0
+    ? "text-[#35C759]"
+    : "text-[#E74C3C]";
+
+  // Solo es "sin datos" si realmente no hay current o no hay prev Y no hay current
+  // Los estados new_vs_zero, zero_vs_zero tienen datos válidos para mostrar
+  const isNoData = deltaArtifact
+    ? deltaArtifact.state === "no_current" ||
+      (deltaArtifact.state === "no_prev" &&
+        deltaArtifact.baseInfo.current === null)
+    : deltaPct === null;
 
   return (
     <div
-      className={`self-end text-center font-extrabold ${cls}`}
+      className={`self-end text-center font-extrabold ${colorClass}`}
       style={{
-        fontSize: num === null ? 14 : 28,
-        lineHeight: num === null ? "18px" : "28px",
+        fontSize: isNoData ? 14 : 28,
+        lineHeight: isNoData ? "18px" : "28px",
         visibility: loading ? "hidden" : "visible",
       }}
     >
-      {formatPct(deltaPct)}
+      {displayText}
     </div>
   );
 }

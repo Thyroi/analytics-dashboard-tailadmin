@@ -82,14 +82,24 @@ export async function GET(req: Request) {
       CATEGORY_ID_ORDER.map((k) => [k, 0])
     ) as Record<CategoryId, number>;
 
-    // Procesar filas (EXACTO como el original)
+    // Procesar filas con soporte para yearMonth (6 dígitos) y date (8 dígitos)
     for (const r of rows) {
-      const dateRaw = String(r.dimensionValues?.[0]?.value ?? ""); // YYYYMMDD
-      if (dateRaw.length !== 8) continue;
-      const iso = `${dateRaw.slice(0, 4)}-${dateRaw.slice(
-        4,
-        6
-      )}-${dateRaw.slice(6, 8)}`;
+      const dateRaw = String(r.dimensionValues?.[0]?.value ?? "");
+
+      // Convertir a formato ISO según longitud
+      let iso: string;
+      if (dateRaw.length === 8) {
+        // date dimension: YYYYMMDD
+        iso = `${dateRaw.slice(0, 4)}-${dateRaw.slice(4, 6)}-${dateRaw.slice(
+          6,
+          8
+        )}`;
+      } else if (dateRaw.length === 6) {
+        // yearMonth dimension: YYYYMM → usar primer día del mes
+        iso = `${dateRaw.slice(0, 4)}-${dateRaw.slice(4, 6)}-01`;
+      } else {
+        continue; // Formato desconocido, saltar
+      }
 
       const url = String(r.dimensionValues?.[1]?.value ?? "");
       const path = safeUrlPathname(url);

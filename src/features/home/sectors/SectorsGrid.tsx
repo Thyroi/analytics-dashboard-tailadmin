@@ -7,6 +7,7 @@ import {
   sectorIconSrc,
   sectorTitle,
 } from "@/lib/utils/core/sector";
+import type { DeltaArtifact } from "@/lib/utils/delta";
 import { MapPinIcon } from "@heroicons/react/24/solid";
 import { useMemo, useState } from "react";
 import SectorExpandedCard from "./SectorExpandedCard";
@@ -25,6 +26,7 @@ type Props = {
   };
   getDonutFor: (id: string) => DonutDatum[];
   getDeltaPctFor: (id: string) => number | null;
+  getDeltaArtifactFor?: (id: string) => DeltaArtifact | null; // Nuevo: opcional para retrocompat
 
   expandedId?: string | null;
   onOpen?: (id: string) => void;
@@ -47,6 +49,7 @@ export default function SectorsGrid({
   getSeriesFor,
   getDonutFor,
   getDeltaPctFor,
+  getDeltaArtifactFor,
   expandedId: controlledExpandedId,
   onOpen,
   onClose,
@@ -83,6 +86,7 @@ export default function SectorsGrid({
               };
 
         const deltaPct = getDeltaPctFor(id);
+        const deltaArtifact = getDeltaArtifactFor?.(id) ?? null;
 
         if (expandedId === id) {
           const s = getSeriesFor(id);
@@ -112,6 +116,7 @@ export default function SectorsGrid({
             <DeltaCard
               title={title}
               deltaPct={deltaPct}
+              deltaArtifact={deltaArtifact ?? undefined}
               height={ROW_H}
               ringSize={96}
               ringThickness={8}

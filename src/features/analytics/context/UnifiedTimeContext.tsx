@@ -75,8 +75,14 @@ function calculateRangeForPeriod(period: "dia" | "semana" | "mes" | "ano"): {
       return { start, end: yesterday };
     }
     case "ano": {
-      // Año: últimos 365 días terminando ayer
-      const start = addDaysUTC(yesterday, -364); // 365 días incluyendo el final
+      // Año: Año calendario ACTUAL (2024-01-01 hasta ayer)
+      // No usar rango móvil de 365 días, sino el año calendario
+      const today = todayUTC();
+      const currentYear = today.getUTCFullYear();
+
+      // Inicio del año actual
+      const start = new Date(Date.UTC(currentYear, 0, 1)); // 1 de enero del año actual
+
       return { start, end: yesterday };
     }
     default:

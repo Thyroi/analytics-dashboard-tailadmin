@@ -81,6 +81,14 @@ function AnalyticsByTownSectionInner() {
     [state.status, itemsById]
   );
 
+  const getDeltaArtifactFor = useCallback(
+    (id: string) =>
+      state.status === "ready"
+        ? itemsById[id as TownId]?.deltaArtifact ?? null
+        : null,
+    [state.status, itemsById]
+  );
+
   const getSeriesFor = useCallback(
     (_id: string) => {
       if (townId && _id === townId) return seriesTown;
@@ -180,6 +188,7 @@ function AnalyticsByTownSectionInner() {
         granularity={granularity}
         onGranularityChange={setGranularity}
         getDeltaPctFor={getDeltaPctFor}
+        getDeltaArtifactFor={getDeltaArtifactFor}
         getSeriesFor={getSeriesFor}
         getDonutFor={getDonutFor}
         expandedId={expandedId}

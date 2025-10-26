@@ -1,6 +1,7 @@
 "use client";
 
 import { ringVisuals } from "@/lib/utils/core/delta";
+import type { DeltaArtifact } from "@/lib/utils/delta";
 import { motion } from "framer-motion";
 import React, { useMemo } from "react";
 import CardDelta from "./CardDelta";
@@ -11,6 +12,7 @@ import RingWithIcon from "./RingWithIcon";
 type BaseProps = {
   title: string;
   deltaPct: number | null;
+  deltaArtifact?: DeltaArtifact; // Nuevo: artifact opcional
   className?: string;
   ringSize?: number;
   ringThickness?: number;
@@ -38,6 +40,7 @@ export default function DeltaCard(props: Props) {
   const {
     title,
     deltaPct,
+    deltaArtifact,
     className = "",
     ringSize = 96,
     ringThickness = 8,
@@ -98,7 +101,11 @@ export default function DeltaCard(props: Props) {
         )}
       </div>
 
-      <CardDelta deltaPct={deltaPct} loading={loading} />
+      <CardDelta
+        deltaPct={deltaPct}
+        loading={loading}
+        deltaArtifact={deltaArtifact}
+      />
     </div>
   );
 

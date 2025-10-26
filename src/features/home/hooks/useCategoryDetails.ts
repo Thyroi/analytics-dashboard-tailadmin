@@ -181,8 +181,6 @@ function useCategoryDetailsImpl(
         endDate: ranges.current.end,
       });
 
-      console.log("[useCategoryDetails] Service response:", response);
-
       return {
         series: response.data.series || { current: [], previous: [] },
         donutData: response.data.donutData || [],
