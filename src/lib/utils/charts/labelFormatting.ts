@@ -90,8 +90,7 @@ export function formatChartLabels(
       // If we can't parse it, try to extract numbers
       const dayMatch = formattedDate.match(/\d+/);
       return dayMatch ? dayMatch[0] : formattedDate;
-    } catch (error) {
-      console.warn("[formatChartLabels] Error formatting label:", label, error);
+    } catch {
       return String(label);
     }
   });
