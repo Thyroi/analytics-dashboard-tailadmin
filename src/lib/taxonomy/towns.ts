@@ -109,23 +109,35 @@ export const TOWNS: ReadonlyArray<TownMeta> = TOWN_ID_ORDER.map(
  */
 export const TOWN_SYNONYMS: Record<TownId, string[]> = {
   almonte: ["almonte", "Almonte"],
-  bollullos: ["bollullos", "BOLLULLOS"],
+  bollullos: ["bollullos", "BOLLULLOS", "bollullos-par-del-condado"],
   bonares: ["bonares", "Bonares"],
   chucena: ["chucena"],
   escacena: ["escacena"],
   hinojos: ["hinojos"],
-  laPalmaDelCondado: ["la palma del condado", "la palma", "la_palma"],
-  lucenaDelPuerto: ["lucena del puerto", "lucena_del_puerto", "lucena"],
+  laPalmaDelCondado: [
+    "la palma del condado",
+    "la palma",
+    "la_palma",
+    "la-palma-del-condado",
+    "la-palma",
+  ],
+  lucenaDelPuerto: [
+    "lucena del puerto",
+    "lucena_del_puerto",
+    "lucena",
+    "lucena-del-puerto",
+  ],
   manzanilla: ["manzanilla"],
   niebla: ["niebla", "NIEBLA"],
   palos: ["palos", "palos de la frontera"],
-  paternaDelCampo: ["paterna del campo", "paterna"],
+  paternaDelCampo: ["paterna del campo", "paterna", "paterna-del-campo"],
   rocianaDelCondado: [
     "rociana del condado",
     "rociana",
     "rocianna", // typo en API
+    "rociana-del-condado",
   ],
-  villalba: ["villalba del alcor", "villalba"],
+  villalba: ["villalba del alcor", "villalba", "villalba-del-alcor"],
   villarrasa: ["villarrasa"],
 };
 

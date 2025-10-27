@@ -342,7 +342,7 @@ export default function TownExpandedCard({
         donutData={donutData}
         deltaPct={null}
         onDonutSlice={handleCategoryClick}
-        donutCenterLabel={townLabel}
+        donutCenterLabel={`${totalInteractions.toLocaleString()} Interacciones`}
         showActivityButton={false}
         granularity={granularity}
         className=""

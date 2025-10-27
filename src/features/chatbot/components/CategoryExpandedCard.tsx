@@ -333,7 +333,7 @@ export default function CategoryExpandedCard({
         donutData={donutData}
         deltaPct={null}
         onDonutSlice={handleTownClick}
-        donutCenterLabel={categoryLabel}
+        donutCenterLabel={`${totalInteractions.toLocaleString()} Interacciones`}
         showActivityButton={false}
         granularity={granularity}
         className=""

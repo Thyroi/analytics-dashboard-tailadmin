@@ -7,7 +7,7 @@ type IconType = React.ComponentType<React.SVGProps<SVGSVGElement>>;
 
 export type Props = {
   title: string;
-  value: number | string;
+  value: number | string | React.ReactNode;
   change?: number | string;
   icon: IconType;
   color?: string;
@@ -25,7 +25,11 @@ export default function KPIStatCard({
   className = "",
 }: Props) {
   const valueText =
-    typeof value === "number" ? value.toLocaleString() : String(value);
+    typeof value === "number"
+      ? value.toLocaleString()
+      : typeof value === "string"
+      ? value
+      : value;
 
   const isNum = typeof change === "number";
   const changeText = isNum ? `${change}%` : change;
@@ -45,7 +49,9 @@ export default function KPIStatCard({
       className={`h-full min-w-[221px] ${className}`}
     >
       <div className="relative h-full overflow-hidden rounded-2xl shadow-lg transition-all duration-300 hover:shadow-xl">
-        <div className={`absolute inset-0 bg-gradient-to-br ${color} opacity-90`} />
+        <div
+          className={`absolute inset-0 bg-gradient-to-br ${color} opacity-90`}
+        />
         <div className="relative flex h-full flex-col justify-between p-6 text-white">
           <div className="flex h-full items-center justify-between gap-4">
             <div className="flex h-full min-w-0 flex-col justify-between">
@@ -53,7 +59,9 @@ export default function KPIStatCard({
               <p className="mb-2 truncate text-3xl font-bold">{valueText}</p>
 
               {typeof changeText !== "undefined" && changeText !== null && (
-                <span className={`inline-flex w-fit items-center gap-1 rounded-full px-2 py-[2px] text-xs ${changeColor}`}>
+                <span
+                  className={`inline-flex w-fit items-center gap-1 rounded-full px-2 py-[2px] text-xs ${changeColor}`}
+                >
                   {isNum ? (Number(change) >= 0 ? "↗" : "↘") : "•"}
                   {changeText}
                 </span>

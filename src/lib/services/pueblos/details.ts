@@ -84,5 +84,6 @@ export async function fetchPuebloDetails(
   }
 
   const data: PuebloDetailsResponse = await response.json();
+
   return data;
 }

@@ -1,5 +1,5 @@
 import KPIStatGrid from "@/components/dashboard/KPIStatGrid";
-import { MapPinIcon } from "@heroicons/react/24/solid";
+import { CursorArrowRippleIcon, EyeIcon } from "@heroicons/react/24/solid";
 
 import { type TownCardData } from "../hooks/useChatbotTownTotals";
 
@@ -28,10 +28,17 @@ export default function TopTownsKPI({
     );
   }
 
+  const icons = [EyeIcon, CursorArrowRippleIcon];
+
   const kpis = towns.map((town) => ({
     title: town.label,
-    value: town.currentValue,
-    icon: MapPinIcon,
+    value: (
+      <>
+        {town.currentValue.toLocaleString()}{" "}
+        <span className="text-sm font-normal">Interacciones</span>
+      </>
+    ),
+    icon: icons[Math.floor(Math.random() * icons.length)],
     color: "from-green-500 to-emerald-500",
   }));
 

@@ -1,5 +1,5 @@
 import KPIStatGrid from "@/components/dashboard/KPIStatGrid";
-import { ChartBarIcon } from "@heroicons/react/24/solid";
+import { CursorArrowRippleIcon, EyeIcon } from "@heroicons/react/24/solid";
 
 import { type CategoryCardData } from "../hooks/useChatbotCategoryTotals";
 
@@ -28,10 +28,17 @@ export default function TopCategoriesKPI({
     );
   }
 
+  const icons = [EyeIcon, CursorArrowRippleIcon];
+
   const kpis = categories.map((category) => ({
     title: category.label,
-    value: category.currentValue,
-    icon: ChartBarIcon,
+    value: (
+      <>
+        {category.currentValue.toLocaleString()}{" "}
+        <span className="text-sm font-normal">Interacciones</span>
+      </>
+    ),
+    icon: icons[Math.floor(Math.random() * icons.length)],
     color: "from-blue-500 to-indigo-500",
   }));
 
