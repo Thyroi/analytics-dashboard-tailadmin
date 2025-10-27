@@ -1,6 +1,12 @@
 /**
  * Hook para obtener detalles de un town específico - solo datos de chatbot
  * Basado en useTownDetails pero simplificado para chatbot únicamente
+ *
+ * POLÍTICA DE TIEMPO:
+ * - Usa computeRangesForSeries de timeWindows.ts (comportamiento Series estándar)
+ * - Granularidad "d" = 7 días para series (NO 1 día)
+ * - Previous = ventana contigua del mismo tamaño
+ * - Respeta rangos custom del usuario (startDate/endDate)
  */
 
 import { useQuery } from "@tanstack/react-query";
@@ -13,7 +19,7 @@ import {
 import type { TownId } from "@/lib/taxonomy/towns";
 import type { Granularity } from "@/lib/types";
 import { buildSeriesAndDonutFocused } from "@/lib/utils/data/seriesAndDonuts";
-import { computeRangesByGranularityForSeries } from "@/lib/utils/time/granularityRanges";
+import { computeRangesForSeries } from "@/lib/utils/time/timeWindows";
 
 export type UseChatbotTownDetailsOptions = {
   townId: TownId;
@@ -47,15 +53,8 @@ export function useChatbotTownDetails({
     }
 
     try {
-      // Calcular rangos usando la misma lógica que GA4
-      const endDateFinal =
-        endDate ||
-        new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split("T")[0];
-
-      const ranges = computeRangesByGranularityForSeries(
-        granularity,
-        endDateFinal
-      );
+      // Usar computeRangesForSeries de timeWindows.ts (comportamiento Series estándar)
+      const ranges = computeRangesForSeries(granularity, startDate, endDate);
 
       // Usar buildSeriesAndDonutFocused con focus en town
       const result = buildSeriesAndDonutFocused(
@@ -81,13 +80,12 @@ export function useChatbotTownDetails({
         totalInteractions,
       };
     } catch (error) {
-      console.error("Error procesando datos de town:", error);
       return {
         status: "error" as const,
         message: error instanceof Error ? error.message : "Error desconocido",
       };
     }
-  }, [chatbotQuery.data, townId, granularity, endDate]);
+  }, [chatbotQuery.data, townId, granularity, startDate, endDate]);
 
   return {
     state: processedData,

@@ -273,15 +273,48 @@ function aggregateDailyTotals(
  * Construye SeriesPoint[] completos para un rango [start..end] inclusivo usando un mapa { ISO → total }.
  * Garantiza que cada día del rango tenga un punto (0 si no hay datos).
  */
+/**
+ * Construye una serie temporal a partir de totales diarios
+ *
+ * Para granularidad "y": Agrupa por mes (YYYY-MM) con 12 buckets
+ * Para otras granularidades: Un punto por día (YYYY-MM-DD)
+ */
 function buildSeriesForRange(
   totalsByISO: Map<string, number>,
   startISO: string,
-  endISO: string
+  endISO: string,
+  windowGranularity: WindowGranularity = "d"
 ): SeriesPoint[] {
   const start = parseISO(startISO);
   const end = parseISO(endISO);
-  const days: SeriesPoint[] = [];
 
+  // Para granularidad anual: Agrupar por mes
+  if (windowGranularity === "y") {
+    const monthlyTotals = new Map<string, number>();
+
+    // Iterar todos los días y agrupar por mes
+    for (
+      let d = new Date(start.getTime());
+      d.getTime() <= end.getTime();
+      d = addDaysUTC(d, 1)
+    ) {
+      const iso = toISO(d);
+      const monthKey = iso.substring(0, 7); // YYYY-MM
+      const dayValue = totalsByISO.get(iso) || 0;
+
+      monthlyTotals.set(monthKey, (monthlyTotals.get(monthKey) || 0) + dayValue);
+    }
+
+    // Convertir a array y ordenar
+    const months: SeriesPoint[] = Array.from(monthlyTotals.entries())
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([label, value]) => ({ label, value }));
+
+    return months;
+  }
+
+  // Para otras granularidades: Un punto por día
+  const days: SeriesPoint[] = [];
   for (
     let d = new Date(start.getTime());
     d.getTime() <= end.getTime();
@@ -477,12 +510,14 @@ export async function fetchTownCategoryBreakdown(
     const currentSeries: SeriesPoint[] = buildSeriesForRange(
       currentTotalsByISO,
       ranges.current.start,
-      ranges.current.end
+      ranges.current.end,
+      windowGranularity // Pasar granularidad para bucketing correcto
     );
     const previousSeries: SeriesPoint[] = buildSeriesForRange(
       prevTotalsByISO,
       ranges.previous.start,
-      ranges.previous.end
+      ranges.previous.end,
+      windowGranularity // Pasar granularidad para bucketing correcto
     );
 
     return {

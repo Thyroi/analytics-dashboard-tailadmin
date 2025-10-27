@@ -2,6 +2,12 @@
  * Hook para obtener drilldown de categorías del chatbot
  * Usa React Query para manejo de estado y cache
  * Compatible con range picker y contexto de tiempo
+ *
+ * POLÍTICA DE TIEMPO:
+ * - Usa computeRangesForSeries de timeWindows.ts (comportamiento Series estándar)
+ * - Granularidad "d" = 7 días para series (NO 1 día)
+ * - Previous = ventana contigua del mismo tamaño
+ * - Respeta rangos custom del usuario (startDate/endDate)
  */
 
 import {
@@ -11,7 +17,7 @@ import {
 import type { CategoryId } from "@/lib/taxonomy/categories";
 import type { DonutDatum, Granularity, SeriesPoint } from "@/lib/types";
 import { buildSeriesAndDonutFocused } from "@/lib/utils/data/seriesAndDonuts";
-import { computeRangesByGranularityForSeries } from "@/lib/utils/time/granularityRanges";
+import { computeRangesForSeries } from "@/lib/utils/time/timeWindows";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 
@@ -104,31 +110,17 @@ export function useCategoryDrilldown(
   const chatbotQuery = useQuery<ChatbotTotalsResponse>({
     queryKey: ["chatbot", "totals", granularity, startDate, endDate],
     queryFn: () => {
-      if (startDate && endDate) {
-        // Rango personalizado: pasar tal como está
-        return fetchChatbotTotals({
-          granularity,
-          startDate,
-          endDate,
-        });
-      } else {
-        // Usar fechas por defecto y calcular rangos correctos
-        const endDateFinal =
-          endDate ||
-          new Date(Date.now() - 24 * 60 * 60 * 1000)
-            .toISOString()
-            .split("T")[0];
-        const ranges = computeRangesByGranularityForSeries(
-          granularity,
-          endDateFinal
-        );
+      // Usar computeRangesForSeries de timeWindows.ts para consistencia
+      // Esta función maneja correctamente el comportamiento de Series:
+      // - Granularidad "d" = 7 días
+      // - Previous = ventana contigua del mismo tamaño
+      const ranges = computeRangesForSeries(granularity, startDate, endDate);
 
-        return fetchChatbotTotals({
-          granularity,
-          startDate: ranges.previous.start,
-          endDate: ranges.current.end,
-        });
-      }
+      return fetchChatbotTotals({
+        granularity,
+        startDate: ranges.previous.start,
+        endDate: ranges.current.end,
+      });
     },
     enabled: enabled && !!categoryId,
     refetchInterval,
@@ -148,14 +140,8 @@ export function useCategoryDrilldown(
     }
 
     try {
-      // Calcular rangos usando la misma lógica que useCategoryDetails
-      const endDateFinal =
-        endDate ||
-        new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split("T")[0];
-      const ranges = computeRangesByGranularityForSeries(
-        granularity,
-        endDateFinal
-      );
+      // Usar computeRangesForSeries de timeWindows.ts (comportamiento Series estándar)
+      const ranges = computeRangesForSeries(granularity, startDate, endDate);
 
       // Usar buildSeriesAndDonutFocused para procesar los datos (igual que useCategoryDetails)
       const result = buildSeriesAndDonutFocused(
@@ -193,11 +179,7 @@ export function useCategoryDrilldown(
         donutData: result.donutData,
         totalInteractions,
       };
-    } catch (error) {
-      console.error(
-        "Error procesando datos del drilldown de categoría:",
-        error
-      );
+    } catch {
       return {
         subcategories: EMPTY_SUBCATEGORIES,
         lineSeriesData: EMPTY_LINE_SERIES,
@@ -205,7 +187,7 @@ export function useCategoryDrilldown(
         totalInteractions: 0,
       };
     }
-  }, [chatbotQuery.data, categoryId, granularity, endDate]);
+  }, [chatbotQuery.data, categoryId, granularity, startDate, endDate]);
 
   // Estados basados en la query del chatbot
   if (chatbotQuery.isLoading) {

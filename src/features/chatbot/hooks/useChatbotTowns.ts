@@ -53,8 +53,7 @@ export function useChatbotTowns({
     if (!chatbotQuery.data) return null;
     try {
       return computeCategoryAndTownTotals(chatbotQuery.data);
-    } catch (error) {
-      console.warn("Error agregando datos del chatbot:", error);
+    } catch {
       return null;
     }
   }, [chatbotQuery.data]);

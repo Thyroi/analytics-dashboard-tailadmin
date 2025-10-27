@@ -50,8 +50,7 @@ export function useChatbotCategories({
     if (!chatbotQuery.data) return null;
     try {
       return computeCategoryAndTownTotals(chatbotQuery.data);
-    } catch (error) {
-      console.error("Error agregando datos del chatbot:", error);
+    } catch {
       return null;
     }
   }, [chatbotQuery.data]);

@@ -198,15 +198,15 @@ function buildQueryUrl(params: CategoryDrilldownParams): string {
   if (params.startDate && params.startDate.trim() !== "") {
     try {
       url.searchParams.set("start", formatDateForAPI(params.startDate));
-    } catch (error) {
-      console.error("Error formatting startDate:", params.startDate, error);
+    } catch {
+      // Silently handle date formatting errors
     }
   }
   if (params.endDate && params.endDate.trim() !== "") {
     try {
       url.searchParams.set("end", formatDateForAPI(params.endDate));
-    } catch (error) {
-      console.error("Error formatting endDate:", params.endDate, error);
+    } catch {
+      // Silently handle date formatting errors
     }
   }
 

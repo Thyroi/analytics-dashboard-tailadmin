@@ -50,8 +50,7 @@ function ChatbotCategoriesSectionContent() {
       endDate instanceof Date && !isNaN(endDate.getTime())
         ? endDate.toISOString().split("T")[0]
         : null;
-  } catch (error) {
-    console.error("Error converting dates:", { startDate, endDate, error });
+  } catch {
     startDateStr = null;
     endDateStr = null;
   }
@@ -99,6 +98,7 @@ function ChatbotCategoriesSectionContent() {
         startDate={startDate}
         endDate={endDate}
         onGranularityChange={(newGranularity) => {
+          setSelectedCategoryId(null); // Cerrar drilldown al cambiar granularidad
           setGranularity(newGranularity);
           handlers.onGranularityChange();
         }}
@@ -243,16 +243,6 @@ function ChatbotCategoryCard({
   onCategoryClick: (categoryId: string) => void;
   isSelected: boolean;
 }) {
-  console.log("🎴 ChatbotCategoryCard RENDER:", data.id, {
-    label: data.label,
-    currentValue: data.currentValue,
-    previousValue: data.previousValue,
-    delta: data.delta,
-    deltaPercent: data.deltaPercent,
-    "artifact.deltaPct": data.deltaArtifact.deltaPct,
-    "artifact.state": data.deltaArtifact.state,
-  });
-
   return (
     <DeltaCard
       title={data.label}

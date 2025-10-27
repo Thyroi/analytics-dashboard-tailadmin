@@ -73,18 +73,6 @@ function transformToCardData(data: TownTotalData): TownCardData {
   // Calcular deltaArtifact usando valores actuales y anteriores
   const deltaArtifact = computeDeltaArtifact(data.currentTotal, data.prevTotal);
 
-  console.log("🏘️ CHATBOT TOWN:", data.id, {
-    label: data.label,
-    currentTotal: data.currentTotal,
-    prevTotal: data.prevTotal,
-    deltaAbs: data.deltaAbs,
-    deltaPercent: data.deltaPercent,
-    "artifact.state": deltaArtifact.state,
-    "artifact.deltaAbs": deltaArtifact.deltaAbs,
-    "artifact.deltaPct": deltaArtifact.deltaPct,
-    "artifact.baseInfo": deltaArtifact.baseInfo,
-  });
-
   return {
     id: data.id,
     label: data.label,

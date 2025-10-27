@@ -158,8 +158,6 @@ async function performRequest(
 
     return data;
   } catch (error) {
-    console.error("❌ Error en API de auditoría:", error);
-
     if (error instanceof TagAuditError) {
       throw error;
     }

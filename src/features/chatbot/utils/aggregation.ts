@@ -485,10 +485,6 @@ export async function fetchDrilldownData(
       dataPointsCount,
     };
   } catch (error) {
-    console.error(
-      `❌ DRILLDOWN - Error al obtener datos para ${categoryId}:`,
-      error
-    );
     throw error;
   }
 }

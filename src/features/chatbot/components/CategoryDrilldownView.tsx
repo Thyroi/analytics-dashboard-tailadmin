@@ -14,6 +14,8 @@ import type { Granularity } from "../types";
 type Props = {
   categoryId: CategoryId;
   granularity: Granularity;
+  startDate?: string | null;
+  endDate?: string | null;
   onBack?: () => void;
   onSubcategoryClick?: (subcategory: string) => void;
 };
@@ -21,12 +23,16 @@ type Props = {
 export default function CategoryDrilldownView({
   categoryId,
   granularity,
+  startDate,
+  endDate,
   onBack,
   onSubcategoryClick,
 }: Props) {
   const drilldownData = useCategoryDrilldown({
     categoryId,
     granularity,
+    startDate,
+    endDate,
   });
 
   const categoryLabel = CATEGORY_META[categoryId]?.label || categoryId;

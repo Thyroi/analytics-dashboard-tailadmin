@@ -91,6 +91,8 @@ function ChatbotTownsSectionContent() {
         startDate={startDate}
         endDate={endDate}
         onGranularityChange={(newGranularity) => {
+          setSelectedTownId(null); // Cerrar drilldown al cambiar granularidad
+          setSelectedCategoryId(null);
           setGranularity(newGranularity);
           handlers.onGranularityChange();
         }}

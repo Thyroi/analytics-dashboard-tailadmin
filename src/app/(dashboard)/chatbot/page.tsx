@@ -3,19 +3,30 @@
 import CategoryDrilldownView from "@/features/chatbot/components/CategoryDrilldownView";
 import ChatbotCategoriesSection from "@/features/chatbot/components/ChatbotCategoriesSection";
 import ChatbotTownsSection from "@/features/chatbot/components/ChatbotTownsSection";
+import {
+  TagTimeProvider,
+  useTagTimeframe,
+} from "@/features/analytics/context/TagTimeContext";
 import type { CategoryId } from "@/lib/taxonomy/categories";
 import { useState } from "react";
 
-export default function TagsDashboard() {
+function TagsDashboardContent() {
+  const { getCalculatedGranularity, startDate, endDate } = useTagTimeframe();
   const [selectedCategory, setSelectedCategory] = useState<CategoryId | null>(
     null
   );
+
+  // Convertir fechas del contexto a formato ISO string (YYYY-MM-DD)
+  const startDateStr = startDate?.toISOString().split("T")[0] || null;
+  const endDateStr = endDate?.toISOString().split("T")[0] || null;
 
   if (selectedCategory) {
     return (
       <CategoryDrilldownView
         categoryId={selectedCategory}
-        granularity="d" // Usar granularidad por defecto, se puede sincronizar con el contexto
+        granularity={getCalculatedGranularity()}
+        startDate={startDateStr}
+        endDate={endDateStr}
         onBack={() => setSelectedCategory(null)}
       />
     );
@@ -29,5 +40,13 @@ export default function TagsDashboard() {
       {/* Towns section with sticky header */}
       <ChatbotTownsSection />
     </div>
+  );
+}
+
+export default function TagsDashboard() {
+  return (
+    <TagTimeProvider>
+      <TagsDashboardContent />
+    </TagTimeProvider>
   );
 }
