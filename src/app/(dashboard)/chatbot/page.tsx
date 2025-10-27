@@ -1,12 +1,12 @@
 "use client";
 
-import CategoryDrilldownView from "@/features/chatbot/components/CategoryDrilldownView";
-import ChatbotCategoriesSection from "@/features/chatbot/components/ChatbotCategoriesSection";
-import ChatbotTownsSection from "@/features/chatbot/components/ChatbotTownsSection";
 import {
   TagTimeProvider,
   useTagTimeframe,
 } from "@/features/analytics/context/TagTimeContext";
+import CategoryDrilldownView from "@/features/chatbot/components/CategoryDrilldownView";
+import ChatbotCategoriesSection from "@/features/chatbot/components/ChatbotCategoriesSection";
+import ChatbotTownsSection from "@/features/chatbot/components/ChatbotTownsSection";
 import type { CategoryId } from "@/lib/taxonomy/categories";
 import { useState } from "react";
 

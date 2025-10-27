@@ -49,13 +49,13 @@ export default function LegendList({
           className,
         ].join(" ")}
       >
-        {items.map((it) => {
+        {items.map((it, index) => {
           const isActive = selectedLabel === it.label;
           const pct = sum > 0 ? (it.value / sum) * 100 : 0;
 
           return (
             <motion.button
-              key={it.label}
+              key={`${it.label}-${index}-${it.value}`}
               whileHover={{ scale: 1.03, x: 4 }}
               whileTap={{ scale: 0.97 }}
               onClick={() => onSelect?.(it.label)}
@@ -94,11 +94,11 @@ export default function LegendList({
         className,
       ].join(" ")}
     >
-      {items.map((it) => {
+      {items.map((it, index) => {
         const pct = sum > 0 ? (it.value / sum) * 100 : 0;
         return (
           <div
-            key={it.label}
+            key={`${it.label}-${index}-${it.value}`}
             className="flex items-center justify-between rounded-md px-1.5 py-1.5 text-sm"
           >
             <div className="flex min-w-0 items-center gap-2">

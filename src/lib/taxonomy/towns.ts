@@ -115,17 +115,17 @@ export const TOWN_SYNONYMS: Record<TownId, string[]> = {
   escacena: ["escacena"],
   hinojos: ["hinojos"],
   laPalmaDelCondado: ["la palma del condado", "la palma", "la_palma"],
-  lucenaDelPuerto: ["lucena del puerto", "lucena_del_puerto"],
+  lucenaDelPuerto: ["lucena del puerto", "lucena_del_puerto", "lucena"],
   manzanilla: ["manzanilla"],
   niebla: ["niebla", "NIEBLA"],
   palos: ["palos", "palos de la frontera"],
-  paternaDelCampo: ["paterna"],
+  paternaDelCampo: ["paterna del campo", "paterna"],
   rocianaDelCondado: [
     "rociana del condado",
     "rociana",
     "rocianna", // typo en API
   ],
-  villalba: ["villalba del alcor"],
+  villalba: ["villalba del alcor", "villalba"],
   villarrasa: ["villarrasa"],
 };
 

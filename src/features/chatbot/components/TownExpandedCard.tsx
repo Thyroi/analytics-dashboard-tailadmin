@@ -10,13 +10,15 @@
 "use client";
 
 import ChartPair from "@/components/common/ChartPair";
+import { OTHERS_ID } from "@/lib/services/chatbot/partition";
 import { CATEGORY_META, type CategoryId } from "@/lib/taxonomy/categories";
 import { TOWN_META, type TownId } from "@/lib/taxonomy/towns";
 import type { DonutDatum, WindowGranularity } from "@/lib/types";
 import Image from "next/image";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useTownCategoryBreakdown } from "../hooks/useTownCategoryBreakdown";
 import TownCategorySubcatDrilldownView from "./TownCategorySubcatDrilldownView";
+import TownOthersBreakdownView from "./TownOthersBreakdownView";
 
 type Props = {
   townId: string;
@@ -120,9 +122,16 @@ export default function TownExpandedCard({
   const townLabel = townMeta?.label || townId;
   const townIcon = townMeta?.iconSrc;
 
+  // Ref para scroll al nivel 2
+  const level2Ref = useRef<HTMLDivElement>(null);
+
   // Estado para navegación Nivel 1 <-> Nivel 2
   const [selectedCategoryId, setSelectedCategoryId] =
     useState<CategoryId | null>(null);
+  const [selectedCategoryRaw, setSelectedCategoryRaw] = useState<string | null>(
+    null
+  ); // Token raw de la categoría
+  const [isOthersView, setIsOthersView] = useState(false); // Nuevo estado para vista "Otros"
 
   // NIVEL 1: Datos de categorías del town (town-first)
   const { data, isLoading, isError, error } = useTownCategoryBreakdown({
@@ -152,7 +161,7 @@ export default function TownExpandedCard({
         .filter((cat) => cat.currentTotal > 0)
         .map((cat) => ({
           label:
-            cat.categoryId !== "otros"
+            cat.categoryId !== OTHERS_ID
               ? CATEGORY_META[cat.categoryId as CategoryId]?.label || cat.label
               : cat.label,
           value: cat.currentTotal,
@@ -183,23 +192,68 @@ export default function TownExpandedCard({
 
     // Buscar categoryId por label
     const category = data.categories.find((cat) =>
-      cat.categoryId !== "otros"
+      cat.categoryId !== OTHERS_ID
         ? (CATEGORY_META[cat.categoryId as CategoryId]?.label || cat.label) ===
           label
         : cat.label === label
     );
-    if (category && category.categoryId !== "otros") {
-      setSelectedCategoryId(category.categoryId as CategoryId);
-      // También llamar al callback externo si existe
-      if (onSelectCategory) {
-        onSelectCategory(category.categoryId as CategoryId);
+
+    if (!category) return;
+
+    // Si es "Otros", activar vista especial
+    if (category.categoryId === OTHERS_ID) {
+      setIsOthersView(true);
+      setSelectedCategoryId(null);
+      setSelectedCategoryRaw(null);
+
+      // Scroll al nivel 2 (Otros)
+      setTimeout(() => {
+        level2Ref.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+      }, 100);
+
+      return;
+    }
+
+    // Si es una categoría normal, obtener el token raw más frecuente
+    const categoryId = category.categoryId as CategoryId;
+    const rawSegments = data?.categoryRawSegmentsById?.[categoryId];
+    let representativeRaw: string | null = null;
+
+    if (rawSegments) {
+      // Encontrar el segmento raw con mayor frecuencia
+      const entries = Object.entries(rawSegments);
+      if (entries.length > 0) {
+        const [topRaw] = entries.sort((a, b) => b[1] - a[1])[0];
+        representativeRaw = topRaw;
       }
+    }
+
+    setSelectedCategoryId(categoryId);
+    setSelectedCategoryRaw(representativeRaw);
+    setIsOthersView(false);
+
+    // Scroll al nivel 2 después de un breve delay para que el DOM se actualice
+    setTimeout(() => {
+      level2Ref.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }, 100);
+
+    // También llamar al callback externo si existe
+    if (onSelectCategory) {
+      onSelectCategory(categoryId);
     }
   };
 
   // Handler para volver de Nivel 2 a Nivel 1
   const handleBackToLevel1 = () => {
     setSelectedCategoryId(null);
+    setSelectedCategoryRaw(null);
+    setIsOthersView(false);
   };
 
   if (isError) {
@@ -274,7 +328,9 @@ export default function TownExpandedCard({
         subtitle={subtitle}
         imgSrc={townIcon}
         onClose={onClose}
-        onBack={selectedCategoryId ? handleBackToLevel1 : undefined}
+        onBack={
+          selectedCategoryId || isOthersView ? handleBackToLevel1 : undefined
+        }
       />
 
       <ChartPair
@@ -294,13 +350,34 @@ export default function TownExpandedCard({
 
       {/* NIVEL 2: Subcategorías (aparece DEBAJO cuando hay categoría seleccionada) */}
       {selectedCategoryId && (
-        <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
+        <div
+          ref={level2Ref}
+          className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700"
+        >
           <TownCategorySubcatDrilldownView
             townId={townId as TownId}
             categoryId={selectedCategoryId}
+            categoryRaw={selectedCategoryRaw}
             startISO={startDate}
             endISO={endDate}
             windowGranularity={granularity}
+            onBack={handleBackToLevel1}
+          />
+        </div>
+      )}
+
+      {/* NIVEL 2: Vista "Otros" (claves sin mapear) */}
+      {isOthersView && data?.othersBreakdown && (
+        <div
+          ref={level2Ref}
+          className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700"
+        >
+          <TownOthersBreakdownView
+            townId={townId as TownId}
+            othersBreakdown={data.othersBreakdown.current}
+            granularity={granularity}
+            startDate={startDate}
+            endDate={endDate}
             onBack={handleBackToLevel1}
           />
         </div>

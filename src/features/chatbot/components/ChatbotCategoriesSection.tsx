@@ -125,6 +125,7 @@ function ChatbotCategoriesSectionContent() {
       {selectedCategoryId && (
         <div ref={drilldownRef} className="px-4 mb-6">
           <CategoryExpandedCard
+            key={selectedCategoryId} // Forzar remontaje cuando cambia la categoría
             categoryId={selectedCategoryId}
             granularity={effectiveGranularity}
             startDate={startDateStr}

@@ -9,6 +9,7 @@
 
 import ChartPair from "@/components/common/ChartPair";
 import { CATEGORY_META, type CategoryId } from "@/lib/taxonomy/categories";
+import { normalizeForMatch } from "@/lib/taxonomy/normalize";
 import { TOWN_META, type TownId } from "@/lib/taxonomy/towns";
 import type { DonutDatum, WindowGranularity } from "@/lib/types";
 import { useMemo } from "react";
@@ -17,6 +18,7 @@ import { useTownCategorySubcatBreakdown } from "../hooks/useTownCategorySubcatBr
 type Props = {
   townId: TownId;
   categoryId: CategoryId;
+  categoryRaw?: string | null; // Token raw de la categoría desde nivel 1
   startISO?: string | null;
   endISO?: string | null;
   windowGranularity: WindowGranularity;
@@ -27,6 +29,7 @@ type Props = {
 export default function TownCategorySubcatDrilldownView({
   townId,
   categoryId,
+  categoryRaw,
   startISO,
   endISO,
   windowGranularity,
@@ -40,6 +43,7 @@ export default function TownCategorySubcatDrilldownView({
   const { data, isLoading } = useTownCategorySubcatBreakdown({
     townId,
     categoryId,
+    representativeRawSegment: categoryRaw,
     startISO,
     endISO,
     windowGranularity,
@@ -113,6 +117,9 @@ export default function TownCategorySubcatDrilldownView({
     if (windowGranularity === "m") {
       bucketMode = "w";
     }
+    if (windowGranularity === "y") {
+      bucketMode = "m"; // Para año, agrupar por meses (12 buckets)
+    }
     const toBucketKey = (isoDate: string) => {
       if (bucketMode === "d") return isoDate;
       const [y, m, d] = isoDate.split("-").map((x) => parseInt(x, 10));
@@ -153,36 +160,22 @@ export default function TownCategorySubcatDrilldownView({
       const map = new Map<string, Record<string, number>>();
       if (!raw) return map;
 
-      // Normalizar función: eliminar acentos y convertir a lowercase
-      const normalize = (s: string) =>
-        s
-          .normalize("NFD")
-          .replace(/[\u0300-\u036f]/g, "")
-          .toLowerCase()
-          .trim();
-
-      // Obtener el token de categoría esperado
-      const { token: categoryToken } = CATEGORY_META[categoryId]
-        ? { token: CATEGORY_META[categoryId].label.toLowerCase() }
-        : { token: categoryId.toLowerCase() };
-
-      const normalizedCategoryToken = normalize(categoryToken);
-      const normalizedTownId = normalize(townId);
+      // Si tenemos el token raw de la categoría, usarlo; si no, usar el categoryId normalizado
+      const categoryTokenToMatch = categoryRaw
+        ? normalizeForMatch(categoryRaw)
+        : normalizeForMatch(categoryId);
 
       for (const [key, series] of Object.entries(raw)) {
         const parts = key.split(".");
         if (parts.length !== 4) continue;
         if (parts[0] !== "root") continue;
-        const tId = parts[1];
         const cId = parts[2];
 
-        // Normalizar para comparación
-        const normalizedTId = normalize(tId);
-        const normalizedCId = normalize(cId);
+        // Normalizar la categoría para comparación
+        const normalizedCId = normalizeForMatch(cId);
 
-        // Ensure matches this town/category ordering (con normalización)
-        if (normalizedTId !== normalizedTownId) continue;
-        if (normalizedCId !== normalizedCategoryToken) continue;
+        // El servicio ya filtró por town, solo verificamos categoría
+        if (normalizedCId !== categoryTokenToMatch) continue;
 
         const rawSub = parts[3];
         if (!rawSub) continue;
@@ -279,7 +272,7 @@ export default function TownCategorySubcatDrilldownView({
       groupedCategories: bucketLabels,
       groupedSeries,
     };
-  }, [data, townId, categoryId, windowGranularity]);
+  }, [data, categoryId, categoryRaw, windowGranularity]);
 
   const handleDonutSlice = (label: string) => {
     onSubcategoryClick?.(label);
@@ -388,7 +381,7 @@ export default function TownCategorySubcatDrilldownView({
         <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
           {insights.map((insight, index) => (
             <div
-              key={insight.label}
+              key={`${insight.label}-${index}-${insight.value}`}
               className="bg-gray-50 dark:bg-gray-700 rounded-lg p-3"
             >
               <div className="text-xs font-medium text-gray-500 dark:text-gray-400">

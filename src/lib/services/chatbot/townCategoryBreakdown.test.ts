@@ -26,14 +26,14 @@ describe("fetchTownCategoryBreakdown", () => {
     vi.restoreAllMocks();
   });
 
-  it("debe filtrar solo claves con profundidad === 3", async () => {
+  it("debe filtrar solo claves con profundidad >= 3", async () => {
     // Mock de respuesta con diferentes profundidades
     const mockResponse = {
       code: 200,
       output: {
         "root.almonte": [{ time: "20241020", value: 10 }], // prof=2 → ignorar
         "root.almonte.playas": [{ time: "20241020", value: 50 }], // prof=3 → incluir
-        "root.almonte.playas.matalascanas": [{ time: "20241020", value: 30 }], // prof=4 → ignorar
+        "root.almonte.playas.matalascanas": [{ time: "20241020", value: 30 }], // prof=4 → incluir (subcategoría)
         "root.almonte.sabor": [{ time: "20241020", value: 20 }], // prof=3 → incluir
       },
     };
@@ -52,7 +52,7 @@ describe("fetchTownCategoryBreakdown", () => {
       endISO: "2024-10-20",
     });
 
-    // Verificar que solo se procesaron las prof=3
+    // Verificar que se procesaron prof>=3 (incluye subcategorías)
     const playasCategory = result.categories.find(
       (c) => c.categoryId === "playas"
     );
@@ -60,11 +60,11 @@ describe("fetchTownCategoryBreakdown", () => {
       (c) => c.categoryId === "sabor"
     );
 
-    expect(playasCategory?.currentTotal).toBe(50); // Solo de prof=3
+    expect(playasCategory?.currentTotal).toBe(80); // 50 (prof=3) + 30 (prof=4 subcategoría)
     expect(saborCategory?.currentTotal).toBe(20);
 
-    // Verificar que NO incluyó prof=2 ni prof=4 en los totales de "playas"
-    expect(playasCategory?.currentTotal).not.toBe(40); // 10 + 30 (incorrecto)
+    // Verificar que NO incluyó prof=2 en los totales
+    expect(playasCategory?.currentTotal).not.toBe(90); // 10 + 50 + 30 (incorrecto, incluiría prof=2)
   });
 
   it("debe mapear sinónimos correctamente a CategoryId", async () => {
@@ -271,7 +271,7 @@ describe("fetchTownCategoryBreakdown", () => {
 
     // Verificar que "otros" tiene el valor de la categoría desconocida
     const otrosCategory = result.categories.find(
-      (c) => c.categoryId === "otros"
+      (c) => c.categoryId === "__others__"
     );
     expect(otrosCategory?.currentTotal).toBe(15);
 

@@ -14,23 +14,36 @@
  * - UTC total, computeRangesForKPI
  */
 
-import {
-  CATEGORY_ID_ORDER,
-  CATEGORY_META,
-  CATEGORY_SYNONYMS,
-  type CategoryId,
-} from "@/lib/taxonomy/categories";
+import { type CategoryId } from "@/lib/taxonomy/categories";
 import { matchTownId } from "@/lib/taxonomy/normalize";
-import { getCategorySearchPattern } from "@/lib/taxonomy/patterns";
+import {
+  getCategorySearchPattern,
+  makeCategoryFilter,
+  matchSecondTown,
+  parseKey,
+  type KeyInfo,
+} from "@/lib/taxonomy/patterns";
 import { TOWN_ID_ORDER, TOWN_META, type TownId } from "@/lib/taxonomy/towns";
 import type { SeriesPoint, WindowGranularity } from "@/lib/types";
 import { addDaysUTC, parseISO, toISO } from "@/lib/utils/time/datetime";
 import { computeRangesForKPI } from "@/lib/utils/time/timeWindows";
+import { OTHERS_ID } from "./partition";
+
+/* ==================== Debug Flags ==================== */
+const DEBUG_SERIES = false; // Cambiar a true para auditar el universo de claves y series
 
 /* ==================== Tipos ==================== */
 
+/** Detalle de una entrada en "Otros" */
+export type OthersBreakdownEntry = {
+  key: string; // Clave completa "root.patrimonio.paterna.tejada la nueva"
+  path: string[]; // ["root", "patrimonio", "paterna", "tejada la nueva"]
+  value: number; // Suma total de esta clave
+  timePoints: Array<{ time: string; value: number }>; // Puntos temporales originales
+};
+
 export type CategoryTownData = {
-  townId: TownId | "otros";
+  townId: TownId | typeof OTHERS_ID;
   label: string;
   iconSrc: string;
   currentTotal: number;
@@ -42,6 +55,11 @@ export type CategoryTownData = {
 export type CategoryTownBreakdownResponse = {
   categoryId: CategoryId;
   towns: CategoryTownData[];
+  /** Desglose detallado de "Otros" para drill-down */
+  othersBreakdown?: {
+    current: OthersBreakdownEntry[];
+    previous: OthersBreakdownEntry[];
+  };
   seriesByTown?: Record<string, Array<{ time: string; value: number }>>; // Opcional para futura comparativa
   /** Series agregadas por día para la categoría completa (para la gráfica de la izquierda) */
   series?: {
@@ -102,103 +120,104 @@ function computeDeltaPercent(current: number, prev: number): number | null {
 }
 
 /**
- * Parsea respuesta de Mindsaic y suma valores por town
- * Solo cuenta claves root.<categoria>.<town> (profundidad 3)
+ * Filtra y parsea el universo de claves que pertenecen a esta vista
+ * Devuelve KeyInfo[] con metadata completa para uso uniforme en donut y series
  */
-function normalize(raw: string): string {
-  return raw
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[._-]/g, "")
-    .replace(/\s+/g, "")
-    .trim();
+function collectKeyInfosForView(
+  output: MindsaicOutput,
+  categoryId: CategoryId
+): KeyInfo[] {
+  const categoryFilter = makeCategoryFilter(categoryId, 3);
+  const allKeys = Object.keys(output);
+  const parsedKeys = allKeys.map(parseKey).filter(Boolean) as KeyInfo[];
+  return parsedKeys.filter(categoryFilter);
 }
 
-function buildCategorySynonymIndex(): Map<string, CategoryId> {
-  const index = new Map<string, CategoryId>();
-  for (const categoryId of CATEGORY_ID_ORDER) {
-    index.set(normalize(categoryId), categoryId);
-    index.set(normalize(CATEGORY_META[categoryId].label), categoryId);
-    const syns = CATEGORY_SYNONYMS[categoryId] || [];
-    for (const s of syns) index.set(normalize(s), categoryId);
-  }
-  return index;
-}
-
+/**
+ * Parsea respuesta de Mindsaic usando helpers de profundidad
+ * Filtra solo claves root.<categoria>.<town> (profundidad 3)
+ * Ahora también recopila detalles de "Otros" para drill-down
+ */
 function parseCategoryTowns(
   response: MindsaicResponse,
-  categoryId: CategoryId,
-  categorySynIndex: Map<string, CategoryId>
-): Map<TownId | "otros", number> {
-  const totals = new Map<TownId | "otros", number>();
+  categoryId: CategoryId
+): {
+  totals: Map<TownId | typeof OTHERS_ID, number>;
+  othersBreakdown: OthersBreakdownEntry[];
+} {
+  const totals = new Map<TownId | typeof OTHERS_ID, number>();
+  const othersBreakdown: OthersBreakdownEntry[] = [];
 
   // Inicializar todos los towns en 0
   for (const townId of TOWN_ID_ORDER) {
     totals.set(townId, 0);
   }
-  totals.set("otros", 0);
+  totals.set(OTHERS_ID, 0);
 
   const output = response.output || {};
 
-  let matchedAny = false;
-  for (const [key, series] of Object.entries(output)) {
-    const parts = key.split(".");
-    if (parts.length !== 3) continue; // root.<categoria>.<town>
-    const catToken = parts[1];
-    const townToken = parts[2];
-    if (!catToken || !townToken) continue;
+  // Usar universo filtrado unificado
+  const matchedKeys = collectKeyInfosForView(output, categoryId);
 
-    const mappedCategory = categorySynIndex.get(normalize(catToken));
-    if (mappedCategory !== categoryId) continue;
-
-    const townId = matchTownId(townToken) || "otros";
-    const total = series.reduce((sum, point) => sum + (point.value || 0), 0);
-    const prev = totals.get(townId) || 0;
-    totals.set(townId, prev + total);
-    matchedAny = true;
+  if (DEBUG_SERIES) {
+    console.log(
+      `[parseCategoryTowns] categoryId="${categoryId}" | universeCount=${matchedKeys.length}`
+    );
+    console.log(
+      `[parseCategoryTowns] Keys:`,
+      matchedKeys.map((k) => k.raw)
+    );
   }
 
-  // Fallback: si no matchea por sinónimos de categoría, usar prefijo del token elegido
-  if (!matchedAny) {
-    const { token } = getCategorySearchPattern(categoryId);
-    const tokenNorm = normalize(token);
-    for (const [key, series] of Object.entries(output)) {
-      const parts = key.split(".");
-      if (parts.length !== 3) continue;
-      const catToken = parts[1];
-      const townToken = parts[2];
-      if (!catToken || !townToken) continue;
-      const catNorm = normalize(catToken);
-      if (!catNorm.startsWith(tokenNorm)) continue;
-      const townId = matchTownId(townToken) || "otros";
-      const total = series.reduce((sum, point) => sum + (point.value || 0), 0);
+  // Sumar valores por pueblo y capturar "Otros"
+  for (const keyInfo of matchedKeys) {
+    const townId = matchSecondTown(keyInfo);
+    const series = output[keyInfo.raw] || [];
+    const total = series.reduce((sum, point) => sum + (point.value || 0), 0);
+
+    if (townId) {
       const prev = totals.get(townId) || 0;
       totals.set(townId, prev + total);
+    } else {
+      // No se pudo mapear → "Otros"
+      const prev = totals.get(OTHERS_ID) || 0;
+      totals.set(OTHERS_ID, prev + total);
+
+      // Capturar detalle para drill-down
+      othersBreakdown.push({
+        key: keyInfo.raw,
+        path: keyInfo.parts,
+        value: total,
+        timePoints: series.map((pt) => ({ time: pt.time, value: pt.value })),
+      });
     }
   }
 
-  return totals;
+  return { totals, othersBreakdown };
 }
 
 /**
  * Agrega totales diarios a nivel de category (profundidad 3) → { ISO: total }
+ * IMPORTANTE: Ahora usa el mismo universo filtrado que parseCategoryTowns (collectKeyInfosForView)
  */
 function aggregateDailyTotals(
   output: MindsaicOutput,
-  categoryId: CategoryId,
-  categorySynIndex: Map<string, CategoryId>
+  categoryId: CategoryId
 ): Map<string, number> {
   const totals = new Map<string, number>();
 
-  let matchedAny = false;
-  for (const [key, series] of Object.entries(output)) {
-    const parts = key.split(".");
-    if (parts.length !== 3) continue;
-    const catToken = parts[1];
-    if (!catToken) continue;
-    const mappedCategory = categorySynIndex.get(normalize(catToken));
-    if (mappedCategory !== categoryId) continue;
+  // Usar mismo universo que donut/totals
+  const matchedKeys = collectKeyInfosForView(output, categoryId);
+
+  if (DEBUG_SERIES) {
+    console.log(
+      `[aggregateDailyTotals] categoryId="${categoryId}" | universeCount=${matchedKeys.length}`
+    );
+  }
+
+  // Agregar por fecha
+  for (const keyInfo of matchedKeys) {
+    const series = output[keyInfo.raw] || [];
     for (const point of series) {
       const y = point.time;
       if (!y || y.length !== 8) continue;
@@ -206,30 +225,12 @@ function aggregateDailyTotals(
       const prev = totals.get(iso) || 0;
       totals.set(iso, prev + (point.value || 0));
     }
-    matchedAny = true;
-  }
-
-  if (!matchedAny) {
-    const { token } = getCategorySearchPattern(categoryId);
-    const tokenNorm = normalize(token);
-    for (const [key, series] of Object.entries(output)) {
-      const parts = key.split(".");
-      if (parts.length !== 3) continue;
-      const catToken = parts[1];
-      if (!catToken) continue;
-      const catNorm = normalize(catToken);
-      if (!catNorm.startsWith(tokenNorm)) continue;
-      for (const point of series) {
-        const y = point.time;
-        if (!y || y.length !== 8) continue;
-        const iso = `${y.slice(0, 4)}-${y.slice(4, 6)}-${y.slice(6, 8)}`;
-        const prev = totals.get(iso) || 0;
-        totals.set(iso, prev + (point.value || 0));
-      }
-    }
   }
 
   return totals;
+}
+
+/**  return totals;
 }
 
 /**
@@ -265,7 +266,10 @@ function buildSeriesForRange(
       const monthKey = iso.substring(0, 7); // YYYY-MM
       const dayValue = totalsByISO.get(iso) || 0;
 
-      monthlyTotals.set(monthKey, (monthlyTotals.get(monthKey) || 0) + dayValue);
+      monthlyTotals.set(
+        monthKey,
+        (monthlyTotals.get(monthKey) || 0) + dayValue
+      );
     }
 
     // Convertir a array y ordenar
@@ -346,6 +350,7 @@ export async function fetchCategoryTownBreakdown(
     startISO = null,
     endISO = null,
     db = "project_huelva",
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     representativeCategoryRaw = null,
   } = params;
 
@@ -385,18 +390,12 @@ export async function fetchCategoryTownBreakdown(
 
     clearTimeout(timeoutId);
 
-    // 5. Parsear y sumar totales por town (depth=3)
-    const categorySynonymIndex = buildCategorySynonymIndex();
-    const currentTotals = parseCategoryTowns(
-      currentResponse,
-      categoryId,
-      categorySynonymIndex
-    );
-    const prevTotals = parseCategoryTowns(
-      prevResponse,
-      categoryId,
-      categorySynonymIndex
-    );
+    // 5. Parsear y sumar totales por town (depth=3) usando nuevos helpers
+    const currentResult = parseCategoryTowns(currentResponse, categoryId);
+    const prevResult = parseCategoryTowns(prevResponse, categoryId);
+
+    const currentTotals = currentResult.totals;
+    const prevTotals = prevResult.totals;
 
     // 5b. Construir mapa de raw segments por TownId para Nivel 2
     const townRawSegmentsById: Record<
@@ -443,11 +442,11 @@ export async function fetchCategoryTownBreakdown(
     });
 
     // Agregar "otros" si tiene datos
-    const otrosCurrentTotal = currentTotals.get("otros") || 0;
-    const otrosPrevTotal = prevTotals.get("otros") || 0;
+    const otrosCurrentTotal = currentTotals.get(OTHERS_ID) || 0;
+    const otrosPrevTotal = prevTotals.get(OTHERS_ID) || 0;
     if (otrosCurrentTotal > 0 || otrosPrevTotal > 0) {
       towns.push({
-        townId: "otros",
+        townId: OTHERS_ID,
         label: "Otros",
         iconSrc: "/icons/otros.svg", // Placeholder
         currentTotal: otrosCurrentTotal,
@@ -457,16 +456,14 @@ export async function fetchCategoryTownBreakdown(
       });
     }
 
-    // 7. Series agregadas por día para la categoría
+    // 7. Series agregadas por día para la categoría usando nuevos helpers
     const currentTotalsByISO = aggregateDailyTotals(
       currentResponse.output || {},
-      categoryId,
-      categorySynonymIndex
+      categoryId
     );
     const prevTotalsByISO = aggregateDailyTotals(
       prevResponse.output || {},
-      categoryId,
-      categorySynonymIndex
+      categoryId
     );
     const currentSeries: SeriesPoint[] = buildSeriesForRange(
       currentTotalsByISO,
@@ -481,6 +478,23 @@ export async function fetchCategoryTownBreakdown(
       windowGranularity // Pasar granularidad para bucketing correcto
     );
 
+    if (DEBUG_SERIES) {
+      console.log(
+        `[fetchCategoryTownBreakdown] Series summary for categoryId="${categoryId}"`
+      );
+      console.log(
+        `  Current: ${currentSeries.length} buckets, sum=${currentSeries.reduce(
+          (s, p) => s + p.value,
+          0
+        )}`
+      );
+      console.log(
+        `  Previous: ${
+          previousSeries.length
+        } buckets, sum=${previousSeries.reduce((s, p) => s + p.value, 0)}`
+      );
+    }
+
     return {
       categoryId,
       towns,
@@ -489,6 +503,10 @@ export async function fetchCategoryTownBreakdown(
         previous: previousSeries,
       },
       townRawSegmentsById,
+      othersBreakdown: {
+        current: currentResult.othersBreakdown,
+        previous: prevResult.othersBreakdown,
+      },
       meta: {
         granularity: windowGranularity,
         timezone: "UTC",

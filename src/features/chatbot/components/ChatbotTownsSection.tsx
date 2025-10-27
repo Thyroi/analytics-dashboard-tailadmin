@@ -119,6 +119,7 @@ function ChatbotTownsSectionContent() {
       {selectedTownId && (
         <div ref={drilldownRef} className="px-4 mb-6">
           <TownExpandedCard
+            key={selectedTownId} // Forzar remontaje cuando cambia el pueblo
             townId={selectedTownId}
             granularity={effectiveGranularity}
             startDate={startDateStr}

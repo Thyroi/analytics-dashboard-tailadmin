@@ -13,6 +13,8 @@
  * - Timeout 15s con AbortController
  * - UTC total, computeRangesForKPI
  * - Series para comparativa: si windowGranularity==='y' → agrupar YYYY-MM (máx 12 buckets)
+ *
+ * NUEVO: Soporte para othersOnly (navegar "Otros" de nivel 1)
  */
 
 import type { CategoryId } from "@/lib/taxonomy/categories";
@@ -23,6 +25,37 @@ import {
 import type { TownId } from "@/lib/taxonomy/towns";
 import type { WindowGranularity } from "@/lib/types";
 import { computeRangesForKPI } from "@/lib/utils/time/timeWindows";
+import { bucketize } from "./bucketizer";
+import {
+  collectUniverseForView,
+  type UniverseRecord,
+  type ViewParams,
+} from "./universeCollector";
+
+/* ==================== Debug Flag ==================== */
+const DEBUG_LEVEL2 = false; // Cambiar a true para logging detallado
+
+/* ==================== Helpers ==================== */
+
+/**
+ * Normaliza texto para la API: lowercase, sin acentos EXCEPTO ñ
+ */
+function normalizeForAPI(input: string): string {
+  if (!input) return "";
+  // Lowercase
+  let s = input.toLowerCase();
+  // Preservar ñ temporalmente
+  s = s.replace(/ñ/g, "[[ENYE]]");
+  // Quitar acentos
+  s = s.normalize("NFD").replace(/\p{Diacritic}/gu, "");
+  // Restaurar ñ
+  s = s.replace(/\[\[ENYE\]\]/g, "ñ");
+  // Normalizar espacios
+  s = s.replace(/[ _-]+/g, " ");
+  s = s.replace(/\s+/g, " ");
+  s = s.trim();
+  return s;
+}
 
 /* ==================== Tipos ==================== */
 
@@ -45,6 +78,10 @@ export type TownCategorySubcatBreakdownResponse = {
     range: {
       current: { start: string; end: string };
       previous: { start: string; end: string };
+    };
+    /** Indica si es una vista de "Otros" (claves no mapeadas del nivel 1) */
+    source: {
+      othersOnly: boolean;
     };
   };
   /** Opcional: respuestas crudas y request para depuración */
@@ -72,6 +109,8 @@ export type FetchTownCategorySubcatBreakdownParams = {
   db?: string;
   /** Optional: representative raw segment token (from L1) to query instead of canonical categoryId */
   representativeRawSegment?: string | null;
+  /** Si true, solo mostrar claves que NO mapearon en nivel 1 (navegación desde "Otros") */
+  othersOnly?: boolean;
 };
 
 /* ==================== Helpers ==================== */
@@ -93,6 +132,8 @@ function normalizeSubcategoryName(raw: string): string {
 /**
  * Filtra solo claves con profundidad 4: root.<town>.<cat>.<subcat>
  */
+// Función legacy - mantener por si es necesaria en el futuro
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function parseSubcategories(
   data: Record<string, Array<{ time: string; value: number }>>,
   opts: {
@@ -140,6 +181,8 @@ function parseSubcategories(
 /**
  * Suma totales de una serie de datos
  */
+// Función legacy - mantener por si es necesaria en el futuro
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function sumSeries(series: Array<{ time: string; value: number }>): number {
   return series.reduce((sum, point) => sum + point.value, 0);
 }
@@ -155,6 +198,8 @@ function computeDeltaPercent(current: number, prev: number): number | null {
 /**
  * Agrupa series por YYYY-MM (máximo 12 buckets para granularidad anual)
  */
+// Función legacy - mantener por si es necesaria en el futuro
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function groupSeriesByMonth(
   series: Array<{ time: string; value: number }>
 ): Array<{ time: string; value: number }> {
@@ -218,6 +263,7 @@ async function fetchMindsaicData(
 
 /**
  * Obtiene breakdown de subcategorías para un town+categoría específico
+ * REFACTORIZADO: Usa collectUniverseForView para universo unificado entre donut y series
  */
 export async function fetchTownCategorySubcatBreakdown({
   townId,
@@ -227,6 +273,7 @@ export async function fetchTownCategorySubcatBreakdown({
   windowGranularity = "d",
   db = "project_huelva",
   representativeRawSegment = null,
+  othersOnly = false,
 }: FetchTownCategorySubcatBreakdownParams): Promise<TownCategorySubcatBreakdownResponse> {
   // 1. Calcular rangos
   const ranges = computeRangesForKPI(windowGranularity, startISO, endISO);
@@ -238,13 +285,35 @@ export async function fetchTownCategorySubcatBreakdown({
   try {
     // 3. Determinar tokens y wildcard para town y categoría
     const townPat = getTownSearchPattern(townId);
-    const catPat = representativeRawSegment
-      ? { token: representativeRawSegment, wildcard: false }
-      : getCategorySearchPattern(categoryId);
 
-    // Construir pattern con wildcard selectivo
-    const townPart = `${townPat.token}${townPat.wildcard ? "*" : ""}`;
-    const catPart = `${catPat.token}${catPat.wildcard ? "*" : ""}`;
+    // Para categoría: si tenemos representativeRawSegment, usar la lógica de getCategorySearchPattern
+    let catPat: { token: string; wildcard: boolean };
+    if (representativeRawSegment) {
+      // Normalizar y extraer primera palabra
+      const normalizedToken = normalizeForAPI(representativeRawSegment);
+      const words = normalizedToken.split(/\s+/).filter((w) => w.length > 0);
+      const firstWord = words[0];
+
+      // Si tiene múltiples palabras, usar wildcard genérico
+      catPat = {
+        token: firstWord,
+        wildcard: words.length > 1, // Automático: más de 1 palabra = wildcard
+      };
+    } else {
+      catPat = getCategorySearchPattern(categoryId);
+    }
+
+    // Normalizar tokens para la API (sin acentos EXCEPTO ñ, lowercase, pero CON espacios)
+    const normalizedTownToken = normalizeForAPI(townPat.token);
+    const normalizedCatToken = normalizeForAPI(catPat.token);
+
+    // Construir pattern con wildcard selectivo (con ESPACIOS alrededor del *)
+    const townPart = townPat.wildcard
+      ? `${normalizedTownToken} *`
+      : normalizedTownToken;
+    const catPart = catPat.wildcard
+      ? `${normalizedCatToken} *`
+      : normalizedCatToken;
     const pattern = `root.${townPart}.${catPart}.*`;
 
     // 4. POST dual (current + previous) con granularity="d"
@@ -272,42 +341,68 @@ export async function fetchTownCategorySubcatBreakdown({
       ),
     ]);
 
-    // 5. Parsear subcategorías (profundidad 4)
-    const currentSubcats = parseSubcategories(currentData, {
-      townToken: townPat.token,
-      townWildcard: townPat.wildcard,
-      categoryToken: catPat.token,
-      categoryWildcard: catPat.wildcard,
-    });
-    const previousSubcats = parseSubcategories(previousData, {
-      townToken: townPat.token,
-      townWildcard: townPat.wildcard,
-      categoryToken: catPat.token,
-      categoryWildcard: catPat.wildcard,
-    });
+    // 5. NUEVO: Usar collectUniverseForView para universo unificado
+    const viewParams: ViewParams = {
+      level: othersOnly ? 1 : 2, // Si othersOnly, filtrar nivel 1 (depth=3) para obtener no-mapeados
+      categoryId,
+      townId,
+      othersOnly,
+      granularity: windowGranularity,
+      range: ranges,
+      navigationType: "town-first",
+    };
 
-    // 6. Obtener todas las subcategorías únicas
+    const currentRecords = collectUniverseForView(currentData, viewParams);
+    const previousRecords = collectUniverseForView(previousData, viewParams);
+
+    // 6. Agrupar por subcategoría (último token de la clave)
+    const groupRecordsBySubcat = (records: UniverseRecord[]) => {
+      const grouped = new Map<string, UniverseRecord[]>();
+      for (const record of records) {
+        // Último token = subcategoría
+        const lastToken = record.keyInfo.parts[record.keyInfo.parts.length - 1];
+        const subcatName = normalizeSubcategoryName(lastToken || "unknown");
+
+        const existing = grouped.get(subcatName) || [];
+        existing.push(record);
+        grouped.set(subcatName, existing);
+      }
+      return grouped;
+    };
+
+    const currentBySubcat = groupRecordsBySubcat(currentRecords);
+    const previousBySubcat = groupRecordsBySubcat(previousRecords);
+
+    // 7. Obtener todas las subcategorías únicas
     const allSubcatNames = new Set<string>([
-      ...currentSubcats.keys(),
-      ...previousSubcats.keys(),
+      ...currentBySubcat.keys(),
+      ...previousBySubcat.keys(),
     ]);
 
-    // 7. Construir lista de subcategorías con totales y deltas
+    // 8. Construir lista de subcategorías con totales y deltas
     const subcategories: TownCategorySubcatData[] = Array.from(allSubcatNames)
       .map((subcatName) => {
-        const currentSeries = currentSubcats.get(subcatName) || [];
-        const prevSeries = previousSubcats.get(subcatName) || [];
+        const currentRecs = currentBySubcat.get(subcatName) || [];
+        const prevRecs = previousBySubcat.get(subcatName) || [];
 
-        const currentTotal = sumSeries(currentSeries);
-        const prevTotal = sumSeries(prevSeries);
+        const currentTotal = currentRecs.reduce((sum, r) => sum + r.value, 0);
+        const prevTotal = prevRecs.reduce((sum, r) => sum + r.value, 0);
         const deltaAbs = currentTotal - prevTotal;
         const deltaPercent = computeDeltaPercent(currentTotal, prevTotal);
 
-        // Series para comparativa: usar current y agrupar si es anual
-        let series = currentSeries;
-        if (windowGranularity === "y" && currentSeries.length > 0) {
-          series = groupSeriesByMonth(currentSeries);
-        }
+        // Series para comparativa: bucketizar
+        const bucketized = bucketize(
+          currentRecs,
+          prevRecs,
+          windowGranularity,
+          ranges.current
+        );
+
+        // Convertir a formato legado (Array<{time, value}>)
+        const series = bucketized.xLabels.map((label: string, i: number) => ({
+          time: label,
+          value: bucketized.current[i],
+        }));
 
         return {
           subcategoryName: subcatName,
@@ -320,7 +415,19 @@ export async function fetchTownCategorySubcatBreakdown({
       })
       .sort((a, b) => b.currentTotal - a.currentTotal); // Ordenar por total descendente
 
-    // 8. Metadata
+    if (DEBUG_LEVEL2) {
+      console.log(
+        `[fetchTownCategorySubcatBreakdown] Subcategories found: ${subcategories.length}`
+      );
+      console.log(
+        `[fetchTownCategorySubcatBreakdown] Top 5:`,
+        subcategories
+          .slice(0, 5)
+          .map((s) => `${s.subcategoryName}=${s.currentTotal}`)
+      );
+    }
+
+    // 9. Metadata
     return {
       townId,
       categoryId,
@@ -337,6 +444,9 @@ export async function fetchTownCategorySubcatBreakdown({
             start: ranges.previous.start,
             end: ranges.previous.end,
           },
+        },
+        source: {
+          othersOnly,
         },
       },
       raw: {

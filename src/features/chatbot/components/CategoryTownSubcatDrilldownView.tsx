@@ -17,6 +17,7 @@ import { useCategoryTownSubcatBreakdown } from "../hooks/useCategoryTownSubcatBr
 type Props = {
   categoryId: CategoryId;
   townId: TownId;
+  townRaw?: string | null; // Token raw del pueblo desde nivel 1
   granularity: WindowGranularity;
   startDate?: string | null;
   endDate?: string | null;
@@ -27,6 +28,7 @@ type Props = {
 export default function CategoryTownSubcatDrilldownView({
   categoryId,
   townId,
+  townRaw,
   granularity,
   startDate,
   endDate,
@@ -113,6 +115,9 @@ export default function CategoryTownSubcatDrilldownView({
     if (granularity === "m") {
       bucketMode = "w";
     }
+    if (granularity === "y") {
+      bucketMode = "m"; // Para año, agrupar por meses (12 buckets)
+    }
     const toBucketKey = (isoDate: string) => {
       if (bucketMode === "d") return isoDate;
       const [y, m, d] = isoDate.split("-").map((x) => parseInt(x, 10));
@@ -168,6 +173,20 @@ export default function CategoryTownSubcatDrilldownView({
       const normalizedCategoryToken = normalize(categoryToken);
       const normalizedTownId = normalize(townId);
 
+      // Si tenemos el token raw del pueblo, usarlo; si no, usar el townId normalizado
+      const townTokenToMatch = townRaw ? normalize(townRaw) : normalizedTownId;
+
+      console.log("[CategoryTownSubcatDrilldownView] parseRawToMap:", {
+        categoryId,
+        townId,
+        townRaw,
+        categoryToken,
+        normalizedCategoryToken,
+        normalizedTownId,
+        townTokenToMatch,
+        rawKeys: Object.keys(raw || {}),
+      });
+
       for (const [key, series] of Object.entries(raw)) {
         const parts = key.split(".");
         if (parts.length !== 4) continue;
@@ -179,9 +198,19 @@ export default function CategoryTownSubcatDrilldownView({
         const normalizedCId = normalize(cId);
         const normalizedTId = normalize(tId);
 
+        console.log("[CategoryTownSubcatDrilldownView] Checking key:", {
+          key,
+          cId,
+          tId,
+          normalizedCId,
+          normalizedTId,
+          matchesCategory: normalizedCId === normalizedCategoryToken,
+          matchesTown: normalizedTId === townTokenToMatch,
+        });
+
         // Ensure matches this category/town ordering (con normalización)
         if (normalizedCId !== normalizedCategoryToken) continue;
-        if (normalizedTId !== normalizedTownId) continue;
+        if (normalizedTId !== townTokenToMatch) continue;
 
         const rawSub = parts[3];
         if (!rawSub) continue;
@@ -197,6 +226,11 @@ export default function CategoryTownSubcatDrilldownView({
         }
         map.set(sub, dateMap);
       }
+
+      console.log(
+        "[CategoryTownSubcatDrilldownView] Final map size:",
+        map.size
+      );
       return map;
     };
 
@@ -272,7 +306,7 @@ export default function CategoryTownSubcatDrilldownView({
       groupedCategories: bucketLabels,
       groupedSeries,
     };
-  }, [data, categoryId, townId, granularity]);
+  }, [data, categoryId, townId, townRaw, granularity]);
 
   const handleDonutSlice = (label: string) => {
     onSubcategoryClick?.(label);
@@ -402,7 +436,7 @@ export default function CategoryTownSubcatDrilldownView({
         <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
           {insights.map((insight, index) => (
             <div
-              key={insight.label}
+              key={`${insight.label}-${index}-${insight.value}`}
               className="bg-gray-50 dark:bg-gray-700 rounded-lg p-3"
             >
               <div className="text-xs font-medium text-gray-500 dark:text-gray-400">

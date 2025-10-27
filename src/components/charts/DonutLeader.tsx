@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 
 export type DonutDatum = {
   label: string;
@@ -23,7 +23,7 @@ type Props = {
   className?: string;
 
   /** Texto */
-  labelFontSize?: number;   // default: 11
+  labelFontSize?: number; // default: 11
   labelLineHeight?: number; // default: 13
 
   /** Margen opcional al viewBox (px) para dar aire a los lados */
@@ -143,9 +143,9 @@ function wrapAtMostTwoLines(
 
 type _Item = DonutDatum & {
   color: string;
-  __i?: number;           // índice original en data
-  __isOthers?: boolean;   // marca si es el agregado "Otros"
-  __others?: number[];    // índices incluidos en "Otros"
+  __i?: number; // índice original en data
+  __isOthers?: boolean; // marca si es el agregado "Otros"
+  __others?: number[]; // índices incluidos en "Otros"
 };
 
 export default function DonutLeader({
@@ -224,7 +224,8 @@ export default function DonutLeader({
     const p2 = polarToXY(cx, cy, rOuter + leaderLineLen.radial, s.mid);
     const isRight = Math.cos(s.mid) >= 0;
 
-    const xEnd = p2.x + (isRight ? leaderLineLen.horizontal : -leaderLineLen.horizontal);
+    const xEnd =
+      p2.x + (isRight ? leaderLineLen.horizontal : -leaderLineLen.horizontal);
     const yEnd = p2.y;
 
     const textAnchor = (isRight ? "start" : "end") as "start" | "end";
@@ -235,7 +236,11 @@ export default function DonutLeader({
 
     // Forzar salto si el label es largo
     const labelBroken = forceNewlineAfterLimit(s.data.label, 14);
-    const raw = labelFormatter({ label: labelBroken, value: s.data.value as number, pct: s.pct });
+    const raw = labelFormatter({
+      label: labelBroken,
+      value: s.data.value as number,
+      pct: s.pct,
+    });
     const lines = wrapAtMostTwoLines(raw, Math.max(0, availablePx), fontSpec);
 
     return {
@@ -252,8 +257,11 @@ export default function DonutLeader({
   /* ----------------- Handlers ----------------- */
   const handleSliceClick = (item: _Item, index: number) => {
     if (!onSliceClick) return;
-    if (item.__isOthers) return; // ignorar "Otros"
-    onSliceClick({ label: item.label, value: item.value, color: item.color }, { index });
+    // Permitir navegación en "Otros" - ya no bloqueamos el click
+    onSliceClick(
+      { label: item.label, value: item.value, color: item.color },
+      { index }
+    );
   };
 
   const isClickable = !!onSliceClick;
@@ -274,7 +282,7 @@ export default function DonutLeader({
       >
         {/* segmentos */}
         {segments.map((s, i) => {
-          const clickable = isClickable && !s.data.__isOthers;
+          const clickable = isClickable; // Todos los slices son clickables, incluido "Otros"
           return (
             <path
               key={`seg-${i}`}
@@ -283,7 +291,11 @@ export default function DonutLeader({
               stroke="#fff"
               strokeWidth={3}
               style={{ cursor: clickable ? "pointer" : "default" }}
-              onClick={clickable ? () => handleSliceClick(s.data, s.data.__i ?? i) : undefined}
+              onClick={
+                clickable
+                  ? () => handleSliceClick(s.data, s.data.__i ?? i)
+                  : undefined
+              }
               onKeyDown={
                 clickable
                   ? (e) => {
@@ -296,14 +308,22 @@ export default function DonutLeader({
               }
               role={clickable ? "button" : undefined}
               tabIndex={clickable ? 0 : undefined}
-              aria-label={clickable ? `${s.data.label}: ${Math.round(s.pct)}%` : undefined}
+              aria-label={
+                clickable ? `${s.data.label}: ${Math.round(s.pct)}%` : undefined
+              }
             />
           );
         })}
 
         {/* guías */}
         {labels.map((l) => (
-          <path key={`lead-${l.id}`} d={l.path} fill="none" stroke={l.color} strokeWidth={1.5} />
+          <path
+            key={`lead-${l.id}`}
+            d={l.path}
+            fill="none"
+            stroke={l.color}
+            strokeWidth={1.5}
+          />
         ))}
 
         {/* textos */}
@@ -328,10 +348,23 @@ export default function DonutLeader({
         {/* centro */}
         {showCenterTotal && (
           <>
-            <text x={cx} y={cy - 6} textAnchor="middle" fontSize={16} fill="#6b7280">
+            <text
+              x={cx}
+              y={cy - 6}
+              textAnchor="middle"
+              fontSize={16}
+              fill="#6b7280"
+            >
               {centerTitle}
             </text>
-            <text x={cx} y={cy + 18} textAnchor="middle" fontSize={22} fontWeight={800} fill="#111827">
+            <text
+              x={cx}
+              y={cy + 18}
+              textAnchor="middle"
+              fontSize={22}
+              fontWeight={800}
+              fill="#111827"
+            >
               {totalFormatter(total)}
             </text>
           </>
@@ -340,4 +373,3 @@ export default function DonutLeader({
     </div>
   );
 }
-

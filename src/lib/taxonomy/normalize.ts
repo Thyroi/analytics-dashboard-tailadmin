@@ -22,6 +22,26 @@ export function normalizeText(input: string): string {
   return s;
 }
 
+/**
+ * Quita artículos comunes y normaliza múltiples espacios.
+ * Asume que 'norm' ya viene normalizado (lower, sin acentos, espacios simples)
+ * Ejemplos: "la rabida" -> "rabida", "palos de la frontera" -> "palos frontera"
+ */
+export function stripArticles(norm: string): string {
+  return norm
+    .replace(/\b(el|la|los|las|del|de|da|do|dos|das)\b/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/**
+ * Normaliza "token" para matching tolerante (usa normalizeText + stripArticles)
+ */
+export function normalizeForMatch(input: string): string {
+  const n = normalizeText(input);
+  return stripArticles(n);
+}
+
 let _categoryLookup: Map<string, CategoryId> | null = null;
 let _townLookup: Map<string, TownId> | null = null;
 
@@ -38,7 +58,13 @@ export function buildCategoryLookup(): Map<string, CategoryId> {
     const syns = merged[categoryId] || [];
     for (const syn of syns) {
       const norm = normalizeText(syn);
+      const normMatch = normalizeForMatch(syn);
+
+      // Index both normalized and tolerant versions
       if (!map.has(norm)) map.set(norm, categoryId);
+      if (!map.has(normMatch) && normMatch !== norm) {
+        map.set(normMatch, categoryId);
+      }
     }
   }
 
@@ -46,7 +72,12 @@ export function buildCategoryLookup(): Map<string, CategoryId> {
   for (const categoryId of Object.keys(CATEGORY_META) as CategoryId[]) {
     const label = CATEGORY_META[categoryId].label || categoryId;
     const norm = normalizeText(label);
+    const normMatch = normalizeForMatch(label);
+
     if (!map.has(norm)) map.set(norm, categoryId);
+    if (!map.has(normMatch) && normMatch !== norm) {
+      map.set(normMatch, categoryId);
+    }
   }
 
   _categoryLookup = map;
@@ -63,7 +94,12 @@ export function buildTownLookup(): Map<string, TownId> {
     const syns = TOWN_SYNONYMS[townId] || [];
     for (const syn of syns) {
       const norm = normalizeText(syn);
+      const normMatch = normalizeForMatch(syn);
+
       if (!map.has(norm)) map.set(norm, townId);
+      if (!map.has(normMatch) && normMatch !== norm) {
+        map.set(normMatch, townId);
+      }
     }
   }
 
@@ -71,7 +107,12 @@ export function buildTownLookup(): Map<string, TownId> {
   for (const townId of Object.keys(TOWN_META) as TownId[]) {
     const label = TOWN_META[townId].label || townId;
     const norm = normalizeText(label);
+    const normMatch = normalizeForMatch(label);
+
     if (!map.has(norm)) map.set(norm, townId);
+    if (!map.has(normMatch) && normMatch !== norm) {
+      map.set(normMatch, townId);
+    }
   }
 
   _townLookup = map;
@@ -80,16 +121,30 @@ export function buildTownLookup(): Map<string, TownId> {
 
 export function matchCategoryId(raw: string): CategoryId | null {
   if (!raw) return null;
-  const norm = normalizeText(raw);
   const lookup = buildCategoryLookup();
+
+  // Try exact normalized match first
+  const norm = normalizeText(raw);
   if (lookup.has(norm)) return lookup.get(norm) || null;
+
+  // Fallback to tolerant match (without articles)
+  const normMatch = normalizeForMatch(raw);
+  if (lookup.has(normMatch)) return lookup.get(normMatch) || null;
+
   return null;
 }
 
 export function matchTownId(raw: string): TownId | null {
   if (!raw) return null;
-  const norm = normalizeText(raw);
   const lookup = buildTownLookup();
+
+  // Try exact normalized match first
+  const norm = normalizeText(raw);
   if (lookup.has(norm)) return lookup.get(norm) || null;
+
+  // Fallback to tolerant match (without articles)
+  const normMatch = normalizeForMatch(raw);
+  if (lookup.has(normMatch)) return lookup.get(normMatch) || null;
+
   return null;
 }
