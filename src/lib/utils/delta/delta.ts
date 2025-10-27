@@ -136,10 +136,14 @@ export function getDeltaMainText(artifact: DeltaArtifact): string {
   switch (state) {
     case "ok":
       // Caso especial: current = 0 y prev > 0 (cayó a cero)
-      if (baseInfo.current === 0 && baseInfo.prev !== null && baseInfo.prev > 0) {
+      if (
+        baseInfo.current === 0 &&
+        baseInfo.prev !== null &&
+        baseInfo.prev > 0
+      ) {
         return "Sin actividad";
       }
-      
+
       if (deltaPct !== null) {
         const sign = deltaPct > 0 ? "+" : deltaPct < 0 ? "−" : "";
         const abs = Math.abs(deltaPct);
@@ -300,7 +304,11 @@ export function getDeltaTooltip(artifact: DeltaArtifact): TooltipParts {
   switch (state) {
     case "ok":
       // Caso especial: cayó a cero
-      if (baseInfo.current === 0 && baseInfo.prev !== null && baseInfo.prev > 0) {
+      if (
+        baseInfo.current === 0 &&
+        baseInfo.prev !== null &&
+        baseInfo.prev > 0
+      ) {
         title = "Sin actividad actual";
         detail = `Actividad cayó a cero. de ${baseInfo.prev.toLocaleString(
           "es-ES"

@@ -168,7 +168,7 @@ function LineSide({
     const categories = [lastCurrent.label]; // ["2025-10-25"]
     const groupedSeries: GroupedBarSeries[] = [
       { name: labels.previous, data: [lastPrevious.value] }, // ✅ PRIMERO previous
-      { name: labels.current, data: [lastCurrent.value] },   // ✅ LUEGO current
+      { name: labels.current, data: [lastCurrent.value] }, // ✅ LUEGO current
     ];
 
     return (
