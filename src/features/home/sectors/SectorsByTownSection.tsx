@@ -7,6 +7,7 @@ import { useTownDetails } from "@/features/home/hooks/useTownDetails";
 import type { TownId } from "@/lib/taxonomy/towns";
 import type { Granularity } from "@/lib/types";
 import { getCorrectDatesForGranularity } from "@/lib/utils/time/deltaDateCalculation";
+import { computeRangesForKPI } from "@/lib/utils/time/timeWindows";
 import { useMemo, useState } from "react";
 
 type Props = {
@@ -26,17 +27,26 @@ export default function SectorsByTownSection({ granularity }: Props) {
     mode
   );
 
-  // Preparar parámetros de tiempo para useResumenTown
-  const startDateStr =
-    mode === "range" ? startDate.toISOString().split("T")[0] : null;
-  const endDateStr =
-    mode === "range" ? endDate.toISOString().split("T")[0] : currentEndISO;
+  // Calcular rangos usando la lógica estándar de timeWindows
+  const ranges = useMemo(() => {
+    if (mode === "range") {
+      // Modo range: usar fechas del contexto
+      return computeRangesForKPI(
+        granularity,
+        startDate.toISOString().split("T")[0],
+        endDate.toISOString().split("T")[0]
+      );
+    } else {
+      // Modo preset: usar computeRangesForKPI con currentEndISO
+      return computeRangesForKPI(granularity, null, currentEndISO);
+    }
+  }, [mode, startDate, endDate, currentEndISO, granularity]);
 
   // Usar hook combinado GA4 + Chatbot
   const townResumenResult = useResumenTown({
     granularity,
-    startDate: startDateStr,
-    endDate: endDateStr,
+    startDate: ranges.current.start,
+    endDate: ranges.current.end,
   });
 
   // Crear lookup map por ID para acceso eficiente
@@ -63,14 +73,18 @@ export default function SectorsByTownSection({ granularity }: Props) {
         }
       : { endISO: currentEndISO };
 
+  // Solo llamar useTownDetails si hay un townId expandido
   const { series, donutData } = useTownDetails(
-    townId ?? ("almonte" as TownId),
+    townId, // Pasar null cuando no hay nada expandido
     granularity,
     timeParamsForDetails
   );
 
   const getDeltaPctFor = (id: string) =>
     itemsById[id as TownId]?.combinedDeltaPct ?? null;
+
+  const getDeltaArtifactFor = (id: string) =>
+    itemsById[id as TownId]?.deltaArtifact ?? null;
 
   const getSeriesFor = (_id: string) => {
     return townId && _id === townId ? series : { current: [], previous: [] };
@@ -89,6 +103,7 @@ export default function SectorsByTownSection({ granularity }: Props) {
         granularity={granularity}
         onGranularityChange={() => {}}
         getDeltaPctFor={getDeltaPctFor}
+        getDeltaArtifactFor={getDeltaArtifactFor}
         getSeriesFor={getSeriesFor}
         getDonutFor={getDonutFor}
         expandedId={expandedId}

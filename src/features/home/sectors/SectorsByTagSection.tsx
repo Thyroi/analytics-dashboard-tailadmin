@@ -12,6 +12,7 @@ import { CATEGORY_ID_ORDER } from "@/lib/taxonomy/categories";
 import type { Granularity } from "@/lib/types";
 import type { DeltaArtifact } from "@/lib/utils/delta";
 import { getCorrectDatesForGranularity } from "@/lib/utils/time/deltaDateCalculation";
+import { computeRangesForKPI } from "@/lib/utils/time/timeWindows";
 import { useMemo, useState } from "react";
 
 type Props = {
@@ -31,13 +32,26 @@ export default function SectorsByTagSection({ granularity }: Props) {
     mode
   );
 
+  // Calcular rangos usando la lógica estándar de timeWindows
+  const ranges = useMemo(() => {
+    if (mode === "range") {
+      // Modo range: usar fechas del contexto
+      return computeRangesForKPI(
+        granularity,
+        startDate.toISOString().split("T")[0],
+        endDate.toISOString().split("T")[0]
+      );
+    } else {
+      // Modo preset: usar computeRangesForKPI con currentEndISO
+      return computeRangesForKPI(granularity, null, currentEndISO);
+    }
+  }, [mode, startDate, endDate, currentEndISO, granularity]);
+
   // Usar useResumenData para obtener deltas combinados (GA4 + Chatbot)
   const { categoriesData, isLoading } = useResumenCategory({
     granularity,
-    startDate:
-      mode === "range" ? startDate.toISOString().split("T")[0] : undefined,
-    endDate:
-      mode === "range" ? endDate.toISOString().split("T")[0] : currentEndISO,
+    startDate: ranges.current.start,
+    endDate: ranges.current.end,
   });
 
   // Convertir datos a formato compatible con SectorsGrid
@@ -77,8 +91,9 @@ export default function SectorsByTagSection({ granularity }: Props) {
     }
   }, [mode, startDate, endDate, currentEndISO]);
 
+  // Solo llamar useCategoryDetails si hay un catId expandido
   const { series, donutData } = useCategoryDetails(
-    catId ?? ("naturaleza" as CategoryId),
+    catId, // Pasar null cuando no hay nada expandido
     granularity,
     timeParams
   );

@@ -135,6 +135,11 @@ export function getDeltaMainText(artifact: DeltaArtifact): string {
 
   switch (state) {
     case "ok":
+      // Caso especial: current = 0 y prev > 0 (cayó a cero)
+      if (baseInfo.current === 0 && baseInfo.prev !== null && baseInfo.prev > 0) {
+        return "Sin actividad";
+      }
+      
       if (deltaPct !== null) {
         const sign = deltaPct > 0 ? "+" : deltaPct < 0 ? "−" : "";
         const abs = Math.abs(deltaPct);
@@ -192,7 +197,17 @@ export function getDeltaMainText(artifact: DeltaArtifact): string {
  * ```
  */
 export function getDeltaColor(artifact: DeltaArtifact): string {
-  const { deltaPct, deltaAbs, state } = artifact;
+  const { deltaPct, deltaAbs, state, baseInfo } = artifact;
+
+  // Caso especial: current = 0 y prev > 0 (cayó a cero) → gris neutral
+  if (
+    state === "ok" &&
+    baseInfo.current === 0 &&
+    baseInfo.prev !== null &&
+    baseInfo.prev > 0
+  ) {
+    return "text-gray-500";
+  }
 
   // Si hay delta porcentual válido, usar ese
   if (deltaPct !== null) {
@@ -229,7 +244,17 @@ export function getDeltaColor(artifact: DeltaArtifact): string {
  * ```
  */
 export function getDeltaIcon(artifact: DeltaArtifact): string {
-  const { deltaPct, deltaAbs } = artifact;
+  const { deltaPct, deltaAbs, state, baseInfo } = artifact;
+
+  // Caso especial: current = 0 y prev > 0 (cayó a cero) → flecha neutral
+  if (
+    state === "ok" &&
+    baseInfo.current === 0 &&
+    baseInfo.prev !== null &&
+    baseInfo.prev > 0
+  ) {
+    return "→";
+  }
 
   // Priorizar delta porcentual
   if (deltaPct !== null) {
@@ -274,6 +299,15 @@ export function getDeltaTooltip(artifact: DeltaArtifact): TooltipParts {
   // Construir título y detalle según estado
   switch (state) {
     case "ok":
+      // Caso especial: cayó a cero
+      if (baseInfo.current === 0 && baseInfo.prev !== null && baseInfo.prev > 0) {
+        title = "Sin actividad actual";
+        detail = `Actividad cayó a cero. de ${baseInfo.prev.toLocaleString(
+          "es-ES"
+        )} → 0`;
+        break;
+      }
+
       title = "Cambio porcentual";
       if (deltaPct !== null && deltaAbs !== null) {
         const pctSign = deltaPct >= 0 ? "+" : "";

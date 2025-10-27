@@ -9,6 +9,7 @@ import type { TownId } from "@/lib/taxonomy/towns";
 import type { DonutDatum, Granularity, SeriesPoint } from "@/lib/types";
 import { buildSeriesAndDonutFocused } from "@/lib/utils/data/seriesAndDonuts";
 import { computeRangesByGranularityForSeries } from "@/lib/utils/time/granularityRanges";
+import { computeRangesForKPI } from "@/lib/utils/time/timeWindows";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 
@@ -81,9 +82,19 @@ function useTownDetailsImpl(
 ) {
   const { startISO, endISO } = normalizeTime(time);
 
-  // Nota: Los rangos se calculan automáticamente en la API route usando las reglas:
-  // - Series: computeRangesForSeries (g==="d" usa 7 días, otros usan duración estándar)
-  // - Donut: computeRangesForKPI (g==="d" usa último día, otros usan rango completo)
+  // Calcular rangos usando computeRangesForKPI para respetar la granularidad seleccionada
+  // IMPORTANTE: Para Home, usar computeRangesForKPI que respeta la granularidad exacta:
+  // - Granularidad "d": 1 día (ayer vs anteayer)
+  // - Granularidad "w": 7 días
+  // - Granularidad "m": 30 días
+  // - Granularidad "y": 365 días
+  const ranges = useMemo(() => {
+    if (startISO && endISO) {
+      return computeRangesForKPI(granularity, startISO, endISO);
+    } else {
+      return computeRangesForKPI(granularity, null, endISO);
+    }
+  }, [granularity, startISO, endISO]);
 
   // Query para GA4 data
   const ga4Query = useQuery({
@@ -92,33 +103,23 @@ function useTownDetailsImpl(
       "ga4",
       id,
       granularity,
-      startISO,
-      endISO,
+      ranges.current.start,
+      ranges.current.end,
       categoryId,
     ],
     queryFn: async () => {
       if (!id) throw new Error("Town ID is required");
 
-      // Construir URL con parámetros apropiados
+      // Construir URL con parámetros apropiados usando los rangos calculados
       const params = new URLSearchParams();
-      params.set("g", granularity);
-
-      if (startISO && endISO) {
-        // Rango personalizado
-        params.set("start", startISO);
-        params.set("end", endISO);
-      } else if (endISO) {
-        // Solo fecha final
-        params.set("end", endISO);
-      }
+      params.set("granularity", granularity);
+      params.set("startDate", ranges.current.start);
+      params.set("endDate", ranges.current.end);
 
       if (categoryId) {
         params.set("categoryId", categoryId);
       }
 
-      // Nota: La API route maneja automáticamente las reglas de granularidad:
-      // - Series: computeRangesByGranularityForSeries (7 días para g='d')
-      // - Donut: computeRangesByGranularity (1 día para g='d')
       const url = `/api/analytics/v1/dimensions/pueblos/details/${id}?${params}`;
 
       const response = await fetch(url);
@@ -129,6 +130,7 @@ function useTownDetailsImpl(
       }
 
       const data = await response.json();
+
       return {
         series: data.series || { current: [], previous: [] },
         donutData: data.donutData || [],
@@ -273,12 +275,14 @@ function useTownDetailsImpl(
     });
 
     // Convertir a array y ordenar por valor descendente
-    return Object.entries(combinedMap)
+    const result = Object.entries(combinedMap)
       .map(([label, value]) => ({ label, value }))
       .sort((a, b) => {
         if (b.value !== a.value) return b.value - a.value;
         return a.label.localeCompare(b.label);
       });
+
+    return result;
   }, [ga4Query.data?.donutData, chatbotTownSeries.donutData]);
 
   // Estado combinado (GA4 + Chatbot)

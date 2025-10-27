@@ -147,10 +147,17 @@ function LineSide({
     const lastCurrent = series.current[series.current.length - 1];
     const lastPrevious = series.previous[series.previous.length - 1];
 
+    // Si no hay datos, mostrar skeleton de carga
     if (!lastCurrent || !lastPrevious) {
       return (
-        <div className="w-full h-full bg-white dark:bg-gray-800 rounded-lg p-6">
-          <p className="text-gray-500 dark:text-gray-400">No hay datos</p>
+        <div className="w-full bg-white dark:bg-gray-800 rounded-lg">
+          <div className="p-6">
+            <div className="animate-pulse">
+              <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/3 mb-2"></div>
+              <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2 mb-4"></div>
+              <div className="h-80 bg-gray-200 dark:bg-gray-700 rounded"></div>
+            </div>
+          </div>
         </div>
       );
     }
@@ -160,8 +167,8 @@ function LineSide({
 
     const categories = [lastCurrent.label]; // ["2025-10-25"]
     const groupedSeries: GroupedBarSeries[] = [
-      { name: labels.current, data: [lastCurrent.value] },
-      { name: labels.previous, data: [lastPrevious.value] },
+      { name: labels.previous, data: [lastPrevious.value] }, // ✅ PRIMERO previous
+      { name: labels.current, data: [lastCurrent.value] },   // ✅ LUEGO current
     ];
 
     return (
@@ -174,8 +181,8 @@ function LineSide({
           height={350}
           showLegend={true}
           legendPosition="top"
-          tooltipFormatter={(val) => val.toLocaleString()}
-          yAxisFormatter={(val) => val.toString()}
+          tooltipFormatter={(val) => (val ?? 0).toLocaleString()}
+          yAxisFormatter={(val) => (val ?? 0).toString()}
         />
       </div>
     );
@@ -253,8 +260,8 @@ function MultiAsGroupedBar({
       height={350}
       showLegend={false}
       legendPosition="top"
-      tooltipFormatter={(val) => val.toLocaleString()}
-      yAxisFormatter={(val) => val.toString()}
+      tooltipFormatter={(val) => (val ?? 0).toLocaleString()}
+      yAxisFormatter={(val) => (val ?? 0).toString()}
     />
   );
 }

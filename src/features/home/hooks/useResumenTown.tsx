@@ -7,6 +7,7 @@ import {
 import { TOWN_ID_ORDER, getTownLabel } from "@/lib/taxonomy/towns";
 import type { Granularity } from "@/lib/types";
 import { computeCategoryAndTownTotals } from "@/lib/utils/chatbot/aggregate";
+import { computeDeltaArtifact, type DeltaArtifact } from "@/lib/utils/delta";
 import { computeDeltaPct } from "@/lib/utils/time/timeWindows";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
@@ -27,6 +28,7 @@ export interface TownGridData {
   combinedTotal: number;
   combinedDelta: number;
   combinedDeltaPct: number | null;
+  deltaArtifact: DeltaArtifact; // ✨ Artifact completo con estado
 }
 
 // Tipo para la respuesta de la API /api/analytics/v1/dimensions/pueblos/totales
@@ -135,6 +137,10 @@ export function useResumenTown({
         combinedCurrent,
         combinedPrevious
       );
+      const deltaArtifact = computeDeltaArtifact(
+        combinedCurrent,
+        combinedPrevious
+      );
 
       return {
         id: townId,
@@ -146,6 +152,7 @@ export function useResumenTown({
         combinedTotal: combinedCurrent,
         combinedDelta: combinedDelta,
         combinedDeltaPct: combinedDeltaPct,
+        deltaArtifact: deltaArtifact,
       };
     });
   }, [townTotalesQuery.data, chatbotAggregated]);

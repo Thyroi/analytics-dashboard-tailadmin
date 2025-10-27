@@ -9,6 +9,7 @@ import type { CategoryId } from "@/lib/taxonomy/categories";
 import type { DonutDatum, Granularity, SeriesPoint } from "@/lib/types";
 import { buildSeriesAndDonutFocused } from "@/lib/utils/data/seriesAndDonuts";
 import { calculatePreviousPeriodWithGranularity } from "@/lib/utils/time/rangeCalculations";
+import { computeRangesForKPI } from "@/lib/utils/time/timeWindows";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 
@@ -75,89 +76,18 @@ function useCategoryDetailsImpl(
 ) {
   const { startISO, endISO } = normalizeTime(time);
 
-  // Nota: Los rangos se calculan automáticamente en la API route usando las reglas:
-  // - Series: computeRangesForSeries (g==="d" usa 7 días, otros usan duración estándar)
-  // - Donut: computeRangesForKPI (g==="d" usa último día, otros usan rango completo)
-
-  // Calcular rangos usando la función correcta de rangeCalculations.ts
+  // Calcular rangos usando computeRangesForKPI para respetar la granularidad seleccionada
   const ranges = useMemo(() => {
     if (startISO && endISO) {
-      // Usar la función correcta para calcular rangos
-      const calculation = calculatePreviousPeriodWithGranularity(
-        startISO,
-        endISO,
-        granularity
-      );
-
-      const calculatedRanges = {
-        current: calculation.currentRange,
-        previous: calculation.prevRange,
-      };
-
-      return calculatedRanges;
+      // IMPORTANTE: Para Home, usar computeRangesForKPI que respeta la granularidad exacta:
+      // - Granularidad "d": 1 día (ayer vs anteayer)
+      // - Granularidad "w": 7 días
+      // - Granularidad "m": 30 días
+      // - Granularidad "y": 365 días
+      return computeRangesForKPI(granularity, startISO, endISO);
     } else {
-      // Para casos sin rango completo, usar fecha por defecto
-      const endDate =
-        endISO ||
-        new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split("T")[0];
-
-      // Para casos automáticos, necesitamos generar un rango basado en granularidad
-      let currentStart: string;
-      const currentEnd = endDate;
-
-      switch (granularity) {
-        case "d":
-          // 7 días para series diarias
-          currentStart = new Date(
-            new Date(endDate).getTime() - 6 * 24 * 60 * 60 * 1000
-          )
-            .toISOString()
-            .split("T")[0];
-          break;
-        case "w":
-          // 4 semanas
-          currentStart = new Date(
-            new Date(endDate).getTime() - 27 * 24 * 60 * 60 * 1000
-          )
-            .toISOString()
-            .split("T")[0];
-          break;
-        case "m":
-          // 12 meses
-          currentStart = new Date(
-            new Date(endDate).getTime() - 364 * 24 * 60 * 60 * 1000
-          )
-            .toISOString()
-            .split("T")[0];
-          break;
-        case "y":
-          // 3 años
-          currentStart = new Date(
-            new Date(endDate).getTime() - 1094 * 24 * 60 * 60 * 1000
-          )
-            .toISOString()
-            .split("T")[0];
-          break;
-        default:
-          currentStart = new Date(
-            new Date(endDate).getTime() - 6 * 24 * 60 * 60 * 1000
-          )
-            .toISOString()
-            .split("T")[0];
-      }
-
-      const calculation = calculatePreviousPeriodWithGranularity(
-        currentStart,
-        currentEnd,
-        granularity
-      );
-
-      const autoRanges = {
-        current: calculation.currentRange,
-        previous: calculation.prevRange,
-      };
-
-      return autoRanges;
+      // Sin rango completo, usar preset terminando en endISO (o yesterday)
+      return computeRangesForKPI(granularity, null, endISO);
     }
   }, [granularity, startISO, endISO]);
 
