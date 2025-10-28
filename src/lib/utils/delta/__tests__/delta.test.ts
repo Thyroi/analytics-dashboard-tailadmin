@@ -45,7 +45,8 @@ describe("computeDeltaArtifact", () => {
 
     expect(result.state).toBe("new_vs_zero");
     expect(result.deltaAbs).toBe(42);
-    expect(result.deltaPct).toBeNull();
+    // NUEVA LÓGICA: deltaPct se calcula usando base=1
+    expect(result.deltaPct).toBe(4100); // ((42 - 1) / 1) * 100 = 4100%
   });
 
   it("debe manejar cero vs cero (curr=0, prev=0)", () => {
@@ -139,11 +140,12 @@ describe("getDeltaMainText", () => {
     expect(text).toBe("0.0%");
   });
 
-  it("debe mostrar +Δ para nuevo vs cero", () => {
+  it("debe mostrar +% para nuevo vs cero", () => {
     const artifact = computeDeltaArtifact(42, 0);
     const text = getDeltaMainText(artifact);
 
-    expect(text).toBe("+42");
+    // NUEVA LÓGICA: muestra porcentaje calculado con base=1
+    expect(text).toBe("+4100.0%"); // ((42 - 1) / 1) * 100 = 4100%
   });
 
   it("debe mostrar 0 para cero vs cero", () => {
@@ -259,8 +261,10 @@ describe("getDeltaTooltip", () => {
     const tooltip = getDeltaTooltip(artifact);
 
     expect(tooltip.title).toBe("Nuevo vs base cero");
-    expect(tooltip.detail).toContain("prev=0");
+    // NUEVA LÓGICA: tooltip menciona base=1 para el cálculo
+    expect(tooltip.detail).toContain("base=1");
     expect(tooltip.detail).toContain("Δ +42");
+    expect(tooltip.detail).toContain("+4100.0%");
   });
 
   it("debe incluir chips cuando hay flags", () => {
