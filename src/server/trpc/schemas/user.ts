@@ -58,7 +58,7 @@ export const UserSchema = z.object({
   id: z.string(),
   email: z.string().email(),
   auth0Sub: z.string().nullable().optional(), // Opcional para autenticación híbrida
-  password: z.string().optional(), // No exponemos el hash en el output
+  password: z.string().nullable().optional(), // No exponemos el hash en el output, puede ser null para usuarios Auth0
   avatarUrl: z.string().url().nullable(),
   createdAt: z.date(),
   updatedAt: z.date(),
