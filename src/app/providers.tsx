@@ -8,7 +8,7 @@ import superjson from "superjson";
 
 import { ThemeProviders } from "@/components/ThemeProviders";
 import { SidebarProvider } from "@/context/SidebarContext";
-
+import { ToastProvider } from "@/context/ToastContext";
 
 export function WarmupUser() {
   // precarga datos mínimos del usuario (no bloquea render)
@@ -36,10 +36,12 @@ export default function Providers({ children }: { children: React.ReactNode }) {
     <ThemeProviders>
       <trpc.Provider client={trpcClient} queryClient={queryClient}>
         <QueryClientProvider client={queryClient}>
+          <ToastProvider>
             <SidebarProvider>
               <WarmupUser />
               {children}
             </SidebarProvider>
+          </ToastProvider>
         </QueryClientProvider>
       </trpc.Provider>
     </ThemeProviders>

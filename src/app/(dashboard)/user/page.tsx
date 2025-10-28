@@ -1,5 +1,5 @@
 import { auth0 } from "@/lib/auth0";
-import ProfileClient from "./profileClient";
+import ProfileClient from "../../../components/user/profileClient";
 
 export const dynamic = "force-dynamic"; // evita cache de página de perfil
 
