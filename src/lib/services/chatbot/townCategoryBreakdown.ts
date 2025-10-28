@@ -32,9 +32,6 @@ import { addDaysUTC, parseISO, toISO } from "@/lib/utils/time/datetime";
 import { computeRangesForKPI } from "@/lib/utils/time/timeWindows";
 import { OTHERS_ID } from "./partition";
 
-/* ==================== Debug Flags ==================== */
-const DEBUG_SERIES = false; // Cambiar a true para auditar el universo de claves y categorías detectadas
-
 /* ==================== Tipos ==================== */
 
 export type OthersBreakdownEntry = {
@@ -143,18 +140,24 @@ function collectKeyInfosForView(
     if (keyInfo.depth === 2) {
       const townPart = keyInfo.parts[1];
       if (!townPart) return false;
-      return wildcard
-        ? keyInfo.normParts[1].startsWith(townToken.toLowerCase())
-        : keyInfo.parts[1].toLowerCase() === townToken.toLowerCase();
+
+      // Usar parts[1] (sin normalizar) para preservar espacios
+      const match = wildcard
+        ? townPart.toLowerCase().startsWith(townToken.toLowerCase())
+        : townPart.toLowerCase() === townToken.toLowerCase();
+
+      return match;
     }
 
     // Para depth >= 3, parts[1] debe ser el town
     const townPart = keyInfo.parts[1];
     if (!townPart) return false;
 
-    return wildcard
-      ? keyInfo.normParts[1].startsWith(townToken.toLowerCase())
-      : keyInfo.parts[1].toLowerCase() === townToken.toLowerCase();
+    const match = wildcard
+      ? townPart.toLowerCase().startsWith(townToken.toLowerCase())
+      : townPart.toLowerCase() === townToken.toLowerCase();
+
+    return match;
   });
 }
 
@@ -185,34 +188,18 @@ function parseTownCategories(
   // Usar universo filtrado unificado
   const matchedKeys = collectKeyInfosForView(output, townId);
 
-  if (DEBUG_SERIES) {
-    console.log(
-      `[parseTownCategories] townId="${townId}" | universeCount=${matchedKeys.length}`
-    );
-    console.log(
-      `[parseTownCategories] Keys:`,
-      matchedKeys.map((k) => k.raw)
-    );
-  }
+  // NOTA: NO verificar hijos aquí - se hará después con queries separadas
+  // Por ahora, aceptar TODAS las categorías depth=3
 
-  // Filtrar por pueblo y mapear categorías
+  // Procesar todas las keys
   for (const keyInfo of matchedKeys) {
     // Para profundidad 2 (root.town), son consultas generales del pueblo
-    // Las tratamos como parte del total pero NO asignamos a una categoría específica
     if (keyInfo.depth === 2) {
-      // Sumar toda la serie como "general" del pueblo
       const series = output[keyInfo.raw] || [];
       const total = series.reduce((sum, point) => sum + (point.value || 0), 0);
 
-      // Esto va a "Otros" o podríamos crear una categoría especial "General"
       const prev = totals.get(OTHERS_ID) || 0;
       totals.set(OTHERS_ID, prev + total);
-
-      if (DEBUG_SERIES) {
-        console.log(
-          `[parseTownCategories] Depth 2 (general): "${keyInfo.raw}" | total=${total} | added to OTHERS`
-        );
-      }
 
       othersBreakdown.push({
         key: keyInfo.raw,
@@ -221,22 +208,22 @@ function parseTownCategories(
         timePoints: series.map((pt) => ({ time: pt.time, value: pt.value })),
       });
 
-      continue; // No procesar más esta key
+      continue;
     }
 
-    // Mapear categoría usando helper PARA TOWN-FIRST (parts[2])
-    const categoryId = matchSecondCategory(keyInfo); // ← CAMBIO: usar matchSecondCategory
-
-    if (DEBUG_SERIES) {
-      console.log(
-        `[parseTownCategories] Key: "${keyInfo.raw}" | parts[2]="${keyInfo.parts[2]}" | matched category="${categoryId}"`
-      );
+    // CRÍTICO: Solo procesar depth=3 (root.town.category)
+    // Ignorar depth>=4 (subcategorías) - solo se usan para children verification
+    if (keyInfo.depth !== 3) {
+      continue;
     }
 
-    // Sumar toda la serie
+    // Mapear categoría
+    const categoryId = matchSecondCategory(keyInfo);
+
     const series = output[keyInfo.raw] || [];
     const total = series.reduce((sum, point) => sum + (point.value || 0), 0);
 
+    // ACEPTAR TODAS las categorías por ahora (la reclasificación se hará después)
     if (categoryId) {
       const prev = totals.get(categoryId) || 0;
       totals.set(categoryId, prev + total);
@@ -245,7 +232,6 @@ function parseTownCategories(
       const prev = totals.get(OTHERS_ID) || 0;
       totals.set(OTHERS_ID, prev + total);
 
-      // Capturar detalle para drill-down
       othersBreakdown.push({
         key: keyInfo.raw,
         path: keyInfo.parts,
@@ -270,12 +256,6 @@ function aggregateDailyTotals(
 
   // Usar mismo universo que donut/totals
   const matchedKeys = collectKeyInfosForView(output, townId);
-
-  if (DEBUG_SERIES) {
-    console.log(
-      `[aggregateDailyTotals] townId="${townId}" | universeCount=${matchedKeys.length}`
-    );
-  }
 
   // Agregar valores por fecha
   for (const keyInfo of matchedKeys) {
@@ -362,9 +342,11 @@ async function fetchMindsaicData(
   const { token, wildcard } = getTownSearchPattern(townId);
   const payload = {
     db,
-    // Patrón basado en token + wildcard condicional
-    patterns: `root.${token}${wildcard ? "*" : ""}.*`,
-    granularity: "d", // Siempre "d" para Mindsaic
+    // Pattern nivel 1: solo hasta depth=3 (categorías)
+    patterns: wildcard
+      ? `root.${token} *.*` // 2 wildcards para capturar town + category
+      : `root.${token}.*`, // 1 wildcard para category
+    granularity: "d",
     startTime,
     endTime,
   };
@@ -383,6 +365,7 @@ async function fetchMindsaicData(
   }
 
   const json = (await response.json()) as MindsaicResponse;
+
   return json;
 }
 
@@ -440,12 +423,112 @@ export async function fetchTownCategoryBreakdown(
 
     clearTimeout(timeoutId);
 
-    // 5. Parsear y sumar totales por categoría (depth=3) usando nuevos helpers
+    // 5. Parsear y sumar totales por categoría (depth=3) - SIN verificación de hijos aún
     const currentResult = parseTownCategories(currentResponse, townId);
     const prevResult = parseTownCategories(prevResponse, townId);
 
-    const currentTotals = currentResult.totals;
-    const prevTotals = prevResult.totals;
+    // 6. VERIFICAR QUÉ CATEGORÍAS TIENEN HIJOS (queries adicionales)
+    // Detectar todas las categorías únicas que aparecieron en las keys depth=3
+    const detectedCategories = new Set<CategoryId>();
+    const output = currentResponse.output || {};
+
+    for (const key of Object.keys(output)) {
+      const keyInfo = parseKey(key);
+      if (keyInfo && keyInfo.depth === 3) {
+        const categoryId = matchSecondCategory(keyInfo);
+        if (categoryId) {
+          detectedCategories.add(categoryId);
+        }
+      }
+    }
+    // Para cada categoría detectada, hacer query de verificación: root.<town>.<cat>.*
+    const { token: townToken, wildcard: townWildcard } =
+      getTownSearchPattern(townId);
+    const verificationController = new AbortController();
+    const verificationTimeout = setTimeout(
+      () => verificationController.abort(),
+      15000
+    );
+
+    const categoriesWithChildren = new Set<CategoryId>();
+
+    try {
+      const verificationPromises = Array.from(detectedCategories).map(
+        async (categoryId) => {
+          // Obtener el token de la categoría desde las keys reales (parts[2])
+          const categoryKeys = Object.keys(output).filter((k) => {
+            const ki = parseKey(k);
+            return (
+              ki && ki.depth === 3 && matchSecondCategory(ki) === categoryId
+            );
+          });
+
+          if (categoryKeys.length === 0) return;
+
+          // Tomar el parts[2] de la primera key como representativo
+          const firstKey = parseKey(categoryKeys[0]);
+          if (!firstKey) return;
+
+          const rawCategoryToken = firstKey.parts[2]; // e.g., "circuito monteblanco"
+
+          // Construir pattern de verificación
+          const townPart = townWildcard ? `${townToken} *` : townToken;
+          const verificationPattern = `root.${townPart}.${rawCategoryToken}.*`;
+
+          // Hacer query de verificación
+          const verificationPayload = {
+            db,
+            patterns: verificationPattern,
+            granularity: "d",
+            startTime: currentStartFormatted,
+            endTime: currentEndFormatted,
+          };
+
+          const verificationResponse = await fetch("/api/chatbot/audit/tags", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(verificationPayload),
+            signal: verificationController.signal,
+          });
+
+          if (!verificationResponse.ok) return;
+
+          const verificationJson = await verificationResponse.json();
+          const verificationOutput = verificationJson.output || {};
+          const hasChildren = Object.keys(verificationOutput).length > 0;
+
+          if (hasChildren) {
+            categoriesWithChildren.add(categoryId);
+          }
+        }
+      );
+
+      await Promise.all(verificationPromises);
+      clearTimeout(verificationTimeout);
+    } catch {
+      clearTimeout(verificationTimeout);
+    }
+
+    // 7. Reclasificar: categorías SIN hijos van a "Otros"
+    const currentTotals = new Map(currentResult.totals);
+    const prevTotals = new Map(prevResult.totals);
+
+    for (const categoryId of detectedCategories) {
+      if (!categoriesWithChildren.has(categoryId)) {
+        // Mover a "Otros"
+        const currentVal = currentTotals.get(categoryId) || 0;
+        const prevVal = prevTotals.get(categoryId) || 0;
+
+        currentTotals.set(
+          OTHERS_ID,
+          (currentTotals.get(OTHERS_ID) || 0) + currentVal
+        );
+        prevTotals.set(OTHERS_ID, (prevTotals.get(OTHERS_ID) || 0) + prevVal);
+
+        currentTotals.set(categoryId, 0);
+        prevTotals.set(categoryId, 0);
+      }
+    }
 
     // 5b. Construir mapa de raw segments por CategoryId para Nivel 2
     const categoryRawSegmentsById: Record<
@@ -528,23 +611,6 @@ export async function fetchTownCategoryBreakdown(
       ranges.previous.end,
       windowGranularity // Pasar granularidad para bucketing correcto
     );
-
-    if (DEBUG_SERIES) {
-      console.log(
-        `[fetchTownCategoryBreakdown] Series summary for townId="${townId}"`
-      );
-      console.log(
-        `  Current: ${currentSeries.length} buckets, sum=${currentSeries.reduce(
-          (s, p) => s + p.value,
-          0
-        )}`
-      );
-      console.log(
-        `  Previous: ${
-          previousSeries.length
-        } buckets, sum=${previousSeries.reduce((s, p) => s + p.value, 0)}`
-      );
-    }
 
     return {
       townId,

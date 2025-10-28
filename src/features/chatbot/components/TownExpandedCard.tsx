@@ -10,13 +10,22 @@
 "use client";
 
 import ChartPair from "@/components/common/ChartPair";
-import { OTHERS_ID } from "@/lib/services/chatbot/partition";
-import { CATEGORY_META, type CategoryId } from "@/lib/taxonomy/categories";
-import { TOWN_META, type TownId } from "@/lib/taxonomy/towns";
+import {
+  CATEGORY_META,
+  CHATBOT_CATEGORY_TOKENS,
+  type CategoryId,
+} from "@/lib/taxonomy/categories";
+import {
+  CHATBOT_TOWN_TOKENS,
+  TOWN_META,
+  type TownId,
+} from "@/lib/taxonomy/towns";
 import type { DonutDatum, WindowGranularity } from "@/lib/types";
+import { fillMissingDates } from "@/lib/utils/time/fillMissingDates";
+import { computeRangesForSeries } from "@/lib/utils/time/timeWindows";
 import Image from "next/image";
-import { useMemo, useRef, useState } from "react";
-import { useTownCategoryBreakdown } from "../hooks/useTownCategoryBreakdown";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useLevel1Drilldown } from "../hooks/useLevel1Drilldown";
 import TownCategorySubcatDrilldownView from "./TownCategorySubcatDrilldownView";
 import TownOthersBreakdownView from "./TownOthersBreakdownView";
 
@@ -27,6 +36,7 @@ type Props = {
   endDate?: string | null;
   onClose: () => void;
   onSelectCategory?: (categoryId: CategoryId) => void;
+  onScrollToLevel1?: () => void; // Callback para scroll controlado por el padre
 };
 
 function Header({
@@ -117,10 +127,14 @@ export default function TownExpandedCard({
   endDate,
   onClose,
   onSelectCategory,
+  onScrollToLevel1,
 }: Props) {
   const townMeta = TOWN_META[townId as TownId];
   const townLabel = townMeta?.label || townId;
   const townIcon = townMeta?.iconSrc;
+
+  // Token RAW del town para queries del chatbot (lookup directo, sin procesamiento)
+  const townRaw = CHATBOT_TOWN_TOKENS[townId as TownId];
 
   // Ref para scroll al nivel 2
   const level2Ref = useRef<HTMLDivElement>(null);
@@ -133,21 +147,46 @@ export default function TownExpandedCard({
   ); // Token raw de la categoría
   const [isOthersView, setIsOthersView] = useState(false); // Nuevo estado para vista "Otros"
 
-  // NIVEL 1: Datos de categorías del town (town-first)
-  const { data, isLoading, isError, error } = useTownCategoryBreakdown({
-    townId: townId as TownId,
-    startISO: startDate,
-    endISO: endDate,
-    windowGranularity: granularity,
-    enabled: true,
+  // Cerrar nivel 2 cuando cambia la granularidad
+  useEffect(() => {
+    // Capturar estado actual ANTES de cerrar
+    const wasLevel2Open = selectedCategoryId !== null || isOthersView;
+
+    // Cerrar nivel 2
+    setSelectedCategoryId(null);
+    setSelectedCategoryRaw(null);
+    setIsOthersView(false);
+
+    // Si había nivel 2 abierto, hacer scroll al drilldown (nivel 1)
+    if (wasLevel2Open && onScrollToLevel1) {
+      setTimeout(() => {
+        onScrollToLevel1();
+      }, 100);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [granularity]);
+
+  // NIVEL 1: Datos de categorías del town usando Level 1 batching
+  const {
+    data: level1Data,
+    isLoading,
+    isError,
+    error,
+  } = useLevel1Drilldown({
+    scopeType: "town",
+    scopeId: townId,
+    granularity,
+    startDate,
+    endDate,
+    db: "project_huelva",
+    sumStrategy: "sum",
+    debug: false,
   });
 
-  // Transformar datos Nivel 1 (categorías) a formato ChartPair
+  // Transformar datos Nivel 1 (donutData + seriesBySlice) a formato ChartPair
   const { donutData, lineSeriesData, lineSeriesPrev, totalInteractions } =
     useMemo(() => {
-      const categories = data?.categories || [];
-
-      if (!categories || categories.length === 0) {
+      if (!level1Data) {
         return {
           donutData: [],
           lineSeriesData: [],
@@ -156,31 +195,101 @@ export default function TownExpandedCard({
         };
       }
 
-      // Donut: participación por categoría
-      const donut: DonutDatum[] = categories
-        .filter((cat) => cat.currentTotal > 0)
-        .map((cat) => ({
-          label:
-            cat.categoryId !== OTHERS_ID
-              ? CATEGORY_META[cat.categoryId as CategoryId]?.label || cat.label
-              : cat.label,
-          value: cat.currentTotal,
+      // Donut: participación por slice (category)
+      const donut: DonutDatum[] = level1Data.donutData
+        .filter((slice) => slice.value > 0)
+        .map((slice) => ({
+          label: slice.label,
+          value: slice.value,
           color: undefined,
         }));
 
-      // Line series: usar series agregadas por día retornadas por el servicio
-      const lineSeries = data?.series?.current ?? [];
-      const lineSeriesPrevious = data?.series?.previous ?? [];
+      // Line series CURRENT: usar series agregadas por slice
+      const allSeriesCurrent = Object.values(level1Data.seriesBySlice).flat();
+      const timeMapCurrent = new Map<string, number>();
 
-      const total = categories.reduce((sum, cat) => sum + cat.currentTotal, 0);
+      for (const point of allSeriesCurrent) {
+        // Convertir YYYYMMDD → YYYY-MM-DD
+        const dateLabel = point.time.replace(
+          /(\d{4})(\d{2})(\d{2})/,
+          "$1-$2-$3"
+        );
+        const current = timeMapCurrent.get(dateLabel) || 0;
+        timeMapCurrent.set(dateLabel, current + point.value);
+      }
+
+      // Materializar serie completa: generar TODAS las fechas del rango
+      let lineSeriesCurrent: Array<{ label: string; value: number }> = [];
+
+      if (startDate && endDate) {
+        const startISO = startDate.replace(/(\d{4})(\d{2})(\d{2})/, "$1-$2-$3");
+        const endISO = endDate.replace(/(\d{4})(\d{2})(\d{2})/, "$1-$2-$3");
+
+        lineSeriesCurrent = fillMissingDates(
+          Array.from(timeMapCurrent.entries()).map(([label, value]) => ({
+            label,
+            value,
+          })),
+          granularity,
+          startISO,
+          endISO
+        );
+      } else {
+        // Fallback: usar solo datos disponibles
+        lineSeriesCurrent = Array.from(timeMapCurrent.entries())
+          .map(([label, value]) => ({ label, value }))
+          .sort((a, b) => a.label.localeCompare(b.label));
+      }
+
+      // Line series PREVIOUS: procesar level1DataPrevious si existe
+      let lineSeriesPrevious: Array<{ label: string; value: number }> = [];
+
+      if (startDate && endDate) {
+        const startISO = startDate.replace(/(\d{4})(\d{2})(\d{2})/, "$1-$2-$3");
+        const endISO = endDate.replace(/(\d{4})(\d{2})(\d{2})/, "$1-$2-$3");
+        const ranges = computeRangesForSeries(granularity, startISO, endISO);
+
+        if (level1Data.raw?.level1DataPrevious) {
+          const prevData = level1Data.raw.level1DataPrevious;
+          const timeMapPrev = new Map<string, number>();
+
+          for (const [, series] of Object.entries(prevData)) {
+            for (const point of series) {
+              const dateLabel = point.time.replace(
+                /(\d{4})(\d{2})(\d{2})/,
+                "$1-$2-$3"
+              );
+              const current = timeMapPrev.get(dateLabel) || 0;
+              timeMapPrev.set(dateLabel, current + point.value);
+            }
+          }
+
+          lineSeriesPrevious = fillMissingDates(
+            Array.from(timeMapPrev.entries()).map(([label, value]) => ({
+              label,
+              value,
+            })),
+            granularity,
+            ranges.previous.start,
+            ranges.previous.end
+          );
+        } else {
+          lineSeriesPrevious = fillMissingDates(
+            [],
+            granularity,
+            ranges.previous.start,
+            ranges.previous.end
+          );
+        }
+      }
 
       return {
         donutData: donut,
-        lineSeriesData: lineSeries,
+        lineSeriesData: lineSeriesCurrent,
         lineSeriesPrev: lineSeriesPrevious,
-        totalInteractions: total,
+        totalInteractions: level1Data.total,
       };
-    }, [data?.categories, data?.series]);
+    }, [level1Data, startDate, endDate, granularity]);
 
   // Subtítulo dinámico
   const subtitle = selectedCategoryId
@@ -188,20 +297,14 @@ export default function TownExpandedCard({
     : `Análisis por categorías • ${totalInteractions.toLocaleString()} interacciones totales`;
 
   const handleCategoryClick = (label: string) => {
-    if (!data?.categories) return;
+    if (!level1Data) return;
 
-    // Buscar categoryId por label
-    const category = data.categories.find((cat) =>
-      cat.categoryId !== OTHERS_ID
-        ? (CATEGORY_META[cat.categoryId as CategoryId]?.label || cat.label) ===
-          label
-        : cat.label === label
-    );
-
-    if (!category) return;
+    // Buscar category por label en donutData
+    const slice = level1Data.donutData.find((s) => s.label === label);
+    if (!slice) return;
 
     // Si es "Otros", activar vista especial
-    if (category.categoryId === OTHERS_ID) {
+    if (slice.id === "otros") {
       setIsOthersView(true);
       setSelectedCategoryId(null);
       setSelectedCategoryRaw(null);
@@ -217,22 +320,11 @@ export default function TownExpandedCard({
       return;
     }
 
-    // Si es una categoría normal, obtener el token raw más frecuente
-    const categoryId = category.categoryId as CategoryId;
-    const rawSegments = data?.categoryRawSegmentsById?.[categoryId];
-    let representativeRaw: string | null = null;
-
-    if (rawSegments) {
-      // Encontrar el segmento raw con mayor frecuencia
-      const entries = Object.entries(rawSegments);
-      if (entries.length > 0) {
-        const [topRaw] = entries.sort((a, b) => b[1] - a[1])[0];
-        representativeRaw = topRaw;
-      }
-    }
-
+    // Si es una categoría normal, el id es el CategoryId canónico
+    const categoryId = slice.id as CategoryId;
     setSelectedCategoryId(categoryId);
-    setSelectedCategoryRaw(representativeRaw);
+    // IMPORTANTE: usar token directo de taxonomía, no rawToken de las keys (que puede ser inconsistente)
+    setSelectedCategoryRaw(CHATBOT_CATEGORY_TOKENS[categoryId]);
     setIsOthersView(false);
 
     // Scroll al nivel 2 después de un breve delay para que el DOM se actualice
@@ -286,8 +378,8 @@ export default function TownExpandedCard({
 
   // Empty state
   if (
-    !data?.categories ||
-    data.categories.length === 0 ||
+    !level1Data?.donutData ||
+    level1Data.donutData.length === 0 ||
     totalInteractions === 0
   ) {
     return (
@@ -357,6 +449,7 @@ export default function TownExpandedCard({
           <TownCategorySubcatDrilldownView
             townId={townId as TownId}
             categoryId={selectedCategoryId}
+            townRaw={townRaw}
             categoryRaw={selectedCategoryRaw}
             startISO={startDate}
             endISO={endDate}
@@ -367,21 +460,31 @@ export default function TownExpandedCard({
       )}
 
       {/* NIVEL 2: Vista "Otros" (claves sin mapear) */}
-      {isOthersView && data?.othersBreakdown && (
-        <div
-          ref={level2Ref}
-          className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700"
-        >
-          <TownOthersBreakdownView
-            townId={townId as TownId}
-            othersBreakdown={data.othersBreakdown.current}
-            granularity={granularity}
-            startDate={startDate}
-            endDate={endDate}
-            onBack={handleBackToLevel1}
-          />
-        </div>
-      )}
+      {isOthersView &&
+        level1Data?.otrosDetail &&
+        level1Data.otrosDetail.length > 0 && (
+          <div
+            ref={level2Ref}
+            className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700"
+          >
+            <TownOthersBreakdownView
+              townId={townId as TownId}
+              othersBreakdown={level1Data.otrosDetail.map((o) => ({
+                key: o.key,
+                path: o.key.split("."),
+                value: o.series.reduce((acc, p) => acc + p.value, 0),
+                timePoints: o.series.map((p) => ({
+                  time: p.time,
+                  value: p.value,
+                })),
+              }))}
+              granularity={granularity}
+              startDate={startDate}
+              endDate={endDate}
+              onBack={handleBackToLevel1}
+            />
+          </div>
+        )}
     </div>
   );
 }

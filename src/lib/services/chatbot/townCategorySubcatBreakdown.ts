@@ -19,10 +19,14 @@
 
 import type { CategoryId } from "@/lib/taxonomy/categories";
 import {
-  getCategorySearchPattern,
-  getTownSearchPattern,
-} from "@/lib/taxonomy/patterns";
+  CHATBOT_CATEGORY_NEEDS_WILDCARD,
+  CHATBOT_CATEGORY_TOKENS,
+} from "@/lib/taxonomy/categories";
 import type { TownId } from "@/lib/taxonomy/towns";
+import {
+  CHATBOT_TOWN_NEEDS_WILDCARD,
+  CHATBOT_TOWN_TOKENS,
+} from "@/lib/taxonomy/towns";
 import type { WindowGranularity } from "@/lib/types";
 import { computeRangesForKPI } from "@/lib/utils/time/timeWindows";
 import { bucketize } from "./bucketizer";
@@ -31,9 +35,6 @@ import {
   type UniverseRecord,
   type ViewParams,
 } from "./universeCollector";
-
-/* ==================== Debug Flag ==================== */
-const DEBUG_LEVEL2 = false; // Cambiar a true para logging detallado
 
 /* ==================== Helpers ==================== */
 
@@ -283,37 +284,24 @@ export async function fetchTownCategorySubcatBreakdown({
   const timeoutId = setTimeout(() => controller.abort(), 15000);
 
   try {
-    // 3. Determinar tokens y wildcard para town y categoría
-    const townPat = getTownSearchPattern(townId);
+    // 3. Determinar tokens para town y categoría
+    const townToken = normalizeForAPI(CHATBOT_TOWN_TOKENS[townId]);
 
-    // Para categoría: si tenemos representativeRawSegment, usar la lógica de getCategorySearchPattern
-    let catPat: { token: string; wildcard: boolean };
-    if (representativeRawSegment) {
-      // Normalizar y extraer primera palabra
-      const normalizedToken = normalizeForAPI(representativeRawSegment);
-      const words = normalizedToken.split(/\s+/).filter((w) => w.length > 0);
-      const firstWord = words[0];
+    // Verificar si el pueblo necesita wildcard
+    const townNeedsWildcard = CHATBOT_TOWN_NEEDS_WILDCARD.has(townId);
+    const townPart = townNeedsWildcard ? `${townToken}*` : townToken;
 
-      // Si tiene múltiples palabras, usar wildcard genérico
-      catPat = {
-        token: firstWord,
-        wildcard: words.length > 1, // Automático: más de 1 palabra = wildcard
-      };
-    } else {
-      catPat = getCategorySearchPattern(categoryId);
-    }
+    const catToken = representativeRawSegment
+      ? normalizeForAPI(representativeRawSegment)
+      : normalizeForAPI(CHATBOT_CATEGORY_TOKENS[categoryId]);
 
-    // Normalizar tokens para la API (sin acentos EXCEPTO ñ, lowercase, pero CON espacios)
-    const normalizedTownToken = normalizeForAPI(townPat.token);
-    const normalizedCatToken = normalizeForAPI(catPat.token);
+    // Verificar si la categoría necesita wildcard (solo cuando no usamos representativeRawSegment)
+    const needsWildcard =
+      !representativeRawSegment &&
+      CHATBOT_CATEGORY_NEEDS_WILDCARD.has(categoryId);
+    const catPart = needsWildcard ? `${catToken}*` : catToken;
 
-    // Construir pattern con wildcard selectivo (con ESPACIOS alrededor del *)
-    const townPart = townPat.wildcard
-      ? `${normalizedTownToken} *`
-      : normalizedTownToken;
-    const catPart = catPat.wildcard
-      ? `${normalizedCatToken} *`
-      : normalizedCatToken;
+    // Construir pattern
     const pattern = `root.${townPart}.${catPart}.*`;
 
     // 4. POST dual (current + previous) con granularity="d"
@@ -414,18 +402,6 @@ export async function fetchTownCategorySubcatBreakdown({
         };
       })
       .sort((a, b) => b.currentTotal - a.currentTotal); // Ordenar por total descendente
-
-    if (DEBUG_LEVEL2) {
-      console.log(
-        `[fetchTownCategorySubcatBreakdown] Subcategories found: ${subcategories.length}`
-      );
-      console.log(
-        `[fetchTownCategorySubcatBreakdown] Top 5:`,
-        subcategories
-          .slice(0, 5)
-          .map((s) => `${s.subcategoryName}=${s.currentTotal}`)
-      );
-    }
 
     // 9. Metadata
     return {

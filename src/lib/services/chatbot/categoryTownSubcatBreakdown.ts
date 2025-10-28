@@ -19,10 +19,14 @@
 
 import type { CategoryId } from "@/lib/taxonomy/categories";
 import {
-  getCategorySearchPattern,
-  getTownSearchPattern,
-} from "@/lib/taxonomy/patterns";
+  CHATBOT_CATEGORY_NEEDS_WILDCARD,
+  CHATBOT_CATEGORY_TOKENS,
+} from "@/lib/taxonomy/categories";
 import type { TownId } from "@/lib/taxonomy/towns";
+import {
+  CHATBOT_TOWN_NEEDS_WILDCARD,
+  CHATBOT_TOWN_TOKENS,
+} from "@/lib/taxonomy/towns";
 import type { WindowGranularity } from "@/lib/types";
 import { computeRangesForKPI } from "@/lib/utils/time/timeWindows";
 import { bucketize } from "./bucketizer";
@@ -31,9 +35,6 @@ import {
   type UniverseRecord,
   type ViewParams,
 } from "./universeCollector";
-
-/* ==================== Debug Flag ==================== */
-const DEBUG_LEVEL2 = false; // Cambiar a true para logging detallado
 
 /* ==================== Helpers ==================== */
 
@@ -278,32 +279,29 @@ export async function fetchCategoryTownSubcatBreakdown({
   representativeTownRaw = null,
   othersOnly = false,
 }: FetchCategoryTownSubcatBreakdownParams): Promise<CategoryTownSubcatBreakdownResponse> {
-  // 1. Determinar tokens y wildcard para categoría y town
-  let catPat: { token: string; wildcard: boolean };
+  // 1. Determinar tokens para categoría y town
+  let catToken: string;
   if (representativeCategoryRaw) {
-    const normalizedToken = normalizeForAPI(representativeCategoryRaw);
-    const words = normalizedToken.split(/\s+/).filter((w) => w.length > 0);
-    const firstWord = words[0];
-    catPat = {
-      token: firstWord,
-      wildcard: words.length > 1, // Automático: más de 1 palabra = wildcard
-    };
+    catToken = normalizeForAPI(representativeCategoryRaw);
   } else {
-    catPat = getCategorySearchPattern(categoryId);
+    const rawToken = CHATBOT_CATEGORY_TOKENS[categoryId];
+    catToken = normalizeForAPI(rawToken);
   }
 
-  let townPat: { token: string; wildcard: boolean };
-  if (representativeTownRaw) {
-    const normalizedToken = normalizeForAPI(representativeTownRaw);
-    const words = normalizedToken.split(/\s+/).filter((w) => w.length > 0);
-    const firstWord = words[0];
-    townPat = {
-      token: firstWord,
-      wildcard: words.length > 1, // Automático: más de 1 palabra = wildcard
-    };
-  } else {
-    townPat = getTownSearchPattern(townId);
-  }
+  // Verificar si la categoría necesita wildcard (excepción)
+  const needsWildcard =
+    !representativeCategoryRaw &&
+    CHATBOT_CATEGORY_NEEDS_WILDCARD.has(categoryId);
+  const catPart = needsWildcard ? `${catToken}*` : catToken;
+
+  const townToken = representativeTownRaw
+    ? normalizeForAPI(representativeTownRaw)
+    : normalizeForAPI(CHATBOT_TOWN_TOKENS[townId]);
+
+  // Verificar si el pueblo necesita wildcard (solo cuando no usamos representativeTownRaw)
+  const townNeedsWildcard =
+    !representativeTownRaw && CHATBOT_TOWN_NEEDS_WILDCARD.has(townId);
+  const townPart = townNeedsWildcard ? `${townToken}*` : townToken;
 
   // 2. Calcular rangos
   const ranges = computeRangesForKPI(windowGranularity, startISO, endISO);
@@ -313,17 +311,7 @@ export async function fetchCategoryTownSubcatBreakdown({
   const timeoutId = setTimeout(() => controller.abort(), 15000);
 
   try {
-    // Normalizar tokens para la API (sin acentos EXCEPTO ñ, lowercase, CON espacios)
-    const normalizedCatToken = normalizeForAPI(catPat.token);
-    const normalizedTownToken = normalizeForAPI(townPat.token);
-
-    // 4. Pattern para Nivel 2 con wildcard selectivo (con ESPACIOS alrededor del *)
-    const catPart = catPat.wildcard
-      ? `${normalizedCatToken} *`
-      : normalizedCatToken;
-    const townPart = townPat.wildcard
-      ? `${normalizedTownToken} *`
-      : normalizedTownToken;
+    // 4. Pattern para Nivel 2 (con wildcard solo para excepciones)
     const pattern = `root.${catPart}.${townPart}.*`;
 
     // 5. POST dual (current + previous) con granularity="d"
@@ -351,18 +339,6 @@ export async function fetchCategoryTownSubcatBreakdown({
       ),
     ]);
 
-    if (DEBUG_LEVEL2) {
-      console.log(`[fetchCategoryTownSubcatBreakdown] Pattern: ${pattern}`);
-      console.log(
-        `[fetchCategoryTownSubcatBreakdown] othersOnly=${othersOnly}`
-      );
-      console.log(
-        `[fetchCategoryTownSubcatBreakdown] Current keys: ${
-          Object.keys(currentData).length
-        }`
-      );
-    }
-
     // 6. NUEVO: Usar collectUniverseForView para universo unificado
     const viewParams: ViewParams = {
       level: othersOnly ? 1 : 2, // Si othersOnly, filtrar nivel 1 (depth=3) para obtener no-mapeados
@@ -376,15 +352,6 @@ export async function fetchCategoryTownSubcatBreakdown({
 
     const currentRecords = collectUniverseForView(currentData, viewParams);
     const previousRecords = collectUniverseForView(previousData, viewParams);
-
-    if (DEBUG_LEVEL2) {
-      console.log(
-        `[fetchCategoryTownSubcatBreakdown] Current records: ${currentRecords.length}`
-      );
-      console.log(
-        `[fetchCategoryTownSubcatBreakdown] Previous records: ${previousRecords.length}`
-      );
-    }
 
     // 7. Agrupar por subcategoría (último token de la clave)
     const groupRecordsBySubcat = (records: UniverseRecord[]) => {
@@ -445,18 +412,6 @@ export async function fetchCategoryTownSubcatBreakdown({
         };
       })
       .sort((a, b) => b.currentTotal - a.currentTotal); // Ordenar por total descendente
-
-    if (DEBUG_LEVEL2) {
-      console.log(
-        `[fetchCategoryTownSubcatBreakdown] Subcategories found: ${subcategories.length}`
-      );
-      console.log(
-        `[fetchCategoryTownSubcatBreakdown] Top 5:`,
-        subcategories
-          .slice(0, 5)
-          .map((s) => `${s.subcategoryName}=${s.currentTotal}`)
-      );
-    }
 
     // 10. Metadata
     return {

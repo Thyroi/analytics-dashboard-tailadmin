@@ -290,7 +290,7 @@ export default function TownOthersBreakdownView({
         granularity={granularity}
         tooltipFormatter={(val) => (val ?? 0).toLocaleString()}
         yAxisFormatter={(val) => (val ?? 0).toString()}
-        legendPosition="top"
+        legendPosition="bottom"
         className=""
       />
     </div>

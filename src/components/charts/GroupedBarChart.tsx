@@ -1,5 +1,6 @@
 "use client";
 
+import { generateBrandGradient } from "@/lib/utils/formatting/colors";
 import type { ApexOptions } from "apexcharts";
 import dynamic from "next/dynamic";
 import { useMemo } from "react";
@@ -42,14 +43,6 @@ type Props = {
 };
 
 const DEFAULT_HEIGHT = 350;
-const DEFAULT_COLORS = [
-  "#A8C5DA", // Azul claro (Shipment)
-  "#3B82F6", // Azul fuerte (Delivery)
-  "#10B981", // Verde
-  "#F59E0B", // Amarillo
-  "#EF4444", // Rojo
-  "#8B5CF6", // Púrpura
-];
 
 export default function GroupedBarChart({
   categories,
@@ -60,16 +53,19 @@ export default function GroupedBarChart({
   subtitle,
   showLegend = true,
   legendPosition = "top",
-  defaultColors = DEFAULT_COLORS,
+  defaultColors,
   tooltipFormatter,
   yAxisFormatter,
   optionsExtra,
 }: Props) {
   const chartSeries = useMemo(() => {
+    // Generar colores de la paleta del proyecto si no se especifican
+    const brandColors = defaultColors || generateBrandGradient(series.length);
+
     return series.map((s, index) => ({
       name: s.name,
       data: s.data,
-      color: s.color || defaultColors[index % defaultColors.length],
+      color: s.color || brandColors[index % brandColors.length],
     }));
   }, [series, defaultColors]);
 

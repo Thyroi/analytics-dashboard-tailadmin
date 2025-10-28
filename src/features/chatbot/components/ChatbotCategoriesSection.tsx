@@ -98,7 +98,8 @@ function ChatbotCategoriesSectionContent() {
         startDate={startDate}
         endDate={endDate}
         onGranularityChange={(newGranularity) => {
-          setSelectedCategoryId(null); // Cerrar drilldown al cambiar granularidad
+          // NO cerrar drilldown - solo actualizar granularidad
+          // El drilldown se refetcheará automáticamente con React Query
           setGranularity(newGranularity);
           handlers.onGranularityChange();
         }}
@@ -131,6 +132,12 @@ function ChatbotCategoriesSectionContent() {
             startDate={startDateStr}
             endDate={endDateStr}
             onClose={handleBackToCategories}
+            onScrollToLevel1={() => {
+              drilldownRef.current?.scrollIntoView({
+                behavior: "smooth",
+                block: "start",
+              });
+            }}
           />
         </div>
       )}

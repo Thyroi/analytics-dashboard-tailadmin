@@ -293,7 +293,7 @@ export default function CategoryOthersBreakdownView({
         granularity={granularity}
         tooltipFormatter={(val) => (val ?? 0).toLocaleString()}
         yAxisFormatter={(val) => (val ?? 0).toString()}
-        legendPosition="top"
+        legendPosition="bottom"
         className=""
       />
     </div>

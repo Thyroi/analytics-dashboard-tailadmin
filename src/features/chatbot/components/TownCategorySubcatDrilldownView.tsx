@@ -18,6 +18,7 @@ import { useTownCategorySubcatBreakdown } from "../hooks/useTownCategorySubcatBr
 type Props = {
   townId: TownId;
   categoryId: CategoryId;
+  townRaw?: string | null; // Token raw del town desde nivel 1
   categoryRaw?: string | null; // Token raw de la categoría desde nivel 1
   startISO?: string | null;
   endISO?: string | null;
@@ -29,6 +30,7 @@ type Props = {
 export default function TownCategorySubcatDrilldownView({
   townId,
   categoryId,
+  townRaw,
   categoryRaw,
   startISO,
   endISO,

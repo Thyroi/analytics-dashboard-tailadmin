@@ -34,9 +34,8 @@ describe("Drilldown Integration Tests", () => {
       const mockResponseCurrent = {
         code: 200,
         output: {
-          "root.almonte": [{ time: "20241020", value: 200 }], // prof=2 → excluir
+          "root.almonte": [{ time: "20241020", value: 200 }], // prof=2 → va a Otros
           "root.almonte.playas": [{ time: "20241020", value: 100 }], // prof=3 → incluir
-          "root.almonte.playas.carabeo": [{ time: "20241020", value: 50 }], // prof=4 → excluir
         },
       };
 
@@ -47,11 +46,23 @@ describe("Drilldown Integration Tests", () => {
         },
       };
 
+      // Mock para children verification
+      const mockVerificationResponse = {
+        code: 200,
+        output: {
+          "root.almonte.playas.matalascañas": [{ time: "20241020", value: 50 }],
+        },
+      };
+
       let callCount = 0;
       fetchSpy.mockImplementation(() => {
         callCount++;
         const response =
-          callCount === 1 ? mockResponseCurrent : mockResponsePrevious;
+          callCount === 1
+            ? mockResponseCurrent
+            : callCount === 2
+            ? mockResponsePrevious
+            : mockVerificationResponse;
         return Promise.resolve({
           ok: true,
           json: () => Promise.resolve(response),
@@ -65,21 +76,18 @@ describe("Drilldown Integration Tests", () => {
         endISO: "2024-10-20",
       });
 
-      // Debe incluir categorías (prof>=2: consultas generales + categorías)
+      // Debe incluir solo categorías prof=3 (prof=2 va a Otros, prof=4 no se suma)
       const playasCategory = result.categories.find(
         (cat) => cat.categoryId === "playas"
       );
-      expect(playasCategory?.currentTotal).toBe(150); // 100 (prof=3) + 50 (prof=4 subcategoría)
+      expect(playasCategory?.currentTotal).toBe(100); // Solo prof=3
 
-      // También incluye consultas generales (prof=2) que van a "Otros"
-      expect(result.categories.length).toBeGreaterThan(0);
-      // El servicio renderiza TODAS las categorías, incluso con 0
-      const totalFromPlayas = result.categories.reduce(
+      // Total: 100 (playas prof=3) + 200 (prof=2 en Otros)
+      const totalFromCategories = result.categories.reduce(
         (sum, cat) => sum + cat.currentTotal,
         0
       );
-      // Total ahora incluye: 150 (playas) + 200 (consultas generales en "Otros")
-      expect(totalFromPlayas).toBe(350); // playas + subcategorías + consultas generales
+      expect(totalFromCategories).toBe(300);
     });
 
     it("Nivel 2: debe filtrar solo profundidad === 4 (subcategorías)", async () => {
@@ -272,11 +280,23 @@ describe("Drilldown Integration Tests", () => {
         output: {}, // Sin datos en previous
       };
 
+      // Mock para children verification
+      const mockVerificationResponse = {
+        code: 200,
+        output: {
+          "root.almonte.playas.matalascañas": [{ time: "20241020", value: 10 }],
+        },
+      };
+
       let callCount = 0;
       fetchSpy.mockImplementation(() => {
         callCount++;
         const response =
-          callCount === 1 ? mockResponseCurrent : mockResponsePrevious;
+          callCount === 1
+            ? mockResponseCurrent
+            : callCount === 2
+            ? mockResponsePrevious
+            : mockVerificationResponse;
         return Promise.resolve({
           ok: true,
           json: () => Promise.resolve(response),

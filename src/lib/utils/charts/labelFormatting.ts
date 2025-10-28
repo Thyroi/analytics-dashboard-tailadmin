@@ -111,8 +111,31 @@ export function formatChartLabelsSimple(
     const dateStr = String(label);
 
     if (granularity === "y") {
-      // For yearly, show month abbreviation
-      const date = new Date(dateStr);
+      // For yearly, show month abbreviation from YYYY-MM format
+      if (dateStr.includes("-")) {
+        const parts = dateStr.split("-");
+        if (parts.length >= 2) {
+          const month = parseInt(parts[1]);
+          const monthNames = [
+            "Ene",
+            "Feb",
+            "Mar",
+            "Abr",
+            "May",
+            "Jun",
+            "Jul",
+            "Ago",
+            "Sep",
+            "Oct",
+            "Nov",
+            "Dic",
+          ];
+          return monthNames[month - 1] || `M${month}`;
+        }
+      }
+
+      // Fallback: try Date parsing
+      const date = new Date(dateStr + "-01"); // Add day to make valid date
       if (!isNaN(date.getTime())) {
         const monthNames = [
           "Ene",
@@ -130,25 +153,7 @@ export function formatChartLabelsSimple(
         ];
         return monthNames[date.getMonth()] || `M${date.getMonth() + 1}`;
       }
-      // Fallback: extract month from YYYY-MM format
-      if (dateStr.includes("-")) {
-        const month = parseInt(dateStr.split("-")[1]);
-        const monthNames = [
-          "Ene",
-          "Feb",
-          "Mar",
-          "Abr",
-          "May",
-          "Jun",
-          "Jul",
-          "Ago",
-          "Sep",
-          "Oct",
-          "Nov",
-          "Dic",
-        ];
-        return monthNames[month - 1] || `M${month}`;
-      }
+
       return dateStr;
     } else {
       // Para granularidad diaria, mostrar formato completo dd-mmm-yyyy

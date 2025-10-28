@@ -120,6 +120,7 @@ export const TOWN_SYNONYMS: Record<TownId, string[]> = {
     "la_palma",
     "la-palma-del-condado",
     "la-palma",
+    "palma del condado",
   ],
   lucenaDelPuerto: [
     "lucena del puerto",
@@ -148,3 +149,36 @@ export function getTownLabel(id: TownId): string {
 export function getTownIconSrc(id: TownId): string {
   return TOWN_META[id].iconSrc;
 }
+
+/**
+ * Mapeo DIRECTO de TownId → Token RAW para queries del chatbot.
+ * Este es el token EXACTO que aparece en las keys de Mindsaic (e.g., "la palma del condado").
+ * Usado para construir patterns sin necesidad de llamar getTownSearchPattern.
+ *
+ * Preservar caracteres especiales como ñ, tildes, etc. tal como aparecen en los datos.
+ */
+export const CHATBOT_TOWN_TOKENS: Record<TownId, string> = {
+  almonte: "almonte",
+  bollullos: "bollullos",
+  bonares: "bonares",
+  chucena: "chucena",
+  escacena: "escacena",
+  hinojos: "hinojos",
+  laPalmaDelCondado: "la palma del condado",
+  lucenaDelPuerto: "lucena del puerto",
+  manzanilla: "manzanilla",
+  niebla: "niebla",
+  palos: "palos",
+  paternaDelCampo: "paterna",
+  rocianaDelCondado: "rociana del condado",
+  villalba: "villalba", // SOLO primera palabra, requiere wildcard
+  villarrasa: "villarrasa",
+};
+
+/**
+ * Pueblos que requieren wildcard (*) en sus patterns debido a variaciones en los datos.
+ * Estos pueblos usan solo parte del token en CHATBOT_TOWN_TOKENS.
+ */
+export const CHATBOT_TOWN_NEEDS_WILDCARD: Set<TownId> = new Set([
+  "villalba", // "villalba*" - variantes: villalba, villalba del alcor, etc.
+]);

@@ -147,8 +147,8 @@ function LineSide({
     const lastCurrent = series.current[series.current.length - 1];
     const lastPrevious = series.previous[series.previous.length - 1];
 
-    // Si no hay datos, mostrar skeleton de carga
-    if (!lastCurrent || !lastPrevious) {
+    // Si no hay datos current, mostrar skeleton de carga
+    if (!lastCurrent) {
       return (
         <div className="w-full bg-white dark:bg-gray-800 rounded-lg">
           <div className="p-6">
@@ -165,10 +165,12 @@ function LineSide({
     // Obtener labels dinámicas según granularidad
     const labels = getSeriesLabels(granularity);
 
-    const categories = [lastCurrent.label]; // ["2025-10-25"]
+    const categories = [lastCurrent.label]; // ["26 oct"]
+
+    // SIEMPRE mostrar ambas barras: previous (puede ser 0) y current
     const groupedSeries: GroupedBarSeries[] = [
-      { name: labels.previous, data: [lastPrevious.value] }, // ✅ PRIMERO previous
-      { name: labels.current, data: [lastCurrent.value] }, // ✅ LUEGO current
+      { name: labels.previous, data: [lastPrevious?.value ?? 0] }, // ✅ Previous (0 si no hay datos)
+      { name: labels.current, data: [lastCurrent.value] }, // ✅ Current
     ];
 
     return (
@@ -180,7 +182,7 @@ function LineSide({
           series={groupedSeries}
           height={350}
           showLegend={true}
-          legendPosition="top"
+          legendPosition="bottom"
           tooltipFormatter={(val) => (val ?? 0).toLocaleString()}
           yAxisFormatter={(val) => (val ?? 0).toString()}
         />
@@ -197,7 +199,15 @@ function LineSide({
   const n = Math.min(nSeries, rawCats.length);
 
   // recortes alineados
-  const cats = formatChartLabelsSimple(rawCats.slice(-n), granularity);
+  // Si los labels ya están formateados (no son ISO), usarlos directamente
+  const firstLabel = rawCats[0] || "";
+  const isAlreadyFormatted =
+    firstLabel.length > 0 && !firstLabel.match(/^\d{4}-\d{2}(-\d{2})?$/); // No es formato ISO YYYY-MM-DD ni YYYY-MM
+
+  const cats = isAlreadyFormatted
+    ? rawCats.slice(-n) // Ya formateados por buildAxisFromChatbot
+    : formatChartLabelsSimple(rawCats.slice(-n), granularity); // Formatear para analytics
+
   const curr = series.current.slice(-n).map((p) => p.value);
   const prev = series.previous.slice(-n).map((p) => p.value);
 
@@ -259,7 +269,7 @@ function MultiAsGroupedBar({
       series={groupedSeries}
       height={350}
       showLegend={false}
-      legendPosition="top"
+      legendPosition="bottom"
       tooltipFormatter={(val) => (val ?? 0).toLocaleString()}
       yAxisFormatter={(val) => (val ?? 0).toString()}
     />

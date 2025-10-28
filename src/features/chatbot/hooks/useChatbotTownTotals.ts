@@ -119,6 +119,7 @@ export function useChatbotTownTotals(
     gcTime: 5 * 60 * 1000, // 5 minutos de garbage collection
     retry: 1, // Solo 1 reintento en caso de error
     enabled: true, // Siempre habilitado, control por handlers
+    placeholderData: (previousData) => previousData, // Mantener datos anteriores mientras refetchea
   });
 
   // Transformar datos para la UI

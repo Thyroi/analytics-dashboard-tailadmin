@@ -52,7 +52,7 @@ describe("fetchTownCategoryBreakdown", () => {
       endISO: "2024-10-20",
     });
 
-    // Verificar que se procesaron prof>=3 (incluye subcategorías)
+    // Verificar que se procesaron solo prof=3 (categorías nivel 1)
     const playasCategory = result.categories.find(
       (c) => c.categoryId === "playas"
     );
@@ -60,11 +60,11 @@ describe("fetchTownCategoryBreakdown", () => {
       (c) => c.categoryId === "sabor"
     );
 
-    expect(playasCategory?.currentTotal).toBe(80); // 50 (prof=3) + 30 (prof=4 subcategoría)
+    expect(playasCategory?.currentTotal).toBe(50); // Solo prof=3, prof=4 (subcategorías) no se suman
     expect(saborCategory?.currentTotal).toBe(20);
 
     // Verificar que NO incluyó prof=2 en los totales
-    expect(playasCategory?.currentTotal).not.toBe(90); // 10 + 50 + 30 (incorrecto, incluiría prof=2)
+    expect(playasCategory?.currentTotal).not.toBe(60); // 10 + 50 (incorrecto, incluiría prof=2)
   });
 
   it("debe mapear sinónimos correctamente a CategoryId", async () => {
@@ -112,10 +112,25 @@ describe("fetchTownCategoryBreakdown", () => {
       },
     };
 
+    // Mock para children verification: debe devolver datos para que playas no se mueva a "otros"
+    const mockVerificationResponse = {
+      code: 200,
+      output: {
+        "root.almonte.playas.matalascañas": [{ time: "20241020", value: 10 }],
+      },
+    };
+
     let callCount = 0;
     fetchSpy.mockImplementation(() => {
       callCount++;
-      const response = callCount === 1 ? mockCurrentResponse : mockPrevResponse;
+      // Primeras 2 llamadas: current y previous
+      // Llamadas posteriores: verification
+      const response =
+        callCount === 1
+          ? mockCurrentResponse
+          : callCount === 2
+          ? mockPrevResponse
+          : mockVerificationResponse;
       return Promise.resolve({
         ok: true,
         json: () => Promise.resolve(response),

@@ -91,8 +91,8 @@ function ChatbotTownsSectionContent() {
         startDate={startDate}
         endDate={endDate}
         onGranularityChange={(newGranularity) => {
-          setSelectedTownId(null); // Cerrar drilldown al cambiar granularidad
-          setSelectedCategoryId(null);
+          // NO cerrar drilldown - solo actualizar granularidad
+          // El drilldown se refetcheará automáticamente con React Query
           setGranularity(newGranularity);
           handlers.onGranularityChange();
         }}
@@ -131,6 +131,12 @@ function ChatbotTownsSectionContent() {
             onSelectCategory={(categoryId: CategoryId) => {
               setSelectedCategoryId(categoryId);
               // TownExpandedCard ya maneja la navegación Nivel 1→2 internamente
+            }}
+            onScrollToLevel1={() => {
+              drilldownRef.current?.scrollIntoView({
+                behavior: "smooth",
+                block: "start",
+              });
             }}
           />
         </div>

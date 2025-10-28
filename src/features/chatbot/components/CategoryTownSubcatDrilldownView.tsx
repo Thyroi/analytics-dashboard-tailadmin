@@ -17,6 +17,7 @@ import { useCategoryTownSubcatBreakdown } from "../hooks/useCategoryTownSubcatBr
 type Props = {
   categoryId: CategoryId;
   townId: TownId;
+  categoryRaw?: string | null; // Token raw de la categoría desde nivel 1
   townRaw?: string | null; // Token raw del pueblo desde nivel 1
   granularity: WindowGranularity;
   startDate?: string | null;
@@ -28,6 +29,7 @@ type Props = {
 export default function CategoryTownSubcatDrilldownView({
   categoryId,
   townId,
+  categoryRaw,
   townRaw,
   granularity,
   startDate,
@@ -42,6 +44,8 @@ export default function CategoryTownSubcatDrilldownView({
   const { data, isLoading, isError, error } = useCategoryTownSubcatBreakdown({
     categoryId,
     townId,
+    representativeCategoryRaw: categoryRaw,
+    representativeTownRaw: townRaw,
     startISO: startDate,
     endISO: endDate,
     windowGranularity: granularity,
@@ -176,17 +180,6 @@ export default function CategoryTownSubcatDrilldownView({
       // Si tenemos el token raw del pueblo, usarlo; si no, usar el townId normalizado
       const townTokenToMatch = townRaw ? normalize(townRaw) : normalizedTownId;
 
-      console.log("[CategoryTownSubcatDrilldownView] parseRawToMap:", {
-        categoryId,
-        townId,
-        townRaw,
-        categoryToken,
-        normalizedCategoryToken,
-        normalizedTownId,
-        townTokenToMatch,
-        rawKeys: Object.keys(raw || {}),
-      });
-
       for (const [key, series] of Object.entries(raw)) {
         const parts = key.split(".");
         if (parts.length !== 4) continue;
@@ -197,16 +190,6 @@ export default function CategoryTownSubcatDrilldownView({
         // Normalizar para comparación
         const normalizedCId = normalize(cId);
         const normalizedTId = normalize(tId);
-
-        console.log("[CategoryTownSubcatDrilldownView] Checking key:", {
-          key,
-          cId,
-          tId,
-          normalizedCId,
-          normalizedTId,
-          matchesCategory: normalizedCId === normalizedCategoryToken,
-          matchesTown: normalizedTId === townTokenToMatch,
-        });
 
         // Ensure matches this category/town ordering (con normalización)
         if (normalizedCId !== normalizedCategoryToken) continue;
@@ -227,10 +210,6 @@ export default function CategoryTownSubcatDrilldownView({
         map.set(sub, dateMap);
       }
 
-      console.log(
-        "[CategoryTownSubcatDrilldownView] Final map size:",
-        map.size
-      );
       return map;
     };
 
