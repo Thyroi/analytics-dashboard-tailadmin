@@ -1,7 +1,8 @@
 "use client";
 
 import { trpc } from "@/lib/trpc/client";
-import { useMemo } from "react";
+import { useSearchParams } from "next/navigation";
+import { useEffect, useMemo } from "react";
 import LoginButton from "./LoginButton";
 import UserDropdown, { type MinimalUser } from "./UserDropdown";
 
@@ -14,10 +15,12 @@ export default function AuthUserMenu({
   className = "",
   connection = "google-workspace",
 }: Props) {
+  const searchParams = useSearchParams();
   const {
     data: me,
     isLoading,
     isFetching,
+    refetch,
   } = trpc.user.meOptional.useQuery(undefined, {
     staleTime: 0,
     refetchOnMount: "always",
@@ -26,6 +29,14 @@ export default function AuthUserMenu({
     retry: 0,
     placeholderData: (prev) => prev,
   });
+
+  // Refetch cuando volvemos del callback de Auth0
+  useEffect(() => {
+    const fromCallback = searchParams.get("code") || searchParams.get("state");
+    if (fromCallback) {
+      refetch();
+    }
+  }, [searchParams, refetch]);
 
   const mapped = useMemo<MinimalUser | null>(() => {
     if (!me) return null;

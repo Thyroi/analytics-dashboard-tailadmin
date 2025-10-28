@@ -2,6 +2,7 @@
 
 import Avatar from "@/components/common/Avatar";
 import { ChevronDown, LifeBuoy, LogOut, Settings, User } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 export type MinimalUser = {
@@ -19,6 +20,7 @@ type Props = {
 export default function UserDropdown({ user, className = "" }: Props) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement | null>(null);
+  const router = useRouter();
 
   // Cerrar al hacer click fuera o al presionar ESC
   useEffect(() => {
@@ -39,6 +41,20 @@ export default function UserDropdown({ user, className = "" }: Props) {
 
   const displayName = user.name ?? user.nickname ?? user.email ?? "Usuario";
   const email = user.email ?? "";
+
+  const handleLogout = async () => {
+    try {
+      // 1. Cerrar sesión local (si existe)
+      await fetch("/api/auth/local/logout", { method: "POST" });
+
+      // 2. Redirigir a logout de Auth0 (que también limpia su sesión)
+      window.location.href = "/auth/logout";
+    } catch (error) {
+      console.error("Error al cerrar sesión:", error);
+      // Aún así redirigir a Auth0 logout
+      window.location.href = "/auth/logout";
+    }
+  };
 
   return (
     <div className={`relative ${className}`} ref={ref}>
@@ -112,15 +128,15 @@ export default function UserDropdown({ user, className = "" }: Props) {
 
           <div className="my-3 h-px bg-gray-100 dark:bg-white/10" />
 
-          <a
-            href="/auth/logout"
+          <button
+            onClick={handleLogout}
             className="flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-gray-50 dark:hover:bg-white/5 text-sm
-                 text-red-600 dark:text-red-400"
+                 text-red-600 dark:text-red-400 w-full text-left"
             role="menuitem"
           >
             <LogOut className="h-4 w-4" />
             Cerrar sesión
-          </a>
+          </button>
         </div>
       )}
     </div>

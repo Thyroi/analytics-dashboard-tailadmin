@@ -16,14 +16,38 @@ const isAuthed = t.middleware(({ ctx, next }) => {
 
 const withDbUser = t.middleware(async ({ ctx, next }) => {
   const u = ctx.session!.user;
-  const dbUser = await ensureUser({
-    sub: u.sub!,
-    email: u.email as string, // Auth0 siempre provee email
-    picture: u.picture,
-  });
 
-  // 👇 Forzamos a TS a entender el nuevo shape
-  return next({ ctx: { ...ctx, dbUser } as AuthedContext });
+  // Caso 1: Login con Auth0 (tiene 'sub')
+  if (u.sub) {
+    const dbUser = await ensureUser({
+      sub: u.sub,
+      email: u.email as string,
+      picture: u.picture,
+    });
+    return next({ ctx: { ...ctx, dbUser } as AuthedContext });
+  }
+
+  // Caso 2: Login local (tiene 'userId')
+  if (u.userId) {
+    const dbUser = await ctx.prisma.user.findUnique({
+      where: { id: u.userId },
+      include: {
+        roles: { include: { role: true } },
+        profile: true,
+      },
+    });
+
+    if (!dbUser) {
+      throw new TRPCError({
+        code: "UNAUTHORIZED",
+        message: "Usuario no encontrado",
+      });
+    }
+
+    return next({ ctx: { ...ctx, dbUser } as AuthedContext });
+  }
+
+  throw new TRPCError({ code: "UNAUTHORIZED" });
 });
 
 const requireAdmin = t.middleware(({ ctx, next }) => {

@@ -57,7 +57,8 @@ export const UserRoleSchema = z.object({
 export const UserSchema = z.object({
   id: z.string(),
   email: z.string().email(),
-  auth0Sub: z.string(),
+  auth0Sub: z.string().nullable().optional(), // Opcional para autenticación híbrida
+  password: z.string().optional(), // No exponemos el hash en el output
   avatarUrl: z.string().url().nullable(),
   createdAt: z.date(),
   updatedAt: z.date(),
@@ -66,4 +67,3 @@ export const UserSchema = z.object({
 });
 
 export type User = z.infer<typeof UserSchema>;
-

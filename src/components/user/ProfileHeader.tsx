@@ -1,3 +1,5 @@
+"use client";
+
 import Avatar from "@/components/common/Avatar";
 import type { Me } from "./types";
 
@@ -13,6 +15,20 @@ export default function ProfileHeader({ me, onEditClick }: ProfileHeaderProps) {
     [profile?.firstName, profile?.lastName].filter(Boolean).join(" ") ||
     email ||
     "Usuario";
+
+  const handleLogout = async () => {
+    try {
+      // 1. Cerrar sesión local (si existe)
+      await fetch("/api/auth/local/logout", { method: "POST" });
+
+      // 2. Redirigir a logout de Auth0 (que también limpia su sesión)
+      window.location.href = "/auth/logout";
+    } catch (error) {
+      console.error("Error al cerrar sesión:", error);
+      // Aún así redirigir a Auth0 logout
+      window.location.href = "/auth/logout";
+    }
+  };
 
   return (
     <div className="card">
@@ -68,12 +84,12 @@ export default function ProfileHeader({ me, onEditClick }: ProfileHeaderProps) {
               </svg>
               Editar perfil
             </button>
-            <a
-              href="/auth/logout"
+            <button
+              onClick={handleLogout}
               className="inline-flex items-center rounded-lg border px-4 py-2 text-sm hover:bg-gray-50 dark:border-white/10 dark:hover:bg-white/5"
             >
               Cerrar sesión
-            </a>
+            </button>
           </div>
         </div>
       </div>

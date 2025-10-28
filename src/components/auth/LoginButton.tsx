@@ -14,7 +14,7 @@ export default function LoginButton({
 }: Props) {
   return (
     <a
-      href={`/auth/login`}
+      href="/login"
       className={`inline-flex items-center gap-2 rounded-full px-3 h-9 text-sm bg-huelva-primary text-white hover:bg-huelva-dark ${className}`}
     >
       {children}

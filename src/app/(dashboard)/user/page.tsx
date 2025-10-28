@@ -1,12 +1,26 @@
 import { auth0 } from "@/lib/auth0";
+import { verifyJWT } from "@/lib/jwt";
+import { cookies } from "next/headers";
 import ProfileClient from "../../../components/user/profileClient";
 
 export const dynamic = "force-dynamic"; // evita cache de página de perfil
 
 export default async function UserPage() {
-  const session = await auth0.getSession();
+  // Verificar Auth0
+  const auth0Session = await auth0.getSession();
 
-  if (!session) {
+  // Verificar JWT local si no hay Auth0
+  let hasSession = !!auth0Session;
+  if (!auth0Session) {
+    const cookieStore = await cookies();
+    const localToken = cookieStore.get("local-auth-token")?.value;
+    if (localToken) {
+      const payload = await verifyJWT(localToken);
+      hasSession = !!payload;
+    }
+  }
+
+  if (!hasSession) {
     return (
       <div className="card">
         <div className="card-body flex items-center justify-between">
@@ -17,7 +31,7 @@ export default async function UserPage() {
             </p>
           </div>
           <a
-            href="/api/auth/login"
+            href="/login"
             className="btn btn-primary"
             aria-label="Iniciar sesión"
           >

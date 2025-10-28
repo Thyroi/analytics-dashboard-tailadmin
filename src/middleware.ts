@@ -1,6 +1,6 @@
 // src/middleware.ts
-import type { NextRequest } from "next/server";
 import { auth0 } from "@/lib/auth0";
+import type { NextRequest } from "next/server";
 
 export async function middleware(request: NextRequest) {
   return auth0.middleware(request);
@@ -8,7 +8,7 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/auth/:path*",      // <- monta /auth/login, /auth/logout, /auth/callback, etc.
+    "/auth/:path*", // <- Auth0 routes (login, logout, callback, profile)
     "/analytics/:path*", // <- tus rutas protegidas
   ],
 };

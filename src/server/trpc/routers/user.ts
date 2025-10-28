@@ -1,6 +1,7 @@
 // server/trpc/routers/user.ts
+import { ensureUser } from "@/server/auth/ensureUser";
 import { Prisma } from "@prisma/client";
-import { router, protectedProcedure, publicProcedure } from "../router";
+import { protectedProcedure, publicProcedure, router } from "../router";
 import {
   ProfileSchema,
   SocialSchema,
@@ -54,42 +55,69 @@ export const userRouter = router({
   meOptional: publicProcedure
     .output(UserSchema.nullable())
     .query(async ({ ctx }) => {
-      // si no hay sesión Auth0 → null silencioso (nada de 401)
+      // si no hay sesión → null silencioso (nada de 401)
       const sessUser = ctx.session?.user;
       if (!sessUser) return null;
 
-      // datos mínimos de Auth0
-      const sub = (sessUser as Record<string, unknown>)["sub"] as string | undefined;
-      const email = (sessUser as Record<string, unknown>)["email"] as string | undefined;
-      const picture = (sessUser as Record<string, unknown>)["picture"] as string | undefined;
+      // CASO 1: Login Local (tiene userId directamente)
+      const userId = (sessUser as Record<string, unknown>)["userId"] as
+        | string
+        | undefined;
+      if (userId) {
+        const dbUser = await ctx.prisma.user.findUnique({
+          where: { id: userId },
+          include: {
+            profile: true,
+            roles: { include: { role: true } },
+          },
+        });
+
+        if (!dbUser) return null;
+
+        const social = normalizeSocialFromPrisma(
+          dbUser.profile?.social ?? null
+        );
+        return {
+          ...dbUser,
+          profile: dbUser.profile ? { ...dbUser.profile, social } : null,
+        };
+      }
+
+      // CASO 2: Auth0 (tiene sub)
+      const sub = (sessUser as Record<string, unknown>)["sub"] as
+        | string
+        | undefined;
+      const email = (sessUser as Record<string, unknown>)["email"] as
+        | string
+        | undefined;
+      const picture = (sessUser as Record<string, unknown>)["picture"] as
+        | string
+        | undefined;
 
       if (!sub || !email) {
         // sesión inválida/incompleta → tratar como no autenticado
         return null;
       }
 
-      // upsert para que exista en DB (y actualizar avatar si cambió)
-      const dbUser = await ctx.prisma.user.upsert({
-        where: { auth0Sub: sub },
-        create: {
-          auth0Sub: sub,
+      try {
+        // Usar ensureUser para crear/obtener usuario con todos los campos necesarios
+        const dbUser = await ensureUser({
+          sub,
           email,
-          avatarUrl: picture ?? null,
-        },
-        update: {
-          avatarUrl: picture ?? null,
-        },
-        include: {
-          profile: true,
-          roles: { include: { role: true } },
-        },
-      });
+          picture,
+        });
 
-      const social = normalizeSocialFromPrisma(dbUser.profile?.social ?? null);
-      return {
-        ...dbUser,
-        profile: dbUser.profile ? { ...dbUser.profile, social } : null,
-      };
+        const social = normalizeSocialFromPrisma(
+          dbUser.profile?.social ?? null
+        );
+        return {
+          ...dbUser,
+          profile: dbUser.profile ? { ...dbUser.profile, social } : null,
+        };
+      } catch (error) {
+        console.error("Error al crear/obtener usuario con Auth0:", error);
+        return null;
+      }
     }),
 
   /** === UPDATE / UPSERT PROFILE === */
