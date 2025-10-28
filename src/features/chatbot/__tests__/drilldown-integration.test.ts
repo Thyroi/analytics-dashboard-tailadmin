@@ -65,20 +65,21 @@ describe("Drilldown Integration Tests", () => {
         endISO: "2024-10-20",
       });
 
-      // Debe incluir categorías (prof>=3 incluyendo subcategorías)
+      // Debe incluir categorías (prof>=2: consultas generales + categorías)
       const playasCategory = result.categories.find(
         (cat) => cat.categoryId === "playas"
       );
       expect(playasCategory?.currentTotal).toBe(150); // 100 (prof=3) + 50 (prof=4 subcategoría)
 
-      // No debe incluir town (prof=2)
+      // También incluye consultas generales (prof=2) que van a "Otros"
       expect(result.categories.length).toBeGreaterThan(0);
       // El servicio renderiza TODAS las categorías, incluso con 0
       const totalFromPlayas = result.categories.reduce(
         (sum, cat) => sum + cat.currentTotal,
         0
       );
-      expect(totalFromPlayas).toBe(150); // playas + sus subcategorías
+      // Total ahora incluye: 150 (playas) + 200 (consultas generales en "Otros")
+      expect(totalFromPlayas).toBe(350); // playas + subcategorías + consultas generales
     });
 
     it("Nivel 2: debe filtrar solo profundidad === 4 (subcategorías)", async () => {
