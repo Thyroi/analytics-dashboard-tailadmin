@@ -1,10 +1,10 @@
 "use client";
 
-import Image from "next/image";
 import { useMemo } from "react";
 import { trpc } from "@/lib/trpc/client";
 import type { inferRouterOutputs } from "@trpc/server";
 import type { AppRouter } from "@/server/trpc/";
+import Avatar from "@/components/common/Avatar";
 
 type RouterOutputs = inferRouterOutputs<AppRouter>;
 type Me = NonNullable<RouterOutputs["user"]["me"]>;
@@ -90,12 +90,11 @@ function ProfileView({ me }: { me: Me }) {
       <div className="card">
         <div className="card-body flex items-center justify-between gap-4">
           <div className="flex items-center gap-4">
-            <Image
-              src={avatarUrl || "/avatar.png"}
-              alt={fullName}
-              width={56}
-              height={56}
-              className="rounded-full"
+            <Avatar
+              src={avatarUrl}
+              name={fullName}
+              email={email ?? undefined}
+              size={56}
             />
             <div>
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white">

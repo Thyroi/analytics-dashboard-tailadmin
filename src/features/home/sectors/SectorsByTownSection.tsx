@@ -39,9 +39,10 @@ export default function SectorsByTownSection({ granularity }: Props) {
     [townResumenResult.data]
   );
 
-  const townId = (expandedId as TownId) || ("aljarafe" as TownId);
+  const townId = expandedId as TownId | null;
 
   // Llamar useTownDetails siempre (React hooks rule)
+  // Solo hace la llamada real cuando expandedId existe
   const detailsResult = useTownDetails(townId, granularity, endDateStr);
 
   const getDeltaPctFor = (id: string) =>

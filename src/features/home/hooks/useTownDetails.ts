@@ -11,7 +11,7 @@ import { useMemo } from "react";
  * Similar a useCategoryDetails pero para pueblos.
  */
 export function useTownDetails(
-  townId: TownId,
+  townId: TownId | null,
   granularity: Granularity,
   endISO: string
 ) {

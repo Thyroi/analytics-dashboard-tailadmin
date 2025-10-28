@@ -35,12 +35,23 @@ export default function CardDelta({ deltaPct, loading, deltaArtifact }: Props) {
         deltaArtifact.baseInfo.current === null)
     : deltaPct === null;
 
+  // Detectar si es "Sin actividad" para usar tamaño pequeño
+  const isSinActividad =
+    deltaArtifact?.state === "ok" &&
+    deltaArtifact.baseInfo.current === 0 &&
+    deltaArtifact.baseInfo.prev !== null &&
+    deltaArtifact.baseInfo.prev > 0;
+
+  // Determinar tamaño: pequeño para "sin datos" o "sin actividad", normal para el resto
+  const fontSize = isNoData || isSinActividad ? 14 : 28;
+  const lineHeight = isNoData || isSinActividad ? "18px" : "28px";
+
   return (
     <div
       className={`self-end text-center font-extrabold ${colorClass}`}
       style={{
-        fontSize: isNoData ? 14 : 28,
-        lineHeight: isNoData ? "18px" : "28px",
+        fontSize,
+        lineHeight,
         visibility: loading ? "hidden" : "visible",
       }}
     >

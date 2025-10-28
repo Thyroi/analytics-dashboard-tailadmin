@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Image from "next/image";
 import { ChevronDown, LogOut, User, Settings, LifeBuoy } from "lucide-react";
+import Avatar from "@/components/common/Avatar";
 
 export type MinimalUser = {
   name?: string | null;
@@ -48,12 +48,11 @@ export default function UserDropdown({ user, className = "" }: Props) {
         aria-haspopup="menu"
         aria-expanded={open}
       >
-        <Image
-          src={user.picture || "/avatar.png"}
-          alt={displayName}
-          width={28}
-          height={28}
-          className="rounded-full"
+        <Avatar
+          src={user.picture}
+          name={displayName}
+          email={email}
+          size={28}
         />
         <span className="text-sm text-gray-900 dark:text-gray-100 max-w-[120px] truncate">
           {displayName}
@@ -70,12 +69,11 @@ export default function UserDropdown({ user, className = "" }: Props) {
         >
           {/* Header */}
           <div className="flex items-center gap-3 p-2">
-            <Image
-              src={user.picture || "/avatar.png"}
-              alt={displayName}
-              width={40}
-              height={40}
-              className="rounded-full"
+            <Avatar
+              src={user.picture}
+              name={displayName}
+              email={email}
+              size={40}
             />
             <div className="min-w-0">
               <div className="font-medium text-gray-900 dark:text-gray-100 truncate">
