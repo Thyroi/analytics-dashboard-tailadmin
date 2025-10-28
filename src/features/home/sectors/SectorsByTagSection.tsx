@@ -11,8 +11,6 @@ import type { CategoryId } from "@/lib/taxonomy/categories";
 import { CATEGORY_ID_ORDER } from "@/lib/taxonomy/categories";
 import type { Granularity } from "@/lib/types";
 import type { DeltaArtifact } from "@/lib/utils/delta";
-import { getCorrectDatesForGranularity } from "@/lib/utils/time/deltaDateCalculation";
-import { computeRangesForKPI } from "@/lib/utils/time/timeWindows";
 import { useMemo, useState } from "react";
 
 type Props = {
@@ -22,36 +20,17 @@ type Props = {
 export default function SectorsByTagSection({ granularity }: Props) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  // Obtener fechas del contexto
-  const { startDate, endDate, mode } = useTagTimeframe();
+  // Obtener fechas del contexto usando getCurrentPeriod (igual que debug)
+  const { getCurrentPeriod } = useTagTimeframe();
 
-  // Calcular fechas correctas según granularidad
-  const { currentEndISO } = getCorrectDatesForGranularity(
-    endDate,
-    granularity,
-    mode
-  );
+  // Usar getCurrentPeriod() para obtener las fechas correctas (igual que debug)
+  const { start: startDateStr, end: endDateStr } = getCurrentPeriod();
 
-  // Calcular rangos usando la lógica estándar de timeWindows
-  const ranges = useMemo(() => {
-    if (mode === "range") {
-      // Modo range: usar fechas del contexto
-      return computeRangesForKPI(
-        granularity,
-        startDate.toISOString().split("T")[0],
-        endDate.toISOString().split("T")[0]
-      );
-    } else {
-      // Modo preset: usar computeRangesForKPI con currentEndISO
-      return computeRangesForKPI(granularity, null, currentEndISO);
-    }
-  }, [mode, startDate, endDate, currentEndISO, granularity]);
-
-  // Usar useResumenData para obtener deltas combinados (GA4 + Chatbot)
+  // Usar useResumenCategory para obtener deltas combinados (GA4 + Chatbot)
   const { categoriesData, isLoading } = useResumenCategory({
     granularity,
-    startDate: ranges.current.start,
-    endDate: ranges.current.end,
+    startDate: startDateStr,
+    endDate: endDateStr,
   });
 
   // Convertir datos a formato compatible con SectorsGrid
@@ -80,16 +59,13 @@ export default function SectorsByTagSection({ granularity }: Props) {
   const catId = expandedId as CategoryId | null;
 
   // Usar el nuevo hook con parámetros de fecha apropiados
+  // IMPORTANTE: Siempre pasar startISO y endISO para que el hook tenga el rango completo
   const timeParams: TimeParams = useMemo(() => {
-    if (mode === "range") {
-      return {
-        startISO: startDate.toISOString().split("T")[0],
-        endISO: endDate.toISOString().split("T")[0],
-      };
-    } else {
-      return { endISO: currentEndISO };
-    }
-  }, [mode, startDate, endDate, currentEndISO]);
+    return {
+      startISO: startDateStr,
+      endISO: endDateStr,
+    };
+  }, [startDateStr, endDateStr]);
 
   // Solo llamar useCategoryDetails si hay un catId expandido
   const { series, donutData } = useCategoryDetails(

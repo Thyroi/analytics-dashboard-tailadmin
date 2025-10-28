@@ -71,15 +71,16 @@ export async function GET(
       );
     }
 
-    // ✅ NUEVO: Usar calculatePreviousPeriodOnly para obtener rangos
+    // ✅ CORRECCIÓN: NO recalcular rangos, usar las fechas tal como vienen
+    // El frontend ya calculó los rangos correctos con computeRangesForSeries
     const calculation = calculatePreviousPeriodOnly(startQ, endQ);
 
     // ✅ NUEVO: Granularidad viene del parámetro (el frontend ya la calculó)
     const actualGranularity = granularityParam || "d";
 
     const ranges = {
-      current: calculation.currentRange,
-      previous: calculation.prevRange,
+      current: { start: startQ, end: endQ }, // Usar fechas directamente
+      previous: calculation.prevRange, // Solo calcular previous
     };
 
     // Para series y donuts usar los mismos rangos (sin lógica especial para 'd')

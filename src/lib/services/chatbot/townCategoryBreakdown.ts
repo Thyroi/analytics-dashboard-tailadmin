@@ -123,7 +123,9 @@ function computeDeltaPercent(current: number, prev: number): number | null {
  * Filtra y parsea el universo de claves que pertenecen a esta vista (town)
  * Devuelve KeyInfo[] con metadata completa para uso uniforme en donut y series
  *
- * Acepta profundidad >= 3 para incluir subcategorías (root.town.category.subcat)
+ * Acepta profundidad >= 2 para incluir:
+ * - Nivel 2: root.town (consultas generales del pueblo)
+ * - Nivel 3+: root.town.category.* (consultas por categoría)
  */
 function collectKeyInfosForView(
   output: MindsaicOutput,
@@ -133,16 +135,25 @@ function collectKeyInfosForView(
   const allKeys = Object.keys(output);
   const parsedKeys = allKeys.map(parseKey).filter(Boolean) as KeyInfo[];
 
-  // Filtrar profundidad >= 3 y town matching en parts[1]
+  // Filtrar profundidad >= 2 y town matching en parts[1]
   return parsedKeys.filter((keyInfo) => {
-    if (keyInfo.depth < 3) return false; // Mínimo root.town.category
+    if (keyInfo.depth < 2) return false; // Mínimo root.town
+
+    // Para depth === 2, parts[1] debe ser el town
+    if (keyInfo.depth === 2) {
+      const townPart = keyInfo.parts[1];
+      if (!townPart) return false;
+      return wildcard
+        ? keyInfo.normParts[1].startsWith(townToken.toLowerCase())
+        : keyInfo.parts[1].toLowerCase() === townToken.toLowerCase();
+    }
+
+    // Para depth >= 3, parts[1] debe ser el town
     const townPart = keyInfo.parts[1];
     if (!townPart) return false;
 
     return wildcard
-      ? keyInfo.normParts[1].startsWith(
-          keyInfo.normParts[1].slice(0, townToken.length)
-        )
+      ? keyInfo.normParts[1].startsWith(townToken.toLowerCase())
       : keyInfo.parts[1].toLowerCase() === townToken.toLowerCase();
   });
 }
@@ -186,6 +197,33 @@ function parseTownCategories(
 
   // Filtrar por pueblo y mapear categorías
   for (const keyInfo of matchedKeys) {
+    // Para profundidad 2 (root.town), son consultas generales del pueblo
+    // Las tratamos como parte del total pero NO asignamos a una categoría específica
+    if (keyInfo.depth === 2) {
+      // Sumar toda la serie como "general" del pueblo
+      const series = output[keyInfo.raw] || [];
+      const total = series.reduce((sum, point) => sum + (point.value || 0), 0);
+
+      // Esto va a "Otros" o podríamos crear una categoría especial "General"
+      const prev = totals.get(OTHERS_ID) || 0;
+      totals.set(OTHERS_ID, prev + total);
+
+      if (DEBUG_SERIES) {
+        console.log(
+          `[parseTownCategories] Depth 2 (general): "${keyInfo.raw}" | total=${total} | added to OTHERS`
+        );
+      }
+
+      othersBreakdown.push({
+        key: keyInfo.raw,
+        path: keyInfo.parts,
+        value: total,
+        timePoints: series.map((pt) => ({ time: pt.time, value: pt.value })),
+      });
+
+      continue; // No procesar más esta key
+    }
+
     // Mapear categoría usando helper PARA TOWN-FIRST (parts[2])
     const categoryId = matchSecondCategory(keyInfo); // ← CAMBIO: usar matchSecondCategory
 

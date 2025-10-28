@@ -3,80 +3,22 @@
  * Endpoint refactorizado usando taxonomía oficial y lógica optimizada
  */
 
-import {
-  TOWN_ID_ORDER,
-  TOWN_META,
-  type TownId,
-  getTownLabel,
-} from "@/lib/taxonomy/towns";
+import { TOWN_ID_ORDER, type TownId, getTownLabel } from "@/lib/taxonomy/towns";
 import type { Granularity } from "@/lib/types";
 import {
   getAuth,
   normalizePropertyId,
   resolvePropertyId,
 } from "@/lib/utils/analytics/ga";
-import { buildPageViewWithFilterUnionRequest } from "@/lib/utils/analytics/ga4Requests";
-import { safeUrlPathname } from "@/lib/utils/routing/pathMatching";
+import { buildPageViewUnionRequest } from "@/lib/utils/analytics/ga4Requests";
+import {
+  matchTownIdFromPath,
+  safeUrlPathname,
+} from "@/lib/utils/routing/pathMatching";
 import { calculatePreviousPeriodAndGranularity } from "@/lib/utils/time/rangeCalculations";
 import { computeDeltaPct } from "@/lib/utils/time/timeWindows";
 import { google } from "googleapis";
 import { NextResponse } from "next/server";
-
-/* -------- Town matching utilities (refactored from original) -------- */
-function escapeRegex(str: string): string {
-  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
-function getTokensForTown(id: TownId): string[] {
-  const label = TOWN_META[id].label;
-  const normalized = label
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase();
-  const kebabCase = normalized
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-  const compactCase = normalized.replace(/[^a-z0-9]+/g, "");
-  const idLower = id.toLowerCase();
-
-  return Array.from(new Set([kebabCase, compactCase, idLower].filter(Boolean)));
-}
-
-function buildTownRegex(towns: TownId[]): string {
-  const hostPattern = "^https?://[^/]+";
-  const alternatives: string[] = [];
-
-  for (const id of towns) {
-    const tokens = getTokensForTown(id).map(escapeRegex);
-    alternatives.push(
-      `(?:/(?:${tokens.join("|")})(?:/|$)|[-_](?:${tokens.join(
-        "|"
-      )})[-_]|${tokens.join("|")})`
-    );
-  }
-
-  return `${hostPattern}.*(?:${alternatives.join("|")}).*`;
-}
-
-function matchTownFromPath(path: string, towns: TownId[]): TownId | null {
-  const lowerPath = path.toLowerCase();
-
-  for (const id of towns) {
-    const tokens = getTokensForTown(id);
-    const hasMatch = tokens.some(
-      (token) =>
-        lowerPath.includes(`/${token}/`) ||
-        lowerPath.endsWith(`/${token}`) ||
-        lowerPath.includes(`-${token}-`) ||
-        lowerPath.includes(`_${token}_`) ||
-        lowerPath.includes(token)
-    );
-
-    if (hasMatch) return id;
-  }
-
-  return null;
-}
 
 /* -------- Main handler con nueva lógica de rangos -------- */
 export async function GET(req: Request) {
@@ -115,21 +57,12 @@ export async function GET(req: Request) {
     const analytics = google.analyticsdata({ version: "v1beta", auth });
     const property = normalizePropertyId(resolvePropertyId());
 
-    // Construir query usando helper con filtro combinado: page_view + towns regex
-    const requestBody = buildPageViewWithFilterUnionRequest({
+    // ✅ CORRECCIÓN: Usar buildPageViewUnionRequest sin filtro regex
+    // El matching se hace en post-procesamiento con matchTownIdFromPath
+    const requestBody = buildPageViewUnionRequest({
       current: ranges.current,
       previous: ranges.previous,
-      granularity: finalGranularity, // ✅ AGREGAR: Pasar granularidad para consistencia
-      additionalFilter: {
-        filter: {
-          fieldName: "pageLocation",
-          stringFilter: {
-            matchType: "FULL_REGEXP",
-            value: buildTownRegex(towns),
-            caseSensitive: false,
-          },
-        },
-      },
+      granularity: finalGranularity,
       metrics: [{ name: "eventCount" }],
     });
 
@@ -170,7 +103,8 @@ export async function GET(req: Request) {
       const path = safeUrlPathname(url);
       const value = Number(row.metricValues?.[0]?.value ?? 0);
 
-      const town = matchTownFromPath(path, towns);
+      // ✅ CORRECCIÓN: Usar la misma función que el endpoint de details
+      const town = matchTownIdFromPath(path);
       if (!town) continue;
 
       if (iso >= ranges.current.start && iso <= ranges.current.end) {

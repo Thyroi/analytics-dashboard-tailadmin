@@ -1,14 +1,9 @@
 "use client";
 
 import { useCategoriesTotalsNew } from "@/features/analytics/hooks/categorias/useCategoriesTotals";
-import {
-  fetchChatbotTotals,
-  type ChatbotTotalsResponse,
-} from "@/lib/services/chatbot/totals";
+import { useChatbotCategoryTotals } from "@/features/chatbot/hooks/useChatbotCategoryTotals";
 import type { Granularity } from "@/lib/types";
-import { computeCategoryAndTownTotals } from "@/lib/utils/chatbot/aggregate";
 import { computeDeltaArtifact } from "@/lib/utils/delta";
-import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 
 interface UseResumenCategoryParams {
@@ -27,26 +22,12 @@ export function useResumenCategory(params: UseResumenCategoryParams = {}) {
     endDate,
   });
 
-  // Obtener datos raw del chatbot con rangos KPI correctos
-  const chatbotQuery = useQuery<ChatbotTotalsResponse>({
-    queryKey: ["chatbot", "totals", granularity, startDate, endDate],
-    queryFn: () => fetchChatbotTotals({ granularity, startDate, endDate }),
-    enabled: true,
-    staleTime: 5 * 60 * 1000, // 5 minutos
-    gcTime: 10 * 60 * 1000, // 10 minutos
-    retry: 2,
+  // Usar el hook correcto de chatbot con pattern root.*.* (profundidad 2)
+  const chatbotCategoryTotals = useChatbotCategoryTotals({
+    granularity,
+    startDate,
+    endDate,
   });
-
-  // Procesar datos raw del chatbot con la función aggregate
-  const chatbotAggregated = useMemo(() => {
-    if (!chatbotQuery.data) return null;
-    try {
-      return computeCategoryAndTownTotals(chatbotQuery.data);
-    } catch (error) {
-      console.warn("Error agregando datos del chatbot:", error);
-      return null;
-    }
-  }, [chatbotQuery.data]);
 
   // Procesar datos para CategoryGrid combinando Analytics + Chatbot
   const processedData = useMemo(() => {
@@ -56,16 +37,16 @@ export function useResumenCategory(params: UseResumenCategoryParams = {}) {
 
     // Convertir datos de Analytics al formato CategoryGrid
     return categoryTotalsQuery.data.data.items.map((category) => {
-      // Buscar datos correspondientes del chatbot
-      const chatbotCategory = chatbotAggregated?.categories.find(
+      // Buscar datos correspondientes del chatbot usando el hook correcto
+      const chatbotCategory = chatbotCategoryTotals.categories.find(
         (c) => c.id === category.id
       );
 
-      // Calcular totales combinados
+      // Calcular totales combinados (GA4 + Chatbot)
       const totalCurrent =
-        category.total + (chatbotCategory?.currentTotal || 0);
+        category.total + (chatbotCategory?.currentValue || 0);
       const totalPrevious =
-        category.previousTotal + (chatbotCategory?.prevTotal || 0);
+        category.previousTotal + (chatbotCategory?.previousValue || 0);
 
       // Calcular delta combinado usando artifact system
       const deltaArtifact = computeDeltaArtifact(totalCurrent, totalPrevious);
@@ -74,24 +55,23 @@ export function useResumenCategory(params: UseResumenCategoryParams = {}) {
         categoryId: category.id,
         ga4Value: category.total,
         ga4PrevValue: category.previousTotal,
-        chatbotValue: chatbotCategory?.currentTotal || 0,
-        chatbotPrevValue: chatbotCategory?.prevTotal || 0,
-        deltaArtifact, // Nuevo: artifact completo
+        chatbotValue: chatbotCategory?.currentValue || 0,
+        chatbotPrevValue: chatbotCategory?.previousValue || 0,
+        deltaArtifact, // Artifact completo con delta, deltaPct, artifact
         delta: deltaArtifact.deltaPct, // Mantener compatibilidad con deltaPct
       };
     });
-  }, [categoryTotalsQuery.data, chatbotAggregated]);
+  }, [categoryTotalsQuery.data, chatbotCategoryTotals.categories]);
 
   return {
     categoriesData: processedData,
     rawQuery: categoryTotalsQuery.data,
-    chatbotRawQuery: chatbotQuery.data,
-    chatbotAggregated,
-    isLoading: categoryTotalsQuery.isLoading || chatbotQuery.isLoading,
-    error: categoryTotalsQuery.error || chatbotQuery.error,
+    chatbotCategories: chatbotCategoryTotals.categories, // Datos correctos del chatbot
+    isLoading: categoryTotalsQuery.isLoading || chatbotCategoryTotals.isLoading,
+    error: categoryTotalsQuery.error || chatbotCategoryTotals.error,
     refetch: () => {
       categoryTotalsQuery.refetch();
-      chatbotQuery.refetch();
+      chatbotCategoryTotals.refetch();
     },
   };
 }

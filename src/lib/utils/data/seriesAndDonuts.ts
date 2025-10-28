@@ -205,6 +205,7 @@ export function buildTimeSeriesForCategory<T>(
 
 /**
  * Construye datos para donut de pueblos
+ * Ahora incluye un bucket "(otros)" para URLs sin pueblo mapeado
  */
 export function buildTownsDonutForCategory<T>(
   rows: GA4Row[],
@@ -216,6 +217,8 @@ export function buildTownsDonutForCategory<T>(
   granularity: string
 ): Array<{ label: string; value: number }> {
   const townCounts: Record<string, number> = {};
+  let unmappedCount = 0;
+  const unmappedExamples: string[] = [];
 
   for (const r of rows) {
     const dateRaw = String(r.dimensionValues?.[0]?.value ?? "");
@@ -237,12 +240,42 @@ export function buildTownsDonutForCategory<T>(
     const town = townMatcher(path);
     if (town) {
       townCounts[town] = (townCounts[town] || 0) + value;
+    } else {
+      // No se pudo mapear a un pueblo - agregar a bucket "unmapped"
+      unmappedCount += value;
+
+      // Guardar ejemplos de URLs sin mapear (máximo 5 únicos)
+      if (unmappedExamples.length < 5 && !unmappedExamples.includes(path)) {
+        unmappedExamples.push(path);
+      }
     }
   }
 
-  return Object.entries(townCounts)
+  const result = Object.entries(townCounts)
     .map(([label, value]) => ({ label, value }))
     .sort((a, b) => b.value - a.value);
+
+  // Si hay eventos sin mapear, agregar al final con ejemplos
+  if (unmappedCount > 0) {
+    // Extraer último segmento de las URLs de ejemplo para el label
+    const pathSegments = unmappedExamples
+      .map((path) => {
+        const segments = path.split("/").filter((s) => s.length > 0);
+        return segments[segments.length - 1] || "general";
+      })
+      .slice(0, 3); // Máximo 3 ejemplos en el label
+
+    const exampleLabel =
+      pathSegments.length > 0
+        ? `Otros (${pathSegments.join(", ")}${
+            unmappedExamples.length > 3 ? ", ..." : ""
+          })`
+        : "Otros (sin pueblo)";
+
+    result.push({ label: exampleLabel, value: unmappedCount });
+  }
+
+  return result;
 }
 
 /**
@@ -287,6 +320,7 @@ export function buildCategoriesDonutForTown<T>(
   granularity: string
 ): Array<{ label: string; value: number }> {
   const categoryCounts: Record<string, number> = {};
+  const uncategorizedPaths: string[] = []; // Para guardar ejemplos de URLs sin categoría
 
   for (const r of rows) {
     const dateRaw = String(r.dimensionValues?.[0]?.value ?? "");
@@ -308,12 +342,42 @@ export function buildCategoriesDonutForTown<T>(
     const category = categoryMatcher(path);
     if (category) {
       categoryCounts[category] = (categoryCounts[category] || 0) + value;
+    } else {
+      // Guardar ejemplos de paths sin categoría
+      if (uncategorizedPaths.length < 5 && !uncategorizedPaths.includes(path)) {
+        uncategorizedPaths.push(path);
+      }
+      categoryCounts["__UNCATEGORIZED__"] =
+        (categoryCounts["__UNCATEGORIZED__"] || 0) + value;
     }
   }
 
-  return Object.entries(categoryCounts)
-    .map(([label, value]) => ({ label, value }))
+  // Construir resultado con label descriptivo para "Otros"
+  const result = Object.entries(categoryCounts)
+    .map(([label, value]) => {
+      if (label === "__UNCATEGORIZED__") {
+        // Extraer últimos segmentos de las URLs para el label
+        const pathSegments = uncategorizedPaths
+          .map((path) => {
+            const segments = path.split("/").filter((s) => s.length > 0);
+            return segments[segments.length - 1] || "home";
+          })
+          .slice(0, 3); // Máximo 3 ejemplos
+
+        const exampleLabel =
+          pathSegments.length > 0
+            ? `Otros (${pathSegments.join(", ")}${
+                uncategorizedPaths.length > 3 ? ", ..." : ""
+              })`
+            : "Otros (sin categoría)";
+
+        return { label: exampleLabel, value };
+      }
+      return { label, value };
+    })
     .sort((a, b) => b.value - a.value);
+
+  return result;
 }
 
 /**
