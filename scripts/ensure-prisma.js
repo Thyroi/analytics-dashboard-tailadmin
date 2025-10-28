@@ -1,61 +1,33 @@
-/* eslint-disable */
-const fs = require("fs");
-const path = require("path");
-const { execSync } = require("child_process");
+// scripts/ensure-prisma.js
+const { execSync } = require('child_process');
+const fs = require('fs');
+const path = require('path');
 
-console.log("Ensuring Prisma client is ready...");
+console.log('Ensuring Prisma client is ready...');
 
-function safeExec(command, description) {
-  try {
-    console.log(`   ${description}...`);
-    const result = execSync(command, {
-      stdio: "pipe",
-      encoding: "utf8",
-      cwd: process.cwd(),
-    });
-    console.log(`   ${description} completed`);
-    return result;
-  } catch (error) {
-    console.error(`   Error in ${description}:`, error.message);
-    return null;
-  }
-}
+// Check if .prisma directory exists
+const prismaDir = path.join(__dirname, '..', 'node_modules', '.prisma');
 
-function cleanPrismaFiles() {
-  const prismaDir = path.join(process.cwd(), "node_modules", ".prisma");
-
-  try {
-    if (fs.existsSync(prismaDir)) {
-      fs.rmSync(prismaDir, { recursive: true, force: true });
-      console.log("   Cleaned .prisma directory");
-    }
-  } catch {
-    console.log("   Could not clean .prisma directory (may be in use)");
-  }
-}
-
-async function ensurePrisma() {
-  console.log("1. Cleaning Prisma cache...");
-  cleanPrismaFiles();
-
-  console.log("2. Generating Prisma client...");
-  const generateResult = safeExec(
-    "npx prisma generate",
-    "Prisma client generation"
-  );
-
-  if (generateResult === null) {
-    console.log("   Retrying with clean environment...");
-    cleanPrismaFiles();
-    safeExec("npx prisma generate", "Prisma client generation (retry)");
+try {
+  // Clean .prisma directory if it exists
+  console.log('1. Cleaning Prisma cache...');
+  if (fs.existsSync(prismaDir)) {
+    fs.rmSync(prismaDir, { recursive: true, force: true });
+    console.log('   Cleaned .prisma directory');
   }
 
-  console.log("Prisma client is ready!");
-}
-
-if (require.main === module) {
-  ensurePrisma().catch((error) => {
-    console.error("Failed to ensure Prisma client:", error);
-    process.exit(1);
+  // Generate Prisma client
+  console.log('2. Generating Prisma client...');
+  console.log('   Prisma client generation...');
+  execSync('npx prisma generate', { 
+    stdio: 'inherit',
+    cwd: path.join(__dirname, '..')
   });
+  console.log('   Prisma client generation completed');
+
+  console.log('Prisma client is ready!');
+  process.exit(0);
+} catch (error) {
+  console.error('Error ensuring Prisma client:', error.message);
+  process.exit(1);
 }

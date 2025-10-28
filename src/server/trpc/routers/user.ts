@@ -100,12 +100,23 @@ export const userRouter = router({
       }
 
       try {
-        // Usar ensureUser para crear/obtener usuario con todos los campos necesarios
-        const dbUser = await ensureUser({
+        // Primero asegurar que el usuario existe
+        await ensureUser({
           sub,
           email,
           picture,
         });
+
+        // Luego obtener el usuario completo con todas las relaciones
+        const dbUser = await ctx.prisma.user.findUnique({
+          where: { auth0Sub: sub },
+          include: {
+            profile: true,
+            roles: { include: { role: true } },
+          },
+        });
+
+        if (!dbUser) return null;
 
         const social = normalizeSocialFromPrisma(
           dbUser.profile?.social ?? null
