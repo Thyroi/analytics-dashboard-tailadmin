@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { ChevronDown, LogOut, User, Settings, LifeBuoy } from "lucide-react";
 import Avatar from "@/components/common/Avatar";
+import { ChevronDown, LifeBuoy, LogOut, Settings, User } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 
 export type MinimalUser = {
   name?: string | null;
@@ -48,12 +48,7 @@ export default function UserDropdown({ user, className = "" }: Props) {
         aria-haspopup="menu"
         aria-expanded={open}
       >
-        <Avatar
-          src={user.picture}
-          name={displayName}
-          email={email}
-          size={28}
-        />
+        <Avatar src={user.picture} name={displayName} email={email} size={28} />
         <span className="text-sm text-gray-900 dark:text-gray-100 max-w-[120px] truncate">
           {displayName}
         </span>

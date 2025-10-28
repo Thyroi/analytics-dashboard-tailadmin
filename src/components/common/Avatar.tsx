@@ -19,11 +19,11 @@ function getInitials(name?: string, email?: string): string {
     }
     return parts[0].slice(0, 2).toUpperCase();
   }
-  
+
   if (email) {
     return email.slice(0, 2).toUpperCase();
   }
-  
+
   return "U";
 }
 
@@ -38,12 +38,12 @@ function getColorFromString(str: string): string {
     "bg-red-500",
     "bg-orange-500",
   ];
-  
+
   let hash = 0;
   for (let i = 0; i < str.length; i++) {
     hash = str.charCodeAt(i) + ((hash << 5) - hash);
   }
-  
+
   return colors[Math.abs(hash) % colors.length];
 }
 

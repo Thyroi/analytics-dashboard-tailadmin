@@ -1,10 +1,10 @@
 "use client";
 
-import { useMemo } from "react";
-import { trpc } from "@/lib/trpc/client";
-import type { inferRouterOutputs } from "@trpc/server";
-import type { AppRouter } from "@/server/trpc/";
 import Avatar from "@/components/common/Avatar";
+import { trpc } from "@/lib/trpc/client";
+import type { AppRouter } from "@/server/trpc/";
+import type { inferRouterOutputs } from "@trpc/server";
+import { useMemo } from "react";
 
 type RouterOutputs = inferRouterOutputs<AppRouter>;
 type Me = NonNullable<RouterOutputs["user"]["me"]>;
@@ -82,7 +82,10 @@ function ProfileView({ me }: { me: Me }) {
     email ||
     "Usuario";
 
-  const socials = useMemo(() => parseSocial(profile?.social), [profile?.social]);
+  const socials = useMemo(
+    () => parseSocial(profile?.social),
+    [profile?.social]
+  );
 
   return (
     <div className="space-y-6">
@@ -138,11 +141,7 @@ function ProfileView({ me }: { me: Me }) {
             <Field label="Last Name" value={profile?.lastName ?? undefined} />
             <Field label="Email address" value={email ?? undefined} />
             <Field label="Phone" value={profile?.phone ?? undefined} />
-            <Field
-              label="Bio"
-              value={profile?.bio ?? undefined}
-              full
-            />
+            <Field label="Bio" value={profile?.bio ?? undefined} full />
           </dl>
         </div>
       </div>
@@ -162,7 +161,10 @@ function ProfileView({ me }: { me: Me }) {
                 undefined
               }
             />
-            <Field label="Postal Code" value={profile?.postalCode ?? undefined} />
+            <Field
+              label="Postal Code"
+              value={profile?.postalCode ?? undefined}
+            />
             <Field label="TAX ID" value={profile?.taxId ?? undefined} />
           </dl>
         </div>
@@ -176,14 +178,8 @@ function ProfileView({ me }: { me: Me }) {
           </div>
           <div className="card-body">
             <dl className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-              <Field
-                label="LinkedIn"
-                value={socials?.linkedin ?? undefined}
-              />
-              <Field
-                label="Facebook"
-                value={socials?.facebook ?? undefined}
-              />
+              <Field label="LinkedIn" value={socials?.linkedin ?? undefined} />
+              <Field label="Facebook" value={socials?.facebook ?? undefined} />
               <Field
                 label="Instagram"
                 value={socials?.instagram ?? undefined}
