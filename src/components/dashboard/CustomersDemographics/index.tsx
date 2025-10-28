@@ -14,7 +14,7 @@ const isUnknown = (s?: string | null) =>
   !!s && /\b(not set|unknown)\b/i.test(s ?? "");
 
 export default function CustomersDemographics({
-  title = "Demografía de clientes",
+  title = "Demografía de usuarios",
   markers,
   countries,
   mapHeight = 260,

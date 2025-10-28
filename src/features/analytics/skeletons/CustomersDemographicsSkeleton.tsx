@@ -15,7 +15,7 @@ type Props = {
 };
 
 export default function CustomersDemographicsSkeleton({
-  title = "Demografía de clientes",
+  title = "Demografía de usuarios",
   mapHeight = 260,
   countryRows = 3,
   className = "card bg-analytics-gradient overflow-hidden",

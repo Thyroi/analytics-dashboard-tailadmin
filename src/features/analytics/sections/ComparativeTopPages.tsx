@@ -26,7 +26,7 @@ import { SelectedPills } from "./components/SelectedPills";
 export default function ComparativeTopPages() {
   const queryClient = useQueryClient();
   const tableRef = useRef<HTMLDivElement>(null);
-  const [isTableOpen, setIsTableOpen] = useState(false);
+  const [isTableOpen, setIsTableOpen] = useState(true);
 
   // Force invalidation of old cache on mount
   useEffect(() => {
