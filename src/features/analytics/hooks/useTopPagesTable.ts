@@ -1,7 +1,7 @@
 "use client";
 
 import { useHeaderAnalyticsTimeframe } from "@/features/analytics/context/HeaderAnalyticsTimeContext";
-import { addDaysUTC, toISO } from "@/lib/utils/time/datetime";
+import { toISO } from "@/lib/utils/time/datetime";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 import {
@@ -21,11 +21,10 @@ export type UseTopPagesTableParams = {
 /**
  * Hook para tabla de Top Pages (UTC)
  *
- * ⚠️ MIGRADO A UTC - Usa addDaysUTC y toISO en lugar de .setDate()
+ * ⚠️ Uses same date logic as useKpis - no date modifications
  */
 export function useTopPagesTable(params: UseTopPagesTableParams = {}) {
-  const { startDate, endDate, granularity, mode } =
-    useHeaderAnalyticsTimeframe();
+  const { startDate, endDate, granularity } = useHeaderAnalyticsTimeframe();
 
   const {
     page = 1,
@@ -36,7 +35,7 @@ export function useTopPagesTable(params: UseTopPagesTableParams = {}) {
     enabled = true,
   } = params;
 
-  // Convert dates to ISO strings with comprehensive error handling (UTC)
+  // Convert dates to ISO strings - USE SAME LOGIC AS useKpis (no date modifications)
   const start = useMemo(() => {
     try {
       if (
@@ -47,19 +46,9 @@ export function useTopPagesTable(params: UseTopPagesTableParams = {}) {
         return "";
       }
 
-      // CRITICAL: Apply date calculations only for preset granularities, not custom ranges
-      let adjustedStartDate = startDate;
-
-      if (mode === "granularity") {
-        // For preset granularities: the context already gives us the correct range
-        // We just need to ensure complete data by subtracting 1 day (UTC)
-        adjustedStartDate = addDaysUTC(startDate, -1);
-      } else {
-        // For custom ranges: use the dates as-is (user's exact selection)
-        // No modification needed for custom ranges
-      }
-
-      const isoString = toISO(adjustedStartDate);
+      // FIXED: Use dates as-is from context, same as useKpis
+      // The context already handles the correct date ranges
+      const isoString = toISO(startDate);
       if (!isoString || typeof isoString !== "string") {
         console.warn(
           "[useTopPagesTable] Failed to convert startDate to ISO string"
@@ -71,7 +60,7 @@ export function useTopPagesTable(params: UseTopPagesTableParams = {}) {
       console.error("[useTopPagesTable] Error processing startDate:", error);
       return "";
     }
-  }, [startDate, mode]);
+  }, [startDate]);
 
   const end = useMemo(() => {
     try {
@@ -80,18 +69,9 @@ export function useTopPagesTable(params: UseTopPagesTableParams = {}) {
         return "";
       }
 
-      // CRITICAL: Apply date calculations only for preset granularities, not custom ranges
-      let adjustedEndDate = endDate;
-
-      if (mode === "granularity") {
-        // For preset granularities: always subtract 1 day to ensure complete data (UTC)
-        adjustedEndDate = addDaysUTC(endDate, -1);
-      } else {
-        // For custom ranges: use the dates as-is (user's exact selection)
-        // No modification needed for custom ranges
-      }
-
-      const isoString = toISO(adjustedEndDate);
+      // FIXED: Use dates as-is from context, same as useKpis
+      // The context already handles the correct date ranges
+      const isoString = toISO(endDate);
       if (!isoString || typeof isoString !== "string") {
         console.warn(
           "[useTopPagesTable] Failed to convert endDate to ISO string"
@@ -103,7 +83,7 @@ export function useTopPagesTable(params: UseTopPagesTableParams = {}) {
       console.error("[useTopPagesTable] Error processing endDate:", error);
       return "";
     }
-  }, [endDate, mode]);
+  }, [endDate]);
 
   // Validate granularity
   const validGranularity = useMemo(() => {
