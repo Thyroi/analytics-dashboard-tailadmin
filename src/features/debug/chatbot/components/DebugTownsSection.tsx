@@ -21,6 +21,7 @@ function DebugTownsSectionContent() {
     setGranularity,
     setRange,
     clearRange,
+    updatePickerDatesOnly,
     getCalculatedGranularity,
   } = useTownTimeframe();
 
@@ -93,6 +94,7 @@ function DebugTownsSectionContent() {
         onGranularityChange={setGranularity}
         onRangeChange={setRange}
         onClearRange={clearRange}
+        onPickerDatesUpdate={updatePickerDatesOnly}
       />
 
       {isLoading ? (

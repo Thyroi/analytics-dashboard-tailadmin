@@ -29,6 +29,7 @@ function AnalyticsByTagSectionInner() {
     endDate,
     setRange,
     clearRange,
+    updatePickerDatesOnly,
 
     getCurrentPeriod,
 
@@ -216,6 +217,7 @@ function AnalyticsByTagSectionInner() {
         endDate={endDate}
         onRangeChange={setRange}
         onClearRange={clearRange}
+        onPickerDatesUpdate={updatePickerDatesOnly}
       />
 
       <SectorsGrid

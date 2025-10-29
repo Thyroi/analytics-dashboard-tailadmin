@@ -15,6 +15,7 @@ type Props = {
   onGranularityChange: (g: Granularity) => void;
   onRangeChange: (start: Date, end: Date) => void;
   onClearRange: () => void;
+  onPickerDatesUpdate?: (start: Date, end: Date) => void;
 };
 
 export default function StickyHeaderSection({
@@ -27,6 +28,7 @@ export default function StickyHeaderSection({
   onGranularityChange,
   onRangeChange,
   onClearRange,
+  onPickerDatesUpdate,
 }: Props) {
   return (
     <div className="sticky z-20 top-[var(--app-header-h,0px)] mb-3">
@@ -54,6 +56,7 @@ export default function StickyHeaderSection({
           endDate={endDate}
           onRangeChange={onRangeChange}
           onClearRange={onClearRange}
+          onPickerDatesUpdate={onPickerDatesUpdate}
           className="mb-0"
         />
       </div>

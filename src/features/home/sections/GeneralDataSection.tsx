@@ -16,6 +16,7 @@ function InnerGeneralDataSection() {
     setGranularity,
     setRange,
     clearRange,
+    updatePickerDatesOnly,
   } = useHeaderAnalyticsTimeframe();
   return (
     <section className="max-w-[1560px] mx-auto w-full">
@@ -28,6 +29,7 @@ function InnerGeneralDataSection() {
         onGranularityChange={setGranularity}
         onRangeChange={setRange}
         onClearRange={clearRange}
+        onPickerDatesUpdate={updatePickerDatesOnly}
       />
       <GeneralDataRow
         mode={mode}

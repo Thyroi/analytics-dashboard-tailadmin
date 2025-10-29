@@ -31,6 +31,7 @@ function ChatbotCategoriesSectionContent() {
     setGranularity,
     setRange,
     clearRange,
+    updatePickerDatesOnly,
     getCalculatedGranularity,
   } = useTagTimeframe();
 
@@ -111,6 +112,7 @@ function ChatbotCategoriesSectionContent() {
           clearRange();
           handlers.onClearRange();
         }}
+        onPickerDatesUpdate={updatePickerDatesOnly}
       />
 
       {/* Top Categories KPI entre header y categorías */}

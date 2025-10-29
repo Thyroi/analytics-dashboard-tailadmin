@@ -1,6 +1,7 @@
 "use client";
 
 // No usar helpers UTC aquí: el calendario trabaja en horario LOCAL
+import type { Granularity } from "@/lib/types";
 import { CalendarIcon } from "@heroicons/react/24/outline";
 import flatpickr from "flatpickr";
 import "flatpickr/dist/flatpickr.css";
@@ -11,6 +12,9 @@ type Props = {
   endDate: Date;
   onRangeChange: (start: Date, end: Date) => void;
   placeholder?: string;
+  granularity?: Granularity;
+  mode?: "granularity" | "range";
+  onPickerDatesUpdate?: (start: Date, end: Date) => void;
 };
 
 /**
@@ -55,6 +59,11 @@ function yesterdayLocal(): Date {
  * - onChange: Clamp end a yesterdayUTC() si excede
  * - NO aplicar offsets adicionales en otras capas
  *
+ * POLÍTICA DE AJUSTE DE AÑO (UX para granularidad año):
+ * - Si granularity='y', al abrir picker llama onPickerDatesUpdate con fechas ajustadas a 2025
+ * - onPickerDatesUpdate actualiza contexto SIN cambiar mode ni disparar queries
+ * - Ayuda a usuarios que no saben navegar años en el calendario
+ *
  * @remarks
  * Este componente es la ÚNICA capa que debe aplicar el clamp a ayer.
  * Los contextos y servicios deben confiar en estas fechas sin modificaciones adicionales.
@@ -64,6 +73,8 @@ export default function DateRangePicker({
   endDate,
   onRangeChange,
   placeholder = "Select date range",
+  granularity,
+  onPickerDatesUpdate,
 }: Props) {
   const inputRef = useRef<HTMLInputElement | null>(null);
 
@@ -84,6 +95,37 @@ export default function DateRangePicker({
       static: true,
       disableMobile: true,
       maxDate: maxDateLimit, // bloquea futuro en UI
+      onOpen: () => {
+        // UX: Si granularidad es año, ajustar fechas a 2025 visualmente en el picker
+        // NO actualizar contexto (eso recrearía flatpickr y cancelaría la apertura)
+        if (granularity === "y") {
+          const currentStart = fp.selectedDates[0];
+          const currentEnd = fp.selectedDates[1];
+
+          if (currentStart && currentEnd) {
+            const currentYear = new Date().getFullYear(); // 2025
+
+            // Ajustar al año actual manteniendo mes y día
+            const newStart = new Date(
+              currentYear,
+              currentStart.getMonth(),
+              currentStart.getDate()
+            );
+            const newEnd = new Date(
+              currentYear,
+              currentEnd.getMonth(),
+              currentEnd.getDate()
+            );
+
+            // Clamp a yesterday si es necesario
+            const clampedEnd = newEnd > maxDateLimit ? maxDateLimit : newEnd;
+            const clampedStart = newStart > clampedEnd ? clampedEnd : newStart;
+
+            // Actualizar SOLO flatpickr, SIN disparar onChange (triggerChange=false)
+            fp.setDate([clampedStart, clampedEnd], false);
+          }
+        }
+      },
       onChange: (dates) => {
         if (dates.length === 2) {
           let [start, end] = dates;
@@ -111,7 +153,7 @@ export default function DateRangePicker({
     inputRef.current.value = formatted;
 
     return () => fp.destroy();
-  }, [startDate, endDate, onRangeChange]);
+  }, [startDate, endDate, onRangeChange, granularity, onPickerDatesUpdate]);
 
   return (
     <div className="relative w-[250px] group flatpickr-host">

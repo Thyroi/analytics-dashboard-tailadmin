@@ -16,6 +16,7 @@ function InnerSectorsByTagSection() {
     setGranularity,
     setRange,
     clearRange,
+    updatePickerDatesOnly,
   } = useTagTimeframe();
 
   return (
@@ -29,6 +30,7 @@ function InnerSectorsByTagSection() {
         onGranularityChange={setGranularity}
         onRangeChange={setRange}
         onClearRange={clearRange}
+        onPickerDatesUpdate={updatePickerDatesOnly}
       />
       <SectorsByTagSectionContent granularity={granularity} />
     </section>

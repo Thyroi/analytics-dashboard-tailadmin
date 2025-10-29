@@ -21,6 +21,7 @@ function DebugCategoriesSectionContent() {
     setGranularity,
     setRange,
     clearRange,
+    updatePickerDatesOnly,
     getCalculatedGranularity,
   } = useTagTimeframe();
 
@@ -93,6 +94,7 @@ function DebugCategoriesSectionContent() {
         onGranularityChange={setGranularity}
         onRangeChange={setRange}
         onClearRange={clearRange}
+        onPickerDatesUpdate={updatePickerDatesOnly}
       />
 
       {isLoading ? (

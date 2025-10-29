@@ -28,6 +28,7 @@ function ChatbotTownsSectionContent() {
     setGranularity,
     setRange,
     clearRange,
+    updatePickerDatesOnly,
     getCalculatedGranularity,
   } = useTagTimeframe();
 
@@ -104,6 +105,7 @@ function ChatbotTownsSectionContent() {
           clearRange();
           handlers.onClearRange();
         }}
+        onPickerDatesUpdate={updatePickerDatesOnly}
       />
 
       {/* KPI Section - Top Towns */}

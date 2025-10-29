@@ -30,6 +30,7 @@ function AnalyticsByTownSectionInner() {
     endDate,
     setRange,
     clearRange,
+    updatePickerDatesOnly,
     getCurrentPeriod,
     getCalculatedGranularity,
   } = useTownTimeframe();
@@ -184,6 +185,7 @@ function AnalyticsByTownSectionInner() {
         endDate={endDate}
         onRangeChange={setRange}
         onClearRange={clearRange}
+        onPickerDatesUpdate={updatePickerDatesOnly}
       />
 
       <SectorsGrid

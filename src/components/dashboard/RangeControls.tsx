@@ -13,6 +13,7 @@ type Props = {
   endDate: Date;
   onRangeChange: (start: Date, end: Date) => void;
   onClearRange: () => void;
+  onPickerDatesUpdate?: (start: Date, end: Date) => void;
 
   className?: string;
 };
@@ -25,6 +26,7 @@ export default function RangeControls({
   endDate,
   onRangeChange,
   onClearRange,
+  onPickerDatesUpdate,
   className = "",
 }: Props) {
   const tabsDisabled = mode === "range";
@@ -44,6 +46,9 @@ export default function RangeControls({
           endDate={endDate}
           onRangeChange={onRangeChange}
           placeholder="Selecciona un rango"
+          granularity={granularity}
+          mode={mode}
+          onPickerDatesUpdate={onPickerDatesUpdate}
         />
         {mode === "range" && (
           <button

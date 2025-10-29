@@ -16,6 +16,7 @@ function InnerSectorsByTownSection() {
     setGranularity,
     setRange,
     clearRange,
+    updatePickerDatesOnly,
   } = useTownTimeframe();
 
   return (
@@ -29,6 +30,7 @@ function InnerSectorsByTownSection() {
         onGranularityChange={setGranularity}
         onRangeChange={setRange}
         onClearRange={clearRange}
+        onPickerDatesUpdate={updatePickerDatesOnly}
       />
       <SectorsByTownSectionContent granularity={granularity} />
     </section>

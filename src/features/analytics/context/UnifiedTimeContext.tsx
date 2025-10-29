@@ -28,6 +28,8 @@ type TimeframeActions = {
   setGranularity: (g: Granularity) => void;
   setRange: (start: Date, end: Date) => void;
   clearRange: () => void;
+  /** Actualiza fechas solo para display del picker, sin cambiar mode ni disparar queries */
+  updatePickerDatesOnly: (start: Date, end: Date) => void;
 };
 
 export type TimeframeContextValue = TimeframeState & {
@@ -213,6 +215,29 @@ export function createTimeContext(contextName: string) {
       setIsGranularityLocked(false); // UNLOCK: Volver a permitir recálculo automático
     }, [granularity]);
 
+    /**
+     * updatePickerDatesOnly: Actualiza fechas solo para display del picker
+     *
+     * POLÍTICA:
+     * - NO cambia el mode (permanece en "granularity")
+     * - NO dispara queries porque no cambia mode a "range"
+     * - Usado para UX de granularidad año (ajustar a 2025 al abrir picker)
+     */
+    const updatePickerDatesOnly = useCallback((start: Date, end: Date) => {
+      // Normalizar a medianoche UTC
+      const startUTC = new Date(
+        Date.UTC(start.getFullYear(), start.getMonth(), start.getDate())
+      );
+      const endUTC = new Date(
+        Date.UTC(end.getFullYear(), end.getMonth(), end.getDate())
+      );
+
+      setStartDate(startUTC);
+      setEndDate(endUTC);
+      // NO cambiar mode, permanece en "granularity"
+      // NO cambiar isGranularityLocked
+    }, []);
+
     // Nuevos métodos para cálculos de rangos
     const getCurrentPeriod = useCallback(
       () => ({
@@ -283,6 +308,7 @@ export function createTimeContext(contextName: string) {
         setGranularity,
         setRange,
         clearRange,
+        updatePickerDatesOnly,
         getCurrentPeriod,
         getPreviousPeriod,
         getCalculatedGranularity,
@@ -297,6 +323,7 @@ export function createTimeContext(contextName: string) {
         setGranularity,
         setRange,
         clearRange,
+        updatePickerDatesOnly,
         getCurrentPeriod,
         getPreviousPeriod,
         getCalculatedGranularity,
