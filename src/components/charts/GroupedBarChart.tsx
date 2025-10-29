@@ -160,7 +160,8 @@ export default function GroupedBarChart({
         show: showLegend,
         position: legendPosition,
         horizontalAlign: legendPosition === "bottom" ? "center" : "left",
-        offsetY: legendPosition === "bottom" ? 8 : -10,
+        offsetY: legendPosition === "bottom" ? 10 : -10,
+        offsetX: 0,
         fontSize: "12px",
         fontWeight: 500,
         markers: {
@@ -169,8 +170,9 @@ export default function GroupedBarChart({
         },
         itemMargin: {
           horizontal: 16,
-          vertical: 4,
+          vertical: 8,
         },
+        floating: false,
       },
       tooltip: {
         shared: true,

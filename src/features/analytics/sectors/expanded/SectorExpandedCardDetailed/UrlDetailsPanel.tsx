@@ -9,9 +9,16 @@ import { UrlDetailsPanelSkeleton } from "@/features/analytics/skeletons";
 import ChartSection from "@/features/home/sectors/SectorExpandedCard/ChartSection";
 import type { DonutDatum, Granularity, SeriesPoint } from "@/lib/types";
 import { formatChartLabelsSimple } from "@/lib/utils/charts/labelFormatting";
+import { getSeriesLabels } from "@/lib/utils/charts/tooltipLabels";
 import { Activity, Clock, Timer, Users } from "lucide-react";
+import dynamic from "next/dynamic";
 import { useMemo } from "react";
 import DrilldownTitle from "./DrilldownTitle";
+
+const GroupedBarChart = dynamic(
+  () => import("@/components/charts/GroupedBarChart"),
+  { ssr: false }
+);
 
 const pf = new Intl.NumberFormat("es-ES", {
   style: "percent",
@@ -228,13 +235,60 @@ export default function UrlDetailsPanel({
       <section className="mb-6">
         <DrilldownTitle name="engagement promedio (s)" color="primary" />
         <div className="mt-3 h-[450px]">
-          <ChartSection
-            categories={categories}
-            currData={currData}
-            prevData={prevData}
-            granularity={granularity}
-          />
-          {categories.length === 0 && (
+          {granularity === "d" ? (
+            // Para granularidad día: GroupedBarChart con 2 barras (previous vs current)
+            (() => {
+              const labels = getSeriesLabels(granularity);
+              const lastCurrent =
+                seriesAvgEngagement?.current[
+                  seriesAvgEngagement.current.length - 1
+                ];
+              const lastPrevious =
+                seriesAvgEngagement?.previous[
+                  seriesAvgEngagement.previous.length - 1
+                ];
+
+              if (!lastCurrent) {
+                return (
+                  <div className="w-full bg-white dark:bg-gray-800 rounded-lg p-6">
+                    <div className="animate-pulse">
+                      <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/3 mb-2"></div>
+                      <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2 mb-4"></div>
+                      <div className="h-80 bg-gray-200 dark:bg-gray-700 rounded"></div>
+                    </div>
+                  </div>
+                );
+              }
+
+              const groupedSeries = [
+                { name: labels.previous, data: [lastPrevious?.value ?? 0] },
+                { name: labels.current, data: [lastCurrent.value] },
+              ];
+
+              return (
+                <GroupedBarChart
+                  title="Comparación de engagement"
+                  subtitle="Promedio de segundos por usuario"
+                  categories={[lastCurrent.label]}
+                  series={groupedSeries}
+                  height={400}
+                  showLegend={true}
+                  legendPosition="bottom"
+                  tooltipFormatter={(val) => `${(val ?? 0).toFixed(2)}s`}
+                  yAxisFormatter={(val) => (val ?? 0).toString()}
+                />
+              );
+            })()
+          ) : (
+            // Para otras granularidades: LineChart original
+            <ChartSection
+              categories={categories}
+              currData={currData}
+              prevData={prevData}
+              granularity={granularity}
+            />
+          )}
+          {categories.length === 0 && granularity !== "d" && (
             <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
               Sin datos suficientes para la granularidad &quot;{granularity}
               &quot;.

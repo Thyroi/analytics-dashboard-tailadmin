@@ -71,7 +71,7 @@ type Props = LineChartMode | MultiLineMode | GroupedBarMode;
 
 /**
  * Layout 2 columnas:
- *  - Izquierda: (Line | MultiLine)
+ *  - Izquierda: (Line | MultiLine | GroupedBar)
  *  - Derecha : DonutSection
  */
 export default function ChartPair(props: Props) {

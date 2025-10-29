@@ -1,7 +1,7 @@
 "use client";
 
 import type { Granularity } from "@/lib/types";
-import { addDaysUTC, todayUTC, toISO } from "@/lib/utils/time/datetime";
+import { addDaysUTC, toISO } from "@/lib/utils/time/datetime";
 import { calculatePreviousPeriodAndGranularity } from "@/lib/utils/time/rangeCalculations";
 import { getWindowGranularityFromRange } from "@/lib/utils/time/windowGranularity";
 import {
@@ -45,7 +45,15 @@ export type TimeframeContextValue = TimeframeState & {
 
 /* ========= Shared Helpers ========= */
 function yesterdayUTC(): Date {
-  return addDaysUTC(todayUTC(), -1);
+  // ⚠️ IMPORTANTE: Usar fecha LOCAL para determinar "hoy", no UTC
+  // Esto evita que a las 9 PM en España (UTC+1) el sistema piense que ya es mañana
+  const now = new Date();
+  const todayLocal = new Date(
+    Date.UTC(now.getFullYear(), now.getMonth(), now.getDate())
+  );
+  const yesterday = addDaysUTC(todayLocal, -1);
+
+  return yesterday;
 }
 
 /**
@@ -105,7 +113,9 @@ function presetForGranularity(g: Granularity) {
       period = "dia";
   }
 
-  return calculateRangeForPeriod(period);
+  const range = calculateRangeForPeriod(period);
+
+  return range;
 }
 
 /* ========= Factory Function ========= */

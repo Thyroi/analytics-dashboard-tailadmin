@@ -22,19 +22,29 @@ function toLocalMidnightFromUTC(d: Date): Date {
 }
 
 /**
- * Retorna "ayer" en horario LOCAL (medianoche local)
+ * Retorna "ayer" en horario UTC convertido a medianoche LOCAL
  *
- * - Esto evita que el calendario muestre el día anterior por desfase de zona horaria
- * - El clamp lógico a UTC se maneja en el contexto/servicios; aquí solo UI
+ * POLÍTICA:
+ * - Usar UTC para evitar desfases de timezone
+ * - Convertir a medianoche local para flatpickr
  */
 function yesterdayLocal(): Date {
   const now = new Date();
-  const todayLocalMidnight = new Date(
-    now.getFullYear(),
-    now.getMonth(),
-    now.getDate()
+  // Calcular ayer en UTC (no en tiempo local)
+  const todayUTC = Date.UTC(
+    now.getUTCFullYear(),
+    now.getUTCMonth(),
+    now.getUTCDate()
   );
-  return new Date(todayLocalMidnight.getTime() - 24 * 60 * 60 * 1000);
+  const yesterdayUTC = todayUTC - 24 * 60 * 60 * 1000;
+
+  // Convertir a Date local para flatpickr
+  const yesterdayDate = new Date(yesterdayUTC);
+  return new Date(
+    yesterdayDate.getUTCFullYear(),
+    yesterdayDate.getUTCMonth(),
+    yesterdayDate.getUTCDate()
+  );
 }
 
 /**

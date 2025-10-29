@@ -37,11 +37,29 @@ export default function DonutSection({
     [donutData]
   );
 
+  // Mapa de label formateado -> id original (URL)
+  const labelToId = useMemo(() => {
+    const map = new Map<string, string>();
+    (donutData ?? []).forEach((d) => {
+      if (d.id) {
+        map.set(d.label, d.id);
+      }
+    });
+    return map;
+  }, [donutData]);
+
+  // Wrapper para el click: si hay id, usarlo en lugar del label
+  const handleSliceClick = (label: string) => {
+    if (!onSliceClick) return;
+    const originalId = labelToId.get(label);
+    onSliceClick(originalId || label);
+  };
+
   return (
     <div className="w-full min-h-[420px] flex">
       <DonutCard
         items={items}
-        onSliceClick={onSliceClick}
+        onSliceClick={onSliceClick ? handleSliceClick : undefined}
         title={title}
         titleClassName={titleColor}
         centerTitle={centerLabel}

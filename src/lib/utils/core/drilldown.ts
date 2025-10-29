@@ -1,5 +1,9 @@
-import { CATEGORY_ID_ORDER, CATEGORY_META, type CategoryId } from "@/lib/taxonomy/categories";
 import type { UrlSeries } from "@/features/analytics/services/drilldown";
+import {
+  CATEGORY_ID_ORDER,
+  CATEGORY_META,
+  type CategoryId,
+} from "@/lib/taxonomy/categories";
 
 /** Normaliza un string para comparaciones permisivas (acentos, mayúsculas, espacios) */
 export function normalizeString(input: string): string {
@@ -11,7 +15,9 @@ export function normalizeString(input: string): string {
 }
 
 /** Resuelve un CategoryId a partir de etiqueta o id (case/acentos tolerantes) */
-export function resolveCategoryIdFromLabel(labelOrId: string): CategoryId | null {
+export function resolveCategoryIdFromLabel(
+  labelOrId: string
+): CategoryId | null {
   const x = normalizeString(labelOrId);
   if (CATEGORY_ID_ORDER.includes(x as CategoryId)) return x as CategoryId;
 
@@ -25,10 +31,23 @@ export function resolveCategoryIdFromLabel(labelOrId: string): CategoryId | null
  * Dado el nombre de sub-actividad (slice del donut) y las series por URL,
  * intenta escoger la ruta (path) más probable.
  */
-export function pickPathForSubActivity(subLabel: string, seriesByUrl: UrlSeries[]): string | null {
+export function pickPathForSubActivity(
+  subLabel: string,
+  seriesByUrl: UrlSeries[]
+): string | null {
+  // 0) Si subLabel parece una URL completa, buscar match exacto SIN normalización
+  if (subLabel.startsWith("/") || subLabel.startsWith("http")) {
+    // Match exacto por path
+    const exactMatch = seriesByUrl.find((s) => s.path === subLabel);
+    if (exactMatch) return exactMatch.path;
+
+    // Si no hay match exacto, retornar null (no intentar otras búsquedas)
+    return null;
+  }
+
   const sub = normalizeString(subLabel);
 
-  // 1) Coincidencia por nombre “humano”
+  // 1) Coincidencia por nombre "humano"
   const byName = seriesByUrl.find((s) => normalizeString(s.name).includes(sub));
   if (byName) return byName.path;
 

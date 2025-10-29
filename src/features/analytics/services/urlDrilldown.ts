@@ -88,5 +88,6 @@ export async function getUrlDrilldown(params: {
   });
 
   const url = `/api/analytics/v1/drilldown/url?${qs}`;
+
   return fetchJSON<UrlDrilldownResponse>(url, { method: "GET", signal });
 }

@@ -1,5 +1,7 @@
 /**
- * Función para formatear URLs removiendo el dominio wp.ideanto.com y el primer segmento (pueblo)
+ * Función para formatear URLs removiendo el dominio wp.ideanto.com
+ * y convirtiendo segmentos en formato legible manteniendo TODOS los niveles
+ * Ejemplo: /almonte/naturaleza/ruta-ciclista → "Almonte / Naturaleza / Ruta Ciclista"
  */
 export function formatUrlForDisplay(url: string): string {
   try {
@@ -12,50 +14,40 @@ export function formatUrlForDisplay(url: string): string {
       workingUrl = workingUrl.replace("http://wp.ideanto.com", "");
     }
 
-    // Separar query y hash
-    let search = "";
-    let hash = "";
-
+    // Remover query params y hash para el procesamiento
     const hashIndex = workingUrl.indexOf("#");
     if (hashIndex !== -1) {
-      hash = workingUrl.substring(hashIndex);
       workingUrl = workingUrl.substring(0, hashIndex);
     }
 
     const queryIndex = workingUrl.indexOf("?");
     if (queryIndex !== -1) {
-      search = workingUrl.substring(queryIndex);
       workingUrl = workingUrl.substring(0, queryIndex);
     }
 
     // Normalizar path
     const pathname = workingUrl.startsWith("/") ? workingUrl : "/" + workingUrl;
 
-    // Remover pueblo del path (asumir que es el primer segmento)
+    // Separar segmentos del path
     const segments = pathname.split("/").filter(Boolean);
 
     if (segments.length === 0) {
-      return search + hash || "/";
+      return "Inicio";
     }
 
-    // Si hay más de un segmento, quitar el primero (pueblo) y mantener el resto
-    let resultPath: string;
-    if (segments.length > 1) {
-      resultPath = "/" + segments.slice(1).join("/");
-    } else {
-      resultPath = "/";
-    }
+    // Función helper para capitalizar y limpiar segmentos
+    const formatSegment = (segment: string): string => {
+      return segment
+        .split("-")
+        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(" ");
+    };
 
-    // Preservar trailing slash si el original lo tenía
-    if (
-      pathname.endsWith("/") &&
-      !resultPath.endsWith("/") &&
-      resultPath !== "/"
-    ) {
-      resultPath += "/";
-    }
+    // ✅ Formatear TODOS los segmentos y unirlos con " - "
+    // Esto mantiene la unicidad mientras hace la URL más legible
+    const formattedSegments = segments.map(formatSegment);
 
-    return resultPath + search + hash;
+    return formattedSegments.join(" - ");
   } catch {
     return url;
   }

@@ -16,7 +16,6 @@ import { TOWN_ID_ORDER } from "@/lib/taxonomy/towns";
 import type { SeriesPoint } from "@/lib/types";
 import { labelToCategoryId } from "@/lib/utils/core/sector";
 
-import { computeRangesForKPI } from "@/lib/utils/time/timeWindows";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useMemo, useState } from "react";
 
@@ -149,26 +148,18 @@ function AnalyticsByTownSectionInner() {
   const level2Data = useMemo(() => {
     if (!drill || drill.kind !== "town+cat") return undefined;
 
-    // ✅ USAR computeRangesForKPI para calcular rangos correctos
-    const ranges =
-      mode === "range"
-        ? computeRangesForKPI(
-            calculatedGranularity,
-            startDate.toISOString().split("T")[0],
-            endDate.toISOString().split("T")[0]
-          )
-        : computeRangesForKPI(calculatedGranularity); // Preset según granularidad
-
+    // ✅ SIEMPRE usar las fechas del contexto (ya calculadas correctamente)
+    // No recalcular desde computeRangesForKPI porque perdemos la fecha correcta
     const result = {
       townId: drill.townId,
       categoryId: drill.categoryId,
       granularity: calculatedGranularity,
-      startISO: ranges.current.start,
-      endISO: ranges.current.end,
+      startISO: currentPeriod.start,
+      endISO: currentPeriod.end,
     };
 
     return result;
-  }, [drill, calculatedGranularity, mode, startDate, endDate]);
+  }, [drill, calculatedGranularity, currentPeriod]);
 
   // Remonta el grid si cambian exp/drill/granularidad/período
   const gridKey = useMemo(() => {
