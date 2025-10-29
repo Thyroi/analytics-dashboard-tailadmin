@@ -17,7 +17,11 @@ function InnerSectorsByTownSection() {
     setRange,
     clearRange,
     updatePickerDatesOnly,
+    getCalculatedGranularity,
   } = useTownTimeframe();
+
+  // Usar granularidad calculada automáticamente según duración del rango
+  const calculatedGranularity = getCalculatedGranularity();
 
   return (
     <section className="max-w-[1560px] mx-auto w-full">
@@ -32,7 +36,7 @@ function InnerSectorsByTownSection() {
         onClearRange={clearRange}
         onPickerDatesUpdate={updatePickerDatesOnly}
       />
-      <SectorsByTownSectionContent granularity={granularity} />
+      <SectorsByTownSectionContent granularity={calculatedGranularity} />
     </section>
   );
 }

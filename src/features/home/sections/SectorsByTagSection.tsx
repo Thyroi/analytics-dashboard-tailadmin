@@ -17,7 +17,11 @@ function InnerSectorsByTagSection() {
     setRange,
     clearRange,
     updatePickerDatesOnly,
+    getCalculatedGranularity,
   } = useTagTimeframe();
+
+  // Usar granularidad calculada automáticamente según duración del rango
+  const calculatedGranularity = getCalculatedGranularity();
 
   return (
     <section className="max-w-[1560px] mx-auto w-full">
@@ -32,7 +36,7 @@ function InnerSectorsByTagSection() {
         onClearRange={clearRange}
         onPickerDatesUpdate={updatePickerDatesOnly}
       />
-      <SectorsByTagSectionContent granularity={granularity} />
+      <SectorsByTagSectionContent granularity={calculatedGranularity} />
     </section>
   );
 }
