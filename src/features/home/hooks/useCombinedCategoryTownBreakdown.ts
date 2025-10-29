@@ -189,7 +189,7 @@ export function useCombinedCategoryTownBreakdown(
   // Verificar que ambas queries hayan completado (exitosamente o sin datos)
   const ga4IsReady = ga4Result.status === "ready";
   const chatbotIsReady = !chatbotResult.isLoading;
-  
+
   // Solo marcamos como "not loading" cuando AMBAS queries terminaron
   // Esto previene el flickering cuando una termina antes que la otra
   const isLoading = !ga4IsReady || !chatbotIsReady;

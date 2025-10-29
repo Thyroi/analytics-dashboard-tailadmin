@@ -42,7 +42,7 @@ type BaseProps = {
 
   /** Loader en aro + delta oculto */
   isDeltaLoading?: boolean;
-  
+
   /** Loader para los detalles expandidos (series + donut) */
   isDetailLoading?: boolean;
 
