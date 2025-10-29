@@ -1,6 +1,6 @@
 /**
- * /lib/utils/seriesAndDonuts.ts
- * Utilidades para generar series temporales y donuts reutilizables
+ * /lib/utils/data/formatters.ts
+ * Formateo de series y funciones especializadas para chatbot
  */
 
 import { getCategoryLabel } from "@/lib/taxonomy/categories";
@@ -8,424 +8,25 @@ import { TOWN_SYNONYMS } from "@/lib/taxonomy/towns";
 import type { Granularity } from "@/lib/types";
 import { detectTownAndCategoryFromPath } from "@/lib/utils/chatbot/aggregate";
 import { computeRangesByGranularity } from "@/lib/utils/time/granularityRanges";
-import { safeUrlPathname } from "../routing/pathMatching";
-
-// Tipo para filas de GA4
-export type GA4Row = {
-  dimensionValues?: { value?: string }[];
-  metricValues?: { value?: string }[];
-};
+import { generateTimeAxis } from "./timeAxis";
 
 /**
- * Parsea fechas de GA4 según granularidad
- */
-function parseGA4Date(dateRaw: string, granularity: string): string {
-  if (granularity === "y") {
-    // Para granularidad anual, GA4 devuelve YYYYMM
-    return dateRaw.length === 6
-      ? `${dateRaw.slice(0, 4)}-${dateRaw.slice(4, 6)}`
-      : dateRaw;
-  } else {
-    // Para otras granularidades, GA4 devuelve YYYYMMDD
-    return dateRaw.length === 8
-      ? `${dateRaw.slice(0, 4)}-${dateRaw.slice(4, 6)}-${dateRaw.slice(6, 8)}`
-      : dateRaw;
-  }
-}
-
-/**
- * Mapea datos de GA4 a series temporales con lógica de desplazamiento genérica
- */
-function mapToTemporalSeries<T>(
-  rows: GA4Row[],
-  categoryMatcher: (path: string) => T | null,
-  targetCategory: T,
-  ranges: {
-    current: { start: string; end: string };
-    previous: { start: string; end: string };
-  },
-  xLabels: string[],
-  granularity: string
-): {
-  currentSeries: number[];
-  previousSeries: number[];
-  totalCurrent: number;
-  totalPrevious: number;
-} {
-  const currentSeries = new Array(xLabels.length).fill(0);
-  const previousSeries = new Array(xLabels.length).fill(0);
-
-  let totalCurrent = 0;
-  let totalPrevious = 0;
-
-  for (const r of rows) {
-    const dateRaw = String(r.dimensionValues?.[0]?.value ?? "");
-    if (!dateRaw) continue;
-
-    const iso = parseGA4Date(dateRaw, granularity);
-    const url = String(r.dimensionValues?.[1]?.value ?? "");
-    const path = safeUrlPathname(url);
-    const value = Number(r.metricValues?.[0]?.value ?? 0);
-
-    // Verificar que la URL corresponde a nuestra categoría
-    const matchedCategory = categoryMatcher(path);
-    if (matchedCategory !== targetCategory) continue;
-
-    // Generar timeKey según granularidad
-    const timeKey = granularity === "y" ? iso : iso; // Para yearly ya viene como YYYY-MM
-
-    // Mapear a current series
-    if (iso >= ranges.current.start && iso <= ranges.current.end) {
-      const timeIndex = xLabels.indexOf(timeKey);
-      if (timeIndex >= 0) {
-        currentSeries[timeIndex] += value;
-      }
-      totalCurrent += value;
-    }
-
-    // Mapear a previous series (NO EXCLUSIVO - una fecha puede estar en ambos)
-    if (iso >= ranges.previous.start && iso <= ranges.previous.end) {
-      if (granularity === "y") {
-        // Para yearly, los datos vienen como YYYY-MM y los rangos como YYYY-MM-DD
-        // Necesitamos comparar solo año-mes
-        const currentStartYM = ranges.current.start.slice(0, 7); // "2024-10"
-        const currentEndYM = ranges.current.end.slice(0, 7); // "2025-10"
-        const isoYM = iso; // Ya viene como "2025-09"
-
-        // Verificar si este mes está en el current range
-        if (isoYM >= currentStartYM && isoYM <= currentEndYM) {
-          // Encontrar la posición en xLabels
-          const timeIndex = xLabels.indexOf(isoYM);
-          if (timeIndex >= 0) {
-            // Para previous, ese mismo mes va una posición adelante (shift de 1 mes)
-            const targetIndex = timeIndex + 1;
-            if (targetIndex < xLabels.length) {
-              previousSeries[targetIndex] += value;
-            }
-          }
-        }
-      } else {
-        // Para otras granularidades, calcular diferencia en días
-        const previousStart = new Date(ranges.previous.start);
-        const currentDate = new Date(iso);
-        const daysFromPrevStart = Math.floor(
-          (currentDate.getTime() - previousStart.getTime()) /
-            (24 * 60 * 60 * 1000)
-        );
-
-        if (daysFromPrevStart >= 0 && daysFromPrevStart < xLabels.length) {
-          previousSeries[daysFromPrevStart] += value;
-        }
-      }
-
-      totalPrevious += value;
-    }
-  }
-
-  return {
-    currentSeries,
-    previousSeries,
-    totalCurrent,
-    totalPrevious,
-  };
-}
-
-/**
- * Genera el eje temporal (xLabels) según la granularidad
- */
-export function generateTimeAxis(
-  granularity: Granularity,
-  currentStart: string,
-  currentEnd: string
-): string[] {
-  const isYearly = granularity === "y";
-
-  if (isYearly) {
-    // Para granularidad anual, generar labels por mes (YYYY-MM)
-    const labels: string[] = [];
-    const start = new Date(currentStart);
-    const end = new Date(currentEnd);
-
-    const current = new Date(start.getFullYear(), start.getMonth(), 1);
-    const endDate = new Date(end);
-    while (current <= endDate) {
-      const year = current.getFullYear();
-      const month = String(current.getMonth() + 1).padStart(2, "0");
-      labels.push(`${year}-${month}`);
-      current.setMonth(current.getMonth() + 1);
-    }
-
-    return labels;
-  } else {
-    // Para otras granularidades, generar labels por día (YYYY-MM-DD)
-    const labels: string[] = [];
-    const start = new Date(currentStart);
-    const end = new Date(currentEnd);
-
-    const current = new Date(start);
-    const endDate = new Date(end);
-
-    while (current <= endDate) {
-      labels.push(current.toISOString().slice(0, 10));
-      current.setDate(current.getDate() + 1);
-    }
-
-    return labels;
-  }
-}
-
-/**
- * Función genérica para construir series temporales (reemplaza buildTimeSeriesForCategory)
- */
-export function buildTimeSeriesForCategory<T>(
-  rows: GA4Row[],
-  categoryMatcher: (path: string) => T | null,
-  targetCategory: T,
-  ranges: {
-    current: { start: string; end: string };
-    previous: { start: string; end: string };
-  },
-  xLabels: string[],
-  granularity: Granularity
-): {
-  currentSeries: number[];
-  previousSeries: number[];
-  totalCurrent: number;
-  totalPrevious: number;
-} {
-  return mapToTemporalSeries(
-    rows,
-    categoryMatcher,
-    targetCategory,
-    ranges,
-    xLabels,
-    granularity
-  );
-}
-
-/**
- * Construye datos para donut de pueblos
- * Ahora incluye un bucket "(otros)" para URLs sin pueblo mapeado
- */
-export function buildTownsDonutForCategory<T>(
-  rows: GA4Row[],
-  categoryMatcher: (path: string) => T | null,
-  targetCategory: T,
-  townMatcher: (path: string) => string | null,
-  donutStart: string,
-  donutEnd: string,
-  granularity: string
-): Array<{ label: string; value: number }> {
-  const townCounts: Record<string, number> = {};
-  let unmappedCount = 0;
-  const unmappedExamples: string[] = [];
-
-  for (const r of rows) {
-    const dateRaw = String(r.dimensionValues?.[0]?.value ?? "");
-    if (!dateRaw) continue;
-
-    const iso = parseGA4Date(dateRaw, granularity);
-    const url = String(r.dimensionValues?.[1]?.value ?? "");
-    const path = safeUrlPathname(url);
-    const value = Number(r.metricValues?.[0]?.value ?? 0);
-
-    // Filtrar por rango de fechas PRIMERO
-    if (iso < donutStart || iso > donutEnd) continue;
-
-    // Filtrar por categoría - DEBE coincidir con la categoría objetivo
-    const matchedCategory = categoryMatcher(path);
-    if (matchedCategory !== targetCategory) continue;
-
-    // Extraer pueblo de la URL
-    const town = townMatcher(path);
-    if (town) {
-      townCounts[town] = (townCounts[town] || 0) + value;
-    } else {
-      // No se pudo mapear a un pueblo - agregar a bucket "unmapped"
-      unmappedCount += value;
-
-      // Guardar ejemplos de URLs sin mapear (máximo 5 únicos)
-      if (unmappedExamples.length < 5 && !unmappedExamples.includes(path)) {
-        unmappedExamples.push(path);
-      }
-    }
-  }
-
-  const result = Object.entries(townCounts)
-    .map(([label, value]) => ({ label, value }))
-    .sort((a, b) => b.value - a.value);
-
-  // Si hay eventos sin mapear, agregar al final con ejemplos
-  if (unmappedCount > 0) {
-    // Extraer último segmento de las URLs de ejemplo para el label
-    const pathSegments = unmappedExamples
-      .map((path) => {
-        const segments = path.split("/").filter((s) => s.length > 0);
-        return segments[segments.length - 1] || "general";
-      })
-      .slice(0, 3); // Máximo 3 ejemplos en el label
-
-    const exampleLabel =
-      pathSegments.length > 0
-        ? `Otros (${pathSegments.join(", ")}${
-            unmappedExamples.length > 3 ? ", ..." : ""
-          })`
-        : "Otros (sin pueblo)";
-
-    result.push({ label: exampleLabel, value: unmappedCount });
-  }
-
-  return result;
-}
-
-/**
- * Función específica para series temporales de pueblos
- */
-export function buildTimeSeriesForTown<T>(
-  rows: GA4Row[],
-  townMatcher: (path: string) => T | null,
-  targetTown: T,
-  ranges: {
-    current: { start: string; end: string };
-    previous: { start: string; end: string };
-  },
-  xLabels: string[],
-  granularity: Granularity
-): {
-  currentSeries: number[];
-  previousSeries: number[];
-  totalCurrent: number;
-  totalPrevious: number;
-} {
-  return mapToTemporalSeries(
-    rows,
-    townMatcher,
-    targetTown,
-    ranges,
-    xLabels,
-    granularity
-  );
-}
-
-/**
- * Construye datos para donut de categorías para un pueblo específico
- */
-export function buildCategoriesDonutForTown<T>(
-  rows: GA4Row[],
-  townMatcher: (path: string) => T | null,
-  targetTown: T,
-  categoryMatcher: (path: string) => string | null,
-  donutStart: string,
-  donutEnd: string,
-  granularity: string
-): Array<{ label: string; value: number }> {
-  const categoryCounts: Record<string, number> = {};
-  const uncategorizedPaths: string[] = []; // Para guardar ejemplos de URLs sin categoría
-
-  for (const r of rows) {
-    const dateRaw = String(r.dimensionValues?.[0]?.value ?? "");
-    if (!dateRaw) continue;
-
-    const iso = parseGA4Date(dateRaw, granularity);
-    const url = String(r.dimensionValues?.[1]?.value ?? "");
-    const path = safeUrlPathname(url);
-    const value = Number(r.metricValues?.[0]?.value ?? 0);
-
-    // Filtrar por rango de fechas PRIMERO
-    if (iso < donutStart || iso > donutEnd) continue;
-
-    // Filtrar por pueblo - DEBE coincidir con el pueblo objetivo
-    const matchedTown = townMatcher(path);
-    if (matchedTown !== targetTown) continue;
-
-    // Extraer categoría de la URL
-    const category = categoryMatcher(path);
-    if (category) {
-      categoryCounts[category] = (categoryCounts[category] || 0) + value;
-    } else {
-      // Guardar ejemplos de paths sin categoría
-      if (uncategorizedPaths.length < 5 && !uncategorizedPaths.includes(path)) {
-        uncategorizedPaths.push(path);
-      }
-      categoryCounts["__UNCATEGORIZED__"] =
-        (categoryCounts["__UNCATEGORIZED__"] || 0) + value;
-    }
-  }
-
-  // Construir resultado con label descriptivo para "Otros"
-  const result = Object.entries(categoryCounts)
-    .map(([label, value]) => {
-      if (label === "__UNCATEGORIZED__") {
-        // Extraer últimos segmentos de las URLs para el label
-        const pathSegments = uncategorizedPaths
-          .map((path) => {
-            const segments = path.split("/").filter((s) => s.length > 0);
-            return segments[segments.length - 1] || "home";
-          })
-          .slice(0, 3); // Máximo 3 ejemplos
-
-        const exampleLabel =
-          pathSegments.length > 0
-            ? `Otros (${pathSegments.join(", ")}${
-                uncategorizedPaths.length > 3 ? ", ..." : ""
-              })`
-            : "Otros (sin categoría)";
-
-        return { label: exampleLabel, value };
-      }
-      return { label, value };
-    })
-    .sort((a, b) => b.value - a.value);
-
-  return result;
-}
-
-/**
- * Construye datos para donut de URLs para un pueblo y categoría específicos
- */
-export function buildUrlsDonutForTownCategory<T>(
-  rows: GA4Row[],
-  townMatcher: (path: string) => T | null,
-  targetTown: T,
-  categoryMatcher: (path: string) => string | null,
-  targetCategory: string,
-  donutStart: string,
-  donutEnd: string,
-  granularity: string
-): Array<{ label: string; value: number }> {
-  const urlCounts: Record<string, number> = {};
-
-  for (const r of rows) {
-    const dateRaw = String(r.dimensionValues?.[0]?.value ?? "");
-    if (!dateRaw) continue;
-
-    const iso = parseGA4Date(dateRaw, granularity);
-    const url = String(r.dimensionValues?.[1]?.value ?? "");
-    const path = safeUrlPathname(url);
-    const value = Number(r.metricValues?.[0]?.value ?? 0);
-
-    // Filtrar por pueblo, categoría y rango de fechas
-    const matchedTown = townMatcher(path);
-    if (matchedTown !== targetTown) continue;
-
-    if (iso < donutStart || iso > donutEnd) continue;
-
-    const category = categoryMatcher(path);
-    if (category !== targetCategory) continue;
-
-    // Usar la URL completa como etiqueta
-    if (url) {
-      urlCounts[url] = (urlCounts[url] || 0) + value;
-    }
-  }
-
-  return Object.entries(urlCounts)
-    .map(([label, value]) => ({ label, value }))
-    .sort((a, b) => b.value - a.value);
-}
-
-/**
- * Formatea series para respuesta API
+ * Formatea series numéricas a formato de respuesta API
+ *
+ * @param currentSeries - Array de valores para el período actual
+ * @param previousSeries - Array de valores para el período anterior
+ * @param xLabels - Etiquetas del eje X (para current)
+ * @param ranges - Rangos temporales (opcional, para generar labels de previous)
+ * @param granularity - Granularidad temporal (opcional)
+ * @returns Objeto con series formateadas { current, previous }
+ *
+ * @example
+ * const formatted = formatSeries(
+ *   [100, 150, 200],
+ *   [80, 120, 180],
+ *   ['2025-10-01', '2025-10-02', '2025-10-03']
+ * );
+ * // { current: [{ label: '2025-10-01', value: 100 }, ...], previous: [...] }
  */
 export function formatSeries(
   currentSeries: number[],
@@ -461,49 +62,6 @@ export function formatSeries(
       value,
     })),
   };
-}
-
-export function buildUrlsDonutForCategoryTown<T>(
-  rows: GA4Row[],
-  categoryMatcher: (path: string) => string | null,
-  targetCategory: string,
-  townMatcher: (path: string) => T | null,
-  targetTown: T,
-  donutStart: string,
-  donutEnd: string,
-  granularity: string
-): Array<{ label: string; value: number }> {
-  const urlCounts: Record<string, number> = {};
-
-  for (const r of rows) {
-    const dateRaw = String(r.dimensionValues?.[0]?.value ?? "");
-    if (!dateRaw) continue;
-
-    const iso = parseGA4Date(dateRaw, granularity);
-    const url = String(r.dimensionValues?.[1]?.value ?? "");
-    const path = safeUrlPathname(url);
-    const value = Number(r.metricValues?.[0]?.value ?? 0);
-
-    // Filtrar por rango de fechas PRIMERO
-    if (iso < donutStart || iso > donutEnd) continue;
-
-    // Filtrar por categoría
-    const category = categoryMatcher(path);
-    if (category !== targetCategory) continue;
-
-    // Filtrar por pueblo
-    const matchedTown = townMatcher(path);
-    if (matchedTown !== targetTown) continue;
-
-    // Usar la URL completa como etiqueta
-    if (url) {
-      urlCounts[url] = (urlCounts[url] || 0) + value;
-    }
-  }
-
-  return Object.entries(urlCounts)
-    .map(([label, value]) => ({ label, value }))
-    .sort((a, b) => b.value - a.value);
 }
 
 /**
@@ -583,7 +141,25 @@ function matchesCategory(text: string, targetCategory: string): boolean {
 
 /**
  * Función enfocada para construir series y donut para chatbot data
- * Basada en los parámetros que requiere nuestro caso de uso específico
+ *
+ * Procesa datos raw del chatbot y genera series temporales + donut charts
+ * según el enfoque (categoría o pueblo). Maneja granularidades y rangos.
+ *
+ * @param config - Configuración con granularidad, rangos y enfoque
+ * @param inputData - Datos raw del chatbot en formato ApiResponse
+ * @returns Series temporales y datos para donut chart
+ *
+ * @example
+ * const result = buildSeriesAndDonutFocused(
+ *   {
+ *     granularity: 'd',
+ *     currentRange: { start: '2025-10-01', end: '2025-10-31' },
+ *     prevRange: { start: '2024-10-01', end: '2024-10-31' },
+ *     focus: { type: 'category', id: 'playas' }
+ *   },
+ *   chatbotApiResponse
+ * );
+ * // { series: { current: [...], previous: [...] }, donutData: [...] }
  */
 export function buildSeriesAndDonutFocused(
   config: {

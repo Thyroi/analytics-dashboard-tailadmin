@@ -29,7 +29,7 @@ import {
 import {
   buildTownsDonutForCategory,
   buildUrlsDonutForCategoryTown,
-} from "@/lib/utils/data/seriesAndDonuts";
+} from "@/lib/utils/data";
 
 import {
   matchCategoryIdFromPath,

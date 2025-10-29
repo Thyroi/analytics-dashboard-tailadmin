@@ -3,5 +3,5 @@
  * @module string
  */
 
-export * from './tokenization';
-export * from './normalize';
+export * from "./normalize";
+export * from "./tokenization";

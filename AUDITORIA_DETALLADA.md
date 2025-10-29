@@ -1,6 +1,6 @@
 # 📊 AUDITORÍA DETALLADA DEL PROYECTO - Analytics Dashboard
 
-**Fecha:** 29 de Octubre de 2025  
+**Fecha:** 29 de Octubre de 2025
 **Alcance:** Front-end (React/Next.js) y Back-end (API Routes, Services, Utils)
 
 ---
@@ -8,6 +8,7 @@
 ## 🎯 RESUMEN EJECUTIVO
 
 ### Estadísticas Generales
+
 - **Total de archivos analizados:** ~500+ archivos TypeScript/TSX
 - **Archivos con +120 líneas:** 134 archivos
 - **Archivos críticos (+400 líneas):** 29 archivos
@@ -22,18 +23,18 @@
 
 ### Top 10 Archivos Más Grandes
 
-| Archivo | Líneas | Categoría | Prioridad Refactor |
-|---------|--------|-----------|-------------------|
-| `src/app/debug/page.tsx` | 1,238 | Página Debug | 🔴 ALTA |
-| `src/lib/utils/data/seriesAndDonuts.ts` | 847 | Utilidades | 🔴 ALTA |
-| `src/app/(dashboard)/chatbot/test-query.tsx` | 623 | Página Test | 🟡 MEDIA |
-| `src/lib/utils/data/seriesAndDonuts.test.ts` | 599 | Tests | 🟢 BAJA |
-| `src/lib/services/chatbot/townCategoryBreakdown.ts` | 565 | Servicio | 🔴 ALTA |
-| `src/app/api/analytics/v1/drilldown/url/route.ts` | 528 | API Route | 🔴 ALTA |
-| `src/lib/services/chatbot/categoryTownBreakdown.ts` | 474 | Servicio | 🔴 ALTA |
-| `src/features/chatbot/components/CategoryExpandedCard.tsx` | 449 | Componente | 🟡 MEDIA |
-| `src/features/chatbot/components/TownExpandedCard.tsx` | 447 | Componente | 🟡 MEDIA |
-| `src/features/chatbot/utils/aggregation.ts` | 437 | Utilidades | 🔴 ALTA |
+| Archivo                                                    | Líneas | Categoría    | Prioridad Refactor |
+| ---------------------------------------------------------- | ------ | ------------ | ------------------ |
+| `src/app/debug/page.tsx`                                   | 1,238  | Página Debug | 🔴 ALTA            |
+| `src/lib/utils/data/seriesAndDonuts.ts`                    | 847    | Utilidades   | 🔴 ALTA            |
+| `src/app/(dashboard)/chatbot/test-query.tsx`               | 623    | Página Test  | 🟡 MEDIA           |
+| `src/lib/utils/data/seriesAndDonuts.test.ts`               | 599    | Tests        | 🟢 BAJA            |
+| `src/lib/services/chatbot/townCategoryBreakdown.ts`        | 565    | Servicio     | 🔴 ALTA            |
+| `src/app/api/analytics/v1/drilldown/url/route.ts`          | 528    | API Route    | 🔴 ALTA            |
+| `src/lib/services/chatbot/categoryTownBreakdown.ts`        | 474    | Servicio     | 🔴 ALTA            |
+| `src/features/chatbot/components/CategoryExpandedCard.tsx` | 449    | Componente   | 🟡 MEDIA           |
+| `src/features/chatbot/components/TownExpandedCard.tsx`     | 447    | Componente   | 🟡 MEDIA           |
+| `src/features/chatbot/utils/aggregation.ts`                | 437    | Utilidades   | 🔴 ALTA            |
 
 ### Archivos entre 300-400 líneas (Críticos)
 
@@ -62,13 +63,15 @@
 ### 1. **Función `toTokens()` - DUPLICADA 3 VECES**
 
 **Ubicaciones:**
+
 1. `src/lib/utils/routing/url.ts` (exportada)
 2. `src/lib/utils/data/aggregateCategories.ts` (privada)
 3. `src/features/chatbot/utils/aggregation.ts` (exportada)
 
 **Análisis:** La misma lógica de tokenización se repite en tres lugares diferentes. Solo una versión debería existir.
 
-**Recomendación:** 
+**Recomendación:**
+
 - Consolidar en `src/lib/utils/string/tokenization.ts`
 - Eliminar duplicados
 - Actualizar imports en `aggregateCategories.ts` y `aggregation.ts`
@@ -76,6 +79,7 @@
 ### 2. **Lógica de Normalización de Strings - DUPLICADA**
 
 **Funciones duplicadas:**
+
 - `norm()` en `aggregateCategories.ts`
 - `normalizeToken()` en `aggregation.ts`
 - `normalizeString()` en varios lugares
@@ -85,6 +89,7 @@
 ### 3. **Cálculos de Delta - LÓGICA REPETIDA**
 
 **Ubicaciones:**
+
 - `src/lib/utils/delta/delta.ts` (428 líneas) - Complejo
 - `src/lib/utils/core/delta.ts` - Simplificado
 - Lógica inline en múltiples componentes
@@ -94,6 +99,7 @@
 ### 4. **Funciones de Fecha/Tiempo - MÚLTIPLES DUPLICADOS**
 
 **Funciones duplicadas:**
+
 - `isoFromYYYYMMDD()` aparece en:
   - `src/lib/utils/time/datetime.ts`
   - `src/lib/utils/time/timeAxisChatbot.ts`
@@ -104,10 +110,12 @@
 ### 5. **Agregación de Categorías - LÓGICA DUPLICADA**
 
 **Ubicaciones:**
+
 - `src/lib/utils/data/aggregateCategories.ts`
 - `src/features/chatbot/utils/aggregation.ts`
 
 Ambos tienen lógica MUY similar (~70% coincidencia) para:
+
 - Tokenización
 - Normalización
 - Matching fuzzy
@@ -120,6 +128,7 @@ Ambos tienen lógica MUY similar (~70% coincidencia) para:
 ### Componentes Activos (Usados en Producción)
 
 #### 🟢 Componentes Comunes (src/components/common)
+
 - ✅ `ChartPair` - **MUY USADO** (16+ referencias)
 - ✅ `DeltaCard` - **MUY USADO** (10+ referencias)
 - ✅ `StickyHeaderSection` - **MUY USADO** (15+ referencias)
@@ -132,6 +141,7 @@ Ambos tienen lógica MUY similar (~70% coincidencia) para:
 - ✅ `Modal`, `Toast`, `PagerDots`, `ActivityButton` - Componentes UI base
 
 #### 🟢 Componentes de Charts (src/components/charts)
+
 - ✅ `LineChart` - Usado en múltiples secciones
 - ✅ `DonutLeader` - Usado en home sectors
 - ✅ `PieChart` - Usado en DonutCard
@@ -141,6 +151,7 @@ Ambos tienen lógica MUY similar (~70% coincidencia) para:
 - ✅ `WorldBubbleMap` - Demographics
 
 #### 🟢 Componentes Dashboard (src/components/dashboard)
+
 - ✅ `DonutCard` - Devices, OS
 - ✅ `KPIStatGrid` - Analytics y chatbot
 - ✅ `KPICard` - Base para KPIs
@@ -148,6 +159,7 @@ Ambos tienen lógica MUY similar (~70% coincidencia) para:
 - ✅ `RangeControls` - Controles de fecha
 
 #### 🔴 Componentes Debug (src/components/debug)
+
 - ⚠️ `DebugCategoryCharts` - Solo en debug page
 - ⚠️ `DebugTownCharts` - Solo en debug page
 - ⚠️ `DebugCategoryDetail` - Solo en debug page
@@ -157,6 +169,7 @@ Ambos tienen lógica MUY similar (~70% coincidencia) para:
 **Recomendación:** Los componentes de debug solo se usan en `/debug`. Si esta página es solo para desarrollo, considerar moverlos a una carpeta separada o eliminarlos en producción.
 
 #### 🟡 Componentes de Usuario (src/components/user)
+
 - ✅ `profileClient` - Página de usuario
 - ✅ `ProfileHeader` - Usado
 - ✅ `ProfilePersonalInfo` - Usado
@@ -165,6 +178,7 @@ Ambos tienen lógica MUY similar (~70% coincidencia) para:
 - ⚠️ `Field` - Helper usado solo en ProfileAddress y ProfileSocialNetworks
 
 #### 🔴 Skeletons No Utilizados
+
 - ❌ `CustomersDemographicSkeleton` - **NO SE USA EN NINGUNA PARTE**
 - ✅ `KPIListSkeleton` - Usado
 - ✅ `ChartPairSkeleton` - Usado
@@ -179,6 +193,7 @@ Ambos tienen lógica MUY similar (~70% coincidencia) para:
 ### Hooks Activos y su Uso
 
 #### 🟢 Analytics Hooks (src/features/analytics/hooks)
+
 - ✅ `useDrilldownDetails` - Usado en expanded cards
 - ✅ `useUrlSeries` - Usado en drilldowns
 - ✅ `useTownCategoryDrilldown` - Usado en analytics
@@ -190,12 +205,14 @@ Ambos tienen lógica MUY similar (~70% coincidencia) para:
 - ✅ `usePuebloDetails` - Usado en analytics
 
 #### 🟢 Chatbot Hooks (src/features/chatbot/hooks)
+
 - ✅ `useChatbotCategoryTotals` - Usado en chatbot page
 - ✅ `useChatbotTownTotals` - Usado en chatbot page
 - ✅ `useCategoryDrilldownReal` - Usado en CategoryDrilldownView
 - ✅ `useCategoryTownBreakdownRaw` - Usado en debug y chatbot
 
 #### 🟢 Home Hooks (src/features/home/hooks)
+
 - ✅ `useOverview` - Usado en GeneralDataCard
 - ✅ `useOverviewCompare` - Usado en GeneralDataCard
 - ✅ `useCombinedTownCategoryBreakdown` - Usado en debug
@@ -205,6 +222,7 @@ Ambos tienen lógica MUY similar (~70% coincidencia) para:
 - ✅ `useTownDetails` - Usado internamente
 
 #### 🔴 Hook Global
+
 - ✅ `useToast` - Usado solo en EditProfileModal y Login (2 usos)
 
 ---
@@ -214,6 +232,7 @@ Ambos tienen lógica MUY similar (~70% coincidencia) para:
 ### APIs Activas
 
 #### Analytics API v1 (src/app/api/analytics/v1)
+
 - ✅ `/overview` - Usado por useOverview
 - ✅ `/top-pages-table` - Usado por useTopPagesTable
 - ✅ `/top-comparative-pages-fixed` - Usado en analytics
@@ -231,15 +250,18 @@ Ambos tienen lógica MUY similar (~70% coincidencia) para:
 - ✅ `/dimensions/pueblos/details/[id]` - Usado en analytics
 
 #### Chatbot API
+
 - ✅ `/api/chatbot/audit/tags` - **MUY USADO** (11+ referencias en servicios)
 - ⚠️ `/api/chatbot/top-categories` - Posiblemente no usado
 
 #### Debug API
+
 - ⚠️ `/api/debug/details` - Solo en debug pages
 - ⚠️ `/api/debug/fechas` - Solo en debug pages
 - ⚠️ `/api/debug/category-visits` - Solo en debug pages
 
 #### Auth API
+
 - ✅ `/api/auth/local/login` - Login page
 - ✅ `/api/auth/local/logout` - Logout funcionalidad
 
@@ -255,6 +277,7 @@ Ambos tienen lógica MUY similar (~70% coincidencia) para:
 ### Página: Home (`src/app/page.tsx`) - 20 líneas ✅
 
 **Componentes usados:**
+
 - `HomeProviders` (wrapper de contextos)
 - `GeneralDataSection` (52 líneas)
 - `SectorsByTagSection` (44 líneas)
@@ -267,6 +290,7 @@ Ambos tienen lógica MUY similar (~70% coincidencia) para:
 ### Página: Analytics (`src/app/(dashboard)/analytics/page.tsx`) - 75 líneas ✅
 
 **Componentes usados:**
+
 - `AnalyticsProviders`
 - `HeaderAnalyticsTimeProvider`
 - `StickyHeaderSection`
@@ -286,6 +310,7 @@ Ambos tienen lógica MUY similar (~70% coincidencia) para:
 ### Página: Chatbot (`src/app/(dashboard)/chatbot/page.tsx`) - 48 líneas ✅
 
 **Componentes usados:**
+
 - `TagTimeProvider`
 - `ChatbotCategoriesSection` (248 líneas)
 - `ChatbotTownsSection` (218 líneas)
@@ -298,10 +323,12 @@ Ambos tienen lógica MUY similar (~70% coincidencia) para:
 ### Página: Users (`src/app/(admin)/users/page.tsx`) - 155 líneas 🟡
 
 **Componentes usados:**
+
 - `DataTable` (153 líneas)
 - TRPC hooks (admin.listUsers, admin.setUserRole, admin.deleteUser)
 
-**Análisis:** 
+**Análisis:**
+
 - Tiene lógica compleja de tipo guards para errores TRPC
 - Podría extraerse lógica de columnas y acciones
 - La función `initials()` podría ir a utils
@@ -315,17 +342,20 @@ Ambos tienen lógica MUY similar (~70% coincidencia) para:
 **CRÍTICO - REQUIERE REFACTORING URGENTE**
 
 **Componentes internos:**
+
 - `DebugTownsTab` (función ~150 líneas)
 - `DebugCategoriesTab` (función ~450 líneas)
 - `DebugPageInner` (función ~50 líneas)
 
 **Problemas:**
+
 - Archivo masivo con múltiples responsabilidades
 - Lógica de presentación mezclada con lógica de datos
 - Componentes inline que deberían ser archivos separados
 - Debugging complejo que dificulta mantenimiento
 
-**Recomendación:** 
+**Recomendación:**
+
 1. Separar `DebugTownsTab` a archivo propio
 2. Separar `DebugCategoriesTab` a archivo propio
 3. Crear componentes reutilizables para las secciones repetitivas
@@ -335,7 +365,8 @@ Ambos tienen lógica MUY similar (~70% coincidencia) para:
 
 ### Página: Login (`src/app/login/page.tsx`) - 127 líneas 🟡
 
-**Análisis:** 
+**Análisis:**
+
 - Maneja tanto Auth0 como login local
 - Lógica de formulario inline
 - Usa `useToast`
@@ -349,6 +380,7 @@ Ambos tienen lógica MUY similar (~70% coincidencia) para:
 ### Servicios de Chatbot (src/lib/services/chatbot)
 
 **Archivos grandes (>250 líneas):**
+
 - `townCategoryBreakdown.ts` (565 líneas) 🔴
 - `categoryTownBreakdown.ts` (474 líneas) 🔴
 - `categoryTownSubcatBreakdown.ts` (407 líneas) 🔴
@@ -363,12 +395,14 @@ Ambos tienen lógica MUY similar (~70% coincidencia) para:
 - `bucketizer.ts` (227 líneas) 🟡
 
 **Patrón observado:** Mucha lógica similar de:
+
 - Fetch a `/api/chatbot/audit/tags`
 - Procesamiento de respuestas
 - Agregación de datos
 - Construcción de series y donuts
 
-**Recomendación:** 
+**Recomendación:**
+
 1. Crear helpers comunes para fetch y procesamiento
 2. Abstraer lógica de agregación repetida
 3. Considerar un servicio base con métodos compartidos
@@ -376,6 +410,7 @@ Ambos tienen lógica MUY similar (~70% coincidencia) para:
 ### Utilidades de Tiempo (src/lib/utils/time)
 
 **Archivos:**
+
 - `datetime.ts` (334 líneas) - **YA ES UNA CONSOLIDACIÓN**
 - `timeWindows.ts` (257 líneas)
 - `granularityRanges.ts` (241 líneas)
@@ -387,12 +422,14 @@ Ambos tienen lógica MUY similar (~70% coincidencia) para:
 - `windowGranularity.ts`
 - `granularityHelpers.ts`
 
-**Análisis:** 
+**Análisis:**
+
 - `datetime.ts` ya consolida muchas funciones
 - Pero aún hay funciones duplicadas en otros archivos (ej: `isoFromYYYYMMDD`)
 - Algunos archivos tienen responsabilidades superpuestas
 
 **Recomendación:**
+
 1. Auditar imports de funciones de fecha
 2. Migrar todos los usos a `datetime.ts`
 3. Eliminar duplicados en otros archivos
@@ -405,11 +442,13 @@ Ambos tienen lógica MUY similar (~70% coincidencia) para:
 - `aggregateCategories.ts` (126 líneas)
 
 **Análisis de seriesAndDonuts.ts:**
+
 - Funciones: `generateTimeAxis`, `buildTimeSeriesForCategory`, `buildTownsDonutForCategory`, `buildTimeSeriesForTown`, `buildCategoriesDonutForTown`, `buildUrlsDonutForTownCategory`, `formatSeries`, etc.
 - Muchas funciones similares con parámetros diferentes
 - Podría refactorizarse usando generics y composition
 
 **Recomendación:** Dividir en módulos temáticos:
+
 - `src/lib/utils/data/timeSeries.ts`
 - `src/lib/utils/data/donutBuilder.ts`
 - `src/lib/utils/data/timeAxis.ts`
@@ -421,15 +460,18 @@ Ambos tienen lógica MUY similar (~70% coincidencia) para:
 ### Archivos Potencialmente No Utilizados
 
 1. **`src/lib/mockData.ts` (300 líneas)**
+
    - ❌ No encontrado ningún import
    - Parece ser datos mock antiguos
    - **Recomendación:** ELIMINAR
 
 2. **`src/components/skeletons/CustomersDemographicSkeleton.tsx`**
+
    - ❌ No encontrado ningún import
    - **Recomendación:** ELIMINAR o usar en CustomersDemographics
 
 3. **`src/app/(dashboard)/chatbot/test-query.tsx` (623 líneas)**
+
    - Archivo de testing/debug
    - Solo útil para desarrollo
    - **Recomendación:** Mover a carpeta `__dev__` o eliminar en build de producción
@@ -459,11 +501,13 @@ Ambos tienen lógica MUY similar (~70% coincidencia) para:
 **Prioridad CRÍTICA - Sin riesgo de romper funcionalidad**
 
 1. **Eliminar código muerto confirmado:**
+
    - ❌ Eliminar `src/lib/mockData.ts`
    - ❌ Eliminar `CustomersDemographicSkeleton.tsx` o integrarlo
    - ❌ Mover archivos de debug a carpeta `__dev__` o feature flag
 
 2. **Consolidar funciones duplicadas:**
+
    - ✅ Crear `src/lib/utils/string/tokenization.ts` con `toTokens()`
    - ✅ Crear `src/lib/utils/string/normalize.ts` con lógica de normalización
    - ✅ Migrar todos los imports a estas nuevas ubicaciones
@@ -484,6 +528,7 @@ Ambos tienen lógica MUY similar (~70% coincidencia) para:
 **Prioridad ALTA - Requiere testing cuidadoso**
 
 1. **Dividir `src/lib/utils/data/seriesAndDonuts.ts` (847 líneas):**
+
    ```
    src/lib/utils/data/
    ├── timeAxis.ts          (~150 líneas)
@@ -493,6 +538,7 @@ Ambos tienen lógica MUY similar (~70% coincidencia) para:
    ```
 
 2. **Refactorizar `src/app/debug/page.tsx` (1,238 líneas):**
+
    ```
    src/app/debug/
    ├── page.tsx                    (~50 líneas - orchestrator)
@@ -521,6 +567,7 @@ Ambos tienen lógica MUY similar (~70% coincidencia) para:
 **Prioridad MEDIA - Mejora la mantenibilidad**
 
 1. **Dividir componentes grandes (+250 líneas):**
+
    - `CategoryExpandedCard.tsx` (449 líneas) → Dividir en subcomponentes
    - `TownExpandedCard.tsx` (447 líneas) → Dividir en subcomponentes
    - `CategoryTownSubcatDrilldownView.tsx` (414 líneas) → Dividir
@@ -528,6 +575,7 @@ Ambos tienen lógica MUY similar (~70% coincidencia) para:
    - `DonutLeader.tsx` (338 líneas) → Extraer lógica compleja
 
 2. **Extraer lógica de `EditProfileModal.tsx` (394 líneas):**
+
    - Separar validación de formulario
    - Separar lógica de submit
    - Crear hook `useProfileForm`
@@ -546,18 +594,30 @@ Ambos tienen lógica MUY similar (~70% coincidencia) para:
 **Prioridad MEDIA - Reduce complejidad del código**
 
 1. **Crear servicio base para chatbot:**
+
    ```typescript
    // src/lib/services/chatbot/BaseChatbotService.ts
    class BaseChatbotService {
-     async fetchTagAudit(params) { /* ... */ }
-     processBuckets(data) { /* ... */ }
-     aggregateData(data) { /* ... */ }
-     buildSeries(data) { /* ... */ }
-     buildDonut(data) { /* ... */ }
+     async fetchTagAudit(params) {
+       /* ... */
+     }
+     processBuckets(data) {
+       /* ... */
+     }
+     aggregateData(data) {
+       /* ... */
+     }
+     buildSeries(data) {
+       /* ... */
+     }
+     buildDonut(data) {
+       /* ... */
+     }
    }
    ```
 
 2. **Refactorizar servicios específicos para extender la base:**
+
    - `TownCategoryBreakdownService extends BaseChatbotService`
    - `CategoryTownBreakdownService extends BaseChatbotService`
    - Etc.
@@ -577,10 +637,12 @@ Ambos tienen lógica MUY similar (~70% coincidencia) para:
 **Prioridad BAJA - Funciona bien actualmente**
 
 1. **Revisar APIs de debug:**
+
    - Decidir si mantener, proteger o eliminar
    - Si se mantienen, agregar middleware de autenticación
 
 2. **Optimizar API route grande:**
+
    - `src/app/api/analytics/v1/drilldown/url/route.ts` (528 líneas)
    - Extraer lógica de procesamiento
 
@@ -596,10 +658,12 @@ Ambos tienen lógica MUY similar (~70% coincidencia) para:
 ### FASE 6: LIMPIEZA FINAL Y DOCUMENTACIÓN (1-2 días) 🟢
 
 1. **Revisar imports no utilizados:**
+
    - Ejecutar `npx depcheck`
    - Eliminar imports innecesarios
 
 2. **Actualizar documentación:**
+
    - README con nueva estructura
    - Guías de desarrollo
 
@@ -617,12 +681,12 @@ Ambos tienen lógica MUY similar (~70% coincidencia) para:
 
 ### Reducción de Código
 
-| Métrica | Antes | Después | Mejora |
-|---------|-------|---------|--------|
-| Archivos +400 líneas | 29 | ~5 | -83% |
-| Archivos +120 líneas | 134 | ~80 | -40% |
-| Código duplicado | ~3,000 líneas | ~500 líneas | -83% |
-| LOC totales | ~40,000 | ~32,000 | -20% |
+| Métrica              | Antes         | Después     | Mejora |
+| -------------------- | ------------- | ----------- | ------ |
+| Archivos +400 líneas | 29            | ~5          | -83%   |
+| Archivos +120 líneas | 134           | ~80         | -40%   |
+| Código duplicado     | ~3,000 líneas | ~500 líneas | -83%   |
+| LOC totales          | ~40,000       | ~32,000     | -20%   |
 
 ### Mejoras de Calidad
 
@@ -638,11 +702,13 @@ Ambos tienen lógica MUY similar (~70% coincidencia) para:
 ### Riesgos Identificados
 
 1. **Páginas de Debug:**
+
    - ¿Son necesarias en producción?
    - ¿Deben estar protegidas?
    - **Decisión requerida:** Eliminar, proteger o feature flag
 
 2. **Cambios en Servicios de Chatbot:**
+
    - Lógica compleja y crítica
    - Requiere testing exhaustivo
    - Considerar testing de integración
@@ -655,6 +721,7 @@ Ambos tienen lógica MUY similar (~70% coincidencia) para:
 ### Estrategia de Testing
 
 Para cada fase:
+
 1. ✅ Ejecutar tests existentes antes de cambios
 2. ✅ Crear tests para código refactorizado
 3. ✅ Ejecutar tests de regresión
@@ -666,18 +733,22 @@ Para cada fase:
 ## 🎯 PRIORIZACIÓN FINAL
 
 ### Comenzar INMEDIATAMENTE (Esta semana)
+
 1. ✅ Fase 1: Limpieza inmediata
 2. ✅ Consolidar `toTokens()` y normalización
 
 ### Próximas 2 semanas
+
 3. ✅ Fase 2: Refactorizar archivos críticos (+400 líneas)
 4. ✅ Consolidar utilidades de fecha
 
 ### Mes 1
+
 5. ✅ Fase 3: Optimización de componentes
 6. ✅ Fase 4: Consolidación de servicios
 
 ### Mes 2
+
 7. ✅ Fase 5: Optimización de API routes
 8. ✅ Fase 6: Documentación final
 
@@ -686,18 +757,21 @@ Para cada fase:
 ## 📝 CONCLUSIONES
 
 ### Fortalezas del Proyecto Actual
+
 - ✅ Arquitectura de páginas bien estructurada
 - ✅ Separación clara entre features
 - ✅ Uso consistente de TypeScript
 - ✅ Componentes reutilizables bien diseñados
 
 ### Áreas de Mejora Críticas
+
 - 🔴 Archivos excesivamente grandes (especialmente debug page)
 - 🔴 Código duplicado en servicios de chatbot
 - 🔴 Utilidades de strings y fechas duplicadas
 - 🟡 Componentes que podrían dividirse mejor
 
 ### Impacto del Refactor
+
 - **Reducción de complejidad:** 40-50%
 - **Mejora en mantenibilidad:** 60-70%
 - **Reducción de bugs potenciales:** 30-40%
@@ -710,6 +784,7 @@ Para cada fase:
 ---
 
 **Próximos Pasos Inmediatos:**
+
 1. Revisar y aprobar este plan con el equipo
 2. Crear branch de refactoring
 3. Comenzar Fase 1 (limpieza inmediata)

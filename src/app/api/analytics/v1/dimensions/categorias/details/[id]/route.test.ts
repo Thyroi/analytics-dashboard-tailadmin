@@ -47,7 +47,7 @@ vi.mock("google-auth-library", () => ({
   })),
 }));
 
-vi.mock("@/lib/utils/data/seriesAndDonuts", () => ({
+vi.mock("@/lib/utils/data", () => ({
   buildTownsDonutForCategory: vi.fn(() => [
     { label: "almonte", value: 120 },
     { label: "huelva", value: 80 },
@@ -153,9 +153,7 @@ describe("/api/analytics/v1/dimensions/categorias/details/[id]", () => {
     });
 
     // Verify buildTownsDonutForCategory was called (no filter)
-    const { buildTownsDonutForCategory } = await import(
-      "@/lib/utils/data/seriesAndDonuts"
-    );
+    const { buildTownsDonutForCategory } = await import("@/lib/utils/data");
     expect(buildTownsDonutForCategory).toHaveBeenCalledWith(
       expect.any(Array), // rows
       expect.any(Function), // matchCategoryIdFromPath
@@ -194,9 +192,7 @@ describe("/api/analytics/v1/dimensions/categorias/details/[id]", () => {
     });
 
     // Verify buildUrlsDonutForCategoryTown was called (with filter)
-    const { buildUrlsDonutForCategoryTown } = await import(
-      "@/lib/utils/data/seriesAndDonuts"
-    );
+    const { buildUrlsDonutForCategoryTown } = await import("@/lib/utils/data");
     expect(buildUrlsDonutForCategoryTown).toHaveBeenCalledWith(
       expect.any(Array), // filteredRows
       expect.any(Function), // matchCategoryIdFromPath

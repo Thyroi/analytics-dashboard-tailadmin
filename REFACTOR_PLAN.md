@@ -1,8 +1,8 @@
 # 🚀 PLAN DE REFACTORIZACIÓN EJECUTABLE
 
-**Proyecto:** Analytics Dashboard TailAdmin  
-**Fecha Inicio:** Noviembre 2025  
-**Duración Estimada:** 4-6 semanas  
+**Proyecto:** Analytics Dashboard TailAdmin
+**Fecha Inicio:** Noviembre 2025
+**Duración Estimada:** 4-6 semanas
 **Objetivo:** Mantener 100% de funcionalidad mientras se optimiza el código
 
 ---
@@ -25,6 +25,7 @@ Antes de comenzar:
 ### Día 1: Eliminar Código Muerto
 
 #### Task 1.1: Eliminar mockData.ts
+
 ```bash
 # Verificar que no se usa
 grep -r "mockData" src/
@@ -42,6 +43,7 @@ git commit -m "chore: remove unused mockData.ts file"
 ---
 
 #### Task 1.2: Eliminar/Integrar CustomersDemographicSkeleton
+
 ```bash
 # Opción A: Si no se necesita, eliminar
 rm src/components/skeletons/CustomersDemographicSkeleton.tsx
@@ -59,18 +61,20 @@ rm src/components/skeletons/CustomersDemographicSkeleton.tsx
 **Decisión requerida:** ¿Mantener debug pages en producción?
 
 **Opción A: Feature Flag (Recomendada)**
+
 ```typescript
 // src/middleware.ts
 export function middleware(request: NextRequest) {
-  const isDebugEnabled = process.env.ENABLE_DEBUG === 'true';
-  
-  if (request.nextUrl.pathname.startsWith('/debug') && !isDebugEnabled) {
-    return NextResponse.redirect(new URL('/', request.url));
+  const isDebugEnabled = process.env.ENABLE_DEBUG === "true";
+
+  if (request.nextUrl.pathname.startsWith("/debug") && !isDebugEnabled) {
+    return NextResponse.redirect(new URL("/", request.url));
   }
 }
 ```
 
 **Opción B: Mover a carpeta dev**
+
 ```bash
 mkdir src/__dev__
 mv src/app/debug src/__dev__/debug
@@ -78,11 +82,13 @@ mv src/features/debug src/__dev__/features-debug
 mv src/components/debug src/__dev__/components-debug
 ```
 
-**Testing:** 
+**Testing:**
+
 - Con flag habilitado: verificar que /debug funciona
 - Con flag deshabilitado: verificar que redirige
 
 **Commit:**
+
 ```bash
 git commit -m "feat: add feature flag for debug pages"
 ```
@@ -94,12 +100,14 @@ git commit -m "feat: add feature flag for debug pages"
 #### Task 1.4: Consolidar toTokens()
 
 **Paso 1: Crear módulo centralizado**
+
 ```bash
 mkdir -p src/lib/utils/string
 touch src/lib/utils/string/tokenization.ts
 ```
 
 **Paso 2: Implementar función única**
+
 ```typescript
 // src/lib/utils/string/tokenization.ts
 /**
@@ -117,7 +125,9 @@ export function toTokens(base: string): string[] {
   const snake = normalized.replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
   const compact = normalized.replace(/[^a-z0-9]+/g, "");
 
-  return Array.from(new Set([normalized, kebab, snake, compact].filter(Boolean)));
+  return Array.from(
+    new Set([normalized, kebab, snake, compact].filter(Boolean))
+  );
 }
 
 /**
@@ -135,12 +145,14 @@ export function normalize(str: string): string {
 **Paso 3: Actualizar imports**
 
 Archivos a actualizar:
+
 1. `src/lib/utils/routing/url.ts` ✅
 2. `src/lib/utils/data/aggregateCategories.ts` ✅
 3. `src/features/chatbot/utils/aggregation.ts` ✅
 4. `src/app/(dashboard)/chatbot/test-query.tsx` ✅
 
 **Script de migración:**
+
 ```bash
 # Actualizar imports
 sed -i 's/import.*toTokens.*from.*url/import { toTokens } from "@\/lib\/utils\/string\/tokenization"/' src/**/*.{ts,tsx}
@@ -150,13 +162,15 @@ sed -i 's/import.*toTokens.*from.*url/import { toTokens } from "@\/lib\/utils\/s
 
 En cada archivo, eliminar la función local `toTokens()` después de actualizar el import.
 
-**Testing:** 
+**Testing:**
+
 ```bash
 npm run test:run
 npm run build
 ```
 
 **Commit:**
+
 ```bash
 git add src/lib/utils/string/
 git add src/lib/utils/routing/url.ts
@@ -170,6 +184,7 @@ git commit -m "refactor: consolidate toTokens() function into single module"
 #### Task 1.5: Consolidar Normalización de Strings
 
 **Crear módulo de normalización:**
+
 ```typescript
 // src/lib/utils/string/normalize.ts
 export function removeDiacritics(s: string): string {
@@ -192,11 +207,13 @@ export function normalizeString(input: string): string {
 ```
 
 **Migrar usos:**
+
 - `src/features/chatbot/utils/aggregation.ts`
 - `src/lib/utils/data/aggregateCategories.ts`
 - Cualquier otro archivo con lógica similar
 
 **Testing & Commit:**
+
 ```bash
 npm run test:run
 git commit -m "refactor: consolidate string normalization functions"
@@ -209,15 +226,18 @@ git commit -m "refactor: consolidate string normalization functions"
 #### Task 1.6: Consolidar Funciones de Fecha
 
 **Auditar usos de `isoFromYYYYMMDD`:**
+
 ```bash
 grep -r "isoFromYYYYMMDD" src/
 ```
 
 **Resultado actual:**
+
 - ✅ `src/lib/utils/time/datetime.ts` (implementación principal)
 - ❌ `src/lib/utils/time/timeAxisChatbot.ts` (duplicado)
 
 **Acción:**
+
 ```typescript
 // src/lib/utils/time/timeAxisChatbot.ts
 // ANTES:
@@ -231,11 +251,13 @@ import { isoFromYYYYMMDD } from "./datetime";
 ```
 
 **Testing:**
+
 ```bash
 npm run test:run -- timeAxisChatbot
 ```
 
 **Commit:**
+
 ```bash
 git commit -m "refactor: remove duplicate isoFromYYYYMMDD from timeAxisChatbot"
 ```
@@ -245,10 +267,12 @@ git commit -m "refactor: remove duplicate isoFromYYYYMMDD from timeAxisChatbot"
 #### Task 1.7: Consolidar formatPct()
 
 **Ubicaciones actuales:**
+
 - `src/lib/utils/formatting/format.ts` (implementación estándar)
 - `src/components/dashboard/LegendList.tsx` (función local)
 
 **Acción:**
+
 ```typescript
 // src/components/dashboard/LegendList.tsx
 // ANTES:
@@ -264,6 +288,7 @@ import { formatPct } from "@/lib/utils/formatting/format";
 **Testing:** Verificar que LegendList muestra porcentajes correctamente.
 
 **Commit:**
+
 ```bash
 git commit -m "refactor: use centralized formatPct in LegendList"
 ```
@@ -279,6 +304,7 @@ git commit -m "refactor: use centralized formatPct in LegendList"
 **Riesgo:** BAJO ✅
 
 **Métricas de éxito:**
+
 - [ ] Todos los tests pasan
 - [ ] Proyecto compila sin errores
 - [ ] No hay regresiones visuales
@@ -319,6 +345,7 @@ export function generateTimeAxis(
 ```
 
 **Testing:**
+
 ```bash
 # Crear test unitario
 touch src/lib/utils/data/series/__tests__/timeAxis.test.ts
@@ -387,10 +414,10 @@ export function buildUrlsDonutForTownCategory<T>(
 
 ```typescript
 // src/lib/utils/data/series/index.ts
-export * from './timeAxis';
-export * from './seriesBuilder';
-export * from './donutBuilder';
-export * from './formatting';
+export * from "./timeAxis";
+export * from "./seriesBuilder";
+export * from "./donutBuilder";
+export * from "./formatting";
 
 // Re-export para compatibilidad hacia atrás
 export {
@@ -400,7 +427,7 @@ export {
   buildTownsDonutForCategory,
   buildCategoriesDonutForTown,
   buildUrlsDonutForTownCategory,
-} from './seriesBuilder';
+} from "./seriesBuilder";
 ```
 
 ---
@@ -418,10 +445,11 @@ export {
   generateTimeAxis,
   buildTimeSeriesForCategory,
   // ... resto de exports
-} from './series';
+} from "./series";
 ```
 
 **Archivos a actualizar (gradualmente):**
+
 - Todos los archivos en `src/features/chatbot/`
 - Todos los archivos en `src/lib/services/chatbot/`
 - Tests relacionados
@@ -445,6 +473,7 @@ npm run test:e2e -- analytics
 ```
 
 **Commit:**
+
 ```bash
 git add src/lib/utils/data/series/
 git commit -m "refactor: split seriesAndDonuts.ts into modular structure"
@@ -560,7 +589,7 @@ export default function TownDebugPanel({
   townId,
   granularity,
   data,
-  onClose
+  onClose,
 }: TownDebugPanelProps) {
   // Encapsular lógica de visualización de datos de town
 }
@@ -570,7 +599,7 @@ export default function CategoryDebugPanel({
   categoryId,
   granularity,
   data,
-  onClose
+  onClose,
 }: CategoryDebugPanelProps) {
   // Encapsular lógica de visualización de datos de categoría
 }
@@ -579,7 +608,7 @@ export default function CategoryDebugPanel({
 export default function DataComparisonPanel({
   ga4Data,
   chatbotData,
-  combinedData
+  combinedData,
 }: DataComparisonPanelProps) {
   // Comparación visual de datos de diferentes fuentes
 }
@@ -646,6 +675,7 @@ npm run test:run
 ```
 
 **Commit:**
+
 ```bash
 git add src/app/debug/
 git commit -m "refactor: split debug page into modular components (1238 -> ~400 LOC total)"
@@ -709,7 +739,7 @@ export async function fetchTagAuditWithRetry(
       return await fetchTagAudit(params);
     } catch (error) {
       if (i === retries - 1) throw error;
-      await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
+      await new Promise((resolve) => setTimeout(resolve, 1000 * (i + 1)));
     }
   }
   throw new Error("Unreachable");
@@ -728,37 +758,37 @@ export function aggregateByKey<T extends { time: string; value: number }>(
   granularity: ChatbotGranularity
 ): Map<string, number> {
   const aggregated = new Map<string, number>();
-  
+
   for (const point of data) {
     const key = normalizeTimeKey(point.time, granularity);
     aggregated.set(key, (aggregated.get(key) || 0) + point.value);
   }
-  
+
   return aggregated;
 }
 
 export function extractTownsFromKeys(keys: string[]): Set<string> {
   const towns = new Set<string>();
-  
+
   for (const key of keys) {
     const segments = key.split(".");
     if (segments.length >= 2) {
       towns.add(segments[1]); // Asumiendo formato "root.town...."
     }
   }
-  
+
   return towns;
 }
 
 export function filterByTown(data: TagAuditResponse, townId: string) {
   const filtered: Record<string, Array<{ time: string; value: number }>> = {};
-  
+
   for (const [key, values] of Object.entries(data)) {
     if (key.includes(`.${townId}.`) || key.endsWith(`.${townId}`)) {
       filtered[key] = values;
     }
   }
-  
+
   return filtered;
 }
 ```
@@ -775,7 +805,10 @@ export function filterByTown(data: TagAuditResponse, townId: string) {
 
 import { fetchTagAuditWithRetry } from "./shared/fetchHelpers";
 import { aggregateByKey, filterByTown } from "./shared/aggregationHelpers";
-import { buildSeriesFromAggregated, buildDonutFromAggregated } from "./shared/seriesHelpers";
+import {
+  buildSeriesFromAggregated,
+  buildDonutFromAggregated,
+} from "./shared/seriesHelpers";
 import type { TownCategoryBreakdownResult } from "./shared/types";
 
 export async function getTownCategoryBreakdown(
@@ -819,6 +852,7 @@ export async function getTownCategoryBreakdown(
 #### Task 2.18: Aplicar refactor a otros servicios gradualmente
 
 Servicios a refactorizar en orden de prioridad:
+
 1. ✅ `townCategoryBreakdown.ts` (565 → ~250 líneas)
 2. ✅ `categoryTownBreakdown.ts` (474 → ~220 líneas)
 3. ✅ `categoryTownSubcatBreakdown.ts` (407 → ~200 líneas)
@@ -838,6 +872,7 @@ Servicios a refactorizar en orden de prioridad:
 **Riesgo:** MEDIO ⚠️
 
 **Métricas de éxito:**
+
 - [ ] `seriesAndDonuts.ts`: 847 → ~200 líneas (resto en módulos)
 - [ ] `debug/page.tsx`: 1,238 → ~60 líneas (resto en componentes)
 - [ ] Servicios chatbot: Promedio -40% líneas
@@ -853,6 +888,7 @@ Servicios a refactorizar en orden de prioridad:
 #### Task 3.1: Refactorizar CategoryExpandedCard (449 líneas)
 
 **Estructura objetivo:**
+
 ```
 src/features/chatbot/components/CategoryExpandedCard/
 ├── index.tsx (~80 líneas)
@@ -918,7 +954,7 @@ export default function DonutSection({ data }: Props) {
 export default function TownsBreakdown({ towns }: Props) {
   return (
     <div className="grid">
-      {towns.map(town => (
+      {towns.map((town) => (
         <TownCard key={town.id} {...town} />
       ))}
     </div>
@@ -927,12 +963,14 @@ export default function TownsBreakdown({ towns }: Props) {
 ```
 
 **Testing:**
+
 ```bash
 npm run test:run -- CategoryExpandedCard
 npm run test:e2e -- chatbot
 ```
 
 **Commit:**
+
 ```bash
 git add src/features/chatbot/components/CategoryExpandedCard/
 git commit -m "refactor: split CategoryExpandedCard into subcomponents (449 -> ~450 LOC total, better structure)"
@@ -949,10 +987,12 @@ Similar a Task 3.1, aplicar el mismo patrón.
 #### Task 3.3: Refactorizar Drilldown Views
 
 **Componentes objetivo:**
+
 - `CategoryTownSubcatDrilldownView.tsx` (414 líneas)
 - `TownCategorySubcatDrilldownView.tsx` (386 líneas)
 
 **Patrón:** Extraer secciones comunes en componentes reutilizables:
+
 ```
 src/features/chatbot/components/shared/
 ├── DrilldownHeader.tsx
@@ -968,6 +1008,7 @@ src/features/chatbot/components/shared/
 #### Task 3.4: Extraer lógica de formulario
 
 **Estructura objetivo:**
+
 ```
 src/components/common/EditProfileModal/
 ├── index.tsx (~100 líneas)
@@ -978,6 +1019,7 @@ src/components/common/EditProfileModal/
 ```
 
 **Hook personalizado:**
+
 ```typescript
 // useProfileForm.ts
 export function useProfileForm(initialData: Profile) {
@@ -1005,6 +1047,7 @@ export function useProfileForm(initialData: Profile) {
 ```
 
 **Testing:**
+
 ```bash
 npm run test:run -- useProfileForm
 npm run test:run -- validations
@@ -1019,6 +1062,7 @@ npm run test:run -- validations
 **Análisis:** Componente con mucha lógica de interacción (hover, click, animaciones)
 
 **Estructura objetivo:**
+
 ```
 src/components/charts/DonutLeader/
 ├── index.tsx (~100 líneas)
@@ -1038,6 +1082,7 @@ src/components/charts/DonutLeader/
 **Riesgo:** BAJO ✅
 
 **Métricas de éxito:**
+
 - [ ] No hay componentes >300 líneas
 - [ ] Lógica separada de presentación
 - [ ] Tests de componentes pasan
@@ -1070,6 +1115,7 @@ npx madge --circular src/
 #### Task 4.2: Eliminar imports no utilizados
 
 Basado en output de `ts-prune`:
+
 ```bash
 # Ejemplo de cleanup automatizado
 npx ts-unused-exports tsconfig.json --ignoreFiles '**/*.test.ts'
@@ -1081,7 +1127,7 @@ npx ts-unused-exports tsconfig.json --ignoreFiles '**/*.test.ts'
 
 #### Task 4.3: Actualizar README
 
-```markdown
+````markdown
 # Analytics Dashboard - Arquitectura
 
 ## Estructura del Proyecto
@@ -1089,6 +1135,7 @@ npx ts-unused-exports tsconfig.json --ignoreFiles '**/*.test.ts'
 ### Frontend (`src/`)
 
 #### Páginas (`src/app/`)
+
 - `/` - Home dashboard
 - `/analytics` - Analytics detallado
 - `/chatbot` - Vista de chatbot/tags
@@ -1096,7 +1143,9 @@ npx ts-unused-exports tsconfig.json --ignoreFiles '**/*.test.ts'
 - `/debug` - Herramientas de debug (solo desarrollo)
 
 #### Features (`src/features/`)
+
 Cada feature contiene:
+
 - `components/` - Componentes específicos
 - `hooks/` - Hooks personalizados
 - `context/` - Context providers
@@ -1104,11 +1153,13 @@ Cada feature contiene:
 - `types.ts` - Tipos TypeScript
 
 #### Componentes Comunes (`src/components/`)
+
 - `charts/` - Componentes de gráficos reutilizables
 - `common/` - Componentes UI generales
 - `dashboard/` - Componentes específicos del dashboard
 
 #### Utilidades (`src/lib/`)
+
 - `utils/string/` - Manipulación de strings
 - `utils/time/` - Manejo de fechas
 - `utils/data/series/` - Construcción de series y donuts
@@ -1116,6 +1167,7 @@ Cada feature contiene:
 - `taxonomy/` - Categorías y pueblos
 
 ### Backend (`src/app/api/`)
+
 - `/analytics/v1/*` - Endpoints de analytics
 - `/chatbot/*` - Endpoints de chatbot
 - `/auth/*` - Autenticación
@@ -1123,7 +1175,9 @@ Cada feature contiene:
 ## Patrones de Diseño
 
 ### Composición de Componentes
+
 Los componentes grandes se dividen en subcomponentes:
+
 ```typescript
 <CategoryExpandedCard>
   <Header />
@@ -1132,15 +1186,20 @@ Los componentes grandes se dividen en subcomponentes:
   <TownsBreakdown />
 </CategoryExpandedCard>
 ```
+````
 
 ### Custom Hooks
+
 La lógica compleja se extrae en hooks:
+
 ```typescript
 const { data, loading, error } = useCategoryData(categoryId);
 ```
 
 ### Context Providers
+
 El estado global se maneja con contextos:
+
 ```typescript
 <TagTimeProvider>
   <ChatbotPage />
@@ -1150,6 +1209,7 @@ El estado global se maneja con contextos:
 ## Guías de Desarrollo
 
 ### Agregar Nueva Feature
+
 1. Crear carpeta en `src/features/`
 2. Implementar componentes
 3. Crear hooks si es necesario
@@ -1157,14 +1217,17 @@ El estado global se maneja con contextos:
 5. Documentar en README
 
 ### Modificar Utilidades
+
 1. Las utilidades están en `src/lib/utils/`
 2. Agregar tests para cambios
 3. Actualizar documentación de API
 
 ### Debugging
+
 - Página `/debug` disponible en desarrollo
 - Feature flag: `ENABLE_DEBUG=true`
-```
+
+````
 
 ---
 
@@ -1182,38 +1245,45 @@ Genera variantes de un string para matching.
 ```typescript
 toTokens("Playas y Costa")
 // ["playas y costa", "playas-y-costa", "playas_y_costa", "playasycosta"]
-```
+````
 
 ### `normalize(str: string): string`
+
 Normaliza string (sin acentos, minúsculas).
 
 ## Utilidades de Fecha
 
 ### `isoFromYYYYMMDD(yyyymmdd: string): string`
+
 Convierte formato YYYYMMDD a ISO.
 
 **Ejemplo:**
+
 ```typescript
-isoFromYYYYMMDD("20240315")
+isoFromYYYYMMDD("20240315");
 // "2024-03-15"
 ```
 
 ### `addDaysUTC(date: Date, days: number): Date`
+
 Suma días en UTC.
 
 ## Series y Donuts
 
 ### `buildTimeSeriesForCategory(data, categoryId, granularity)`
+
 Construye serie temporal para una categoría.
 
 **Returns:**
+
 ```typescript
 {
   current: SeriesPoint[],
   previous: SeriesPoint[]
 }
 ```
-```
+
+````
 
 ---
 
@@ -1240,9 +1310,10 @@ npm run build
 
 # Analizar bundle size
 npx @next/bundle-analyzer
-```
+````
 
 **Verificar:**
+
 - [ ] Bundle size razonable
 - [ ] No hay importaciones circulares
 - [ ] Tree-shaking funciona correctamente
@@ -1261,6 +1332,7 @@ npx @next/bundle-analyzer
 ## 📈 MÉTRICAS FINALES ESPERADAS
 
 ### Antes del Refactor
+
 ```
 - Archivos >400 líneas: 29
 - Archivos >120 líneas: 134
@@ -1270,6 +1342,7 @@ npx @next/bundle-analyzer
 ```
 
 ### Después del Refactor
+
 ```
 - Archivos >400 líneas: ~5
 - Archivos >120 líneas: ~80
@@ -1279,6 +1352,7 @@ npx @next/bundle-analyzer
 ```
 
 ### Mejoras
+
 ```
 ✅ Reducción de líneas de código: -20%
 ✅ Reducción de archivos grandes: -60%
@@ -1294,12 +1368,14 @@ npx @next/bundle-analyzer
 ### Si algo sale mal:
 
 1. **Rollback inmediato:**
+
    ```bash
    git checkout main
    git branch -D refactor/consolidation
    ```
 
 2. **Rollback parcial:**
+
    ```bash
    git revert <commit-hash>
    ```
@@ -1310,6 +1386,7 @@ npx @next/bundle-analyzer
    ```
 
 ### Señales de alerta:
+
 - ❌ Tests fallan consistentemente
 - ❌ Performance degradada >20%
 - ❌ Bugs críticos en producción
@@ -1336,17 +1413,21 @@ Cada fase está completa cuando:
 ## 📞 COMUNICACIÓN Y SEGUIMIENTO
 
 ### Daily Standup
+
 - ¿Qué se completó ayer?
 - ¿Qué se hará hoy?
 - ¿Hay blockers?
 
 ### Weekly Review
+
 - Métricas de progreso
 - Demos de funcionalidad refactorizada
 - Ajustes al plan si es necesario
 
 ### Documentación de decisiones
+
 Usar ADRs (Architecture Decision Records) para decisiones importantes:
+
 ```
 docs/adr/
 ├── 001-consolidate-string-utils.md

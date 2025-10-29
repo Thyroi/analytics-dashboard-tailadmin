@@ -5,7 +5,7 @@ import {
   buildTownsDonutForCategory,
   buildUrlsDonutForCategoryTown,
   buildUrlsDonutForTownCategory,
-} from "@/lib/utils/data/seriesAndDonuts";
+} from "@/lib/utils/data";
 import { describe, expect, test } from "vitest";
 
 // Mock data helpers

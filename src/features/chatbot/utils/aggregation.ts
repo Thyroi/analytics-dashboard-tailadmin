@@ -3,6 +3,8 @@ import {
   CATEGORY_SYNONYMS,
   type CategoryId,
 } from "@/lib/taxonomy/categories";
+import { approxEquals, normalizeToken } from "@/lib/utils/string/normalize";
+import { toTokens } from "@/lib/utils/string/tokenization";
 import { fetchTagAudit } from "../services/tagAudit";
 import type {
   ChatbotCardData,
@@ -10,11 +12,6 @@ import type {
   Granularity,
   TagAuditResponse,
 } from "../types";
-import {
-  normalizeToken,
-  approxEquals,
-} from "@/lib/utils/string/normalize";
-import { toTokens } from "@/lib/utils/string/tokenization";
 
 /** ==== Tipos del API Mindsaic (lo necesario) ==== */
 type APIPoint = { time: string; value: number };

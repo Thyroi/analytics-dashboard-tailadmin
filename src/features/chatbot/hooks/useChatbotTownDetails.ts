@@ -18,7 +18,7 @@ import {
 } from "@/lib/services/chatbot/totals";
 import type { TownId } from "@/lib/taxonomy/towns";
 import type { Granularity } from "@/lib/types";
-import { buildSeriesAndDonutFocused } from "@/lib/utils/data/seriesAndDonuts";
+import { buildSeriesAndDonutFocused } from "@/lib/utils/data";
 import { computeRangesForSeries } from "@/lib/utils/time/timeWindows";
 
 export type UseChatbotTownDetailsOptions = {

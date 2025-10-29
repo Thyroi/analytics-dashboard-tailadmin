@@ -20,7 +20,11 @@ export function safePathname(raw: string): string {
 }
 
 // 👇 Añadir en lib/utils/url.ts
-import { CATEGORY_ID_ORDER, CATEGORY_SYNONYMS, type CategoryId } from "@/lib/taxonomy/categories";
+import {
+  CATEGORY_ID_ORDER,
+  CATEGORY_SYNONYMS,
+  type CategoryId,
+} from "@/lib/taxonomy/categories";
 import { TOWN_ID_ORDER, type TownId } from "@/lib/taxonomy/towns";
 
 export function normalizePath(path: string): string {
@@ -32,7 +36,10 @@ export function normalizePath(path: string): string {
   return s;
 }
 
-export function stripLangPrefix(path: string): { path: string; lang: "es" | "en" } {
+export function stripLangPrefix(path: string): {
+  path: string;
+  lang: "es" | "en";
+} {
   const n = normalizePath(path);
   if (n.startsWith("/en/") || n === "/en/") {
     return { path: normalizePath(n.replace(/^\/en\/?/, "/")), lang: "en" };
@@ -44,7 +51,7 @@ export function canonicalizeCategorySlug(raw: string): CategoryId | null {
   const slug = raw.toLowerCase();
   for (const catId of CATEGORY_ID_ORDER) {
     const variants = CATEGORY_SYNONYMS[catId] || [];
-    if (variants.some(v => v.toLowerCase() === slug)) return catId;
+    if (variants.some((v) => v.toLowerCase() === slug)) return catId;
   }
   return null;
 }
@@ -62,7 +69,9 @@ export function parsePath(input: string): {
   const parts = path.split("/").filter(Boolean);
   if (parts.length === 0) return { lang };
   const maybeTown = parts[0].toLowerCase();
-  const townId = (TOWN_ID_ORDER as readonly string[]).find(t => t.toLowerCase() === maybeTown) as TownId | undefined;
+  const townId = (TOWN_ID_ORDER as readonly string[]).find(
+    (t) => t.toLowerCase() === maybeTown
+  ) as TownId | undefined;
 
   if (!townId) return { lang };
 

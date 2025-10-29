@@ -46,7 +46,7 @@ vi.mock("google-auth-library", () => ({
   })),
 }));
 
-vi.mock("@/lib/utils/data/seriesAndDonuts", () => ({
+vi.mock("@/lib/utils/data", () => ({
   buildCategoriesDonutForTown: vi.fn(() => [
     { label: "naturaleza", value: 100 },
     { label: "cultura", value: 50 },
@@ -183,9 +183,7 @@ describe("/api/analytics/v1/dimensions/pueblos/details/[id]", () => {
     });
 
     // Verify buildCategoriesDonutForTown was called (no filter)
-    const { buildCategoriesDonutForTown } = await import(
-      "@/lib/utils/data/seriesAndDonuts"
-    );
+    const { buildCategoriesDonutForTown } = await import("@/lib/utils/data");
     expect(buildCategoriesDonutForTown).toHaveBeenCalledWith(
       expect.any(Array), // rows
       expect.any(Function), // matchTownIdFromPath
@@ -219,9 +217,7 @@ describe("/api/analytics/v1/dimensions/pueblos/details/[id]", () => {
     });
 
     // Verify buildUrlsDonutForTownCategory was called (with filter)
-    const { buildUrlsDonutForTownCategory } = await import(
-      "@/lib/utils/data/seriesAndDonuts"
-    );
+    const { buildUrlsDonutForTownCategory } = await import("@/lib/utils/data");
     expect(buildUrlsDonutForTownCategory).toHaveBeenCalledWith(
       expect.any(Array), // filteredRows
       expect.any(Function), // matchTownIdFromPath

@@ -19,7 +19,7 @@ import {
 import {
   buildCategoriesDonutForTown,
   buildUrlsDonutForTownCategory,
-} from "@/lib/utils/data/seriesAndDonuts";
+} from "@/lib/utils/data";
 import {
   matchCategoryIdFromPath,
   matchTownIdFromPath,

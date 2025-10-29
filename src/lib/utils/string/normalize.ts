@@ -43,21 +43,21 @@ export function editDistance(a: string, b: string): number {
   const dp: number[][] = Array.from({ length: m + 1 }, () =>
     Array(n + 1).fill(0)
   );
-  
+
   for (let i = 0; i <= m; i++) dp[i][0] = i;
   for (let j = 0; j <= n; j++) dp[0][j] = j;
-  
+
   for (let i = 1; i <= m; i++) {
     for (let j = 1; j <= n; j++) {
       const cost = a[i - 1] === b[j - 1] ? 0 : 1;
       dp[i][j] = Math.min(
-        dp[i - 1][j] + 1,     // delete
-        dp[i][j - 1] + 1,     // insert
-        dp[i - 1][j - 1] + cost  // substitute
+        dp[i - 1][j] + 1, // delete
+        dp[i][j - 1] + 1, // insert
+        dp[i - 1][j - 1] + cost // substitute
       );
     }
   }
-  
+
   return dp[m][n];
 }
 
@@ -70,17 +70,17 @@ export function sameLettersLoose(a: string, b: string, slack: number): boolean {
     for (const ch of s) m.set(ch, (m.get(ch) ?? 0) + 1);
     return m;
   };
-  
+
   const ca = count(a);
   const cb = count(b);
   const allKeys = new Set([...ca.keys(), ...cb.keys()]);
-  
+
   let diff = 0;
   for (const k of allKeys) {
     diff += Math.abs((ca.get(k) ?? 0) - (cb.get(k) ?? 0));
     if (diff > slack) return false;
   }
-  
+
   return true;
 }
 
@@ -90,7 +90,7 @@ export function sameLettersLoose(a: string, b: string, slack: number): boolean {
 export function approxEquals(aRaw: string, bRaw: string): boolean {
   const a = normalizeToken(aRaw);
   const b = normalizeToken(bRaw);
-  
+
   if (!a || !b) return false;
   if (a === b) return true;
 

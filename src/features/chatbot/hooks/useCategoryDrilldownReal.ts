@@ -16,7 +16,7 @@ import {
 } from "@/lib/services/chatbot/totals";
 import type { CategoryId } from "@/lib/taxonomy/categories";
 import type { DonutDatum, Granularity, SeriesPoint } from "@/lib/types";
-import { buildSeriesAndDonutFocused } from "@/lib/utils/data/seriesAndDonuts";
+import { buildSeriesAndDonutFocused } from "@/lib/utils/data";
 import { computeRangesForSeries } from "@/lib/utils/time/timeWindows";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
