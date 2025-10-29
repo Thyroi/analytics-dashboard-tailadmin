@@ -228,7 +228,7 @@ function AnalyticsByTagSectionInner() {
         variant="detailed"
         mode="tag"
         ids={displayedIds}
-        granularity={granularity}
+        granularity={calculatedGranularity}
         onGranularityChange={setGranularity}
         getDeltaPctFor={getDeltaPctFor}
         getDeltaArtifactFor={getDeltaArtifactFor}

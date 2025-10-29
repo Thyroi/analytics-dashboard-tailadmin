@@ -17,7 +17,12 @@ function InnerGeneralDataSection() {
     setRange,
     clearRange,
     updatePickerDatesOnly,
+    getCalculatedGranularity,
   } = useHeaderAnalyticsTimeframe();
+
+  // Usar granularidad calculada automáticamente según duración del rango
+  const calculatedGranularity = getCalculatedGranularity();
+
   return (
     <section className="max-w-[1560px] mx-auto w-full">
       <StickyHeaderSection
@@ -33,7 +38,7 @@ function InnerGeneralDataSection() {
       />
       <GeneralDataRow
         mode={mode}
-        granularity={granularity}
+        granularity={calculatedGranularity}
         startDate={startDate}
         endDate={endDate}
         onGranularityChange={setGranularity}

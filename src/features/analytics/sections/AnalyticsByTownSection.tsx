@@ -193,7 +193,7 @@ function AnalyticsByTownSectionInner() {
         variant="detailed"
         mode="town"
         ids={displayedIds}
-        granularity={granularity}
+        granularity={calculatedGranularity}
         onGranularityChange={setGranularity}
         getDeltaPctFor={getDeltaPctFor}
         getDeltaArtifactFor={getDeltaArtifactFor}
