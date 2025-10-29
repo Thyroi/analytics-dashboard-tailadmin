@@ -115,18 +115,20 @@ export async function GET(req: Request) {
       }
     }
 
-    // Crear items usando los títulos de la taxonomía
-    const items = CATEGORY_ID_ORDER.map((id) => {
-      const curr = currentTotals[id] ?? 0;
-      const prev = previousTotals[id] ?? 0;
-      return {
-        id,
-        title: getCategoryLabel(id), // Usa el título oficial de la taxonomía
-        total: curr,
-        previousTotal: prev, // ✨ NUEVO: agregar valor anterior
-        deltaPct: computeDeltaPct(curr, prev),
-      };
-    });
+    // Crear items usando los títulos de la taxonomía (excluir "otros")
+    const items = CATEGORY_ID_ORDER.filter((id) => id !== "otros").map(
+      (id) => {
+        const curr = currentTotals[id] ?? 0;
+        const prev = previousTotals[id] ?? 0;
+        return {
+          id,
+          title: getCategoryLabel(id), // Usa el título oficial de la taxonomía
+          total: curr,
+          previousTotal: prev, // ✨ NUEVO: agregar valor anterior
+          deltaPct: computeDeltaPct(curr, prev),
+        };
+      }
+    );
 
     return NextResponse.json(
       {
