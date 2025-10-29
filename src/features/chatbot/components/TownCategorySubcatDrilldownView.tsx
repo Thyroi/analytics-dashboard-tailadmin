@@ -371,7 +371,7 @@ export default function TownCategorySubcatDrilldownView({
         donutData={donutData}
         deltaPct={null}
         onDonutSlice={handleDonutSlice}
-        donutCenterLabel={categoryLabel}
+        donutCenterLabel="Interacciones"
         showActivityButton={false}
         granularity={windowGranularity}
         legendPosition="bottom"

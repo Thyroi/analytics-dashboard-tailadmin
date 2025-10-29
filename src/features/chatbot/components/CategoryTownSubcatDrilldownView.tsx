@@ -403,7 +403,7 @@ export default function CategoryTownSubcatDrilldownView({
         donutData={donutData}
         deltaPct={null}
         onDonutSlice={handleDonutSlice}
-        donutCenterLabel={townLabel}
+        donutCenterLabel="Interacciones"
         showActivityButton={false}
         granularity={granularity}
         legendPosition="bottom"

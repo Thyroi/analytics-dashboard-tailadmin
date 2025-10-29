@@ -285,7 +285,7 @@ export default function TownOthersBreakdownView({
         chartSubtitle={`${totalInteractions.toLocaleString()} interacciones totales`}
         donutData={donutData}
         deltaPct={null}
-        donutCenterLabel="Otros"
+        donutCenterLabel="Interacciones"
         showActivityButton={false}
         granularity={granularity}
         tooltipFormatter={(val) => (val ?? 0).toLocaleString()}
