@@ -60,6 +60,28 @@ function inRange(yyyymmdd: string, start: string, end: string): boolean {
   return yyyymmdd >= start && yyyymmdd <= end;
 }
 
+/**
+ * Convierte YYYYMMDD a label según granularidad
+ * - d, w, m: YYYY-MM-DD (día completo)
+ * - y: YYYY-MM (mes)
+ */
+function bucketizeDate(
+  yyyymmdd: string,
+  granularity: WindowGranularity
+): string {
+  const yyyy = yyyymmdd.slice(0, 4);
+  const mm = yyyymmdd.slice(4, 6);
+  const dd = yyyymmdd.slice(6, 8);
+
+  if (granularity === "y") {
+    // Para granularidad anual, agrupar por mes
+    return `${yyyy}-${mm}`;
+  }
+
+  // Para otras granularidades, usar día completo
+  return `${yyyy}-${mm}-${dd}`;
+}
+
 /* ==================== Fetch Function ==================== */
 
 async function fetchCategoryTownBreakdownRaw(
@@ -172,8 +194,8 @@ async function fetchCategoryTownBreakdownRaw(
       if (isInCurrent) {
         townTotals.currentTotal += value;
 
-        // Acumular en series temporal (convertir YYYYMMDD a YYYY-MM-DD)
-        const dateLabel = ymd.replace(/(\d{4})(\d{2})(\d{2})/, "$1-$2-$3");
+        // Acumular en series temporal (bucketizar según granularidad)
+        const dateLabel = bucketizeDate(ymd, windowGranularity);
         const currentValue = timeSeriesMap.get(dateLabel) || 0;
         timeSeriesMap.set(dateLabel, currentValue + value);
       }
@@ -181,8 +203,8 @@ async function fetchCategoryTownBreakdownRaw(
       if (isInPrev) {
         townTotals.prevTotal += value;
 
-        // Acumular en series temporal previous
-        const dateLabel = ymd.replace(/(\d{4})(\d{2})(\d{2})/, "$1-$2-$3");
+        // Acumular en series temporal previous (bucketizar según granularidad)
+        const dateLabel = bucketizeDate(ymd, windowGranularity);
         const currentValue = timeSeriesPrevMap.get(dateLabel) || 0;
         timeSeriesPrevMap.set(dateLabel, currentValue + value);
       }

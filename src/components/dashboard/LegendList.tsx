@@ -19,7 +19,7 @@ type LegendListProps = {
 };
 
 function formatPct(n: number): string {
-  return `${Math.round(n)}%`;
+  return `${n.toFixed(2)}%`;
 }
 
 export default function LegendList({
