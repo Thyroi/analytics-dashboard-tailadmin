@@ -42,6 +42,9 @@ type BaseProps = {
 
   /** Loader en aro + delta oculto */
   isDeltaLoading?: boolean;
+  
+  /** Loader para los detalles expandidos (series + donut) */
+  isDetailLoading?: boolean;
 
   /** Fechas del contexto (para mostrar en header de la card expandida) */
   startDate?: Date;
@@ -87,6 +90,7 @@ export default function SectorsGrid(props: Props) {
     startDate,
     endDate,
     isDeltaLoading = false,
+    isDetailLoading = false,
   } = props;
 
   const [uncontrolled, setUncontrolled] = useState<string | null>(null);
@@ -180,6 +184,7 @@ export default function SectorsGrid(props: Props) {
                     donutData={getDonutFor(id)}
                     onClose={handleClose}
                     granularity={granularity}
+                    isLoading={isDetailLoading}
                     {...variant}
                   />
                 )}

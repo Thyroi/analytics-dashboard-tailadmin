@@ -72,7 +72,7 @@ export default function SectorsByTagSection({ granularity }: Props) {
   }, [startDateStr, endDateStr]);
 
   // Solo llamar useCategoryDetails si hay un catId expandido
-  const { series, donutData } = useCategoryDetails(
+  const { series, donutData, isPending } = useCategoryDetails(
     catId, // Pasar null cuando no hay nada expandido
     granularity,
     timeParams
@@ -105,6 +105,7 @@ export default function SectorsByTagSection({ granularity }: Props) {
         onOpen={setExpandedId}
         onClose={() => setExpandedId(null)}
         isDeltaLoading={isLoading}
+        isDetailLoading={isPending}
       />
     </section>
   );

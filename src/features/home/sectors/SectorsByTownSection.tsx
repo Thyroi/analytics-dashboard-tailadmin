@@ -52,13 +52,19 @@ export default function SectorsByTownSection({ granularity }: Props) {
     itemsById[id as TownId]?.deltaArtifact ?? null;
 
   const getSeriesFor = (_id: string) => {
-    return expandedId && _id === expandedId
-      ? detailsResult.series
-      : { current: [], previous: [] };
+    // Si está cargando o no coincide el ID expandido, devolver vacío
+    if (detailsResult.isPending || !expandedId || _id !== expandedId) {
+      return { current: [], previous: [] };
+    }
+    return detailsResult.series;
   };
 
   const getDonutFor = (_id: string) => {
-    return expandedId && _id === expandedId ? detailsResult.donutData : [];
+    // Si está cargando o no coincide el ID expandido, devolver vacío
+    if (detailsResult.isPending || !expandedId || _id !== expandedId) {
+      return [];
+    }
+    return detailsResult.donutData;
   };
 
   return (
@@ -77,6 +83,7 @@ export default function SectorsByTownSection({ granularity }: Props) {
         onOpen={setExpandedId}
         onClose={() => setExpandedId(null)}
         isDeltaLoading={townResumenResult.isLoading}
+        isDetailLoading={detailsResult.isPending}
       />
     </section>
   );

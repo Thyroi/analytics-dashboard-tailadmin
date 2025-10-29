@@ -4,6 +4,7 @@ import type { DonutDatum, Granularity, SeriesPoint } from "@/lib/types";
 import React from "react";
 
 import ChartPair from "@/components/common/ChartPair";
+import ChartPairSkeleton from "@/components/skeletons/ChartPairSkeleton";
 import Header from "./Header";
 
 type BaseProps = {
@@ -16,6 +17,7 @@ type BaseProps = {
   isTown?: boolean;
   granularity: Granularity;
   totals?: { ga4: number; chatbot: number; total: number } | null;
+  isLoading?: boolean;
 };
 
 type WithIcon = {
@@ -37,6 +39,7 @@ export default function SectorExpandedCard(props: Props) {
     isTown = false,
     granularity,
     totals,
+    isLoading = false,
   } = props;
 
   const imgSrc =
@@ -51,7 +54,7 @@ export default function SectorExpandedCard(props: Props) {
   // Subtítulo explicativo según el tipo de entidad
   const baseSubtitle = isTown
     ? "Visualizaciones de página por categoría de interés turístico"
-    : "Visualizaciones de página distribuidas por pueblo";
+    : "Visualizaciones de página distribuidas por municipio";
 
   // Si hay totales disponibles, agregar la información al subtítulo
   const subtitle = totals
@@ -69,17 +72,21 @@ export default function SectorExpandedCard(props: Props) {
         onClose={onClose}
       />
 
-      <ChartPair
-        mode="line"
-        series={{ current, previous }}
-        donutData={donutData}
-        deltaPct={deltaPct}
-        donutCenterLabel="Interacciones"
-        actionButtonTarget={isTown ? "categoría" : "pueblo"}
-        showActivityButton={false}
-        className=""
-        granularity={granularity}
-      />
+      {isLoading ? (
+        <ChartPairSkeleton />
+      ) : (
+        <ChartPair
+          mode="line"
+          series={{ current, previous }}
+          donutData={donutData}
+          deltaPct={deltaPct}
+          donutCenterLabel="Interacciones"
+          actionButtonTarget={isTown ? "categoría" : "pueblo"}
+          showActivityButton={false}
+          className=""
+          granularity={granularity}
+        />
+      )}
     </div>
   );
 }

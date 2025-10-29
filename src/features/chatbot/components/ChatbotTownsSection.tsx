@@ -85,7 +85,7 @@ function ChatbotTownsSectionContent() {
     <section className="max-w-[1560px] mx-auto w-full">
       {/* Sticky Header Section */}
       <StickyHeaderSection
-        title="Chatbot · Analíticas por pueblo"
+        title="Chatbot · Analíticas por municipio"
         subtitle="Interacciones del chatbot organizadas por municipio"
         mode={mode}
         granularity={granularity}

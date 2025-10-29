@@ -128,5 +128,6 @@ function useCategoryDetailsImpl(
     state,
     series,
     donutData,
+    isPending: combinedResult.isLoading,
   };
 }

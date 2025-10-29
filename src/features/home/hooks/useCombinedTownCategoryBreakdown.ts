@@ -220,8 +220,14 @@ export function useCombinedTownCategoryBreakdown(
     chatbotResult.series,
   ]);
 
-  // Estado combinado
-  const isLoading = ga4Result.status === "loading" || chatbotResult.isLoading;
+  // Estado combinado: esperar a que AMBOS terminen para evitar renders parciales
+  // Verificar que ambas queries hayan completado (exitosamente o sin datos)
+  const ga4IsReady = ga4Result.status === "ready" || ga4Result.status === "fetching";
+  const chatbotIsReady = !chatbotResult.isLoading;
+  
+  // Solo marcamos como "not loading" cuando AMBAS queries terminaron
+  // Esto previene el flickering (12→270→300) cuando una termina antes que la otra
+  const isLoading = !ga4IsReady || !chatbotIsReady;
   const isError = ga4Result.status === "error" || chatbotResult.isError;
 
   return {
