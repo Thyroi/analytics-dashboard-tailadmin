@@ -113,13 +113,6 @@ export async function GET(request: NextRequest) {
 
     // CRITICAL DEBUG: Log processed parameters
 
-    // Calculate date range and its effect
-    const startDateObj = new Date(start);
-    const endDateObj = new Date(end);
-    const daysDifference = Math.ceil(
-      (endDateObj.getTime() - startDateObj.getTime()) / (1000 * 60 * 60 * 24)
-    );
-
     if (!start || !end || !granularity) {
       return NextResponse.json(
         { error: "Missing required parameters: start, end, granularity" },

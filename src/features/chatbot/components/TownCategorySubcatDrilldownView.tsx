@@ -30,7 +30,6 @@ type Props = {
 export default function TownCategorySubcatDrilldownView({
   townId,
   categoryId,
-  townRaw,
   categoryRaw,
   startISO,
   endISO,
