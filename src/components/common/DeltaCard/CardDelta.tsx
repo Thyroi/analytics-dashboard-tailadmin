@@ -14,16 +14,20 @@ export default function CardDelta({ deltaPct, loading, deltaArtifact }: Props) {
   const displayText = deltaArtifact
     ? getDeltaMainText(deltaArtifact)
     : deltaPct !== null && deltaPct !== undefined && Number.isFinite(deltaPct)
-    ? `${deltaPct > 0 ? "+" : deltaPct < 0 ? "−" : ""}${Math.abs(
-        deltaPct
-      ).toLocaleString("es-ES", { maximumFractionDigits: 0 })}%`
+    ? deltaPct === 0
+      ? "Sin actividad"
+      : `${deltaPct > 0 ? "+" : deltaPct < 0 ? "−" : ""}${Math.abs(
+          deltaPct
+        ).toLocaleString("es-ES", { maximumFractionDigits: 0 })}%`
     : "Sin datos suficientes";
 
   const colorClass = deltaArtifact
     ? getDeltaColor(deltaArtifact)
     : deltaPct === null
     ? "text-gray-400"
-    : deltaPct >= 0
+    : deltaPct === 0
+    ? "text-gray-400"
+    : deltaPct > 0
     ? "text-[#35C759]"
     : "text-[#E74C3C]";
 
@@ -37,14 +41,16 @@ export default function CardDelta({ deltaPct, loading, deltaArtifact }: Props) {
 
   // Detectar si es "Sin actividad" para usar tamaño pequeño
   const isSinActividad =
-    deltaArtifact?.state === "ok" &&
-    deltaArtifact.baseInfo.current === 0 &&
-    deltaArtifact.baseInfo.prev !== null &&
-    deltaArtifact.baseInfo.prev > 0;
+    (deltaArtifact?.state === "ok" &&
+      deltaArtifact.baseInfo.current === 0 &&
+      deltaArtifact.baseInfo.prev !== null &&
+      deltaArtifact.baseInfo.prev > 0) ||
+    deltaArtifact?.state === "zero_vs_zero" ||
+    deltaPct === 0;
 
-  // Determinar tamaño: pequeño para "sin datos" o "sin actividad", normal para el resto
-  const fontSize = isNoData || isSinActividad ? 14 : 28;
-  const lineHeight = isNoData || isSinActividad ? "18px" : "28px";
+  // Determinar tamaño: más pequeño para "sin actividad", pequeño para "sin datos", normal para el resto
+  const fontSize = isSinActividad ? 16 : isNoData ? 14 : 28;
+  const lineHeight = isSinActividad ? "16px" : isNoData ? "18px" : "28px";
 
   return (
     <div

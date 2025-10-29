@@ -171,7 +171,7 @@ export function getDeltaMainText(artifact: DeltaArtifact): string {
       return "Nuevo";
 
     case "zero_vs_zero":
-      return "0";
+      return "Sin actividad";
 
     case "neg_or_invalid_base":
       if (deltaAbs !== null) {

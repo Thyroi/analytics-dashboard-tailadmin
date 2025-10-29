@@ -55,13 +55,22 @@ export default function DeltaCard(props: Props) {
   const hasInsufficientData = useMemo(() => {
     if (!deltaArtifact) return false;
     // No clickeable cuando:
-    // - zero_vs_zero: sin datos en ambos períodos
-    // - no_current: sin datos actuales
-    return (
-      deltaArtifact.state === "zero_vs_zero" ||
-      deltaArtifact.state === "no_current"
-    );
+    // - no_current: sin datos actuales (pero zero_vs_zero SÍ es clickeable con opacidad)
+    return deltaArtifact.state === "no_current";
   }, [deltaArtifact]);
+
+  // Determinar si debe tener opacidad reducida (sin actividad o sin datos)
+  const hasLowActivity = useMemo(() => {
+    if (deltaArtifact) {
+      // Opacidad reducida para zero_vs_zero o no_current
+      return (
+        deltaArtifact.state === "zero_vs_zero" ||
+        deltaArtifact.state === "no_current"
+      );
+    }
+    // Sin artifact: opacidad reducida si deltaPct es null o 0
+    return deltaPct === null || deltaPct === 0;
+  }, [deltaArtifact, deltaPct]);
 
   const { ringBackground } = useMemo(() => ringVisuals(deltaPct), [deltaPct]);
 
@@ -75,7 +84,7 @@ export default function DeltaCard(props: Props) {
   const baseClasses =
     "box-border w-full h-full rounded-2xl border bg-white dark:bg-gray-800 shadow-sm " +
     "border-gray-200/50 dark:border-gray-700/50 ring-1 ring-black/5 dark:ring-white/10 overflow-hidden " +
-    (hasInsufficientData ? "opacity-60" : "hover:border-red-300");
+    (hasLowActivity ? "opacity-60" : "hover:border-red-300");
 
   const interactiveClasses = isClickable
     ? "cursor-pointer hover:shadow-md transition-shadow focus:outline-none " +

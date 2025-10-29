@@ -148,11 +148,11 @@ describe("getDeltaMainText", () => {
     expect(text).toBe("+4100.0%"); // ((42 - 1) / 1) * 100 = 4100%
   });
 
-  it("debe mostrar 0 para cero vs cero", () => {
+  it("debe mostrar 'Sin actividad' para cero vs cero", () => {
     const artifact = computeDeltaArtifact(0, 0);
     const text = getDeltaMainText(artifact);
 
-    expect(text).toBe("0");
+    expect(text).toBe("Sin actividad");
   });
 
   it("debe mostrar ±Δ para base negativa", () => {
