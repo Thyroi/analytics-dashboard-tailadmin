@@ -30,9 +30,7 @@ export default function AnalyticsKPISection({
 }: {
   className?: string;
 }) {
-
   const { mode, granularity, startISO, endISO } = useHeaderAnalyticsTimeframe();
-
 
   const fetchParams = useMemo(
     () => ({
@@ -47,7 +45,11 @@ export default function AnalyticsKPISection({
 
   const items: MetricItem[] | null = useMemo(() => {
     if (!data) return null;
-    console.log("🔍 KPI Data:", { current: data.current, previous: data.previous, deltaPct: data.deltaPct });
+    console.log("🔍 KPI Data:", {
+      current: data.current,
+      previous: data.previous,
+      deltaPct: data.deltaPct,
+    });
     const { current, deltaPct } = data;
 
     const d = (x?: number | null): number | undefined =>

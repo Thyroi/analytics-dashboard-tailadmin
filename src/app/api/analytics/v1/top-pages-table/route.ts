@@ -82,6 +82,11 @@ function calculateDeltaPct(
 }
 
 function extractLabel(path: string): string {
+  // Caso especial: home page
+  if (path === "/" || path === "") {
+    return "Home";
+  }
+
   const segments = path.split("/").filter(Boolean);
   const lastSegment = segments[segments.length - 1] ?? "/";
   return decodeURIComponent(lastSegment);
@@ -135,6 +140,19 @@ export async function GET(request: NextRequest) {
       dateRanges: [{ startDate: start, endDate: end }],
       dimensions: [{ name: "pagePath" }],
       metrics: [{ name: "screenPageViews" }],
+      // Filtro para excluir URLs que contengan "pagina/" seguido de números
+      dimensionFilter: {
+        notExpression: {
+          filter: {
+            fieldName: "pagePath",
+            stringFilter: {
+              matchType: "CONTAINS" as const,
+              value: "pagina/",
+              caseSensitive: false,
+            },
+          },
+        },
+      },
       orderBys: [
         {
           metric: { metricName: "screenPageViews" },
@@ -161,6 +179,19 @@ export async function GET(request: NextRequest) {
         ],
         dimensions: [{ name: "pagePath" }],
         metrics: [{ name: "screenPageViews" }],
+        // Mismo filtro para excluir "pagina/"
+        dimensionFilter: {
+          notExpression: {
+            filter: {
+              fieldName: "pagePath",
+              stringFilter: {
+                matchType: "CONTAINS" as const,
+                value: "pagina/",
+                caseSensitive: false,
+              },
+            },
+          },
+        },
         limit: "10000", // Same increased limit
       },
     });

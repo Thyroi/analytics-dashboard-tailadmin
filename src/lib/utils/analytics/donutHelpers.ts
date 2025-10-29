@@ -8,8 +8,12 @@ import {
   normalizePropertyId,
   resolvePropertyId,
 } from "@/lib/utils/analytics/ga";
+import {
+  getEnglishRegionName,
+  translateCountry,
+  translateRegion,
+} from "@/lib/utils/analytics/regionTranslations";
 import { computeRangesForKPI } from "@/lib/utils/time/timeWindows";
-import { translateRegion, translateCountry, getEnglishRegionName } from "@/lib/utils/analytics/regionTranslations";
 import { analyticsdata_v1beta, google } from "googleapis";
 
 /* ======================= Tipos ======================= */
@@ -311,7 +315,10 @@ export async function queryCities(
       filter: { fieldName: "countryId", stringFilter: { value: countryCode } },
     },
     {
-      filter: { fieldName: "region", stringFilter: { value: regionNameEnglish } },
+      filter: {
+        fieldName: "region",
+        stringFilter: { value: regionNameEnglish },
+      },
     },
   ];
 
