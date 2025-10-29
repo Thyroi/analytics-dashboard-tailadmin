@@ -11,11 +11,12 @@ import { useCategoriesTotals } from "@/features/analytics/hooks/categorias";
 import { useCategoriaDetails } from "@/features/analytics/hooks/categorias/useCategoriaDetails";
 import { CATEGORY_ID_ORDER, type CategoryId } from "@/lib/taxonomy/categories";
 import type { TownId } from "@/lib/taxonomy/towns";
+import type { SeriesPoint } from "@/lib/types";
 import { labelToTownId } from "@/lib/utils/core/sector";
 
 import { computeRangesForSeries } from "@/lib/utils/time/timeWindows";
 import { useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 function AnalyticsByTagSectionInner() {
   const queryClient = useQueryClient();
@@ -46,10 +47,8 @@ function AnalyticsByTagSectionInner() {
     endISO: currentPeriod.end,
   };
 
-  const { state, ids, itemsById } = useCategoriesTotals(
-    calculatedGranularity,
-    timeParams
-  );
+  const { state, ids, itemsById, isInitialLoading, isFetching } =
+    useCategoriesTotals(calculatedGranularity, timeParams);
 
   const displayedIds = useMemo<string[]>(
     () =>
@@ -87,66 +86,95 @@ function AnalyticsByTagSectionInner() {
   const seriesCat = categoryDetailsState.series;
   const donutCat = categoryDetailsState.donutData;
 
-  const getDeltaPctFor = (id: string) =>
-    state.status === "ready"
-      ? itemsById[id as CategoryId]?.deltaPct ?? null
-      : null;
+  // --- getters ---
+  const EMPTY_SERIES = useMemo(
+    () => ({ current: [] as SeriesPoint[], previous: [] as SeriesPoint[] }),
+    []
+  );
 
-  const getDeltaArtifactFor = (id: string) => {
-    const artifact =
+  const getDeltaPctFor = useCallback(
+    (id: string) =>
       state.status === "ready"
-        ? itemsById[id as CategoryId]?.deltaArtifact ?? null
-        : null;
+        ? itemsById[id as CategoryId]?.deltaPct ?? null
+        : null,
+    [state.status, itemsById]
+  );
 
-    return artifact;
-  };
+  const getDeltaArtifactFor = useCallback(
+    (id: string) => {
+      const artifact =
+        state.status === "ready"
+          ? itemsById[id as CategoryId]?.deltaArtifact ?? null
+          : null;
 
-  const getSeriesFor = (_id: string) => {
-    if (catId && _id === catId) {
-      // Verificación defensiva: asegurar que seriesCat tiene la estructura correcta
-      return seriesCat &&
-        typeof seriesCat === "object" &&
-        seriesCat.current &&
-        seriesCat.previous
-        ? seriesCat
-        : { current: [], previous: [] };
-    }
-    return { current: [], previous: [] };
-  };
+      return artifact;
+    },
+    [state.status, itemsById]
+  );
 
-  const getDonutFor = (_id: string) => {
-    if (catId && _id === catId) {
-      // Verificación defensiva: asegurar que donutCat es un array
-      return Array.isArray(donutCat) ? donutCat : [];
-    }
-    return [];
-  };
+  const getSeriesFor = useCallback(
+    (_id: string) => {
+      if (catId && _id === catId) {
+        // Verificación defensiva: asegurar que seriesCat tiene la estructura correcta
+        return seriesCat &&
+          typeof seriesCat === "object" &&
+          seriesCat.current &&
+          seriesCat.previous
+          ? seriesCat
+          : EMPTY_SERIES;
+      }
+      return EMPTY_SERIES;
+    },
+    [catId, seriesCat, EMPTY_SERIES]
+  );
 
-  const handleOpen = (id: string) => {
+  const getDonutFor = useCallback(
+    (_id: string) => {
+      if (catId && _id === catId) {
+        // Verificación defensiva: asegurar que donutCat es un array
+        return Array.isArray(donutCat)
+          ? donutCat.map((d) => ({ label: d.label, value: d.value }))
+          : [];
+      }
+      return [];
+    },
+    [catId, donutCat]
+  );
+
+  // --- handlers ---
+  const handleOpen = useCallback((id: string) => {
     setExpandedId(id);
     setDrill({ kind: "category", categoryId: id as CategoryId });
-  };
+  }, []);
 
-  const handleSliceClick = (label: string) => {
-    const townId = labelToTownId(label);
+  const handleSliceClick = useCallback(
+    (label: string) => {
+      const townId = labelToTownId(label);
 
-    if (townId && expandedId) {
-      const newDrill = {
-        kind: "town+cat" as const,
-        townId,
-        categoryId: expandedId as CategoryId,
-      };
+      if (townId && expandedId) {
+        const newDrill = {
+          kind: "town+cat" as const,
+          townId,
+          categoryId: expandedId as CategoryId,
+        };
 
-      // Invalidar queries anteriores antes de actualizar el drill
-      if (drill?.kind === "town+cat") {
-        queryClient.invalidateQueries({
-          queryKey: ["drilldown-details"],
-        });
+        // Invalidar queries anteriores antes de actualizar el drill
+        if (drill?.kind === "town+cat") {
+          queryClient.invalidateQueries({
+            queryKey: ["drilldown-details"],
+          });
+        }
+
+        setDrill(newDrill);
       }
+    },
+    [expandedId, drill, queryClient]
+  );
 
-      setDrill(newDrill);
-    }
-  };
+  const handleClose = useCallback(() => {
+    setExpandedId(null);
+    setDrill(null);
+  }, []);
 
   // Memoizar level2Data para mejor tracking de dependencias
   const level2Data = useMemo(() => {
@@ -165,6 +193,17 @@ function AnalyticsByTagSectionInner() {
     return result;
   }, [drill, calculatedGranularity, currentPeriod]);
 
+  // Remonta el grid si cambian exp/drill/granularidad/período
+  const gridKey = useMemo(() => {
+    const base = `g=${calculatedGranularity}|end=${currentPeriod.end}|exp=${
+      expandedId ?? ""
+    }`;
+    if (drill?.kind === "town+cat")
+      return `${base}|town=${drill.townId}|cat=${drill.categoryId}`;
+    if (drill?.kind === "category") return `${base}|cat=${drill.categoryId}`;
+    return base;
+  }, [calculatedGranularity, currentPeriod.end, expandedId, drill]);
+
   return (
     <section className="max-w-[1560px]">
       <StickyHeaderSection
@@ -180,6 +219,7 @@ function AnalyticsByTagSectionInner() {
       />
 
       <SectorsGrid
+        key={gridKey}
         variant="detailed"
         mode="tag"
         ids={displayedIds}
@@ -191,12 +231,9 @@ function AnalyticsByTagSectionInner() {
         getDonutFor={getDonutFor}
         expandedId={expandedId}
         onOpen={handleOpen}
-        onClose={() => {
-          setExpandedId(null);
-          setDrill(null);
-        }}
+        onClose={handleClose}
         onSliceClick={handleSliceClick}
-        isDeltaLoading={state.status !== "ready"}
+        isDeltaLoading={isInitialLoading || isFetching}
         // NIVEL 2 (drill) - usar período calculado
         level2Data={level2Data}
         startDate={startDate}
