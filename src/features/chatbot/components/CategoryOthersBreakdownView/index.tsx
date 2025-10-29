@@ -9,9 +9,9 @@
 
 import ChartPair from "@/components/common/ChartPair";
 import { CATEGORY_META } from "@/lib/taxonomy/categories";
+import type { CategoryOthersBreakdownViewProps } from "./CategoryOthersBreakdownView.types";
 import CategoryOthersEmptyState from "./CategoryOthersEmptyState";
 import CategoryOthersHeader from "./CategoryOthersHeader";
-import type { CategoryOthersBreakdownViewProps } from "./CategoryOthersBreakdownView.types";
 import { useCategoryOthersData } from "./useCategoryOthersData";
 
 export default function CategoryOthersBreakdownView({
@@ -31,10 +31,7 @@ export default function CategoryOthersBreakdownView({
 
   if (othersBreakdown.length === 0) {
     return (
-      <CategoryOthersEmptyState
-        categoryLabel={categoryLabel}
-        onBack={onBack}
-      />
+      <CategoryOthersEmptyState categoryLabel={categoryLabel} onBack={onBack} />
     );
   }
 

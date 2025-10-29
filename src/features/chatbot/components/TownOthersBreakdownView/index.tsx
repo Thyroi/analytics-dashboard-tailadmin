@@ -9,9 +9,9 @@
 
 import ChartPair from "@/components/common/ChartPair";
 import { TOWN_META } from "@/lib/taxonomy/towns";
+import type { TownOthersBreakdownViewProps } from "./TownOthersBreakdownView.types";
 import TownOthersEmptyState from "./TownOthersEmptyState";
 import TownOthersHeader from "./TownOthersHeader";
-import type { TownOthersBreakdownViewProps } from "./TownOthersBreakdownView.types";
 import { useTownOthersData } from "./useTownOthersData";
 
 export default function TownOthersBreakdownView({

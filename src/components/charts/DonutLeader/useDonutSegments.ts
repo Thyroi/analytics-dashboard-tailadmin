@@ -1,10 +1,7 @@
 import { useMemo } from "react";
 import { polarToXY, TAU } from "./donutGeometry";
-import {
-  forceNewlineAfterLimit,
-  wrapAtMostTwoLines,
-} from "./donutTextUtils";
 import type { DonutItem, DonutLabel, DonutSegment } from "./DonutLeader.types";
+import { forceNewlineAfterLimit, wrapAtMostTwoLines } from "./donutTextUtils";
 
 interface UseDonutSegmentsParams {
   items: DonutItem[];
