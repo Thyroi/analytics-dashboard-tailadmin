@@ -42,6 +42,9 @@ export function useCombinedTownCategoryBreakdown(
       .toLowerCase()
       .normalize("NFD")
       .replace(/[\u0300-\u036f]/g, "") // Remove diacritics
+      .replace(/\s+(y|de|del|la|el|los|las)\s+/g, " ") // Remove common conjunctions/articles (WITH spaces)
+      .replace(/\s+/g, "") // THEN remove all whitespace
+      .replace(/[^a-z0-9]/g, "") // Remove non-alphanumeric characters
       .trim();
   };
 
@@ -101,7 +104,10 @@ export function useCombinedTownCategoryBreakdown(
     const ga4Donut = ga4Result.donutData || [];
     const chatbotDonut = chatbotResult.donutData || [];
 
-    // Mapa para combinar valores: key = normalized label, value = { originalLabel, totalValue }
+    // Mapa para combinar valores: key = normalized label (para unificar variantes), value = { originalLabel, totalValue }
+    // IMPORTANTE: Usar label normalizado como key permite unificar:
+    // - "espaciosMuseisticos" + "Espacios Museísticos" → "espaciosmuseisticos" (misma key)
+    // - "fiestasTradiciones" + "Fiestas y Tradiciones" → "fiestatradiciones" (misma key después de normalizar)
     const combinedMap = new Map<string, { label: string; value: number }>();
 
     // Agregar GA4 donut
@@ -109,7 +115,11 @@ export function useCombinedTownCategoryBreakdown(
       const normalized = normalizeLabel(item.label);
       const existing = combinedMap.get(normalized);
       if (existing) {
+        // Si ya existe, sumar al valor y preferir el label más descriptivo (el más largo)
         existing.value += item.value;
+        if (item.label.length > existing.label.length) {
+          existing.label = item.label;
+        }
       } else {
         combinedMap.set(normalized, {
           label: item.label, // Usar el label original de GA4
@@ -123,7 +133,11 @@ export function useCombinedTownCategoryBreakdown(
       const normalized = normalizeLabel(item.label);
       const existing = combinedMap.get(normalized);
       if (existing) {
+        // Si ya existe, sumar al valor y preferir el label más descriptivo (el más largo)
         existing.value += item.value;
+        if (item.label.length > existing.label.length) {
+          existing.label = item.label;
+        }
       } else {
         combinedMap.set(normalized, {
           label: item.label,
@@ -132,8 +146,35 @@ export function useCombinedTownCategoryBreakdown(
       }
     });
 
-    // Convertir a array y ordenar por valor descendente
-    return Array.from(combinedMap.values()).sort((a, b) => {
+    // CONSOLIDAR "Otros": detectar y combinar todas las entradas "Otros"
+    const otrosEntries: Array<{ label: string; value: number }> = [];
+    const regularEntries: Array<{ label: string; value: number }> = [];
+
+    for (const entry of combinedMap.values()) {
+      const labelLower = entry.label.toLowerCase().trim();
+      const isOtros =
+        labelLower === "otros" ||
+        labelLower.startsWith("otros ") ||
+        labelLower.startsWith("otros(");
+
+      if (isOtros) {
+        otrosEntries.push(entry);
+      } else {
+        regularEntries.push(entry);
+      }
+    }
+
+    // Si hay múltiples "Otros", consolidarlos en uno solo
+    if (otrosEntries.length > 0) {
+      const totalOtros = otrosEntries.reduce((sum, e) => sum + e.value, 0);
+      regularEntries.push({
+        label: "Otros",
+        value: totalOtros,
+      });
+    }
+
+    // Ordenar por valor descendente
+    return regularEntries.sort((a, b) => {
       if (b.value !== a.value) return b.value - a.value;
       return a.label.localeCompare(b.label);
     });
