@@ -1,7 +1,7 @@
 "use client";
 
 import Avatar from "@/components/common/Avatar";
-import { ChevronDown, LifeBuoy, LogOut, Settings, User } from "lucide-react";
+import { ChevronDown, LogOut, User } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
@@ -105,24 +105,6 @@ export default function UserDropdown({ user, className = "" }: Props) {
             >
               <User className="h-4 w-4 text-gray-400" />
               Ver perfil
-            </a>
-            <a
-              href="/settings"
-              className="flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-gray-50 dark:hover:bg-white/5 text-sm
-                   text-gray-700 dark:text-gray-200"
-              role="menuitem"
-            >
-              <Settings className="h-4 w-4 text-gray-400" />
-              Configuración (WIP)
-            </a>
-            <a
-              href="mailto:soporte@tuempresa.com"
-              className="flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-gray-50 dark:hover:bg-white/5 text-sm
-                   text-gray-700 dark:text-gray-200"
-              role="menuitem"
-            >
-              <LifeBuoy className="h-4 w-4 text-gray-400" />
-              Soporte
             </a>
           </div>
 
