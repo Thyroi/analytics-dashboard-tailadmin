@@ -51,9 +51,12 @@ function AnalyticsByTagSectionInner() {
   const { state, ids, itemsById, isInitialLoading, isFetching } =
     useCategoriesTotals(calculatedGranularity, timeParams);
 
+  // Filtrar "otros" de las categorías mostradas
   const displayedIds = useMemo<string[]>(
     () =>
-      state.status === "ready" ? (ids as string[]) : [...CATEGORY_ID_ORDER],
+      state.status === "ready"
+        ? (ids as string[]).filter((id) => id !== "otros")
+        : CATEGORY_ID_ORDER.filter((id) => id !== "otros"),
     [state.status, ids]
   );
 

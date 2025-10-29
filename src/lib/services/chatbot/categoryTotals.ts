@@ -256,25 +256,25 @@ export async function fetchChatbotCategoryTotals(
     const currentTotals = parseCategoryTotals(currentResponse, synonymIndex);
     const prevTotals = parseCategoryTotals(prevResponse, synonymIndex);
 
-    // 6. Construir resultado final con TODAS las categorías
-    const categories: CategoryTotalData[] = CATEGORY_ID_ORDER.map(
-      (categoryId) => {
-        const currentTotal = currentTotals.get(categoryId) || 0;
-        const prevTotal = prevTotals.get(categoryId) || 0;
-        const deltaAbs = currentTotal - prevTotal;
-        const deltaPercent = computeDeltaPercent(currentTotal, prevTotal);
+    // 6. Construir resultado final con TODAS las categorías (excepto "otros")
+    const categories: CategoryTotalData[] = CATEGORY_ID_ORDER.filter(
+      (id) => id !== "otros"
+    ).map((categoryId) => {
+      const currentTotal = currentTotals.get(categoryId) || 0;
+      const prevTotal = prevTotals.get(categoryId) || 0;
+      const deltaAbs = currentTotal - prevTotal;
+      const deltaPercent = computeDeltaPercent(currentTotal, prevTotal);
 
-        return {
-          id: categoryId,
-          label: CATEGORY_META[categoryId].label,
-          iconSrc: CATEGORY_META[categoryId].iconSrc,
-          currentTotal,
-          prevTotal,
-          deltaAbs,
-          deltaPercent,
-        };
-      }
-    );
+      return {
+        id: categoryId,
+        label: CATEGORY_META[categoryId].label,
+        iconSrc: CATEGORY_META[categoryId].iconSrc,
+        currentTotal,
+        prevTotal,
+        deltaAbs,
+        deltaPercent,
+      };
+    });
 
     return {
       categories,

@@ -54,7 +54,11 @@ export default function SectorsByTagSection({ granularity }: Props) {
     return result;
   }, [categoriesData]);
 
-  const displayedIds = useMemo<string[]>(() => [...CATEGORY_ID_ORDER], []);
+  // Filtrar "otros" de las categorías mostradas
+  const displayedIds = useMemo<string[]>(
+    () => CATEGORY_ID_ORDER.filter((id) => id !== "otros"),
+    []
+  );
 
   const catId = expandedId as CategoryId | null;
 
