@@ -2,10 +2,7 @@
 
 import { createContext, useContext } from "react";
 import { TimeframeProvider } from "./TimeframeProvider";
-import type {
-  TimeframeContextValue,
-  TimeframeProviderProps,
-} from "./types";
+import type { TimeframeContextValue, TimeframeProviderProps } from "./types";
 
 /**
  * Factory function to create timeframe context instances
