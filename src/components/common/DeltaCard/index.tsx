@@ -62,10 +62,17 @@ export default function DeltaCard(props: Props) {
   // Determinar si debe tener opacidad reducida (sin actividad o sin datos)
   const hasLowActivity = useMemo(() => {
     if (deltaArtifact) {
-      // Opacidad reducida para zero_vs_zero o no_current
+      // Opacidad reducida para:
+      // - zero_vs_zero: 0 vs 0
+      // - no_current: sin datos actuales
+      // - new_vs_zero con current=0: nuevo período sin actividad (0 vs null/0)
+      // - ok con current=0: actividad cayó a cero
       return (
         deltaArtifact.state === "zero_vs_zero" ||
-        deltaArtifact.state === "no_current"
+        deltaArtifact.state === "no_current" ||
+        (deltaArtifact.state === "new_vs_zero" &&
+          deltaArtifact.baseInfo.current === 0) ||
+        (deltaArtifact.state === "ok" && deltaArtifact.baseInfo.current === 0)
       );
     }
     // Sin artifact: opacidad reducida si deltaPct es null o 0

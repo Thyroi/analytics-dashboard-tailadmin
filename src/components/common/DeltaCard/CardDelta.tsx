@@ -46,11 +46,22 @@ export default function CardDelta({ deltaPct, loading, deltaArtifact }: Props) {
       deltaArtifact.baseInfo.prev !== null &&
       deltaArtifact.baseInfo.prev > 0) ||
     deltaArtifact?.state === "zero_vs_zero" ||
-    deltaPct === 0;
+    (deltaArtifact?.state === "new_vs_zero" &&
+      deltaArtifact.baseInfo.current === 0);
+
+  // IMPORTANTE: deltaPct === 0 NO debe ser "sin actividad" si viene con artifact válido
+  // Solo usar deltaPct === 0 cuando NO hay artifact (fallback legacy)
+  const isSinActividadLegacy = !deltaArtifact && deltaPct === 0;
 
   // Determinar tamaño: más pequeño para "sin actividad", pequeño para "sin datos", normal para el resto
-  const fontSize = isSinActividad ? 16 : isNoData ? 14 : 28;
-  const lineHeight = isSinActividad ? "16px" : isNoData ? "18px" : "28px";
+  const fontSize =
+    isSinActividad || isSinActividadLegacy ? 16 : isNoData ? 14 : 28;
+  const lineHeight =
+    isSinActividad || isSinActividadLegacy
+      ? "16px"
+      : isNoData
+      ? "18px"
+      : "28px";
 
   return (
     <div

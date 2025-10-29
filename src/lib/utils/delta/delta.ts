@@ -83,9 +83,8 @@ export function computeDeltaArtifact(
   } else if (prevValue === 0 && currValue! === 0) {
     state = "zero_vs_zero";
   } else if (prevValue === 0 && currValue! > 0) {
-    // NUEVA LÓGICA: Asignar prev = 1 para calcular delta porcentual
+    // Usar base=1 para calcular delta porcentual y poder mostrar siempre %
     state = "new_vs_zero";
-    // Calcular delta porcentual usando 1 como base
     deltaPct = ((currValue! - 1) / 1) * 100;
   } else if (prevValue! > 0) {
     state = "ok";
@@ -150,23 +149,28 @@ export function getDeltaMainText(artifact: DeltaArtifact): string {
       if (deltaPct !== null) {
         const sign = deltaPct > 0 ? "+" : deltaPct < 0 ? "−" : "";
         const abs = Math.abs(deltaPct);
-        return `${sign}${abs.toFixed(1)}%`;
+        // Formato español: separador de miles punto (.), separador decimal coma (,)
+        const formatted = abs.toLocaleString("es-ES", {
+          minimumFractionDigits: 1,
+          maximumFractionDigits: 1,
+        });
+        return `${sign}${formatted}%`;
       }
-      return "0%";
+      return "0,0%";
 
     case "new_vs_zero":
       // Mostrar delta porcentual si está disponible (calculado con base = 1)
       if (deltaPct !== null) {
         const sign = deltaPct > 0 ? "+" : deltaPct < 0 ? "−" : "";
         const abs = Math.abs(deltaPct);
-        return `${sign}${abs.toFixed(1)}%`;
+        const formatted = abs.toLocaleString("es-ES", {
+          minimumFractionDigits: 1,
+          maximumFractionDigits: 1,
+        });
+        return `${sign}${formatted}%`;
       }
-      // Fallback: mostrar valor absoluto si no hay deltaPct
-      if (deltaAbs !== null) {
-        return `+${deltaAbs.toLocaleString("es-ES")}`;
-      }
-      if (baseInfo.current !== null) {
-        return `+${baseInfo.current.toLocaleString("es-ES")}`;
+      if (baseInfo.current === 0) {
+        return "Sin actividad";
       }
       return "Nuevo";
 
@@ -238,7 +242,12 @@ export function getDeltaColor(artifact: DeltaArtifact): string {
   }
 
   // Sin datos o estados especiales
-  if (state === "new_vs_zero") return "text-green-600";
+  if (state === "new_vs_zero") {
+    // Si current = 0, es "Sin actividad" (gris)
+    if (baseInfo.current === 0) return "text-gray-500";
+    // Si current > 0, es nuevo dato (verde)
+    return "text-green-600";
+  }
   if (state === "zero_vs_zero") return "text-gray-500";
 
   return "text-gray-500";
@@ -282,6 +291,14 @@ export function getDeltaIcon(artifact: DeltaArtifact): string {
     if (deltaAbs > 0) return "↗";
     if (deltaAbs < 0) return "↘";
     return "→";
+  }
+
+  // Estados especiales
+  if (state === "new_vs_zero") {
+    // Si current = 0, flecha neutral
+    if (baseInfo.current === 0) return "→";
+    // Si current > 0, flecha arriba
+    return "↗";
   }
 
   return "→";
@@ -342,18 +359,15 @@ export function getDeltaTooltip(artifact: DeltaArtifact): TooltipParts {
 
     case "new_vs_zero":
       title = "Nuevo vs base cero";
-      if (deltaPct !== null && baseInfo.current !== null) {
-        // Mostrar que se usó base=1 para el cálculo
-        const pctSign = deltaPct >= 0 ? "+" : "";
-        detail = `Base previa=0, usando base=1 para %. ${pctSign}${deltaPct.toFixed(
-          1
-        )}% · Δ +${baseInfo.current.toLocaleString(
-          "es-ES"
-        )} · de 0 → ${baseInfo.current.toLocaleString("es-ES")}`;
-      } else if (baseInfo.current !== null) {
+      if (baseInfo.current !== null && baseInfo.current > 0) {
+        // NORMALIZADO: Solo mostrar valor absoluto, sin porcentaje
         detail = `Sin base previa (prev=0). Δ +${baseInfo.current.toLocaleString(
           "es-ES"
         )} · de 0 → ${baseInfo.current.toLocaleString("es-ES")}`;
+      } else if (baseInfo.current === 0) {
+        detail = "de 0 → 0";
+      } else {
+        detail = "Sin base previa disponible";
       }
       break;
 
