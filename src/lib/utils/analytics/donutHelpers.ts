@@ -9,6 +9,7 @@ import {
   resolvePropertyId,
 } from "@/lib/utils/analytics/ga";
 import { computeRangesForKPI } from "@/lib/utils/time/timeWindows";
+import { translateRegion, translateCountry, getEnglishRegionName } from "@/lib/utils/analytics/regionTranslations";
 import { analyticsdata_v1beta, google } from "googleapis";
 
 /* ======================= Tipos ======================= */
@@ -187,7 +188,8 @@ export async function queryCountries(
 
   // Procesar filas de países
   const rows: CountryRow[] = rowsRaw.map((r) => {
-    const country = String(r.dimensionValues?.[0]?.value ?? "Unknown");
+    const countryEnglish = String(r.dimensionValues?.[0]?.value ?? "Unknown");
+    const country = translateCountry(countryEnglish); // Traducir a español
     const codeRaw = String(r.dimensionValues?.[1]?.value ?? "");
     const code = codeRaw && codeRaw.length === 2 ? codeRaw.toUpperCase() : null;
     const customers = Number(r.metricValues?.[0]?.value ?? 0) || 0;
@@ -264,7 +266,8 @@ export async function queryRegions(
 
   // Procesar filas de regiones
   const rows: RegionRow[] = rowsRaw.map((r) => {
-    const region = String(r.dimensionValues?.[1]?.value ?? "Unknown");
+    const regionEnglish = String(r.dimensionValues?.[1]?.value ?? "Unknown");
+    const region = translateRegion(regionEnglish); // Traducir a español
     const customers = Number(r.metricValues?.[0]?.value ?? 0) || 0;
     const pct = total > 0 ? Math.round((customers / total) * 100) : 0;
 
@@ -299,13 +302,16 @@ export async function queryCities(
   const analytics = google.analyticsdata({ version: "v1beta", auth });
   const property = normalizePropertyId(resolvePropertyId());
 
+  // Convertir nombre de región a inglés para el filtro de GA4
+  const regionNameEnglish = getEnglishRegionName(regionName);
+
   // Filtros combinados para país + región
   const filters: analyticsdata_v1beta.Schema$FilterExpression[] = [
     {
       filter: { fieldName: "countryId", stringFilter: { value: countryCode } },
     },
     {
-      filter: { fieldName: "region", stringFilter: { value: regionName } },
+      filter: { fieldName: "region", stringFilter: { value: regionNameEnglish } },
     },
   ];
 

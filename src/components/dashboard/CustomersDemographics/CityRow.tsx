@@ -15,7 +15,7 @@ export default function CityRow({ city, users, pctNum, pctLabel }: Props) {
           className="h-1.5 w-1.5 rounded-full bg-orange-300 shrink-0"
           aria-hidden
         />
-        <div className="min-w-0">
+        <div className="min-w-0 text-left">
           <div className="truncate text-[13px] text-gray-800 dark:text-white/90">
             {city}
           </div>

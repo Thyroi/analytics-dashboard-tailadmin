@@ -47,10 +47,11 @@ export default function AnalyticsKPISection({
 
   const items: MetricItem[] | null = useMemo(() => {
     if (!data) return null;
+    console.log("🔍 KPI Data:", { current: data.current, previous: data.previous, deltaPct: data.deltaPct });
     const { current, deltaPct } = data;
 
     const d = (x?: number | null): number | undefined =>
-      x == null ? undefined : Number(x.toFixed(1));
+      x == null ? undefined : Number((x * 100).toFixed(1));
 
     return [
       {

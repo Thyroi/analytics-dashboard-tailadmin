@@ -45,7 +45,7 @@ export default function RegionRow({
             <Plus className="h-3 w-3" strokeWidth={3} />
           )}
         </span>
-        <div className="min-w-0">
+        <div className="min-w-0 text-left">
           <div className="truncate text-sm text-gray-800 dark:text-white/90">
             {region}
           </div>
