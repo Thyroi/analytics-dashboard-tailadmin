@@ -1,4 +1,5 @@
 import type { ChatbotGranularity, ChatbotPoint } from "@/lib/api/chatbot";
+import { isoFromYYYYMMDD as isoFromYYYYMMDDUtil } from "./datetime";
 
 /** ---------- helpers base ---------- */
 // const pad = (n: number, w = 2) => String(n).padStart(w, "0"); // TEMPORALMENTE NO USADO
@@ -11,11 +12,11 @@ const parseISO = (iso: string) => new Date(`${iso}T00:00:00Z`);
 // };
 
 /** ---------- normalizadores por granularidad ---------- */
+/**
+ * @deprecated Use isoFromYYYYMMDD from './datetime' instead
+ */
 export function isoFromYYYYMMDD(yyyymmdd: string): string {
-  return `${yyyymmdd.slice(0, 4)}-${yyyymmdd.slice(4, 6)}-${yyyymmdd.slice(
-    6,
-    8
-  )}`;
+  return isoFromYYYYMMDDUtil(yyyymmdd);
 }
 
 // Lunes aproximado de la semana (ISO-like) para ordenar

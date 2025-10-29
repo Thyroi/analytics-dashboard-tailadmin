@@ -1,17 +1,14 @@
+import { toTokens as toTokensUtil } from "@/lib/utils/string/tokenization";
+
 export function escapeRe(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+/**
+ * @deprecated Use toTokens from '@/lib/utils/string/tokenization' instead
+ */
 export function toTokens(baseLabelOrId: string): string[] {
-  // normaliza acentos y genera variantes útiles para matching en path
-  const base = baseLabelOrId
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase();
-
-  const kebab = base.replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
-  const compact = base.replace(/[^a-z0-9]+/g, "");
-  return Array.from(new Set([kebab, compact].filter(Boolean)));
+  return toTokensUtil(baseLabelOrId);
 }
 
 export function safePathname(raw: string): string {

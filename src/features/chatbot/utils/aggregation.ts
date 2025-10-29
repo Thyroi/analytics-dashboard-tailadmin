@@ -10,6 +10,11 @@ import type {
   Granularity,
   TagAuditResponse,
 } from "../types";
+import {
+  normalizeToken,
+  approxEquals,
+} from "@/lib/utils/string/normalize";
+import { toTokens } from "@/lib/utils/string/tokenization";
 
 /** ==== Tipos del API Mindsaic (lo necesario) ==== */
 type APIPoint = { time: string; value: number };
@@ -22,84 +27,6 @@ export type CategoryAggUI = {
   value: number;
   delta: number;
 };
-
-// Helpers de normalización y fuzzy match (sin dependencias)
-function removeDiacritics(s: string): string {
-  return s.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-}
-
-function collapseRepeats(s: string): string {
-  // colapsa repeticiones de la misma letra: "plaaya" -> "playa"
-  return s.replace(/([a-z0-9])\1+/gi, "$1");
-}
-
-function normalizeToken(s: string): string {
-  const noDiac = removeDiacritics(s.toLowerCase());
-  // quitar separadores comunes y espacios
-  const compact = noDiac.replace(/[-_\s]+/g, "");
-  return collapseRepeats(compact);
-}
-
-function editDistance(a: string, b: string): number {
-  const m = a.length;
-  const n = b.length;
-  const dp: number[][] = Array.from({ length: m + 1 }, () =>
-    Array(n + 1).fill(0)
-  );
-  for (let i = 0; i <= m; i++) dp[i][0] = i;
-  for (let j = 0; j <= n; j++) dp[0][j] = j;
-  for (let i = 1; i <= m; i++) {
-    for (let j = 1; j <= n; j++) {
-      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
-      dp[i][j] = Math.min(
-        dp[i - 1][j] + 1, // delete
-        dp[i][j - 1] + 1, // insert
-        dp[i - 1][j - 1] + cost // substitute
-      );
-    }
-  }
-  return dp[m][n];
-}
-
-function sameLettersLoose(a: string, b: string, slack: number): boolean {
-  // compara multiconjuntos de letras (orden no importa) con tolerancia `slack`
-  const count = (s: string): Map<string, number> => {
-    const m = new Map<string, number>();
-    for (const ch of s) m.set(ch, (m.get(ch) ?? 0) + 1);
-    return m;
-  };
-  const ca = count(a);
-  const cb = count(b);
-  const allKeys = new Set([...ca.keys(), ...cb.keys()]);
-  let diff = 0;
-  for (const k of allKeys) {
-    diff += Math.abs((ca.get(k) ?? 0) - (cb.get(k) ?? 0));
-    if (diff > slack) return false;
-  }
-  return true;
-}
-
-function approxEquals(aRaw: string, bRaw: string): boolean {
-  const a = normalizeToken(aRaw);
-  const b = normalizeToken(bRaw);
-  if (!a || !b) return false;
-  if (a === b) return true;
-
-  // umbral según longitud
-  const len = Math.max(a.length, b.length);
-  const thr = len <= 5 ? 1 : len <= 9 ? 2 : 3;
-
-  // distancia de edición
-  if (editDistance(a, b) <= thr) return true;
-
-  // igualdad por multiconjunto de letras con pequeña holgura
-  if (sameLettersLoose(a, b, Math.min(2, thr))) return true;
-
-  // contención (para casos como "museo" vs "museos")
-  if (a.includes(b) || b.includes(a)) return true;
-
-  return false;
-}
 
 // Construye índice de sinónimos normalizados por categoría
 function buildSynonymIndex(
@@ -117,25 +44,6 @@ function firstTwoSegments(rawKey: string): { seg1: string; seg2: string } {
   const keyNoRoot = rawKey.startsWith("root.") ? rawKey.slice(5) : rawKey;
   const parts = keyNoRoot.split(".");
   return { seg1: parts[0] ?? "", seg2: parts[1] ?? "" };
-}
-
-/** Normaliza y tokeniza para matching robusto (sin acentos, minúsculas) */
-function norm(s: string): string {
-  return s
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .trim();
-}
-
-export function toTokens(base: string): string[] {
-  const n = norm(base);
-  // variantes útiles: tal cual, espacios→-, espacios→_, sin separadores
-  const kebab = n.replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
-  const snake = n.replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
-  const compact = n.replace(/[^a-z0-9]+/g, "");
-  // set para evitar duplicados
-  return Array.from(new Set([n, kebab, snake, compact].filter(Boolean)));
 }
 
 /** Construye un diccionario token -> CategoryId a partir de tus metadatos */

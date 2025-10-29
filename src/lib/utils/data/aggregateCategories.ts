@@ -4,6 +4,7 @@ import {
   CATEGORY_SYNONYMS,
   type CategoryId,
 } from "@/lib/taxonomy/categories";
+import { toTokens } from "@/lib/utils/string";
 
 /** ==== Tipos del API Mindsaic (lo necesario) ==== */
 type APIPoint = { time: string; value: number };
@@ -16,24 +17,6 @@ export type CategoryAggUI = {
   value: number;
   delta: number;
 };
-
-/** Normaliza y tokeniza para matching robusto (sin acentos, minúsculas) */
-function norm(s: string): string {
-  return s
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .trim();
-}
-function toTokens(base: string): string[] {
-  const n = norm(base);
-  // variantes útiles: tal cual, espacios→-, espacios→_, sin separadores
-  const kebab = n.replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
-  const snake = n.replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
-  const compact = n.replace(/[^a-z0-9]+/g, "");
-  // set para evitar duplicados
-  return Array.from(new Set([n, kebab, snake, compact].filter(Boolean)));
-}
 
 /** Construye un diccionario token -> CategoryId a partir de tus metadatos */
 function buildCategoryTokenMap(): Map<string, CategoryId> {
