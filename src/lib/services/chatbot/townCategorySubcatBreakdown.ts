@@ -295,10 +295,8 @@ export async function fetchTownCategorySubcatBreakdown({
       ? normalizeForAPI(representativeRawSegment)
       : normalizeForAPI(CHATBOT_CATEGORY_TOKENS[categoryId]);
 
-    // Verificar si la categoría necesita wildcard (solo cuando no usamos representativeRawSegment)
-    const needsWildcard =
-      !representativeRawSegment &&
-      CHATBOT_CATEGORY_NEEDS_WILDCARD.has(categoryId);
+    // Verificar si la categoría necesita wildcard (SIEMPRE verificar, independientemente de representativeRawSegment)
+    const needsWildcard = CHATBOT_CATEGORY_NEEDS_WILDCARD.has(categoryId);
     const catPart = needsWildcard ? `${catToken}*` : catToken;
 
     // Construir pattern
