@@ -52,11 +52,16 @@ export default function KPIStatCard({
         <div
           className={`absolute inset-0 bg-gradient-to-br ${color} opacity-90`}
         />
-        <div className="relative flex h-full flex-col justify-between p-6 text-white">
-          <div className="flex h-full items-center justify-between gap-4">
-            <div className="flex h-full min-w-0 flex-col justify-between">
-              <p className="mb-1 truncate text-sm text-white/80">{title}</p>
-              <p className="mb-2 truncate text-3xl font-bold">{valueText}</p>
+        <div className="relative flex h-full flex-col p-6 text-white">
+          {/* Título en su propia fila */}
+          <div className="mb-3">
+            <p className="truncate text-sm text-white/80">{title}</p>
+          </div>
+
+          {/* Contenido principal: valor, cambio e ícono */}
+          <div className="flex flex-1 items-center justify-between gap-4">
+            <div className="flex min-w-0 flex-col justify-center gap-2">
+              <p className="truncate text-3xl font-bold">{valueText}</p>
 
               {typeof changeText !== "undefined" && changeText !== null && (
                 <span
