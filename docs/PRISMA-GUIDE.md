@@ -21,6 +21,7 @@
 Este proyecto usa **Prisma 6.14.0** como ORM para interactuar con PostgreSQL (Neon).
 
 ### **Características**
+
 - ✅ Type-safe database client
 - ✅ Migraciones automáticas
 - ✅ Prisma Studio (GUI visual)
@@ -49,6 +50,7 @@ DIRECT_URL="postgresql://user:password@host/database?sslmode=require"
 ```
 
 **Notas importantes:**
+
 - `DATABASE_URL`: Usa **pooled connection** (con `pgbouncer=true`)
 - `DIRECT_URL`: Usa **direct connection** (para migraciones)
 - **SSL es requerido** por Neon
@@ -83,10 +85,10 @@ model User {
   role          String   @default("viewer")
   emailVerified DateTime?
   image         String?
-  
+
   // Auth0 fields
   auth0Sub      String?  @unique
-  
+
   // Profile fields
   firstName     String?
   lastName      String?
@@ -96,22 +98,23 @@ model User {
   country       String?
   postalCode    String?
   bio           String?
-  
+
   // Social media
   facebook      String?
   twitter       String?
   instagram     String?
   linkedin      String?
-  
+
   // Timestamps
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
-  
+
   @@map("users")
 }
 ```
 
 **Roles disponibles:**
+
 - `admin`: Acceso completo, gestión de usuarios
 - `editor`: Puede editar datos
 - `viewer`: Solo lectura (default)
@@ -171,10 +174,10 @@ model User {
   id    String @id @default(cuid())
   email String @unique
   name  String?
-  
+
   // ➕ NUEVO CAMPO
   avatar String?
-  
+
   @@map("users")
 }
 ```
@@ -190,6 +193,7 @@ npx prisma migrate dev
 ```
 
 **¿Qué hace esto?**
+
 - ✅ Valida el schema
 - ✅ Crea archivo de migración SQL en `prisma/migrations/`
 - ✅ Aplica la migración a la BD
@@ -264,6 +268,7 @@ npx prisma format
 **Problema:** No se puede conectar a la BD.
 
 **Soluciones:**
+
 1. Verificar que `DATABASE_URL` esté correcto en `.env`
 2. Verificar que SSL esté habilitado: `?sslmode=require`
 3. Verificar que Neon database esté activo
@@ -349,6 +354,7 @@ npx prisma migrate reset
 ### **1. Migraciones**
 
 ✅ **DO:**
+
 - Crear una migración por cada cambio lógico
 - Usar nombres descriptivos: `add_user_avatar`, `create_posts_table`
 - Commitear migraciones al repositorio
@@ -356,6 +362,7 @@ npx prisma migrate reset
 - Usar `migrate deploy` en producción (nunca `migrate dev`)
 
 ❌ **DON'T:**
+
 - No editar migraciones ya aplicadas
 - No usar `db push` en producción
 - No hacer cambios manuales en la BD sin crear migración
@@ -368,18 +375,18 @@ npx prisma migrate reset
 model User {
   // IDs
   id String @id @default(cuid())  // ✅ CUID es más seguro que auto-increment
-  
+
   // Unique constraints
   email String @unique             // ✅ Siempre unique para emails
-  
+
   // Required vs Optional
   name  String?                    // ✅ ? para campos opcionales
   email String                     // ✅ Sin ? para requeridos
-  
+
   // Timestamps
   createdAt DateTime @default(now())  // ✅ Siempre incluir timestamps
   updatedAt DateTime @updatedAt       // ✅ Auto-actualizado
-  
+
   // Table naming
   @@map("users")                  // ✅ Lowercase plural para tablas
 }
@@ -391,7 +398,7 @@ model User {
 // ✅ Singleton pattern para Prisma Client
 // src/server/db.ts
 
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from "@prisma/client";
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
@@ -400,12 +407,13 @@ const globalForPrisma = globalThis as unknown as {
 export const prisma =
   globalForPrisma.prisma ??
   new PrismaClient({
-    log: process.env.NODE_ENV === 'development' 
-      ? ['query', 'error', 'warn'] 
-      : ['error'],
+    log:
+      process.env.NODE_ENV === "development"
+        ? ["query", "error", "warn"]
+        : ["error"],
   });
 
-if (process.env.NODE_ENV !== 'production') {
+if (process.env.NODE_ENV !== "production") {
   globalForPrisma.prisma = prisma;
 }
 ```
@@ -462,15 +470,18 @@ try {
 ## 📚 Recursos Adicionales
 
 ### **Documentación Oficial**
+
 - [Prisma Docs](https://www.prisma.io/docs)
 - [Prisma Client API](https://www.prisma.io/docs/reference/api-reference/prisma-client-reference)
 - [Prisma Migrate](https://www.prisma.io/docs/concepts/components/prisma-migrate)
 
 ### **Neon Specifics**
+
 - [Neon + Prisma Guide](https://neon.tech/docs/guides/prisma)
 - [Connection Pooling](https://neon.tech/docs/connect/connection-pooling)
 
 ### **En Este Proyecto**
+
 - Schema: `prisma/schema.prisma`
 - Migraciones: `prisma/migrations/`
 - Seed: `prisma/seed.ts`
@@ -551,12 +562,12 @@ npx prisma format              # Formatear schema
 
 ### **Códigos de Error Comunes**
 
-| Código | Significado | Solución |
-|--------|-------------|----------|
-| `P2002` | Unique constraint violation | Email/campo ya existe |
-| `P2025` | Record not found | Verificar ID |
-| `P1001` | Can't reach database | Verificar conexión |
-| `P3006` | Migration failed | Ver logs, resolver manualmente |
+| Código  | Significado                 | Solución                       |
+| ------- | --------------------------- | ------------------------------ |
+| `P2002` | Unique constraint violation | Email/campo ya existe          |
+| `P2025` | Record not found            | Verificar ID                   |
+| `P1001` | Can't reach database        | Verificar conexión             |
+| `P3006` | Migration failed            | Ver logs, resolver manualmente |
 
 ---
 
