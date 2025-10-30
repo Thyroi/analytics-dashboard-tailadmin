@@ -24,350 +24,30 @@ import {
   getTownSearchPattern,
   matchSecondCategory,
   parseKey,
-  type KeyInfo,
 } from "@/lib/taxonomy/patterns";
-import { type TownId } from "@/lib/taxonomy/towns";
-import type { SeriesPoint, WindowGranularity } from "@/lib/types";
-import { addDaysUTC, parseISO, toISO } from "@/lib/utils/time/datetime";
+import type { SeriesPoint } from "@/lib/types";
 import { computeRangesForKPI } from "@/lib/utils/time/timeWindows";
 import { OTHERS_ID } from "./partition";
+import { computeDeltaPercent, formatDateForMindsaic } from "./shared/helpers";
+import { fetchMindsaicDataForTown } from "./shared/mindsaicClient";
+import { buildSeriesForRange } from "./shared/seriesBuilder";
+import {
+  aggregateDailyTotals,
+  parseTownCategories,
+} from "./shared/townParsers";
+import type {
+  FetchTownCategoryBreakdownParams,
+  TownCategoryBreakdownResponse,
+  TownCategoryData,
+} from "./shared/types";
 
-/* ==================== Tipos ==================== */
-
-export type OthersBreakdownEntry = {
-  key: string; // Clave original, e.g., "root.patrimonio.paterna.tejada la nueva"
-  path: string[]; // Parts splitteadas, e.g., ["root", "patrimonio", "paterna", "tejada la nueva"]
-  value: number; // Valor agregado (suma de todas las series)
-  timePoints: Array<{ time: string; value: number }>; // Puntos individuales para debugging
-};
-
-export type TownCategoryData = {
-  categoryId: CategoryId | typeof OTHERS_ID;
-  label: string;
-  iconSrc: string;
-  currentTotal: number;
-  prevTotal: number;
-  deltaAbs: number;
-  deltaPercent: number | null;
-};
-
-export type TownCategoryBreakdownResponse = {
-  townId: TownId;
-  categories: TownCategoryData[];
-  seriesByCategory?: Record<string, Array<{ time: string; value: number }>>; // Opcional para futura comparativa
-  /** Series agregadas por día para el pueblo completo (para la gráfica de la izquierda) */
-  series?: {
-    current: SeriesPoint[];
-    previous: SeriesPoint[];
-  };
-  /** Raw segments observed grouped by canonical CategoryId with totals (to pick representative raw segment for Nivel 2) */
-  categoryRawSegmentsById?: Record<CategoryId, Record<string, number>>;
-  /** Desglose de claves que cayeron en "Otros" (no mapeables) */
-  othersBreakdown?: {
-    current: OthersBreakdownEntry[];
-    previous: OthersBreakdownEntry[];
-  };
-  meta: {
-    granularity: WindowGranularity;
-    timezone: string;
-    range: {
-      current: { start: string; end: string };
-      previous: { start: string; end: string };
-    };
-  };
-  /** Opcional: respuestas crudas del origen (solo para debug del nivel 1) */
-  raw?: {
-    current: MindsaicResponse;
-    previous: MindsaicResponse;
-  };
-};
-
-export type FetchTownCategoryBreakdownParams = {
-  townId: TownId;
-  startISO?: string | null;
-  endISO?: string | null;
-  windowGranularity?: WindowGranularity;
-  db?: string;
-};
-
-export type MindsaicPoint = { time: string; value: number };
-export type MindsaicOutput = Record<string, MindsaicPoint[]>;
-export type MindsaicResponse = {
-  code: number;
-  output: MindsaicOutput;
-};
-
-/* ==================== Helpers ==================== */
-
-/**
- * Convierte formato YYYY-MM-DD a YYYYMMDD requerido por Mindsaic
- */
-function formatDateForMindsaic(dateISO: string): string {
-  return dateISO.replace(/-/g, "");
-}
-
-/**
- * Calcula deltaPercent según reglas:
- * - null si prev <= 0 o falta dato
- * - ((current - prev) / prev) * 100 en otro caso
- */
-function computeDeltaPercent(current: number, prev: number): number | null {
-  if (prev <= 0) return null;
-  return ((current - prev) / prev) * 100;
-}
-
-/**
- * Filtra y parsea el universo de claves que pertenecen a esta vista (town)
- * Devuelve KeyInfo[] con metadata completa para uso uniforme en donut y series
- *
- * Acepta profundidad >= 2 para incluir:
- * - Nivel 2: root.town (consultas generales del pueblo)
- * - Nivel 3+: root.town.category.* (consultas por categoría)
- */
-function collectKeyInfosForView(
-  output: MindsaicOutput,
-  townId: TownId
-): KeyInfo[] {
-  const { token: townToken, wildcard } = getTownSearchPattern(townId);
-  const allKeys = Object.keys(output);
-  const parsedKeys = allKeys.map(parseKey).filter(Boolean) as KeyInfo[];
-
-  // Filtrar profundidad >= 2 y town matching en parts[1]
-  return parsedKeys.filter((keyInfo) => {
-    if (keyInfo.depth < 2) return false; // Mínimo root.town
-
-    // Para depth === 2, parts[1] debe ser el town
-    if (keyInfo.depth === 2) {
-      const townPart = keyInfo.parts[1];
-      if (!townPart) return false;
-
-      // Usar parts[1] (sin normalizar) para preservar espacios
-      const match = wildcard
-        ? townPart.toLowerCase().startsWith(townToken.toLowerCase())
-        : townPart.toLowerCase() === townToken.toLowerCase();
-
-      return match;
-    }
-
-    // Para depth >= 3, parts[1] debe ser el town
-    const townPart = keyInfo.parts[1];
-    if (!townPart) return false;
-
-    const match = wildcard
-      ? townPart.toLowerCase().startsWith(townToken.toLowerCase())
-      : townPart.toLowerCase() === townToken.toLowerCase();
-
-    return match;
-  });
-}
-
-/**
- * Parsea respuesta de Mindsaic usando helpers de profundidad
- * Filtra solo claves root.<town>.<categoria> (profundidad 3)
- * Ahora también recopila detalles de "Otros" para drill-down
- * Nota: A diferencia de categoryTownBreakdown, aquí el orden es town→category
- */
-function parseTownCategories(
-  response: MindsaicResponse,
-  townId: TownId
-): {
-  totals: Map<CategoryId | typeof OTHERS_ID, number>;
-  othersBreakdown: OthersBreakdownEntry[];
-} {
-  const totals = new Map<CategoryId | typeof OTHERS_ID, number>();
-  const othersBreakdown: OthersBreakdownEntry[] = [];
-
-  // Inicializar todas las categorías en 0
-  for (const categoryId of CATEGORY_ID_ORDER) {
-    totals.set(categoryId, 0);
-  }
-  totals.set(OTHERS_ID, 0);
-
-  const output = response.output || {};
-
-  // Usar universo filtrado unificado
-  const matchedKeys = collectKeyInfosForView(output, townId);
-
-  // NOTA: NO verificar hijos aquí - se hará después con queries separadas
-  // Por ahora, aceptar TODAS las categorías depth=3
-
-  // Procesar todas las keys
-  for (const keyInfo of matchedKeys) {
-    // Para profundidad 2 (root.town), son consultas generales del pueblo
-    if (keyInfo.depth === 2) {
-      const series = output[keyInfo.raw] || [];
-      const total = series.reduce((sum, point) => sum + (point.value || 0), 0);
-
-      const prev = totals.get(OTHERS_ID) || 0;
-      totals.set(OTHERS_ID, prev + total);
-
-      othersBreakdown.push({
-        key: keyInfo.raw,
-        path: keyInfo.parts,
-        value: total,
-        timePoints: series.map((pt) => ({ time: pt.time, value: pt.value })),
-      });
-
-      continue;
-    }
-
-    // CRÍTICO: Solo procesar depth=3 (root.town.category)
-    // Ignorar depth>=4 (subcategorías) - solo se usan para children verification
-    if (keyInfo.depth !== 3) {
-      continue;
-    }
-
-    // Mapear categoría
-    const categoryId = matchSecondCategory(keyInfo);
-
-    const series = output[keyInfo.raw] || [];
-    const total = series.reduce((sum, point) => sum + (point.value || 0), 0);
-
-    // ACEPTAR TODAS las categorías por ahora (la reclasificación se hará después)
-    if (categoryId) {
-      const prev = totals.get(categoryId) || 0;
-      totals.set(categoryId, prev + total);
-    } else {
-      // No se pudo mapear → "Otros"
-      const prev = totals.get(OTHERS_ID) || 0;
-      totals.set(OTHERS_ID, prev + total);
-
-      othersBreakdown.push({
-        key: keyInfo.raw,
-        path: keyInfo.parts,
-        value: total,
-        timePoints: series.map((pt) => ({ time: pt.time, value: pt.value })),
-      });
-    }
-  }
-
-  return { totals, othersBreakdown };
-}
-
-/**
- * Agrega totales diarios a nivel de town (profundidad 3) → { ISO: total }
- * IMPORTANTE: Ahora usa el mismo universo filtrado que parseTownCategories (collectKeyInfosForView)
- */
-function aggregateDailyTotals(
-  output: MindsaicOutput,
-  townId: TownId
-): Map<string, number> {
-  const totals = new Map<string, number>();
-
-  // Usar mismo universo que donut/totals
-  const matchedKeys = collectKeyInfosForView(output, townId);
-
-  // Agregar valores por fecha
-  for (const keyInfo of matchedKeys) {
-    const series = output[keyInfo.raw] || [];
-    for (const point of series) {
-      const y = point.time;
-      if (!y || y.length !== 8) continue;
-      const iso = `${y.slice(0, 4)}-${y.slice(4, 6)}-${y.slice(6, 8)}`;
-      const prev = totals.get(iso) || 0;
-      totals.set(iso, prev + (point.value || 0));
-    }
-  }
-
-  return totals;
-}
-
-/**
- * Construye una serie temporal a partir de totales diarios
- *
- * Para granularidad "y": Agrupa por mes (YYYY-MM) con 12 buckets
- * Para otras granularidades: Un punto por día (YYYY-MM-DD)
- */
-function buildSeriesForRange(
-  totalsByISO: Map<string, number>,
-  startISO: string,
-  endISO: string,
-  windowGranularity: WindowGranularity = "d"
-): SeriesPoint[] {
-  const start = parseISO(startISO);
-  const end = parseISO(endISO);
-
-  // Para granularidad anual: Agrupar por mes
-  if (windowGranularity === "y") {
-    const monthlyTotals = new Map<string, number>();
-
-    // Iterar todos los días y agrupar por mes
-    for (
-      let d = new Date(start.getTime());
-      d.getTime() <= end.getTime();
-      d = addDaysUTC(d, 1)
-    ) {
-      const iso = toISO(d);
-      const monthKey = iso.substring(0, 7); // YYYY-MM
-      const dayValue = totalsByISO.get(iso) || 0;
-
-      monthlyTotals.set(
-        monthKey,
-        (monthlyTotals.get(monthKey) || 0) + dayValue
-      );
-    }
-
-    // Convertir a array y ordenar
-    const months: SeriesPoint[] = Array.from(monthlyTotals.entries())
-      .sort((a, b) => a[0].localeCompare(b[0]))
-      .map(([label, value]) => ({ label, value }));
-
-    return months;
-  }
-
-  // Para otras granularidades: Un punto por día
-  const days: SeriesPoint[] = [];
-  for (
-    let d = new Date(start.getTime());
-    d.getTime() <= end.getTime();
-    d = addDaysUTC(d, 1)
-  ) {
-    const iso = toISO(d);
-    days.push({ label: iso, value: totalsByISO.get(iso) || 0 });
-  }
-
-  return days;
-}
-
-/**
- * Hace un POST a /api/chatbot/audit/tags con los parámetros dados
- */
-async function fetchMindsaicData(
-  townId: TownId,
-  startTime: string,
-  endTime: string,
-  db: string,
-  signal: AbortSignal
-): Promise<MindsaicResponse> {
-  const { token, wildcard } = getTownSearchPattern(townId);
-  const payload = {
-    db,
-    // Pattern nivel 1: solo hasta depth=3 (categorías)
-    patterns: wildcard
-      ? `root.${token} *.*` // 2 wildcards para capturar town + category
-      : `root.${token}.*`, // 1 wildcard para category
-    granularity: "d",
-    startTime,
-    endTime,
-  };
-
-  const response = await fetch("/api/chatbot/audit/tags", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(payload),
-    signal,
-  });
-
-  if (!response.ok) {
-    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-  }
-
-  const json = (await response.json()) as MindsaicResponse;
-
-  return json;
-}
+// Importar tipos y helpers compartidos
+export type {
+  FetchTownCategoryBreakdownParams,
+  OthersBreakdownEntry,
+  TownCategoryBreakdownResponse,
+  TownCategoryData,
+} from "./shared/types";
 
 /* ==================== Servicio Principal ==================== */
 
@@ -405,14 +85,14 @@ export async function fetchTownCategoryBreakdown(
 
   try {
     const [currentResponse, prevResponse] = await Promise.all([
-      fetchMindsaicData(
+      fetchMindsaicDataForTown(
         townId,
         currentStartFormatted,
         currentEndFormatted,
         db,
         controller.signal
       ),
-      fetchMindsaicData(
+      fetchMindsaicDataForTown(
         townId,
         prevStartFormatted,
         prevEndFormatted,
@@ -424,8 +104,11 @@ export async function fetchTownCategoryBreakdown(
     clearTimeout(timeoutId);
 
     // 5. Parsear y sumar totales por categoría (depth=3) - SIN verificación de hijos aún
-    const currentResult = parseTownCategories(currentResponse, townId);
-    const prevResult = parseTownCategories(prevResponse, townId);
+    const currentResult = parseTownCategories(
+      currentResponse.output || {},
+      townId
+    );
+    const prevResult = parseTownCategories(prevResponse.output || {}, townId);
 
     // 6. VERIFICAR QUÉ CATEGORÍAS TIENEN HIJOS (queries adicionales)
     // Detectar todas las categorías únicas que aparecieron en las keys depth=3
@@ -551,7 +234,10 @@ export async function fetchTownCategoryBreakdown(
       // only depth 3
       const parts = k.split(".");
       if (parts.length !== 3) continue;
-      const total = series.reduce((s, p) => s + (p.value || 0), 0);
+      const total = (series as Array<{ value?: number }>).reduce(
+        (s: number, p: { value?: number }) => s + (p.value || 0),
+        0
+      );
       addRawToCategory(k, total);
     }
 
