@@ -1,16 +1,16 @@
 "use client";
 
-import StickyHeaderSection from "@/components/common/StickyHeaderSection";
 import { useTagTimeframe } from "@/features/analytics/context/TagTimeContext";
 import { toISO } from "@/lib/utils/time/datetime";
 import {
   useChatbotTownHandlers,
   useChatbotTownTotals,
-} from "../../hooks/useChatbotTownTotals";
-import TopTownsKPI from "../TopTownsKPI";
-import TownExpandedCard from "../TownExpandedCard";
-import { TownGrid } from "./TownGrid";
-import { useTownDrilldown } from "./useTownDrilldown";
+} from "../../../hooks/useChatbotTownTotals";
+import { useTownDrilldown } from "../useTownDrilldown";
+import { DrilldownSection } from "./DrilldownSection";
+import { SectionHeader } from "./SectionHeader";
+import { TopTownsSection } from "./TopTownsSection";
+import { TownsGridSection } from "./TownsGridSection";
 
 export function SectionContent() {
   const {
@@ -53,10 +53,7 @@ export function SectionContent() {
 
   return (
     <section className="max-w-[1560px] mx-auto w-full">
-      {/* Sticky Header Section */}
-      <StickyHeaderSection
-        title="Chatbot · Analíticas por municipio"
-        subtitle="Interacciones del chatbot organizadas por municipio"
+      <SectionHeader
         mode={mode}
         granularity={granularity}
         startDate={startDate}
@@ -78,43 +75,28 @@ export function SectionContent() {
         onPickerDatesUpdate={updatePickerDatesOnly}
       />
 
-      {/* KPI Section - Top Towns */}
-      <div className="px-4 mb-6">
-        <TopTownsKPI
-          towns={towns.slice(0, 8)} // Top 8 towns
-          isLoading={isLoading}
-          isError={isError}
-        />
-      </div>
+      <TopTownsSection towns={towns} isLoading={isLoading} isError={isError} />
 
-      {/* Drilldown expandido como overlay */}
-      {selectedTownId && (
-        <div ref={drilldownRef} className="px-4 mb-6">
-          <TownExpandedCard
-            key={selectedTownId} // Forzar remontaje cuando cambia el pueblo
-            townId={selectedTownId}
-            granularity={effectiveGranularity}
-            startDate={startDateStr}
-            endDate={endDateStr}
-            onClose={handleClose}
-            onSelectCategory={handleSelectCategory}
-            onScrollToLevel1={handleScrollToLevel1}
-          />
-        </div>
-      )}
+      <DrilldownSection
+        selectedTownId={selectedTownId}
+        drilldownRef={drilldownRef}
+        effectiveGranularity={effectiveGranularity}
+        startDateStr={startDateStr}
+        endDateStr={endDateStr}
+        onClose={handleClose}
+        onSelectCategory={handleSelectCategory}
+        onScrollToLevel1={handleScrollToLevel1}
+      />
 
-      {/* Grid de towns siempre visible */}
-      <div className="px-4">
-        <TownGrid
-          towns={towns}
-          isLoading={isLoading}
-          isError={isError}
-          error={error}
-          onRefetch={refetch}
-          onTownClick={handleTownClick}
-          selectedTownId={selectedTownId}
-        />
-      </div>
+      <TownsGridSection
+        towns={towns}
+        isLoading={isLoading}
+        isError={isError}
+        error={error}
+        onRefetch={refetch}
+        onTownClick={handleTownClick}
+        selectedTownId={selectedTownId}
+      />
     </section>
   );
 }
