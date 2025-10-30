@@ -1,7 +1,7 @@
 # 🏗️ Arquitectura del Sistema - Analytics Dashboard
 
-> **Documentación Técnica de Arquitectura**  
-> Analytics Dashboard para análisis de datos turísticos de Huelva  
+> **Documentación Técnica de Arquitectura**
+> Analytics Dashboard para análisis de datos turísticos de Huelva
 > Última actualización: Octubre 30, 2025
 
 ---
@@ -28,6 +28,7 @@
 ### **Propósito del Sistema**
 
 Dashboard de analytics para análisis avanzado de datos turísticos de Huelva, integrando:
+
 - **Google Analytics 4** (datos de tráfico web)
 - **Base de datos propia** (usuarios, roles, taxonomías)
 - **Chatbot Analytics** (análisis de categorías y pueblos)
@@ -48,45 +49,45 @@ Dashboard de analytics para análisis avanzado de datos turísticos de Huelva, i
 
 ### **Frontend**
 
-| Tecnología | Versión | Propósito |
-|-----------|---------|-----------|
-| **Next.js** | 15.4.5 | Framework React con App Router, SSR, RSC |
-| **React** | 19.0 | Librería UI con Server Components |
-| **TypeScript** | 5.9.2 | Tipado estático y seguridad de tipos |
-| **Tailwind CSS** | 4.0 | Utility-first CSS framework |
-| **Recharts** | 2.x | Librería de gráficos declarativa |
-| **TanStack Query** | 5.x | Gestión de estado del servidor |
-| **Lucide React** | Latest | Iconografía moderna |
+| Tecnología         | Versión | Propósito                                |
+| ------------------ | ------- | ---------------------------------------- |
+| **Next.js**        | 15.4.5  | Framework React con App Router, SSR, RSC |
+| **React**          | 19.0    | Librería UI con Server Components        |
+| **TypeScript**     | 5.9.2   | Tipado estático y seguridad de tipos     |
+| **Tailwind CSS**   | 4.0     | Utility-first CSS framework              |
+| **Recharts**       | 2.x     | Librería de gráficos declarativa         |
+| **TanStack Query** | 5.x     | Gestión de estado del servidor           |
+| **Lucide React**   | Latest  | Iconografía moderna                      |
 
 ### **Backend**
 
-| Tecnología | Versión | Propósito |
-|-----------|---------|-----------|
-| **Next.js API Routes** | 15.4.5 | Backend API con edge runtime |
-| **tRPC** | Latest | Type-safe APIs sin código |
-| **Prisma** | 6.14.0 | ORM con migraciones y type-safety |
-| **PostgreSQL** | Latest | Base de datos relacional (Neon) |
-| **Auth0** | Latest | Autenticación OAuth2/OIDC |
-| **Jose** | Latest | JWT para auth local |
+| Tecnología             | Versión | Propósito                         |
+| ---------------------- | ------- | --------------------------------- |
+| **Next.js API Routes** | 15.4.5  | Backend API con edge runtime      |
+| **tRPC**               | Latest  | Type-safe APIs sin código         |
+| **Prisma**             | 6.14.0  | ORM con migraciones y type-safety |
+| **PostgreSQL**         | Latest  | Base de datos relacional (Neon)   |
+| **Auth0**              | Latest  | Autenticación OAuth2/OIDC         |
+| **Jose**               | Latest  | JWT para auth local               |
 
 ### **Testing & Quality**
 
-| Tecnología | Versión | Propósito |
-|-----------|---------|-----------|
-| **Vitest** | 3.2.4 | Unit & Integration testing |
-| **Playwright** | Latest | E2E testing |
-| **ESLint** | Latest | Linting y code quality |
-| **TypeScript** | 5.9.2 | Type checking en CI/CD |
+| Tecnología     | Versión | Propósito                  |
+| -------------- | ------- | -------------------------- |
+| **Vitest**     | 3.2.4   | Unit & Integration testing |
+| **Playwright** | Latest  | E2E testing                |
+| **ESLint**     | Latest  | Linting y code quality     |
+| **TypeScript** | 5.9.2   | Type checking en CI/CD     |
 
 ### **Infraestructura**
 
-| Servicio | Provider | Propósito |
-|----------|----------|-----------|
-| **Hosting** | Vercel | Deployment y hosting |
-| **Database** | Neon | PostgreSQL serverless |
-| **Analytics** | Google Analytics 4 | Datos de tráfico |
-| **Auth** | Auth0 | Autenticación externa |
-| **Git** | GitHub | Control de versiones |
+| Servicio      | Provider           | Propósito             |
+| ------------- | ------------------ | --------------------- |
+| **Hosting**   | Vercel             | Deployment y hosting  |
+| **Database**  | Neon               | PostgreSQL serverless |
+| **Analytics** | Google Analytics 4 | Datos de tráfico      |
+| **Auth**      | Auth0              | Autenticación externa |
+| **Git**       | GitHub             | Control de versiones  |
 
 ---
 
@@ -195,7 +196,7 @@ export default async function AnalyticsPage() {
 // - Interactividad
 // - Event handlers
 // - Estado local
-'use client';
+("use client");
 export function AnalyticsClient({ data }: Props) {
   const [filter, setFilter] = useState<Filter>();
   return <InteractiveChart data={data} />;
@@ -208,7 +209,7 @@ export function AnalyticsClient({ data }: Props) {
 // Custom hook para lógica reutilizable
 export function useCategoriesTotals(params: QueryParams) {
   return useQuery({
-    queryKey: ['categorias-totals', params],
+    queryKey: ["categorias-totals", params],
     queryFn: () => fetchCategoriesTotals(params),
     staleTime: 5 * 60 * 1000, // 5 minutos
   });
@@ -275,11 +276,11 @@ export class UserRepository {
   async findAll(filters?: Filters) {
     return prisma.user.findMany({ where: filters });
   }
-  
+
   async findById(id: string) {
     return prisma.user.findUnique({ where: { id } });
   }
-  
+
   async create(data: CreateUserDTO) {
     return prisma.user.create({ data });
   }
@@ -385,6 +386,7 @@ export class UserRepository {
 **Responsabilidad**: Dashboard principal de analytics con GA4
 
 **Estructura**:
+
 ```
 analytics/
 ├── sections/               # Secciones del dashboard
@@ -400,6 +402,7 @@ analytics/
 ```
 
 **Funcionalidades**:
+
 - KPIs principales (users, sessions, pageviews, bounce rate)
 - Gráficos de series temporales
 - Drilldown multi-nivel (pueblo → categoría → subcategoría)
@@ -412,6 +415,7 @@ analytics/
 **Responsabilidad**: Analytics específico del chatbot
 
 **Estructura**:
+
 ```
 chatbot/
 ├── components/
@@ -426,6 +430,7 @@ chatbot/
 ```
 
 **Funcionalidades**:
+
 - Totales por categoría con sinónimos
 - Totales por pueblo
 - Breakdown de subcategorías
@@ -437,6 +442,7 @@ chatbot/
 **Responsabilidad**: Gestión de usuarios y roles
 
 **Estructura**:
+
 ```
 users/
 ├── page.tsx                # Página principal
@@ -449,6 +455,7 @@ users/
 ```
 
 **Funcionalidades**:
+
 - CRUD completo de usuarios
 - Gestión de roles (Admin, Editor, Viewer)
 - Autenticación híbrida (Auth0 + local)
@@ -460,6 +467,7 @@ users/
 **Responsabilidad**: Dashboard principal (landing)
 
 **Estructura**:
+
 ```
 home/
 ├── sectors/
@@ -471,6 +479,7 @@ home/
 ```
 
 **Funcionalidades**:
+
 - Resumen por sectores (Pueblos, Categorías)
 - Gráficos de línea con tendencias
 - Cards expandibles con drill-down
@@ -486,32 +495,32 @@ home/
 
 #### **1. Analytics APIs** (`/api/analytics/v1/`)
 
-| Endpoint | Método | Descripción | Protegido |
-|----------|--------|-------------|-----------|
-| `/header/kpis` | GET | KPIs principales | ✅ |
-| `/header/countries` | GET | Datos demográficos por país | ✅ |
-| `/header/gender` | GET | Distribución por género | ✅ |
-| `/header/devices/os` | GET | Sistemas operativos | ✅ |
-| `/dimensions/pueblos/totales` | GET | Totales por pueblo | ✅ |
-| `/dimensions/categorias/totales` | GET | Totales por categoría | ✅ |
-| `/dimensions/pueblos/details/[id]` | GET | Detalles de pueblo | ✅ |
-| `/drilldown/url` | GET | Drilldown de URL específica | ✅ |
-| `/top-pages-table` | GET | Tabla de top páginas | ✅ |
+| Endpoint                           | Método | Descripción                 | Protegido |
+| ---------------------------------- | ------ | --------------------------- | --------- |
+| `/header/kpis`                     | GET    | KPIs principales            | ✅        |
+| `/header/countries`                | GET    | Datos demográficos por país | ✅        |
+| `/header/gender`                   | GET    | Distribución por género     | ✅        |
+| `/header/devices/os`               | GET    | Sistemas operativos         | ✅        |
+| `/dimensions/pueblos/totales`      | GET    | Totales por pueblo          | ✅        |
+| `/dimensions/categorias/totales`   | GET    | Totales por categoría       | ✅        |
+| `/dimensions/pueblos/details/[id]` | GET    | Detalles de pueblo          | ✅        |
+| `/drilldown/url`                   | GET    | Drilldown de URL específica | ✅        |
+| `/top-pages-table`                 | GET    | Tabla de top páginas        | ✅        |
 
 #### **2. Chatbot APIs** (`/api/chatbot/`)
 
-| Endpoint | Método | Descripción | Protegido |
-|----------|--------|-------------|-----------|
-| `/top-categories` | GET | Top categorías del chatbot | ✅ |
-| `/audit/tags` | GET | Audit de tags | ✅ |
+| Endpoint          | Método | Descripción                | Protegido |
+| ----------------- | ------ | -------------------------- | --------- |
+| `/top-categories` | GET    | Top categorías del chatbot | ✅        |
+| `/audit/tags`     | GET    | Audit de tags              | ✅        |
 
 #### **3. Auth APIs** (`/api/auth/`)
 
-| Endpoint | Método | Descripción | Protegido |
-|----------|--------|-------------|-----------|
-| `/local/login` | POST | Login con credenciales | ❌ |
-| `/local/logout` | POST | Logout local | ❌ |
-| `/callback` | GET | Auth0 callback | ❌ |
+| Endpoint        | Método | Descripción            | Protegido |
+| --------------- | ------ | ---------------------- | --------- |
+| `/local/login`  | POST   | Login con credenciales | ❌        |
+| `/local/logout` | POST   | Logout local           | ❌        |
+| `/callback`     | GET    | Auth0 callback         | ❌        |
 
 #### **4. tRPC APIs** (`/api/trpc/`)
 
@@ -536,12 +545,12 @@ Todas las APIs de analytics y chatbot están protegidas por middleware:
 // src/middleware.ts
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  
+
   // Proteger rutas de API
   if (
-    pathname.startsWith('/api/analytics') ||
-    pathname.startsWith('/api/chatbot') ||
-    pathname.startsWith('/api/trpc')
+    pathname.startsWith("/api/analytics") ||
+    pathname.startsWith("/api/chatbot") ||
+    pathname.startsWith("/api/trpc")
   ) {
     return checkAuthentication(request);
   }
@@ -625,14 +634,14 @@ const users = await prisma.user.findMany({
 // Crear usuario con perfil
 const user = await prisma.user.create({
   data: {
-    email: 'user@example.com',
-    name: 'John Doe',
+    email: "user@example.com",
+    name: "John Doe",
     roles: {
-      connect: [{ name: 'Viewer' }],
+      connect: [{ name: "Viewer" }],
     },
     profile: {
       create: {
-        bio: 'Analytics enthusiast',
+        bio: "Analytics enthusiast",
       },
     },
   },
@@ -690,7 +699,7 @@ export const auth0Config = {
   clientId: process.env.AUTH0_CLIENT_ID!,
   clientSecret: process.env.AUTH0_CLIENT_SECRET!,
   audience: process.env.AUTH0_AUDIENCE,
-  scope: 'openid profile email',
+  scope: "openid profile email",
 };
 ```
 
@@ -701,8 +710,8 @@ export const auth0Config = {
 export async function signToken(payload: TokenPayload) {
   const secret = new TextEncoder().encode(JWT_SECRET);
   return await new SignJWT(payload)
-    .setProtectedHeader({ alg: 'HS256' })
-    .setExpirationTime('24h')
+    .setProtectedHeader({ alg: "HS256" })
+    .setExpirationTime("24h")
     .sign(secret);
 }
 ```
@@ -711,16 +720,14 @@ export async function signToken(payload: TokenPayload) {
 
 ```typescript
 enum Role {
-  ADMIN = 'Admin',      // Acceso total
-  EDITOR = 'Editor',    // Crear/editar contenido
-  VIEWER = 'Viewer',    // Solo lectura
+  ADMIN = "Admin", // Acceso total
+  EDITOR = "Editor", // Crear/editar contenido
+  VIEWER = "Viewer", // Solo lectura
 }
 
 // Verificación de permisos
 function hasPermission(user: User, action: Action) {
-  return user.roles.some(role => 
-    permissions[role].includes(action)
-  );
+  return user.roles.some((role) => permissions[role].includes(action));
 }
 ```
 
@@ -753,12 +760,12 @@ function hasPermission(user: User, action: Action) {
 export default defineConfig({
   plugins: [react()],
   test: {
-    environment: 'jsdom',
-    setupFiles: ['__tests__/setup.ts'],
+    environment: "jsdom",
+    setupFiles: ["__tests__/setup.ts"],
     globals: true,
     coverage: {
-      provider: 'v8',
-      reporter: ['text', 'json', 'html'],
+      provider: "v8",
+      reporter: ["text", "json", "html"],
     },
   },
 });
@@ -767,40 +774,43 @@ export default defineConfig({
 ### **Ejemplos de Tests**
 
 **Unit Test**:
+
 ```typescript
-describe('formatNumber', () => {
-  it('should format numbers with K suffix', () => {
-    expect(formatNumber(1500)).toBe('1.5K');
+describe("formatNumber", () => {
+  it("should format numbers with K suffix", () => {
+    expect(formatNumber(1500)).toBe("1.5K");
   });
-  
-  it('should format numbers with M suffix', () => {
-    expect(formatNumber(1500000)).toBe('1.5M');
+
+  it("should format numbers with M suffix", () => {
+    expect(formatNumber(1500000)).toBe("1.5M");
   });
 });
 ```
 
 **Integration Test**:
+
 ```typescript
-describe('CategoryTotals API', () => {
-  it('should return category totals', async () => {
-    const response = await fetch('/api/chatbot/top-categories', {
+describe("CategoryTotals API", () => {
+  it("should return category totals", async () => {
+    const response = await fetch("/api/chatbot/top-categories", {
       headers: { Authorization: `Bearer ${token}` },
     });
-    
+
     expect(response.status).toBe(200);
     const data = await response.json();
-    expect(data).toHaveProperty('categories');
+    expect(data).toHaveProperty("categories");
   });
 });
 ```
 
 **E2E Test (Playwright)**:
+
 ```typescript
-test('should navigate dashboard and view analytics', async ({ page }) => {
-  await page.goto('/');
-  await page.click('text=Analytics');
-  await expect(page).toHaveURL('/analytics');
-  await expect(page.locator('h1')).toContainText('Analytics Dashboard');
+test("should navigate dashboard and view analytics", async ({ page }) => {
+  await page.goto("/");
+  await page.click("text=Analytics");
+  await expect(page).toHaveURL("/analytics");
+  await expect(page.locator("h1")).toContainText("Analytics Dashboard");
 });
 ```
 
@@ -810,7 +820,7 @@ test('should navigate dashboard and view analytics', async ({ page }) => {
 - **Integration Tests**: Critical paths covered
 - **E2E Tests**: Happy paths principales
 
-**Current Status**: 233/234 tests passing (99.6%)
+**Current Status**: 234/234 tests passing (100%)
 
 ---
 
@@ -828,10 +838,12 @@ export default async function AnalyticsPage() {
 }
 
 // ❌ Evitar: Todo como Client Component
-'use client';
+("use client");
 export default function Page() {
   const [data, setData] = useState();
-  useEffect(() => { fetchData(); }, []);
+  useEffect(() => {
+    fetchData();
+  }, []);
   return <Content data={data} />;
 }
 ```
@@ -841,11 +853,11 @@ export default function Page() {
 ```typescript
 // Cache con staleTime y refetch automático
 const { data } = useQuery({
-  queryKey: ['analytics', params],
+  queryKey: ["analytics", params],
   queryFn: fetchAnalytics,
-  staleTime: 5 * 60 * 1000,      // 5 minutos
-  refetchOnWindowFocus: false,    // No refetch al focus
-  refetchOnMount: false,          // No refetch al mount
+  staleTime: 5 * 60 * 1000, // 5 minutos
+  refetchOnWindowFocus: false, // No refetch al focus
+  refetchOnMount: false, // No refetch al mount
 });
 ```
 
@@ -853,7 +865,7 @@ const { data } = useQuery({
 
 ```typescript
 // Dynamic imports para reducir bundle inicial
-const ChartModal = dynamic(() => import('./ChartModal'), {
+const ChartModal = dynamic(() => import("./ChartModal"), {
   loading: () => <Skeleton />,
   ssr: false, // No SSR para modals
 });
@@ -862,7 +874,7 @@ const ChartModal = dynamic(() => import('./ChartModal'), {
 #### **4. Image Optimization**
 
 ```tsx
-import Image from 'next/image';
+import Image from "next/image";
 
 <Image
   src="/escudos_pueblos/huelva.png"
@@ -871,7 +883,7 @@ import Image from 'next/image';
   height={40}
   loading="lazy"
   quality={85}
-/>
+/>;
 ```
 
 #### **5. API Response Optimization**
@@ -880,14 +892,14 @@ import Image from 'next/image';
 // Paginación server-side
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const page = Number(searchParams.get('page')) || 1;
+  const page = Number(searchParams.get("page")) || 1;
   const limit = 20;
-  
+
   const data = await prisma.user.findMany({
     skip: (page - 1) * limit,
     take: limit,
   });
-  
+
   return Response.json(data);
 }
 ```
@@ -895,11 +907,13 @@ export async function GET(request: Request) {
 ### **Métricas de Performance**
 
 **Core Web Vitals Goals**:
+
 - **LCP (Largest Contentful Paint)**: <2.5s
 - **FID (First Input Delay)**: <100ms
 - **CLS (Cumulative Layout Shift)**: <0.1
 
 **Bundle Size**:
+
 - First Load JS: ~99.7 kB (shared)
 - Page-specific: ~9-33 kB
 - Total Initial Load: <140 kB
@@ -917,6 +931,7 @@ export async function GET(request: Request) {
 **Decisión**: Usar Next.js 15 con App Router y React Server Components
 
 **Consecuencias**:
+
 - ✅ Mejor SEO y performance inicial
 - ✅ Menor bundle JavaScript
 - ✅ Server-side data fetching nativo
@@ -930,6 +945,7 @@ export async function GET(request: Request) {
 **Decisión**: Implementar sistema híbrido con Auth0 y JWT local
 
 **Consecuencias**:
+
 - ✅ Flexibilidad para diferentes tipos de usuarios
 - ✅ OAuth2 para seguridad externa
 - ✅ Control total sobre usuarios locales
@@ -943,6 +959,7 @@ export async function GET(request: Request) {
 **Decisión**: Usar Prisma ORM con PostgreSQL
 
 **Consecuencias**:
+
 - ✅ Type-safety completo
 - ✅ Migraciones versionadas
 - ✅ Prisma Studio para debugging
@@ -956,6 +973,7 @@ export async function GET(request: Request) {
 **Decisión**: Reorganizar en módulos por features con shared modules
 
 **Consecuencias**:
+
 - ✅ Código modular y mantenible
 - ✅ Reducción de 95% de duplicación
 - ✅ Fácil localización de código
@@ -969,6 +987,7 @@ export async function GET(request: Request) {
 **Decisión**: Usar TanStack Query (React Query) como estado del servidor
 
 **Consecuencias**:
+
 - ✅ Caching automático
 - ✅ Deduplicación de requests
 - ✅ Background refetch
@@ -982,6 +1001,7 @@ export async function GET(request: Request) {
 **Decisión**: Mantener single repo con organización interna fuerte
 
 **Consecuencias**:
+
 - ✅ Setup más simple
 - ✅ Deployments más fáciles
 - ✅ Menos overhead de tooling
@@ -1028,7 +1048,7 @@ export async function GET(request: Request) {
 - ✅ 35+ módulos compartidos creados
 - ✅ Feature-sliced architecture implementada
 - ✅ 95% reducción en código duplicado
-- ✅ Tests: 233/234 passing (99.6%)
+- ✅ Tests: 234/234 passing (100%)
 
 ### **Septiembre 2025** - v1.5
 
@@ -1044,6 +1064,6 @@ export async function GET(request: Request) {
 
 ---
 
-**Documento actualizado**: Octubre 30, 2025  
-**Versión**: 2.0  
-**Mantenedor**: Analytics Team
+**Documento actualizado**: Octubre 30, 2025
+**Versión**: 2.0
+**Mantenedor**: Ideanto

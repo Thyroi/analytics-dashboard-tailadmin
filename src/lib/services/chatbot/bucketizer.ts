@@ -59,7 +59,7 @@ function timeToBucket(time: string, granularity: WindowGranularity): string {
     case "m":
       return iso.slice(0, 7); // YYYY-MM
     case "y":
-      return iso.slice(0, 4); // YYYY
+      return iso.slice(0, 7); // YYYY-MM (agrupa por mes en vista anual)
     default:
       return iso;
   }

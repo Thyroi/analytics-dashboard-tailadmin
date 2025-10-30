@@ -182,7 +182,7 @@ describe("Drilldown Integration Tests", () => {
   });
 
   describe("Modo Anual", () => {
-    it.skip("debe agrupar series a YYYY-MM cuando windowGranularity='y'", async () => {
+    it("debe agrupar series a YYYY-MM cuando windowGranularity='y'", async () => {
       // Datos con múltiples días en el mismo mes
       const mockResponse = {
         data: {
