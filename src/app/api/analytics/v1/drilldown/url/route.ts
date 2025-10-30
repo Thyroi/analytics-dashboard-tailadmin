@@ -1,5 +1,5 @@
 // src/app/api/analytics/v1/drilldown/url/route.ts
-import type { DonutDatum, Granularity, SeriesPoint } from "@/lib/types";
+import type { Granularity, SeriesPoint } from "@/lib/types";
 import {
   getAuth,
   normalizePropertyId,
@@ -20,197 +20,24 @@ import type { GoogleAuth } from "google-auth-library";
 import { analyticsdata_v1beta, google } from "googleapis";
 import { NextResponse } from "next/server";
 
+// Shared modules
+import {
+  pctDelta,
+  ratioSeries,
+  safeDiv,
+} from "@/lib/analytics/drilldown/helpers";
+import {
+  fetchDimensionApiNames,
+  resolveCustomEventDim,
+} from "@/lib/analytics/ga4/dimensions";
+import {
+  fetchUrlTotalsAggregated,
+  fetchDonutData,
+} from "@/lib/analytics/ga4/urlDrilldown";
+
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-/* ---------- tipos/helpers ---------- */
-type DateRange = { start: string; end: string };
-
-function pctDelta(curr: number, prev: number): number {
-  if (prev <= 0) return curr > 0 ? 100 : 0;
-  return ((curr - prev) / prev) * 100;
-}
-
-/** promedio bucket a bucket: num/den */
-function ratioSeries(
-  num: { current: SeriesPoint[]; previous: SeriesPoint[] },
-  den: { current: SeriesPoint[]; previous: SeriesPoint[] }
-): { current: SeriesPoint[]; previous: SeriesPoint[] } {
-  const div = (A: SeriesPoint[], B: SeriesPoint[]) =>
-    A.map((p, i) => {
-      const d = B[i]?.value ?? 0;
-      return { label: p.label, value: d > 0 ? p.value / d : 0 };
-    });
-  return {
-    current: div(num.current, den.current),
-    previous: div(num.previous, den.previous),
-  };
-}
-
-type Totals = {
-  activeUsers: number;
-  userEngagementDuration: number; // seconds
-  newUsers: number;
-  eventCount: number;
-  sessions: number;
-  averageSessionDuration: number; // seconds (ponderado)
-};
-
-function num(v?: string | null): number {
-  return Number(v ?? 0);
-}
-
-/** Obtener dimensions customizadas de GA4 */
-async function fetchDimensionApiNames(
-  analyticsData: analyticsdata_v1beta.Analyticsdata,
-  propertyId: string
-): Promise<string[]> {
-  const name = `${normalizePropertyId(propertyId)}/metadata`;
-  const meta = await analyticsData.properties.getMetadata({ name });
-  return (
-    meta.data.dimensions?.map((d) => d.apiName ?? "").filter((s) => s) ?? []
-  );
-}
-
-/** Resolver dimension customizada */
-function resolveCustomEventDim(
-  available: string[],
-  base: string
-): string | undefined {
-  const candidates = [
-    `customEvent:${base.toLowerCase()}`,
-    `customEvent:${base.charAt(0).toUpperCase()}${base.slice(1)}`,
-    `customEvent:${base}`,
-  ];
-
-  const availLC = available.map((a) => a.toLowerCase());
-  for (const cand of candidates) {
-    const idx = availLC.indexOf(cand.toLowerCase());
-    if (idx >= 0) return available[idx];
-  }
-
-  // Fallback por sufijo
-  const suffix = `:${base.toLowerCase()}`;
-  const idx = availLC.findIndex(
-    (a) => a.startsWith("customevent:") && a.endsWith(suffix)
-  );
-  if (idx >= 0) return available[idx];
-
-  return undefined;
-}
-
-/** KPIs totales por URL (usando filtro directo de GA4 por pageLocation) */
-async function fetchUrlTotalsAggregated(
-  analyticsData: analyticsdata_v1beta.Analyticsdata,
-  property: string,
-  range: DateRange,
-  targetUrl: string
-): Promise<Totals> {
-  // Obtener dimensiones customizadas disponibles
-  const dimsAvailable = await fetchDimensionApiNames(
-    analyticsData,
-    property.replace("properties/", "")
-  );
-  const puebloDimName = resolveCustomEventDim(dimsAvailable, "pueblo");
-  const categoriaDimName = resolveCustomEventDim(dimsAvailable, "categoria");
-
-  // Construir dimensiones: siempre eventName y pageLocation, más las customizadas si están disponibles
-  const dimensions: analyticsdata_v1beta.Schema$Dimension[] = [
-    { name: "eventName" },
-    { name: "pageLocation" },
-  ];
-  if (puebloDimName) dimensions.push({ name: puebloDimName });
-  if (categoriaDimName) dimensions.push({ name: categoriaDimName });
-
-  // Usar filtros AND para eventName Y pageLocation
-  const filters: analyticsdata_v1beta.Schema$FilterExpression[] = [
-    {
-      filter: {
-        fieldName: "eventName",
-        stringFilter: {
-          matchType: "EXACT",
-          value: "page_view",
-          caseSensitive: false,
-        },
-      },
-    },
-    {
-      filter: {
-        fieldName: "pageLocation",
-        stringFilter: {
-          matchType: "EXACT",
-          value: targetUrl,
-          caseSensitive: false,
-        },
-      },
-    },
-  ];
-
-  const req: analyticsdata_v1beta.Schema$RunReportRequest = {
-    dateRanges: [{ startDate: range.start, endDate: range.end }],
-    metrics: [
-      { name: "activeUsers" },
-      { name: "userEngagementDuration" },
-      { name: "newUsers" },
-      { name: "eventCount" },
-      { name: "sessions" },
-      { name: "averageSessionDuration" },
-    ],
-    dimensions,
-    dimensionFilter: {
-      andGroup: { expressions: filters },
-    },
-    keepEmptyRows: false,
-    limit: "100000",
-  };
-
-  const resp = await analyticsData.properties.runReport({
-    property,
-    requestBody: req,
-  });
-
-  const rows: analyticsdata_v1beta.Schema$Row[] = resp.data.rows ?? [];
-
-  const acc: Totals = {
-    activeUsers: 0,
-    userEngagementDuration: 0,
-    newUsers: 0,
-    eventCount: 0,
-    sessions: 0,
-    averageSessionDuration: 0,
-  };
-
-  let weightedSumAvgSess = 0;
-  let sumSessions = 0;
-
-  // Como GA4 ya filtró por pageLocation exacta, solo sumamos todos los resultados
-  for (const r of rows) {
-    const mets = r.metricValues ?? [];
-
-    const activeUsers = num(mets[0]?.value);
-    const userEngagementDuration = num(mets[1]?.value);
-    const newUsers = num(mets[2]?.value);
-    const eventCount = num(mets[3]?.value);
-    const sessions = num(mets[4]?.value);
-    const averageSessionDuration = num(mets[5]?.value);
-
-    acc.activeUsers += activeUsers;
-    acc.userEngagementDuration += userEngagementDuration;
-    acc.newUsers += newUsers;
-    acc.eventCount += eventCount;
-    acc.sessions += sessions;
-
-    weightedSumAvgSess += averageSessionDuration * sessions;
-    sumSessions += sessions;
-  }
-
-  acc.averageSessionDuration =
-    sumSessions > 0 ? weightedSumAvgSess / sumSessions : 0;
-
-  return acc;
-}
-
-/* ---------- handler ---------- */
 export async function GET(req: Request) {
   try {
     const url = new URL(req.url);
@@ -451,7 +278,6 @@ export async function GET(req: Request) {
       ),
     ]);
 
-    const safeDiv = (a: number, b: number): number => (b > 0 ? a / b : 0);
     const kpisCurrent = {
       ...totCurr,
       avgEngagementPerUser: safeDiv(
@@ -487,83 +313,32 @@ export async function GET(req: Request) {
       ),
     };
 
-    // ===== Donuts (current) — usando filtrado directo como los KPIs =====
-    async function donutFor(
-      dim: "operatingSystem" | "deviceCategory" | "browser" | "country",
-      metric: "screenPageViews" | "activeUsers"
-    ): Promise<DonutDatum[]> {
-      // Construir dimensiones para donuts: target + eventName + pageLocation + customs
-      const donutDimensions: analyticsdata_v1beta.Schema$Dimension[] = [
-        { name: dim },
-        { name: "eventName" },
-        { name: "pageLocation" },
-      ];
-      if (puebloDimName) donutDimensions.push({ name: puebloDimName });
-      if (categoriaDimName) donutDimensions.push({ name: categoriaDimName });
-
-      // Usar filtros AND como en KPIs: eventName Y pageLocation
-      const donutFilters: analyticsdata_v1beta.Schema$FilterExpression[] = [
-        {
-          filter: {
-            fieldName: "eventName",
-            stringFilter: {
-              matchType: "EXACT",
-              value: "page_view",
-              caseSensitive: false,
-            },
-          },
-        },
-        {
-          filter: {
-            fieldName: "pageLocation",
-            stringFilter: {
-              matchType: "EXACT",
-              value: targetUrl,
-              caseSensitive: false,
-            },
-          },
-        },
-      ];
-
-      const req: analyticsdata_v1beta.Schema$RunReportRequest = {
-        dateRanges: [{ startDate: donutRange.start, endDate: donutRange.end }],
-        metrics: [{ name: metric }],
-        dimensions: donutDimensions,
-        dimensionFilter: {
-          andGroup: { expressions: donutFilters },
-        },
-        keepEmptyRows: false,
-        limit: "100000",
-      };
-
-      const r = await analyticsData.properties.runReport({
-        property,
-        requestBody: req,
-      });
-      const rowsDonut: analyticsdata_v1beta.Schema$Row[] = r.data.rows ?? [];
-      const map = new Map<string, number>();
-
-      // Como GA4 ya filtró por URL exacta, solo sumamos todos los resultados
-      for (const row of rowsDonut) {
-        const dims = row.dimensionValues ?? [];
-        const mets = row.metricValues ?? [];
-
-        // Las dimensiones están en orden: [targetDim, eventName, pageLocation, pueblo?, categoria?]
-        const raw = String(dims[0]?.value ?? "Unknown").trim();
-        const label = raw.length > 0 ? raw : "Unknown";
-        const val = Number(mets[0]?.value ?? 0);
-        map.set(label, (map.get(label) ?? 0) + val);
-      }
-
-      return Array.from(map.entries())
-        .map(([label, value]) => ({ label, value }))
-        .sort((a, b) => b.value - a.value);
-    }
-
+    // ===== Donuts (current) — usando módulo compartido =====
     const [operatingSystems, devices, countries] = await Promise.all([
-      donutFor("operatingSystem", "screenPageViews"),
-      donutFor("deviceCategory", "activeUsers"),
-      donutFor("country", "activeUsers"),
+      fetchDonutData(
+        analyticsData,
+        property,
+        donutRange,
+        targetUrl,
+        "operatingSystem",
+        "screenPageViews"
+      ),
+      fetchDonutData(
+        analyticsData,
+        property,
+        donutRange,
+        targetUrl,
+        "deviceCategory",
+        "activeUsers"
+      ),
+      fetchDonutData(
+        analyticsData,
+        property,
+        donutRange,
+        targetUrl,
+        "country",
+        "activeUsers"
+      ),
     ]);
 
     return NextResponse.json(

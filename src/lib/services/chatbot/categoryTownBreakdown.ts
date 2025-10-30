@@ -14,10 +14,9 @@
  * - UTC total, computeRangesForKPI
  */
 
-import { type CategoryId } from "@/lib/taxonomy/categories";
 import { matchTownId } from "@/lib/taxonomy/normalize";
 import { TOWN_ID_ORDER, TOWN_META, type TownId } from "@/lib/taxonomy/towns";
-import type { SeriesPoint, WindowGranularity } from "@/lib/types";
+import type { SeriesPoint } from "@/lib/types";
 import { computeRangesForKPI } from "@/lib/utils/time/timeWindows";
 import { OTHERS_ID } from "./partition";
 
