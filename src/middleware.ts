@@ -9,6 +9,9 @@ export async function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     "/auth/:path*", // <- Auth0 routes (login, logout, callback, profile)
-    "/analytics/:path*", // <- tus rutas protegidas
+    "/analytics/:path*", // <- Analytics pages (protected)
+    "/api/analytics/:path*", // <- Analytics API routes (protected)
+    "/api/chatbot/:path*", // <- Chatbot API routes (protected)
+    "/api/trpc/:path*", // <- tRPC routes (protected)
   ],
 };
