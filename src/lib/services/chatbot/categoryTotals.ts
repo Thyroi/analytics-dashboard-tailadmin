@@ -20,6 +20,12 @@ import {
 } from "@/lib/taxonomy/categories";
 import type { WindowGranularity } from "@/lib/types";
 import { computeRangesForKPI } from "@/lib/utils/time/timeWindows";
+import {
+  buildSynonymIndex,
+  calculateDeltas,
+  formatDateForMindsaic,
+  normalizeForSynonymMatching,
+} from "./shared/helpers";
 
 /* ==================== Tipos ==================== */
 
@@ -67,56 +73,10 @@ export type MindsaicResponse = {
 /* ==================== Helpers ==================== */
 
 /**
- * Convierte formato YYYY-MM-DD a YYYYMMDD requerido por Mindsaic
- */
-function formatDateForMindsaic(dateISO: string): string {
-  return dateISO.replace(/-/g, "");
-}
-
-/**
- * Normaliza texto para comparación (lowercase, sin acentos, sin guiones)
- */
-function normalize(raw: string): string {
-  return raw
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "") // quitar diacríticos
-    .replace(/[._-]/g, "")
-    .replace(/\s+/g, "")
-    .trim();
-}
-
-/**
  * Construye índice de sinónimos para mapear tokens a CategoryId
  */
 function buildCategorySynonymIndex(): Map<string, CategoryId> {
-  const index = new Map<string, CategoryId>();
-
-  for (const categoryId of CATEGORY_ID_ORDER) {
-    // Agregar el ID mismo
-    index.set(normalize(categoryId), categoryId);
-
-    // Agregar label oficial
-    index.set(normalize(CATEGORY_META[categoryId].label), categoryId);
-
-    // Agregar todos los sinónimos
-    const synonyms = CATEGORY_SYNONYMS[categoryId] || [];
-    for (const synonym of synonyms) {
-      index.set(normalize(synonym), categoryId);
-    }
-  }
-
-  return index;
-}
-
-/**
- * Calcula deltaPercent según reglas:
- * - null si prev <= 0 o falta dato
- * - ((current - prev) / prev) * 100 en otro caso
- */
-function computeDeltaPercent(current: number, prev: number): number | null {
-  if (prev <= 0) return null;
-  return ((current - prev) / prev) * 100;
+  return buildSynonymIndex(CATEGORY_ID_ORDER, CATEGORY_META, CATEGORY_SYNONYMS);
 }
 
 /**
@@ -147,7 +107,7 @@ function parseCategoryTotals(
     if (!token) continue;
 
     // Mapear token a CategoryId usando sinónimos
-    const normalizedToken = normalize(token);
+    const normalizedToken = normalizeForSynonymMatching(token);
     const categoryId = synonymIndex.get(normalizedToken);
 
     if (!categoryId) {
@@ -262,8 +222,10 @@ export async function fetchChatbotCategoryTotals(
     ).map((categoryId) => {
       const currentTotal = currentTotals.get(categoryId) || 0;
       const prevTotal = prevTotals.get(categoryId) || 0;
-      const deltaAbs = currentTotal - prevTotal;
-      const deltaPercent = computeDeltaPercent(currentTotal, prevTotal);
+      const { deltaAbs, deltaPercent } = calculateDeltas(
+        currentTotal,
+        prevTotal
+      );
 
       return {
         id: categoryId,

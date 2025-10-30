@@ -20,6 +20,12 @@ import {
 } from "@/lib/taxonomy/towns";
 import type { WindowGranularity } from "@/lib/types";
 import { computeRangesForKPI } from "@/lib/utils/time/timeWindows";
+import {
+  buildSynonymIndex,
+  calculateDeltas,
+  formatDateForMindsaic,
+  normalizeForSynonymMatching,
+} from "./shared/helpers";
 
 /* ==================== Tipos ==================== */
 
@@ -67,56 +73,10 @@ export type MindsaicResponse = {
 /* ==================== Helpers ==================== */
 
 /**
- * Convierte formato YYYY-MM-DD a YYYYMMDD requerido por Mindsaic
- */
-function formatDateForMindsaic(dateISO: string): string {
-  return dateISO.replace(/-/g, "");
-}
-
-/**
- * Normaliza texto para comparación (lowercase, sin acentos, sin guiones)
- */
-function normalize(raw: string): string {
-  return raw
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "") // quitar diacríticos
-    .replace(/[._-]/g, "")
-    .replace(/\s+/g, "")
-    .trim();
-}
-
-/**
  * Construye índice de sinónimos para mapear tokens a TownId
  */
 function buildTownSynonymIndex(): Map<string, TownId> {
-  const index = new Map<string, TownId>();
-
-  for (const townId of TOWN_ID_ORDER) {
-    // Agregar el ID mismo
-    index.set(normalize(townId), townId);
-
-    // Agregar label oficial
-    index.set(normalize(TOWN_META[townId].label), townId);
-
-    // Agregar todos los sinónimos
-    const synonyms = TOWN_SYNONYMS[townId] || [];
-    for (const synonym of synonyms) {
-      index.set(normalize(synonym), townId);
-    }
-  }
-
-  return index;
-}
-
-/**
- * Calcula deltaPercent según reglas:
- * - null si prev <= 0 o falta dato
- * - ((current - prev) / prev) * 100 en otro caso
- */
-function computeDeltaPercent(current: number, prev: number): number | null {
-  if (prev <= 0) return null;
-  return ((current - prev) / prev) * 100;
+  return buildSynonymIndex(TOWN_ID_ORDER, TOWN_META, TOWN_SYNONYMS);
 }
 
 /**
@@ -147,7 +107,7 @@ function parseTownTotals(
     if (!token) continue;
 
     // Mapear token a TownId usando sinónimos
-    const normalizedToken = normalize(token);
+    const normalizedToken = normalizeForSynonymMatching(token);
     const townId = synonymIndex.get(normalizedToken);
 
     if (!townId) {
@@ -260,8 +220,10 @@ export async function fetchChatbotTownTotals(
     const towns: TownTotalData[] = TOWN_ID_ORDER.map((townId) => {
       const currentTotal = currentTotals.get(townId) || 0;
       const prevTotal = prevTotals.get(townId) || 0;
-      const deltaAbs = currentTotal - prevTotal;
-      const deltaPercent = computeDeltaPercent(currentTotal, prevTotal);
+      const { deltaAbs, deltaPercent } = calculateDeltas(
+        currentTotal,
+        prevTotal
+      );
 
       return {
         id: townId,

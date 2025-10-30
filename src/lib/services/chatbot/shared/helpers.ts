@@ -87,3 +87,69 @@ export function groupSeriesByMonth(
 
   return result;
 }
+
+/**
+ * Normaliza texto para comparación de sinónimos:
+ * - lowercase
+ * - sin acentos (NFD + remove diacritics)
+ * - sin guiones, puntos, underscores
+ * - sin espacios
+ * - trim
+ *
+ * Usado en buildCategorySynonymIndex y buildTownSynonymIndex
+ */
+export function normalizeForSynonymMatching(raw: string): string {
+  return raw
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "") // quitar diacríticos
+    .replace(/[._-]/g, "")
+    .replace(/\s+/g, "")
+    .trim();
+}
+
+/**
+ * Construye índice de sinónimos genérico para mapear tokens normalizados a IDs
+ *
+ * @param idList - Lista ordenada de IDs (e.g., CATEGORY_ID_ORDER, TOWN_ID_ORDER)
+ * @param metaMap - Mapa de metadata con label (e.g., CATEGORY_META, TOWN_META)
+ * @param synonymsMap - Mapa de sinónimos (e.g., CATEGORY_SYNONYMS, TOWN_SYNONYMS)
+ * @returns Map de token normalizado → ID
+ */
+export function buildSynonymIndex<T extends string>(
+  idList: readonly T[],
+  metaMap: Record<T, { label: string }>,
+  synonymsMap: Record<T, string[]>
+): Map<string, T> {
+  const index = new Map<string, T>();
+
+  for (const id of idList) {
+    // Agregar el ID mismo
+    index.set(normalizeForSynonymMatching(id), id);
+
+    // Agregar label oficial
+    index.set(normalizeForSynonymMatching(metaMap[id].label), id);
+
+    // Agregar sinónimos
+    const syns = synonymsMap[id] || [];
+    for (const syn of syns) {
+      index.set(normalizeForSynonymMatching(syn), id);
+    }
+  }
+
+  return index;
+}
+
+/**
+ * Calcula delta absoluta y porcentual para totales
+ *
+ * @returns { deltaAbs, deltaPercent }
+ */
+export function calculateDeltas(
+  currentTotal: number,
+  prevTotal: number
+): { deltaAbs: number; deltaPercent: number | null } {
+  const deltaAbs = currentTotal - prevTotal;
+  const deltaPercent = computeDeltaPercent(currentTotal, prevTotal);
+  return { deltaAbs, deltaPercent };
+}
