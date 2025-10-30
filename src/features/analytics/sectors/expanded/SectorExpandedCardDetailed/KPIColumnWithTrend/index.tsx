@@ -1,11 +1,11 @@
 "use client";
 
-import type { KPIColumnWithTrendProps } from "./types";
 import { DEFAULT_TITLE, GRID_LAYOUT } from "./constants";
-import { useKPIItems } from "./useKPIItems";
-import { useChartData } from "./useChartData";
 import { KPIColumn } from "./KPIColumn";
 import { TrendChart } from "./TrendChart";
+import type { KPIColumnWithTrendProps } from "./types";
+import { useChartData } from "./useChartData";
+import { useKPIItems } from "./useKPIItems";
 
 /** KPIs en columna a la izquierda + line chart a la derecha */
 export default function KPIColumnWithTrend({

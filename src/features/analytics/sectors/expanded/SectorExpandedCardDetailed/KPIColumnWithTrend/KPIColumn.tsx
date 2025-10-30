@@ -1,6 +1,6 @@
+import type { KPIItem } from "@/components/charts/KPIList";
 import KPIList from "@/components/charts/KPIList";
 import KPIListSkeleton from "@/components/skeletons/KPIListSkeleton";
-import type { KPIItem } from "@/components/charts/KPIList";
 
 interface KPIColumnProps {
   loading: boolean;
