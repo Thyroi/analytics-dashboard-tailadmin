@@ -1,14 +1,6 @@
-"use client";
+import type { TownCardProps } from "./types";
 
-import type { TownGridData } from "@/features/home/hooks/useResumenTown";
-import type { TownId } from "@/lib/taxonomy/towns";
-
-interface TownCardProps {
-  data: TownGridData;
-  onClick: () => void;
-}
-
-function TownCard({ data, onClick }: TownCardProps) {
+export function TownCard({ data, onClick }: TownCardProps) {
   const deltaColor =
     data.combinedDeltaPct === null
       ? "text-gray-500"
@@ -67,49 +59,6 @@ function TownCard({ data, onClick }: TownCardProps) {
       <div className="mt-3 text-xs text-gray-500 text-center">
         Click para ver drilldown →
       </div>
-    </div>
-  );
-}
-
-interface TownGridProps {
-  data: TownGridData[];
-  onTownClick: (townId: TownId) => void;
-  isLoading?: boolean;
-}
-
-export function TownGrid({ data, onTownClick, isLoading }: TownGridProps) {
-  if (isLoading) {
-    return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-        {Array.from({ length: 8 }).map((_, i) => (
-          <div
-            key={i}
-            className="border rounded-lg p-4 bg-gray-100 dark:bg-gray-700 animate-pulse"
-          >
-            <div className="h-6 bg-gray-300 dark:bg-gray-600 rounded mb-3"></div>
-            <div className="space-y-2">
-              {Array.from({ length: 6 }).map((_, j) => (
-                <div
-                  key={j}
-                  className="h-4 bg-gray-300 dark:bg-gray-600 rounded"
-                ></div>
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
-    );
-  }
-
-  return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-      {data.map((townData) => (
-        <TownCard
-          key={townData.id}
-          data={townData}
-          onClick={() => onTownClick(townData.id as TownId)}
-        />
-      ))}
     </div>
   );
 }
