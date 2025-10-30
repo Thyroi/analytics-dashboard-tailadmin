@@ -4,9 +4,9 @@
 
 import { BarChart3 } from "lucide-react";
 import { ChartSkeleton } from "../../ComparativeTopPages/components/ChartSkeleton";
-import type { ChartSectionProps } from "./types";
-import { EmptyState } from "./EmptyState";
 import { ChartContent } from "./ChartContent";
+import { EmptyState } from "./EmptyState";
+import type { ChartSectionProps } from "./types";
 
 export function ChartSection({
   selectedPaths,
@@ -31,7 +31,9 @@ export function ChartSection({
       {selectedPaths.length === 0 ? (
         <EmptyState />
       ) : (
-        chartData && <ChartContent chartData={chartData} formatNumber={formatNumber} />
+        chartData && (
+          <ChartContent chartData={chartData} formatNumber={formatNumber} />
+        )
       )}
     </div>
   );
