@@ -1,84 +1,28 @@
-/**
- * Componente de barras comparativas (Current vs Previous)
- * Para mostrar comparación día por día cuando granularity = 'd'
- * Usa ApexCharts siguiendo la estructura del proyecto
- */
-
-"use client";
-
-import type { SeriesPoint } from "@/lib/types";
-import { formatChartLabelsSimple } from "@/lib/utils/charts/labelFormatting";
-import { getSeriesLabels } from "@/lib/utils/charts/tooltipLabels";
-import { generateBrandGradient } from "@/lib/utils/formatting/colors";
 import type { ApexOptions } from "apexcharts";
-import dynamic from "next/dynamic";
 import { useMemo } from "react";
 
-const ReactApexChart = dynamic(() => import("react-apexcharts"), {
-  ssr: false,
-});
+type ChartOptionsParams = {
+  categories: string[];
+  colors: string[];
+  height: number | string;
+  showLegend: boolean;
+  tooltipFormatter: (value: number) => string;
+  yAxisFormatter: (value: number) => string;
+  optionsExtra?: ApexOptions;
+};
 
-interface ComparisonBarChartProps {
-  series: {
-    current: SeriesPoint[];
-    previous: SeriesPoint[];
-  };
-  title?: string;
-  subtitle?: string;
-  height?: number | string;
-  showLegend?: boolean;
-  tooltipFormatter?: (value: number) => string;
-  yAxisFormatter?: (value: number) => string;
-  className?: string;
-  granularity?: "d" | "w" | "m" | "y";
-}
-
-const DEFAULT_HEIGHT = 350;
-// Usar la paleta de colores del brand (misma que las donuts)
-const COMPARISON_COLORS = generateBrandGradient(2); // Previous y Current usando brand palette
-
-export default function ComparisonBarChart({
-  series,
-  title = "Comparación de períodos",
-  subtitle,
-  height = DEFAULT_HEIGHT,
-  showLegend = true,
-  tooltipFormatter = (value) => value.toLocaleString(),
-  yAxisFormatter = (value) => value.toString(),
-  className = "",
-  granularity = "d",
-}: ComparisonBarChartProps) {
-  // Preparar categorías (labels del eje X) con formateo según granularidad
-  const categories = useMemo(() => {
-    const rawLabels = series.current.map((point) => point.label);
-    return formatChartLabelsSimple(rawLabels, granularity);
-  }, [series, granularity]);
-
-  // Obtener labels dinámicas según granularidad
-  const seriesLabels = useMemo(
-    () => getSeriesLabels(granularity),
-    [granularity]
-  );
-
-  // Preparar datos para ApexCharts
-  const chartSeries = useMemo(() => {
-    return [
-      {
-        name: seriesLabels.previous,
-        data: series.previous.map((point) => point.value),
-        color: COMPARISON_COLORS[0],
-      },
-      {
-        name: seriesLabels.current,
-        data: series.current.map((point) => point.value),
-        color: COMPARISON_COLORS[1],
-      },
-    ];
-  }, [series, seriesLabels]);
-
-  const options: ApexOptions = useMemo(() => {
-    return {
-      colors: COMPARISON_COLORS,
+export function useChartOptions({
+  categories,
+  colors,
+  height,
+  showLegend,
+  tooltipFormatter,
+  yAxisFormatter,
+  optionsExtra,
+}: ChartOptionsParams): ApexOptions {
+  return useMemo(() => {
+    const base: ApexOptions = {
+      colors,
       chart: {
         fontFamily: "Outfit, sans-serif",
         type: "bar",
@@ -239,37 +183,15 @@ export default function ComparisonBarChart({
         },
       ],
     };
-  }, [categories, height, showLegend, tooltipFormatter, yAxisFormatter]);
 
-  return (
-    <div className={`w-full bg-white dark:bg-gray-800 rounded-lg ${className}`}>
-      {/* Header */}
-      {(title || subtitle) && (
-        <div className="p-6 pb-2">
-          {title && (
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
-              {title}
-            </h3>
-          )}
-          {subtitle && (
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              {subtitle}
-            </p>
-          )}
-        </div>
-      )}
-
-      {/* Chart */}
-      <div className="px-6 pb-6">
-        <div style={{ height }}>
-          <ReactApexChart
-            options={options}
-            series={chartSeries}
-            type="bar"
-            height={height}
-          />
-        </div>
-      </div>
-    </div>
-  );
+    return { ...base, ...(optionsExtra ?? {}) };
+  }, [
+    categories,
+    colors,
+    height,
+    showLegend,
+    tooltipFormatter,
+    yAxisFormatter,
+    optionsExtra,
+  ]);
 }
