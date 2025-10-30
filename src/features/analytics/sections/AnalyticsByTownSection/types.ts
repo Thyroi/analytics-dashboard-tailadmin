@@ -1,6 +1,6 @@
 import type { CategoryId } from "@/lib/taxonomy/categories";
-import type { Granularity } from "@/lib/types";
 import type { TownId } from "@/lib/taxonomy/towns";
+import type { Granularity } from "@/lib/types";
 
 export type Drill =
   | { kind: "town"; townId: TownId }

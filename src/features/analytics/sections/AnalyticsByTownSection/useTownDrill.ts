@@ -1,5 +1,5 @@
-import type { Granularity } from "@/lib/types";
 import type { TownId } from "@/lib/taxonomy/towns";
+import type { Granularity } from "@/lib/types";
 import { labelToCategoryId } from "@/lib/utils/core/sector";
 import type { QueryClient } from "@tanstack/react-query";
 import { useCallback, useMemo, useState } from "react";

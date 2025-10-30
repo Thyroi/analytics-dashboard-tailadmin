@@ -56,7 +56,9 @@ export function useTownDataHandlers(
   const getDonutFor = useCallback(
     (_id: string) => {
       if (townId && _id === townId) {
-        return donutTown?.map((d) => ({ label: d.label, value: d.value })) || [];
+        return (
+          donutTown?.map((d) => ({ label: d.label, value: d.value })) || []
+        );
       }
       return [];
     },
