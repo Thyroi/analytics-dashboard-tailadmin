@@ -1,9 +1,9 @@
-import { useMemo } from "react";
 import { useKpis } from "@/features/analytics/hooks/useKpis";
+import type { Granularity } from "@/lib/types";
 import { Bolt, Clock, Eye, MousePointer2, Users } from "lucide-react";
+import { useMemo } from "react";
 import type { MetricItem } from "./types";
 import { formatDuration } from "./utils";
-import type { Granularity } from "@/lib/types";
 
 interface UseKPIItemsParams {
   mode: string;
@@ -12,7 +12,12 @@ interface UseKPIItemsParams {
   granularity: Granularity;
 }
 
-export function useKPIItems({ mode, startISO, endISO, granularity }: UseKPIItemsParams) {
+export function useKPIItems({
+  mode,
+  startISO,
+  endISO,
+  granularity,
+}: UseKPIItemsParams) {
   const fetchParams = useMemo(
     () => ({
       start: mode === "range" ? startISO : undefined,

@@ -2,11 +2,11 @@
 
 import KPIStatGrid from "@/components/dashboard/KPIStatGrid";
 import { useHeaderAnalyticsTimeframe } from "@/features/analytics/context/HeaderAnalyticsTimeContext";
-import type { AnalyticsKPISectionProps } from "./types";
 import { GRID_COLS_CLASS } from "./constants";
-import { useKPIItems } from "./useKPIItems";
-import { LoadingState } from "./LoadingState";
 import { ErrorState } from "./ErrorState";
+import { LoadingState } from "./LoadingState";
+import type { AnalyticsKPISectionProps } from "./types";
+import { useKPIItems } from "./useKPIItems";
 
 export default function AnalyticsKPISection({
   className = "",

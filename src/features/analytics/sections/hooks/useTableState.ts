@@ -7,6 +7,8 @@ import { useCallback, useMemo, useState } from "react";
 type SortField = "visits" | "deltaPct" | "label";
 type SortDirection = "asc" | "desc";
 
+export type { SortField, SortDirection };
+
 export function useTableState() {
   const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState("");
