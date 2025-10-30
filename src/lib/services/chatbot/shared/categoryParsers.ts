@@ -2,9 +2,13 @@
  * Parsers y agregadores específicos para Category → Town breakdown
  */
 
-import { matchSecondTown } from "@/lib/taxonomy/patterns";
-import { getCategorySearchPattern, parseKey, type KeyInfo } from "@/lib/taxonomy/patterns";
 import type { CategoryId } from "@/lib/taxonomy/categories";
+import {
+  getCategorySearchPattern,
+  matchSecondTown,
+  parseKey,
+  type KeyInfo,
+} from "@/lib/taxonomy/patterns";
 import { TOWN_ID_ORDER, type TownId } from "@/lib/taxonomy/towns";
 import { OTHERS_ID } from "../partition";
 import type { MindsaicOutput, OthersBreakdownEntry } from "./types";
@@ -21,7 +25,8 @@ export function collectKeyInfosForView(
   output: MindsaicOutput,
   categoryId: CategoryId
 ): KeyInfo[] {
-  const { token: categoryToken, wildcard } = getCategorySearchPattern(categoryId);
+  const { token: categoryToken, wildcard } =
+    getCategorySearchPattern(categoryId);
   const allKeys = Object.keys(output);
   const parsedKeys = allKeys.map(parseKey).filter(Boolean) as KeyInfo[];
 
@@ -47,7 +52,7 @@ export function collectKeyInfosForView(
 
     const match = wildcard
       ? categoryPart.toLowerCase().startsWith(categoryToken.toLowerCase())
-        : categoryPart.toLowerCase() === categoryToken.toLowerCase();
+      : categoryPart.toLowerCase() === categoryToken.toLowerCase();
 
     return match;
   });
