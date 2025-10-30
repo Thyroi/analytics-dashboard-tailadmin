@@ -1,10 +1,7 @@
 // lib/utils/aggregateCategories.ts
-import {
-  CATEGORY_META,
-  CATEGORY_SYNONYMS,
-  type CategoryId,
-} from "@/lib/taxonomy/categories";
+import { CATEGORY_META, type CategoryId } from "@/lib/taxonomy/categories";
 import { toTokens } from "@/lib/utils/string";
+import { buildCategoryTokenMap } from "@/lib/utils/taxonomy/categoryTokenMap";
 
 /** ==== Tipos del API Mindsaic (lo necesario) ==== */
 type APIPoint = { time: string; value: number };
@@ -17,22 +14,6 @@ export type CategoryAggUI = {
   value: number;
   delta: number;
 };
-
-/** Construye un diccionario token -> CategoryId a partir de tus metadatos */
-function buildCategoryTokenMap(): Map<string, CategoryId> {
-  const map = new Map<string, CategoryId>();
-  (Object.keys(CATEGORY_META) as CategoryId[]).forEach((cid) => {
-    const meta = CATEGORY_META[cid];
-    const syns = CATEGORY_SYNONYMS[cid] ?? [];
-    const baseTokens = [
-      ...toTokens(cid), // id
-      ...toTokens(meta.label), // label UI
-      ...syns.flatMap(toTokens), // sinónimos
-    ];
-    for (const t of baseTokens) map.set(t, cid);
-  });
-  return map;
-}
 
 /** Suma segura */
 function sum(arr: number[]): number {

@@ -4,7 +4,7 @@ import {
   type CategoryId,
 } from "@/lib/taxonomy/categories";
 import { approxEquals, normalizeToken } from "@/lib/utils/string/normalize";
-import { toTokens } from "@/lib/utils/string/tokenization";
+import { debugTokenMap as debugTokenMapUtil } from "@/lib/utils/taxonomy/categoryTokenMap";
 import { fetchTagAudit } from "../services/tagAudit";
 import type {
   ChatbotCardData,
@@ -43,44 +43,13 @@ function firstTwoSegments(rawKey: string): { seg1: string; seg2: string } {
   return { seg1: parts[0] ?? "", seg2: parts[1] ?? "" };
 }
 
-/** Construye un diccionario token -> CategoryId a partir de tus metadatos */
-function buildCategoryTokenMap(): Map<string, CategoryId> {
-  const map = new Map<string, CategoryId>();
-  (Object.keys(CATEGORY_META) as CategoryId[]).forEach((cid) => {
-    const meta = CATEGORY_META[cid];
-    const syns = CATEGORY_SYNONYMS[cid] ?? [];
-    const baseTokens = [
-      ...toTokens(cid), // id
-      ...toTokens(meta.label), // label UI
-      ...syns.flatMap(toTokens), // sinónimos
-    ];
-    for (const t of baseTokens) map.set(t, cid);
-  });
-  return map;
-}
-
 /** Función de debug para ver el tokenMap completo */
 export function debugTokenMap(): {
   tokenMap: Map<string, CategoryId>;
   tokensByCategory: Record<string, string[]>;
   totalTokens: number;
 } {
-  const map = buildCategoryTokenMap();
-  const tokensByCategory: Record<string, string[]> = {};
-
-  // Agrupar tokens por categoría
-  for (const [token, categoryId] of map.entries()) {
-    if (!tokensByCategory[categoryId]) {
-      tokensByCategory[categoryId] = [];
-    }
-    tokensByCategory[categoryId].push(token);
-  }
-
-  return {
-    tokenMap: map,
-    tokensByCategory,
-    totalTokens: map.size,
-  };
+  return debugTokenMapUtil();
 }
 
 /** Suma segura */
