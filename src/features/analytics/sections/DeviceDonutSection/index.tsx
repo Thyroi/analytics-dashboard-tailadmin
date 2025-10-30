@@ -1,18 +1,12 @@
 "use client";
 
 import DonutCard from "@/components/dashboard/DonutCard";
-import {
-  colorizeDevices,
-  useDevices,
-} from "@/features/analytics/hooks/useDevices";
 import { MonitorSmartphone } from "lucide-react";
-import { useMemo } from "react";
-import { useHeaderAnalyticsTimeframe } from "../context/HeaderAnalyticsTimeContext";
-import { DonutSectionSkeleton } from "../skeletons";
-
-const CHART_HEIGHT = 260;
-
-type DonutItem = { label: string; value: number; color?: string };
+import { useHeaderAnalyticsTimeframe } from "../../context/HeaderAnalyticsTimeContext";
+import { DonutSectionSkeleton } from "../../skeletons";
+import { CHART_HEIGHT } from "./constants";
+import { ErrorState } from "./ErrorState";
+import { useDeviceData } from "./useDeviceData";
 
 export default function DeviceDonutSection() {
   const { mode, startISO, endISO, granularity } = useHeaderAnalyticsTimeframe();
@@ -20,26 +14,14 @@ export default function DeviceDonutSection() {
   const start = mode === "range" ? startISO : undefined;
   const end = mode === "range" ? endISO : undefined;
 
-  const { data, isLoading, error } = useDevices({ start, end, granularity });
-
-  const items: DonutItem[] = useMemo(
-    () => colorizeDevices(data?.items ?? []),
-    [data?.items]
-  );
+  const { items, isLoading, error } = useDeviceData({ start, end, granularity });
 
   if (isLoading) {
     return <DonutSectionSkeleton />;
   }
 
   if (error) {
-    return (
-      <div
-        className="card bg-analytics-gradient overflow-hidden text-sm text-red-500 flex items-center justify-center"
-        style={{ height: CHART_HEIGHT }}
-      >
-        {error.message}
-      </div>
-    );
+    return <ErrorState message={error.message} />;
   }
 
   return (

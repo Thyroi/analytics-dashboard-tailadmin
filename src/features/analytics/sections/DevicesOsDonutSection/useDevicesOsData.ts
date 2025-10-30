@@ -1,9 +1,9 @@
-import { useMemo } from "react";
 import {
   colorizeOs,
   useDevicesOs,
 } from "@/features/analytics/hooks/useDevicesOs";
 import type { Granularity } from "@/lib/types";
+import { useMemo } from "react";
 import type { DonutItem } from "./types";
 
 interface UseDevicesOsDataParams {
@@ -12,7 +12,11 @@ interface UseDevicesOsDataParams {
   granularity: Granularity;
 }
 
-export function useDevicesOsData({ start, end, granularity }: UseDevicesOsDataParams) {
+export function useDevicesOsData({
+  start,
+  end,
+  granularity,
+}: UseDevicesOsDataParams) {
   const { data, isLoading, error } = useDevicesOs({ start, end, granularity });
 
   const items: DonutItem[] = useMemo(

@@ -14,7 +14,11 @@ export default function DevicesOsDonutSection() {
   const start = mode === "range" ? startISO : undefined;
   const end = mode === "range" ? endISO : undefined;
 
-  const { items, isLoading, error } = useDevicesOsData({ start, end, granularity });
+  const { items, isLoading, error } = useDevicesOsData({
+    start,
+    end,
+    granularity,
+  });
 
   if (isLoading) {
     return <DonutSectionSkeleton />;
