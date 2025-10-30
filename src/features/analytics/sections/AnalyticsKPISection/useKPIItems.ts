@@ -1,37 +1,18 @@
-"use client";
-
-import KPIStatGrid from "@/components/dashboard/KPIStatGrid";
-import { useHeaderAnalyticsTimeframe } from "@/features/analytics/context/HeaderAnalyticsTimeContext";
+import { useMemo } from "react";
 import { useKpis } from "@/features/analytics/hooks/useKpis";
 import { Bolt, Clock, Eye, MousePointer2, Users } from "lucide-react";
-import { useMemo } from "react";
+import type { MetricItem } from "./types";
+import { formatDuration } from "./utils";
+import type { Granularity } from "@/lib/types";
 
-function formatDuration(seconds: number): string {
-  const s = Math.max(0, Math.floor(seconds));
-  const h = Math.floor(s / 3600);
-  const m = Math.floor((s % 3600) / 60);
-  const sec = s % 60;
-  const mm = String(m).padStart(2, "0");
-  const ss = String(sec).padStart(2, "0");
-  return h > 0 ? `${h}:${mm}:${ss}` : `${m}:${ss}`;
+interface UseKPIItemsParams {
+  mode: string;
+  startISO: string | undefined;
+  endISO: string | undefined;
+  granularity: Granularity;
 }
 
-type MetricItem = {
-  title: string;
-  value: number | string;
-  change?: number;
-  icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
-  color?: string;
-  delay?: number;
-};
-
-export default function AnalyticsKPISection({
-  className = "",
-}: {
-  className?: string;
-}) {
-  const { mode, granularity, startISO, endISO } = useHeaderAnalyticsTimeframe();
-
+export function useKPIItems({ mode, startISO, endISO, granularity }: UseKPIItemsParams) {
   const fetchParams = useMemo(
     () => ({
       start: mode === "range" ? startISO : undefined,
@@ -99,33 +80,5 @@ export default function AnalyticsKPISection({
     ];
   }, [data]);
 
-  if (isLoading || !items) {
-    return (
-      <div
-        className={`grid gap-6 [grid-template-columns:repeat(auto-fit,minmax(221px,1fr))] ${className}`}
-      >
-        {Array.from({ length: 5 }).map((_, i) => (
-          <div key={i} className="h-28 rounded-2xl bg-gray-100 animate-pulse" />
-        ))}
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div
-        className={`rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 ${className}`}
-      >
-        Error cargando KPIs: {error.message}
-      </div>
-    );
-  }
-
-  return (
-    <KPIStatGrid
-      className={className}
-      items={items}
-      colsClassName="[grid-template-columns:repeat(auto-fit,minmax(221px,1fr))]"
-    />
-  );
+  return { items, isLoading, error };
 }
