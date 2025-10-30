@@ -2,13 +2,13 @@ import KPIStatGrid from "@/components/dashboard/KPIStatGrid";
 import { ICONS, ITEMS_PER_PAGE, SLIDE_INTERVAL } from "./constants";
 import { ErrorState } from "./ErrorState";
 import { LoadingState } from "./LoadingState";
-import type { TopCategoriesKPIProps } from "./types";
+import type { TopTownsKPIProps } from "./types";
 
-export default function TopCategoriesKPI({
-  categories,
+export default function TopTownsKPI({
+  towns,
   isLoading = false,
   isError = false,
-}: TopCategoriesKPIProps) {
+}: TopTownsKPIProps) {
   if (isError) {
     return <ErrorState />;
   }
@@ -17,16 +17,16 @@ export default function TopCategoriesKPI({
     return <LoadingState />;
   }
 
-  const kpis = categories.map((category) => ({
-    title: category.label,
+  const kpis = towns.map((town) => ({
+    title: town.label,
     value: (
       <>
-        {category.currentValue.toLocaleString()}{" "}
+        {town.currentValue.toLocaleString()}{" "}
         <span className="text-sm font-normal">Interacciones</span>
       </>
     ),
     icon: ICONS[Math.floor(Math.random() * ICONS.length)],
-    color: "from-blue-500 to-indigo-500",
+    color: "from-green-500 to-emerald-500",
   }));
 
   return (
