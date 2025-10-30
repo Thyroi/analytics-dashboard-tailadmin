@@ -1,10 +1,10 @@
 "use client";
 
 import type { TownId } from "@/lib/taxonomy/towns";
-import type { TownGridProps } from "./types";
 import { GRID_CLASSES } from "./constants";
-import { TownCard } from "./TownCard";
 import { LoadingState } from "./LoadingState";
+import { TownCard } from "./TownCard";
+import type { TownGridProps } from "./types";
 
 export function TownGrid({ data, onTownClick, isLoading }: TownGridProps) {
   if (isLoading) {

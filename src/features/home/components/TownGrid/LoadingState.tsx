@@ -1,4 +1,8 @@
-import { GRID_CLASSES, SKELETON_COUNT, SKELETON_FIELDS_COUNT } from "./constants";
+import {
+  GRID_CLASSES,
+  SKELETON_COUNT,
+  SKELETON_FIELDS_COUNT,
+} from "./constants";
 
 export function LoadingState() {
   return (
