@@ -1,5 +1,4 @@
 import DeltaCard from "@/components/common/DeltaCard";
-import type { IconOrImage } from "@/lib/utils/core/images";
 import {
   COLLAPSED_GRID_CLASSES,
   RING_SIZE,
@@ -14,7 +13,8 @@ interface CollapsedViewProps {
   isTown: boolean;
   isDeltaLoading: boolean;
   handleOpen: (id: string) => void;
-  collapsedVariant: IconOrImage;
+  imgSrc?: string;
+  Icon?: React.ComponentType<React.SVGProps<SVGSVGElement>>;
 }
 
 export function CollapsedView({
@@ -24,8 +24,12 @@ export function CollapsedView({
   isTown,
   isDeltaLoading,
   handleOpen,
-  collapsedVariant,
+  imgSrc,
+  Icon,
 }: CollapsedViewProps) {
+  // Construir props específicas para DeltaCard
+  const mediaProps = imgSrc ? { imgSrc } : { Icon: Icon! };
+
   return (
     <div key={id} className={COLLAPSED_GRID_CLASSES}>
       <DeltaCard
@@ -39,7 +43,7 @@ export function CollapsedView({
         className="h-full"
         isTown={isTown}
         loading={isDeltaLoading}
-        {...collapsedVariant}
+        {...mediaProps}
       />
     </div>
   );

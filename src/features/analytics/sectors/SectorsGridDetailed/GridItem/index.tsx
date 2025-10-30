@@ -44,8 +44,10 @@ export function GridItem({
   level2Data,
   isDeltaLoading,
 }: GridItemProps) {
-  const { title, isTown, expandedVariant, collapsedVariant } =
-    useSectorMetadata(mode, id);
+  const { title, isTown, imgSrc, Icon, expandedVariant } = useSectorMetadata(
+    mode,
+    id
+  );
 
   const now = new Date();
   const deltaPct = getDeltaPctFor(id);
@@ -79,7 +81,8 @@ export function GridItem({
       isTown={isTown}
       isDeltaLoading={isDeltaLoading}
       handleOpen={handleOpen}
-      collapsedVariant={collapsedVariant}
+      imgSrc={imgSrc}
+      Icon={Icon}
     />
   );
 }

@@ -20,7 +20,8 @@ export function useSectorMetadata(mode: Mode, id: string) {
   return {
     title,
     isTown,
+    imgSrc: imgSrcStr ?? undefined,
+    Icon: imgSrcStr ? undefined : MapPinIcon,
     expandedVariant: iconOrImage,
-    collapsedVariant: iconOrImage,
   };
 }
