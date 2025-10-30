@@ -38,7 +38,7 @@ export default function CategoryGrid({
 }
 
 export type {
+  CategoryCardProps,
   CategoryGridData,
   CategoryGridProps,
-  CategoryCardProps,
 } from "./types";
