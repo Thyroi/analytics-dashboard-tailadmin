@@ -4,12 +4,9 @@
 
 import type { DonutDatum } from "@/lib/types";
 import { analyticsdata_v1beta } from "googleapis";
-import type { DateRange, Totals } from "../drilldown/types";
 import { num } from "../drilldown/helpers";
-import {
-  fetchDimensionApiNames,
-  resolveCustomEventDim,
-} from "./dimensions";
+import type { DateRange, Totals } from "../drilldown/types";
+import { fetchDimensionApiNames, resolveCustomEventDim } from "./dimensions";
 
 /**
  * Obtiene KPIs totales agregados para una URL específica
