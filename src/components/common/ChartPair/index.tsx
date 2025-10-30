@@ -21,9 +21,7 @@ export default function ChartPair(props: ChartPairProps) {
   // Determinar el lado izquierdo según el modo
   const leftSide = (() => {
     if (props.mode === "line") {
-      return (
-        <LineSide series={props.series} granularity={props.granularity} />
-      );
+      return <LineSide series={props.series} granularity={props.granularity} />;
     }
 
     if (props.mode === "multi") {

@@ -1,79 +1,28 @@
-"use client";
-
-import { generateBrandGradient } from "@/lib/utils/formatting/colors";
 import type { ApexOptions } from "apexcharts";
-import dynamic from "next/dynamic";
 import { useMemo } from "react";
 
-const ReactApexChart = dynamic(() => import("react-apexcharts"), {
-  ssr: false,
-});
-
-export type GroupedBarSeries = {
-  name: string;
-  data: number[];
-  color?: string; // Color específico para esta serie
-};
-
-type Props = {
-  /** Etiquetas del eje X (ej: meses, categorías, etc.) */
+type ChartOptionsParams = {
   categories: string[];
-  /** Series de datos para comparar */
-  series: GroupedBarSeries[];
-  /** Alto del gráfico */
-  height?: number | string;
-  /** Clases CSS adicionales */
-  className?: string;
-  /** Título opcional */
-  title?: string;
-  /** Subtítulo opcional (ej: "Total number of deliveries 70.5K") */
-  subtitle?: string;
-  /** Mostrar leyenda */
-  showLegend?: boolean;
-  /** Posición de la leyenda (top | bottom) */
-  legendPosition?: "top" | "bottom";
-  /** Colores por defecto si no se especifican en series */
-  defaultColors?: string[];
-  /** Formato personalizado para tooltips */
+  colors: string[];
+  height: number | string;
+  showLegend: boolean;
+  legendPosition: "top" | "bottom";
   tooltipFormatter?: (val: number) => string;
-  /** Formato para labels del eje Y */
   yAxisFormatter?: (val: number) => string;
-  /** Opciones adicionales de ApexCharts */
   optionsExtra?: ApexOptions;
 };
 
-const DEFAULT_HEIGHT = 350;
-
-export default function GroupedBarChart({
+export function useChartOptions({
   categories,
-  series,
-  height = DEFAULT_HEIGHT,
-  className = "",
-  title,
-  subtitle,
-  showLegend = true,
-  legendPosition = "top",
-  defaultColors,
+  colors,
+  height,
+  showLegend,
+  legendPosition,
   tooltipFormatter,
   yAxisFormatter,
   optionsExtra,
-}: Props) {
-  const chartSeries = useMemo(() => {
-    // Generar colores de la paleta del proyecto si no se especifican
-    const brandColors = defaultColors || generateBrandGradient(series.length);
-
-    return series.map((s, index) => ({
-      name: s.name,
-      data: s.data,
-      color: s.color || brandColors[index % brandColors.length],
-    }));
-  }, [series, defaultColors]);
-
-  const colors = useMemo(() => {
-    return chartSeries.map((s) => s.color);
-  }, [chartSeries]);
-
-  const options: ApexOptions = useMemo(() => {
+}: ChartOptionsParams): ApexOptions {
+  return useMemo(() => {
     const base: ApexOptions = {
       colors,
       chart: {
@@ -250,81 +199,4 @@ export default function GroupedBarChart({
     yAxisFormatter,
     optionsExtra,
   ]);
-
-  return (
-    <div className={`w-full bg-white dark:bg-gray-800 rounded-lg ${className}`}>
-      {/* Header */}
-      {(title || subtitle) && (
-        <div className="p-6 pb-2">
-          {title && (
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
-              {title}
-            </h3>
-          )}
-          {subtitle && (
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              {subtitle}
-            </p>
-          )}
-        </div>
-      )}
-
-      {/* Chart */}
-      <div className="px-6 pb-6">
-        <div style={{ height }}>
-          <ReactApexChart
-            options={options}
-            series={chartSeries}
-            type="bar"
-            height={height}
-          />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// Componente de ejemplo/demo
-export function GroupedBarChartDemo() {
-  const demoData = {
-    categories: [
-      "Jan",
-      "Feb",
-      "Mar",
-      "Apr",
-      "May",
-      "Jun",
-      "Jul",
-      "Aug",
-      "Sep",
-      "Oct",
-      "Nov",
-      "Dec",
-    ],
-    series: [
-      {
-        name: "Shipment",
-        data: [80, 60, 70, 40, 70, 45, 45, 55, 58, 50, 65, 75],
-        color: "#A8C5DA", // Azul claro
-      },
-      {
-        name: "Delivery",
-        data: [87, 47, 65, 23, 75, 67, 73, 85, 25, 70, 85, 90],
-        color: "#3B82F6", // Azul fuerte
-      },
-    ],
-  };
-
-  return (
-    <GroupedBarChart
-      title="Delivery Statistics"
-      subtitle="Total number of deliveries 70.5K"
-      categories={demoData.categories}
-      series={demoData.series}
-      height={320}
-      showLegend={true}
-      tooltipFormatter={(val) => `${val}%`}
-      yAxisFormatter={(val) => `${val}%`}
-    />
-  );
 }
