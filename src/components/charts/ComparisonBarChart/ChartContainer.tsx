@@ -3,7 +3,10 @@ type ChartContainerProps = {
   children: React.ReactNode;
 };
 
-export function ChartContainer({ className = "", children }: ChartContainerProps) {
+export function ChartContainer({
+  className = "",
+  children,
+}: ChartContainerProps) {
   return (
     <div className={`w-full bg-white dark:bg-gray-800 rounded-lg ${className}`}>
       {children}
