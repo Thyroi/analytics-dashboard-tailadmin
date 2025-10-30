@@ -477,11 +477,13 @@ git push origin feature/nueva-funcionalidad
 ### **📖 Guías Técnicas**
 
 - **[`docs/API-ROUTES.md`](./docs/API-ROUTES.md)** - Documentación completa de APIs (22+ endpoints)
-- **[`docs/PRISMA-GUIDE.md`](./docs/PRISMA-GUIDE.md)** - Guía de Prisma, migraciones y troubleshooting
-- **[`docs/REFACTORING-SUMMARY.md`](./docs/REFACTORING-SUMMARY.md)** - Resumen de refactorización (6 fases)
-- **[`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md)** - Arquitectura del sistema (próximamente)
-- **[`docs/DRILLDOWN-TOWNS-GUIDE.md`](./docs/DRILLDOWN-TOWNS-GUIDE.md)** - Guía de drilldown
-- **[`docs/HYBRID-AUTH.md`](./docs/HYBRID-AUTH.md)** - Sistema de autenticación híbrida
+- **[`docs/PROJECT-SUMMARY.md`](./docs/PROJECT-SUMMARY.md)** - 📊 Resumen ejecutivo del proyecto (entrega final)
+- **[`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md)** - 🏗️ Arquitectura completa del sistema
+- **[`docs/API-ROUTES.md`](./docs/API-ROUTES.md)** - 🌐 Documentación de 22+ APIs
+- **[`docs/REFACTORING-SUMMARY.md`](./docs/REFACTORING-SUMMARY.md)** - 🔄 Resumen de refactorización (6 fases)
+- **[`docs/PRISMA-GUIDE.md`](./docs/PRISMA-GUIDE.md)** - 🗄️ Guía de Prisma, migraciones y troubleshooting
+- **[`docs/DRILLDOWN-TOWNS-GUIDE.md`](./docs/DRILLDOWN-TOWNS-GUIDE.md)** - 🎯 Guía de drilldown
+- **[`docs/HYBRID-AUTH.md`](./docs/HYBRID-AUTH.md)** - 🔐 Sistema de autenticación híbrida
 
 ### **📊 Análisis Arquitectónico (Histórico)**
 
