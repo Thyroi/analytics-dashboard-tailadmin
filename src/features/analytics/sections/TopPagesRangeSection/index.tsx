@@ -9,13 +9,11 @@ export default function TopPagesRangeSection() {
   const { mode, granularity, startISO, endISO } = useHeaderAnalyticsTimeframe();
 
   const useExplicit = mode === "range";
-  const { categories, series, colorsByName, isLoading } = useTopPagesChartData(
-    {
-      granularity,
-      startISO: useExplicit ? startISO : undefined,
-      endISO: useExplicit ? endISO : undefined,
-    }
-  );
+  const { categories, series, colorsByName, isLoading } = useTopPagesChartData({
+    granularity,
+    startISO: useExplicit ? startISO : undefined,
+    endISO: useExplicit ? endISO : undefined,
+  });
 
   if (isLoading) {
     return <LoadingState />;
