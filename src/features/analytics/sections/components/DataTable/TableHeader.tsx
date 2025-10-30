@@ -1,5 +1,5 @@
 import { SortButton } from "../SortButton";
-import type { SortField, SortDirection } from "./types";
+import type { SortDirection, SortField } from "./types";
 
 interface TableHeaderProps {
   sortBy: SortField;

@@ -5,9 +5,9 @@
 import { TableEmptyState } from "../../ComparativeTopPages/components/TableEmptyState";
 import { Pagination } from "../Pagination";
 import { TableSkeleton } from "../TableSkeleton";
-import type { DataTableProps } from "./types";
-import { TableHeader } from "./TableHeader";
 import { TableBody } from "./TableBody";
+import { TableHeader } from "./TableHeader";
+import type { DataTableProps } from "./types";
 
 export function DataTable({
   data,
@@ -55,4 +55,4 @@ export function DataTable({
   );
 }
 
-export type { DataTableProps, SortField, SortDirection } from "./types";
+export type { DataTableProps, SortDirection, SortField } from "./types";
