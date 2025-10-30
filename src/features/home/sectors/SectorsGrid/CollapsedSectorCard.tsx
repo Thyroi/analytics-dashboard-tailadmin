@@ -1,6 +1,11 @@
 import DeltaCard from "@/components/common/DeltaCard";
 import type { DeltaArtifact } from "@/lib/utils/delta";
-import { ROW_HEIGHT, RING_SIZE, RING_THICKNESS, COLLAPSED_CARD_SPAN } from "./constants";
+import {
+  COLLAPSED_CARD_SPAN,
+  RING_SIZE,
+  RING_THICKNESS,
+  ROW_HEIGHT,
+} from "./constants";
 
 interface CollapsedSectorCardProps {
   id: string;
@@ -10,7 +15,9 @@ interface CollapsedSectorCardProps {
   onOpen: (id: string) => void;
   isTown: boolean;
   isDeltaLoading: boolean;
-  variant: { imgSrc: string } | { Icon: React.ComponentType<React.SVGProps<SVGSVGElement>> };
+  variant:
+    | { imgSrc: string }
+    | { Icon: React.ComponentType<React.SVGProps<SVGSVGElement>> };
 }
 
 export function CollapsedSectorCard({

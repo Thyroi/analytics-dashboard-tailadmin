@@ -1,5 +1,5 @@
+import type { DonutDatum, Granularity, SeriesPoint } from "@/lib/types";
 import SectorExpandedCard from "../SectorExpandedCard";
-import type { Granularity, SeriesPoint, DonutDatum } from "@/lib/types";
 import { EXPANDED_CARD_SPAN } from "./constants";
 
 interface ExpandedSectorCardProps {
@@ -14,7 +14,9 @@ interface ExpandedSectorCardProps {
   onClose: () => void;
   isTown: boolean;
   granularity: Granularity;
-  variant: { imgSrc: string } | { Icon: React.ComponentType<React.SVGProps<SVGSVGElement>> };
+  variant:
+    | { imgSrc: string }
+    | { Icon: React.ComponentType<React.SVGProps<SVGSVGElement>> };
 }
 
 export function ExpandedSectorCard({

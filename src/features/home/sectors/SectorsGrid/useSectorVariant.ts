@@ -1,7 +1,4 @@
-import {
-  sectorIconSrc,
-  sectorTitle,
-} from "@/lib/utils/core/sector";
+import { sectorIconSrc, sectorTitle } from "@/lib/utils/core/sector";
 import { MapPinIcon } from "@heroicons/react/24/solid";
 import type { Mode } from "./types";
 

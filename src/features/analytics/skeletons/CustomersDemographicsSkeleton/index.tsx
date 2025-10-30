@@ -2,15 +2,15 @@
 
 import Header from "@/components/common/Header";
 import { MapPinned } from "lucide-react";
-import type { CustomersDemographicsSkeletonProps } from "./types";
 import {
-  DEFAULT_TITLE,
-  DEFAULT_MAP_HEIGHT,
-  DEFAULT_COUNTRY_ROWS,
   DEFAULT_CLASSNAME,
+  DEFAULT_COUNTRY_ROWS,
+  DEFAULT_MAP_HEIGHT,
+  DEFAULT_TITLE,
 } from "./constants";
-import { MapPlaceholder } from "./MapPlaceholder";
 import { CountryRowSkeleton } from "./CountryRowSkeleton";
+import { MapPlaceholder } from "./MapPlaceholder";
+import type { CustomersDemographicsSkeletonProps } from "./types";
 
 export default function CustomersDemographicsSkeleton({
   title = DEFAULT_TITLE,

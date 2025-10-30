@@ -2,12 +2,12 @@
 
 import { orderIdsByTaxonomy } from "@/lib/utils/core/sector";
 import { useMemo } from "react";
-import type { SectorsGridProps } from "./types";
+import { CollapsedSectorCard } from "./CollapsedSectorCard";
 import { GRID_CLASSES, ROW_HEIGHT } from "./constants";
+import { ExpandedSectorCard } from "./ExpandedSectorCard";
+import type { SectorsGridProps } from "./types";
 import { useExpandedState } from "./useExpandedState";
 import { getSectorVariant } from "./useSectorVariant";
-import { ExpandedSectorCard } from "./ExpandedSectorCard";
-import { CollapsedSectorCard } from "./CollapsedSectorCard";
 
 export default function SectorsGrid({
   mode,
