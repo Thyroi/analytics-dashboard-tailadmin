@@ -1,16 +1,16 @@
 "use client";
 
-import SectorsGrid from "@/components/common/SectorsGrid";
-import StickyHeaderSection from "@/components/common/StickyHeaderSection";
 import { useTagTimeframe } from "@/features/analytics/context/TagTimeContext";
 import { useCategoriesTotals } from "@/features/analytics/hooks/categorias";
 import { useCategoriaDetails } from "@/features/analytics/hooks/categorias/useCategoriaDetails";
-import { CATEGORY_ID_ORDER, type CategoryId } from "@/lib/taxonomy/categories";
 import { useQueryClient } from "@tanstack/react-query";
-import { useMemo } from "react";
-import { useCategoryDataHandlers } from "./useCategoryDataHandlers";
-import { useCategoryDrill } from "./useCategoryDrill";
-import { useSeriesRanges } from "./useSeriesRanges";
+import { useCategoryDataHandlers } from "../useCategoryDataHandlers";
+import { useCategoryDrill } from "../useCategoryDrill";
+import { useSeriesRanges } from "../useSeriesRanges";
+import { CategoryGrid } from "./CategoryGrid";
+import { DEFAULT_CATEGORY_ID } from "./constants";
+import { SectionHeader } from "./SectionHeader";
+import { useDisplayedCategories } from "./useDisplayedCategories";
 
 export function SectionContent() {
   const queryClient = useQueryClient();
@@ -42,13 +42,7 @@ export function SectionContent() {
     useCategoriesTotals(calculatedGranularity, timeParams);
 
   // Filtrar "otros" de las categorías mostradas
-  const displayedIds = useMemo<string[]>(
-    () =>
-      state.status === "ready"
-        ? (ids as string[]).filter((id) => id !== "otros")
-        : CATEGORY_ID_ORDER.filter((id) => id !== "otros"),
-    [state.status, ids]
-  );
+  const displayedIds = useDisplayedCategories(state, ids);
 
   // Hook drill state management
   const {
@@ -74,7 +68,7 @@ export function SectionContent() {
   const categoryDetailsState = useCategoriaDetails({
     categoryId:
       (drill?.kind === "category" ? drill.categoryId : catId) ??
-      ("naturaleza" as CategoryId),
+      DEFAULT_CATEGORY_ID,
     granularity: calculatedGranularity,
     startDate: seriesRanges.current.start,
     endDate: seriesRanges.current.end,
@@ -89,9 +83,7 @@ export function SectionContent() {
 
   return (
     <section className="max-w-[1560px]">
-      <StickyHeaderSection
-        title="Analíticas por categoría"
-        subtitle="Vista general del rendimiento y métrricas"
+      <SectionHeader
         mode={mode}
         granularity={granularity}
         onGranularityChange={setGranularity}
@@ -102,12 +94,10 @@ export function SectionContent() {
         onPickerDatesUpdate={updatePickerDatesOnly}
       />
 
-      <SectorsGrid
-        key={gridKey}
-        variant="detailed"
-        mode="tag"
-        ids={displayedIds}
-        granularity={calculatedGranularity}
+      <CategoryGrid
+        gridKey={gridKey}
+        displayedIds={displayedIds}
+        calculatedGranularity={calculatedGranularity}
         onGranularityChange={setGranularity}
         getDeltaPctFor={getDeltaPctFor}
         getDeltaArtifactFor={getDeltaArtifactFor}
