@@ -31,32 +31,15 @@ import type { WindowGranularity } from "@/lib/types";
 import { computeRangesForKPI } from "@/lib/utils/time/timeWindows";
 import { bucketize } from "./bucketizer";
 import {
+  computeDeltaPercent,
+  normalizeForAPI,
+  normalizeSubcategoryName,
+} from "./shared/helpers";
+import {
   collectUniverseForView,
   type UniverseRecord,
   type ViewParams,
 } from "./universeCollector";
-
-/* ==================== Helpers ==================== */
-
-/**
- * Normaliza texto para la API: lowercase, sin acentos EXCEPTO ñ
- */
-function normalizeForAPI(input: string): string {
-  if (!input) return "";
-  // Lowercase
-  let s = input.toLowerCase();
-  // Preservar ñ temporalmente
-  s = s.replace(/ñ/g, "[[ENYE]]");
-  // Quitar acentos
-  s = s.normalize("NFD").replace(/\p{Diacritic}/gu, "");
-  // Restaurar ñ
-  s = s.replace(/\[\[ENYE\]\]/g, "ñ");
-  // Normalizar espacios
-  s = s.replace(/[ _-]+/g, " ");
-  s = s.replace(/\s+/g, " ");
-  s = s.trim();
-  return s;
-}
 
 /* ==================== Tipos ==================== */
 
@@ -117,20 +100,6 @@ export type FetchTownCategorySubcatBreakdownParams = {
 /* ==================== Helpers ==================== */
 
 /**
- * Normaliza el nombre de subcategoría:
- * - trim
- * - colapsar múltiples espacios a uno solo
- * - preservar acentos
- * - lowercase para agrupación
- */
-function normalizeSubcategoryName(raw: string): string {
-  return raw
-    .trim()
-    .replace(/\s+/g, " ") // colapsar espacios
-    .toLowerCase();
-}
-
-/**
  * Filtra solo claves con profundidad 4: root.<town>.<cat>.<subcat>
  */
 // Función legacy - mantener por si es necesaria en el futuro
@@ -177,46 +146,6 @@ function parseSubcategories(
   }
 
   return result;
-}
-
-/**
- * Suma totales de una serie de datos
- */
-// Función legacy - mantener por si es necesaria en el futuro
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function sumSeries(series: Array<{ time: string; value: number }>): number {
-  return series.reduce((sum, point) => sum + point.value, 0);
-}
-
-/**
- * Calcula delta porcentual (null si prev <= 0)
- */
-function computeDeltaPercent(current: number, prev: number): number | null {
-  if (prev <= 0) return null;
-  return ((current - prev) / prev) * 100;
-}
-
-/**
- * Agrupa series por YYYY-MM (máximo 12 buckets para granularidad anual)
- */
-// Función legacy - mantener por si es necesaria en el futuro
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function groupSeriesByMonth(
-  series: Array<{ time: string; value: number }>
-): Array<{ time: string; value: number }> {
-  const monthMap = new Map<string, number>();
-
-  for (const point of series) {
-    // time formato: YYYYMMDD → extraer YYYY-MM
-    const yearMonth = `${point.time.slice(0, 4)}-${point.time.slice(4, 6)}`;
-    const current = monthMap.get(yearMonth) || 0;
-    monthMap.set(yearMonth, current + point.value);
-  }
-
-  // Convertir a array y ordenar
-  return Array.from(monthMap.entries())
-    .sort((a, b) => a[0].localeCompare(b[0]))
-    .map(([time, value]) => ({ time, value }));
 }
 
 /**

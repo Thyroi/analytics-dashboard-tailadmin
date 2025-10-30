@@ -12,28 +12,28 @@
 
 // Tipos
 export type {
-  DonutItem,
-  SimpleDonutResponse,
-  CountryRow,
+  CitiesResponse,
+  CityRow,
   CountriesResponse,
+  CountryRow,
+  DonutItem,
   RegionRow,
   RegionsResponse,
-  CityRow,
-  CitiesResponse,
+  SimpleDonutResponse,
 } from "./donut/types";
 
 // Queries a GA4
 export {
-  querySimpleDonut,
+  queryCities,
   queryCountries,
   queryRegions,
-  queryCities,
+  querySimpleDonut,
 } from "./donut/queries";
 
 // Request handlers
 export {
-  handleSimpleDonutRequest,
+  handleCitiesRequest,
   handleCountriesRequest,
   handleRegionsRequest,
-  handleCitiesRequest,
+  handleSimpleDonutRequest,
 } from "./donut/handlers";

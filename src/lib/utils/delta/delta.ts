@@ -38,11 +38,11 @@
 
 // Tipos
 export type {
-  DeltaArtifact,
-  DeltaState,
-  DeltaFlags,
-  TooltipParts,
   ComputeDeltaOptions,
+  DeltaArtifact,
+  DeltaFlags,
+  DeltaState,
+  TooltipParts,
 } from "./types";
 
 // Core: Cómputo y validación
