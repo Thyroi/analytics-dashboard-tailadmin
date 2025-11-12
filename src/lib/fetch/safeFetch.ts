@@ -46,26 +46,46 @@ export async function safeJsonFetch(
           ? headers.get("content-type") ?? ""
           : "";
 
-      // Prefer json() if available (most test mocks implement json())
-      const hasJson =
-        maybeRes && typeof (maybeRes.json as unknown) === "function";
+      // Some environments (and the Fetch spec) make response bodies single-use.
+      // To avoid "body stream already read" we prefer to use `res.clone()`
+      // when available for a safe second reader. If clone is not present
+      // (test mocks), we fall back to reading text once and parsing JSON from it.
+      const hasJson = maybeRes && typeof (maybeRes.json as unknown) === "function";
+      const hasText = maybeRes && typeof (maybeRes.text as unknown) === "function";
+
       let parsedJson: unknown | undefined = undefined;
-      if (hasJson) {
+      let text = "";
+
+      // If clone() exists we can safely call json() on the clone and text() on the
+      // original (or viceversa) without consuming the same stream twice.
+      const canClone = typeof (res as unknown as { clone?: () => Response }).clone === "function";
+      if (canClone && hasJson) {
         try {
-          parsedJson = await (
-            maybeRes.json as unknown as () => Promise<unknown>
-          )();
+          // parse json from a clone to avoid consuming the main response stream
+          parsedJson = await (res.clone() as Response).json();
         } catch {
-          // parsing as json failed — we'll try text below
           parsedJson = undefined;
         }
       }
 
-      const hasText =
-        maybeRes && typeof (maybeRes.text as unknown) === "function";
-      const text = hasText
-        ? await (maybeRes.text as unknown as () => Promise<string>)()
-        : "";
+      if (hasText) {
+        try {
+          text = await (maybeRes.text as unknown as () => Promise<string>)();
+        } catch {
+          text = "";
+        }
+      } else if (!hasText && parsedJson !== undefined) {
+        // No text() available but we have parsedJson from clone — keep parsedJson
+      }
+
+      // If we couldn't get parsedJson via clone/json but we have text, try parse it
+      if (parsedJson === undefined && text) {
+        try {
+          parsedJson = JSON.parse(text);
+        } catch {
+          parsedJson = undefined;
+        }
+      }
 
       const looksLikeHtml =
         contentType.includes("text/html") ||
