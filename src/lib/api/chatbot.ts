@@ -13,6 +13,8 @@ export type ChatbotResponse = {
   output: Record<string, ChatbotPoint[]>;
 };
 
+import { ChallengeError, safeJsonFetch } from "@/lib/fetch/safeFetch";
+
 export async function fetchChatbotTags(
   input: ChatbotRequest,
   init?: RequestInit
@@ -25,27 +27,20 @@ export async function fetchChatbotTags(
     ...(input.endTime && { endTime: input.endTime }),
   };
 
-  const res = await fetch("/api/chatbot/audit/tags", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(requestBody),
-    ...init,
-  });
+  try {
+    const response = (await safeJsonFetch("/api/chatbot/audit/tags", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(requestBody),
+      ...init,
+    })) as ChatbotResponse;
 
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    console.error("🤖 fetchChatbotTags ERROR:", {
-      status: res.status,
-      statusText: res.statusText,
-      errorText: text,
-      requestBody,
-    });
-    throw new Error(
-      `Chatbot API Error ${res.status}: ${text || res.statusText}`
-    );
+    return response;
+  } catch (err) {
+    // If upstream returned a HTML challenge, degrade gracefully with empty output
+    if (err instanceof ChallengeError) {
+      return { code: 200, output: {} } as ChatbotResponse;
+    }
+    throw err;
   }
-
-  const response = (await res.json()) as ChatbotResponse;
-
-  return response;
 }

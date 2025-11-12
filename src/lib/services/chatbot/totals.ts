@@ -3,6 +3,7 @@
  * Usa comportamiento KPI/Delta con shifts correctos
  */
 
+import { ChallengeError, safeJsonFetch } from "@/lib/fetch/safeFetch";
 import type { Granularity } from "@/lib/types";
 import type { ApiResponse } from "@/lib/utils/chatbot/aggregate";
 import { computeRangesForKPI } from "@/lib/utils/time/timeWindows";
@@ -60,26 +61,50 @@ export async function fetchChatbotTotals(
     endTime: formatDateForChatbot(ranges.current.end), // Hasta el final del período current
   };
 
-  // 3. Hacer POST request (no GET)
-  const response = await fetch(ENDPOINT_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(payload),
-  });
+  // 3. Hacer POST request (no GET) usando safeJsonFetch
+  let data: ApiResponse;
+  try {
+    // safeJsonFetch devuelve el JSON parseado o lanza ChallengeError
+    data = (await safeJsonFetch(ENDPOINT_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    })) as ApiResponse;
+  } catch (err) {
+    if (err instanceof ChallengeError) {
+      // Upstream returned a Cloudflare challenge (HTML). Devolver respuesta vacía
+      // para que la UI muestre 0s en lugar de fallar.
+      console.warn(
+        "fetchChatbotTotals: upstream challenge detected, returning empty response",
+        {
+          url: ENDPOINT_URL,
+        }
+      );
 
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(
-      errorData.error || `HTTP ${response.status}: ${response.statusText}`
-    );
+      // Construir fallback response mínimo
+      const fallback = {
+        code: 200,
+        output: {},
+        meta: {
+          granularity: granularity as Granularity,
+          timezone: "UTC",
+          range: {
+            current: ranges.current,
+            previous: ranges.previous,
+          },
+        },
+      };
+
+      return fallback as unknown as ChatbotTotalsResponse;
+    }
+
+    throw err;
   }
 
-  const data = await response.json();
-
   // 4. Enriquecer respuesta con información de rangos calculados
-  const enrichedResponse: ChatbotTotalsResponse = {
+  const enrichedResponse = {
     ...data,
     meta: {
       granularity,
@@ -89,7 +114,7 @@ export async function fetchChatbotTotals(
         previous: ranges.previous,
       },
     },
-  };
+  } as unknown as ChatbotTotalsResponse;
 
   return enrichedResponse;
 }

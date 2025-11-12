@@ -5,6 +5,7 @@ import type {
   TaxonomyCategory,
   TaxonomyTown,
 } from "@/lib/drilldown/level1/buildLevel1.types";
+import { ChallengeError, safeJsonFetch } from "@/lib/fetch/safeFetch";
 import {
   CATEGORY_META,
   CATEGORY_SYNONYMS,
@@ -104,19 +105,25 @@ async function fetchManyAPI(
     ...(options.endTime && { endTime: options.endTime }),
   };
 
-  const res = await fetch("/api/chatbot/audit/tags", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(`Level1 fetchMany API error: ${res.status} ${text}`);
-  }
-  const json = await res.json();
-  const output: RawSeriesByKey = (json && (json.output || json.data)) || {};
+  // Use safeJsonFetch instead of raw fetch to detect upstream HTML challenges
+  try {
+    const json = (await safeJsonFetch("/api/chatbot/audit/tags", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    })) as unknown;
 
-  return output;
+    let output: unknown = {};
+    if (json && typeof json === "object") {
+      const j = json as Record<string, unknown>;
+      output = j.output ?? j.data ?? {};
+    }
+
+    return output as RawSeriesByKey;
+  } catch (err) {
+    if (err instanceof ChallengeError) return {} as RawSeriesByKey;
+    throw err;
+  }
 }
 
 async function fetchLevel1Data(
@@ -166,19 +173,24 @@ async function fetchLevel1Data(
     ...(options.endTime && { endTime: options.endTime }),
   };
 
-  const res = await fetch("/api/chatbot/audit/tags", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(`Level1 initial API error: ${res.status} ${text}`);
-  }
-  const json = await res.json();
-  const output: RawSeriesByKey = (json && (json.output || json.data)) || {};
+  try {
+    const json = (await safeJsonFetch("/api/chatbot/audit/tags", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    })) as unknown;
 
-  return output;
+    let output: unknown = {};
+    if (json && typeof json === "object") {
+      const j = json as Record<string, unknown>;
+      output = j.output ?? j.data ?? {};
+    }
+
+    return output as RawSeriesByKey;
+  } catch (err) {
+    if (err instanceof ChallengeError) return {} as RawSeriesByKey;
+    throw err;
+  }
 }
 
 export async function fetchLevel1Drilldown(

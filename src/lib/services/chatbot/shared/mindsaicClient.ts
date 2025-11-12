@@ -2,6 +2,7 @@
  * Cliente para comunicación con API de Mindsaic (/api/chatbot/audit/tags)
  */
 
+import { ChallengeError, safeJsonFetch } from "@/lib/fetch/safeFetch";
 import type { CategoryId } from "@/lib/taxonomy/categories";
 import {
   getCategorySearchPattern,
@@ -32,22 +33,23 @@ export async function fetchMindsaicDataForTown(
     endTime,
   };
 
-  const response = await fetch("/api/chatbot/audit/tags", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(payload),
-    signal,
-  });
+  try {
+    const json = (await safeJsonFetch("/api/chatbot/audit/tags", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      signal,
+    })) as MindsaicResponse;
 
-  if (!response.ok) {
-    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    return json;
+  } catch (err) {
+    if (err instanceof ChallengeError) {
+      // Upstream returned a HTML challenge; return an empty response so callers can
+      // gracefully degrade to zeroed charts.
+      return { code: 200, output: {} } as MindsaicResponse;
+    }
+    throw err;
   }
-
-  const json = (await response.json()) as MindsaicResponse;
-
-  return json;
 }
 
 /**
@@ -71,22 +73,21 @@ export async function fetchMindsaicDataForCategory(
     endTime,
   };
 
-  const response = await fetch("/api/chatbot/audit/tags", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(payload),
-    signal,
-  });
+  try {
+    const json = (await safeJsonFetch("/api/chatbot/audit/tags", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      signal,
+    })) as MindsaicResponse;
 
-  if (!response.ok) {
-    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    return json;
+  } catch (err) {
+    if (err instanceof ChallengeError) {
+      return { code: 200, output: {} } as MindsaicResponse;
+    }
+    throw err;
   }
-
-  const json = (await response.json()) as MindsaicResponse;
-
-  return json;
 }
 
 /**
@@ -107,20 +108,19 @@ export async function fetchMindsaicData(
     endTime,
   };
 
-  const response = await fetch("/api/chatbot/audit/tags", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(payload),
-    signal,
-  });
+  try {
+    const json = (await safeJsonFetch("/api/chatbot/audit/tags", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      signal,
+    })) as MindsaicResponse;
 
-  if (!response.ok) {
-    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    return json;
+  } catch (err) {
+    if (err instanceof ChallengeError) {
+      return { code: 200, output: {} } as MindsaicResponse;
+    }
+    throw err;
   }
-
-  const json = (await response.json()) as MindsaicResponse;
-
-  return json;
 }

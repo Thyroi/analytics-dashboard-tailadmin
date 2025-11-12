@@ -14,6 +14,7 @@
  * - UTC total, computeRangesForKPI
  */
 
+import { ChallengeError, safeJsonFetch } from "@/lib/fetch/safeFetch";
 import {
   CATEGORY_ID_ORDER,
   CATEGORY_META,
@@ -167,21 +168,28 @@ export async function fetchTownCategoryBreakdown(
             endTime: currentEndFormatted,
           };
 
-          const verificationResponse = await fetch("/api/chatbot/audit/tags", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(verificationPayload),
-            signal: verificationController.signal,
-          });
+          try {
+            const verificationJson = (await safeJsonFetch(
+              "/api/chatbot/audit/tags",
+              {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(verificationPayload),
+                signal: verificationController.signal,
+              }
+            )) as { output?: Record<string, unknown> };
 
-          if (!verificationResponse.ok) return;
+            const verificationOutput = verificationJson.output || {};
+            const hasChildren = Object.keys(verificationOutput).length > 0;
 
-          const verificationJson = await verificationResponse.json();
-          const verificationOutput = verificationJson.output || {};
-          const hasChildren = Object.keys(verificationOutput).length > 0;
-
-          if (hasChildren) {
-            categoriesWithChildren.add(categoryId);
+            if (hasChildren) {
+              categoriesWithChildren.add(categoryId);
+            }
+          } catch (err) {
+            // If upstream returned a ChallengeError, treat as "no children" so we
+            // can safely degrade. AbortErrors and other errors will bubble.
+            if (err instanceof ChallengeError) return;
+            throw err;
           }
         }
       );

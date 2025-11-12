@@ -12,6 +12,7 @@
  * - Timeout 15s con AbortController
  */
 
+import { ChallengeError, safeJsonFetch } from "@/lib/fetch/safeFetch";
 import {
   CATEGORY_ID_ORDER,
   CATEGORY_META,
@@ -141,23 +142,28 @@ async function fetchMindsaicData(
     endTime,
   };
 
-  const response = await fetch("/api/chatbot/audit/tags", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(payload),
-    signal,
-  });
+  try {
+    const data = await safeJsonFetch("/api/chatbot/audit/tags", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+      signal,
+    });
 
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(
-      errorData.error || `HTTP ${response.status}: ${response.statusText}`
-    );
+    return data as MindsaicResponse;
+  } catch (err) {
+    if (err instanceof ChallengeError) {
+      // Upstream challenge: return empty output so callers render zeros
+      console.warn(
+        "fetchMindsaicData: upstream challenge detected, returning empty output"
+      );
+      return { code: 200, output: {} } as MindsaicResponse;
+    }
+
+    throw err;
   }
-
-  return response.json();
 }
 
 /* ==================== Servicio Principal ==================== */

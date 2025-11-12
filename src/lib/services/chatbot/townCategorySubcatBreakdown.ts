@@ -17,6 +17,7 @@
  * NUEVO: Soporte para othersOnly (navegar "Otros" de nivel 1)
  */
 
+import { ChallengeError, safeJsonFetch } from "@/lib/fetch/safeFetch";
 import type { CategoryId } from "@/lib/taxonomy/categories";
 import {
   CHATBOT_CATEGORY_NEEDS_WILDCARD,
@@ -166,27 +167,26 @@ async function fetchMindsaicData(
     endTime,
     db,
   };
+  try {
+    const json = (await safeJsonFetch("/api/chatbot/audit/tags", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      signal,
+    })) as unknown;
 
-  const response = await fetch("/api/chatbot/audit/tags", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-    signal,
-  });
-
-  if (!response.ok) {
-    throw new Error(
-      `Mindsaic API error: ${response.status} ${response.statusText}`
-    );
+    let obj: unknown = {};
+    if (json && typeof json === "object") {
+      const j = json as Record<string, unknown>;
+      obj = j.output ?? j.data ?? {};
+    }
+    return obj as Record<string, Array<{ time: string; value: number }>>;
+  } catch (err) {
+    if (err instanceof ChallengeError) {
+      return {};
+    }
+    throw err;
   }
-
-  const json = await response.json();
-  // API puede devolver {output} o {data}; soportar ambas formas
-  const output: Record<
-    string,
-    Array<{ time: string; value: number }>
-  > = (json && (json.output || json.data)) || {};
-  return output;
 }
 
 /* ==================== Servicio Principal ==================== */

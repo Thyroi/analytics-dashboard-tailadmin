@@ -3,6 +3,7 @@
  * Conecta con /api/chatbot/audit/tags/overview usando patterns root.{categoryId}.*.*
  */
 
+import { ChallengeError, safeJsonFetch } from "@/lib/fetch/safeFetch";
 import type { CategoryId } from "@/lib/taxonomy/categories";
 import type { Granularity } from "@/lib/types";
 
@@ -246,54 +247,56 @@ export async function fetchCategoryDrilldown(
       payload.endTime = formatDateForAPI(params.endDate);
     }
 
-    const response = await fetch("/api/chatbot/audit/tags", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(payload),
-    });
+    try {
+      const rawData = (await safeJsonFetch("/api/chatbot/audit/tags", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      })) as CategoryDrilldownRawResponse;
 
-    if (!response.ok) {
-      const errorText = await response.text().catch(() => "Unknown error");
-      throw new CategoryDrilldownError(
-        `API request failed: ${response.status} ${response.statusText} - ${errorText}`,
-        response.status
+      if (rawData.code !== 200) {
+        throw new CategoryDrilldownError(
+          `API returned error code: ${rawData.code}`,
+          rawData.code
+        );
+      }
+
+      // Procesar subcategorías
+      const subcategories = processSubcategories(
+        rawData.output,
+        params.categoryId
       );
-    }
-
-    const rawData: CategoryDrilldownRawResponse = await response.json();
-
-    if (rawData.code !== 200) {
-      throw new CategoryDrilldownError(
-        `API returned error code: ${rawData.code}`,
-        rawData.code
+      const totalInteractions = subcategories.reduce(
+        (sum, sub) => sum + sub.totalValue,
+        0
       );
+
+      return {
+        categoryId: params.categoryId,
+        subcategories,
+        totalInteractions,
+        timeRange: {
+          start: rawData.meta?.range?.current.start || "",
+          end: rawData.meta?.range?.current.end || "",
+        },
+        meta: {
+          granularity: params.granularity,
+          rawKeysCount: Object.keys(rawData.output).length,
+        },
+      };
+    } catch (err) {
+      if (err instanceof ChallengeError) {
+        // Upstream returned a HTML challenge — degrade to empty drilldown
+        return {
+          categoryId: params.categoryId,
+          subcategories: [],
+          totalInteractions: 0,
+          timeRange: { start: "", end: "" },
+          meta: { granularity: params.granularity, rawKeysCount: 0 },
+        };
+      }
+      throw err;
     }
-
-    // Procesar subcategorías
-    const subcategories = processSubcategories(
-      rawData.output,
-      params.categoryId
-    );
-    const totalInteractions = subcategories.reduce(
-      (sum, sub) => sum + sub.totalValue,
-      0
-    );
-
-    return {
-      categoryId: params.categoryId,
-      subcategories,
-      totalInteractions,
-      timeRange: {
-        start: rawData.meta?.range?.current.start || "",
-        end: rawData.meta?.range?.current.end || "",
-      },
-      meta: {
-        granularity: params.granularity,
-        rawKeysCount: Object.keys(rawData.output).length,
-      },
-    };
   } catch (error) {
     if (error instanceof CategoryDrilldownError) {
       throw error;
