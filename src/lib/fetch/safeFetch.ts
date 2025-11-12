@@ -50,38 +50,47 @@ export async function safeJsonFetch(
       // To avoid "body stream already read" we prefer to use `res.clone()`
       // when available for a safe second reader. If clone is not present
       // (test mocks), we fall back to reading text once and parsing JSON from it.
-      const hasJson = maybeRes && typeof (maybeRes.json as unknown) === "function";
-      const hasText = maybeRes && typeof (maybeRes.text as unknown) === "function";
+      const hasJson =
+        maybeRes && typeof (maybeRes.json as unknown) === "function";
+      const hasText =
+        maybeRes && typeof (maybeRes.text as unknown) === "function";
 
       let parsedJson: unknown | undefined = undefined;
       let text = "";
 
-      // If clone() exists we can safely call json() on the clone and text() on the
-      // original (or viceversa) without consuming the same stream twice.
-      const canClone = typeof (res as unknown as { clone?: () => Response }).clone === "function";
-      if (canClone && hasJson) {
-        try {
-          // parse json from a clone to avoid consuming the main response stream
-          parsedJson = await (res.clone() as Response).json();
-        } catch {
-          parsedJson = undefined;
+      // If clone() exists we can safely call json() on the clone without
+      // consuming the original stream. If clone is not available but json()
+      // exists (test mocks), we'll call json() once on the provided object.
+      const canClone =
+        typeof (res as unknown as { clone?: () => Response }).clone ===
+        "function";
+
+      if (hasJson) {
+        if (canClone) {
+          try {
+            parsedJson = await (res.clone() as Response).json();
+          } catch {
+            parsedJson = undefined;
+          }
+        } else {
+          // No clone() available — call json() directly on the mock/response.
+          try {
+            parsedJson = await (maybeRes.json as unknown as () => Promise<unknown>)();
+          } catch {
+            parsedJson = undefined;
+          }
         }
       }
 
-      if (hasText) {
+      // Only read text() if we couldn't obtain parsedJson and text() is available.
+      if (parsedJson === undefined && hasText) {
         try {
           text = await (maybeRes.text as unknown as () => Promise<string>)();
         } catch {
           text = "";
         }
-      } else if (!hasText && parsedJson !== undefined) {
-        // No text() available but we have parsedJson from clone — keep parsedJson
-      }
-
-      // If we couldn't get parsedJson via clone/json but we have text, try parse it
-      if (parsedJson === undefined && text) {
         try {
-          parsedJson = JSON.parse(text);
+          parsedJson = text ? JSON.parse(text) : undefined;
         } catch {
           parsedJson = undefined;
         }
