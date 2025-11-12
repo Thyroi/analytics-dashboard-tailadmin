@@ -141,10 +141,20 @@ export async function POST(req: Request) {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 15000);
 
+    // Build headers, include internal token header if configured
+    const forwardHeaders: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    const internalToken = process.env.MINDSAIC_INTERNAL_TOKEN;
+    if (internalToken) {
+      // Use the agreed header name with Mindsaic
+      forwardHeaders["x-internal-auth"] = internalToken;
+    }
+
     const res = await fetch(mindsaicUrl, {
       method: "POST",
       signal: controller.signal,
-      headers: { "Content-Type": "application/json" },
+      headers: forwardHeaders,
       body: JSON.stringify({
         db: db || "project_huelva",
         patterns: patterns, // La API externa espera 'patterns'
