@@ -133,16 +133,33 @@ export async function GET(request: NextRequest) {
       dateRanges: [{ startDate: start, endDate: end }],
       dimensions: [{ name: "pagePath" }],
       metrics: [{ name: "screenPageViews" }],
-      // Filtro para excluir URLs que contengan "pagina/" seguido de números
+      // Filtro para excluir URLs de paginación y rutas "undefined"
+      // Excluye rutas que contengan "pagina/" o la cadena "undefined"
       dimensionFilter: {
         notExpression: {
-          filter: {
-            fieldName: "pagePath",
-            stringFilter: {
-              matchType: "CONTAINS" as const,
-              value: "pagina/",
-              caseSensitive: false,
-            },
+          orGroup: {
+            expressions: [
+              {
+                filter: {
+                  fieldName: "pagePath",
+                  stringFilter: {
+                    matchType: "CONTAINS" as const,
+                    value: "pagina/",
+                    caseSensitive: false,
+                  },
+                },
+              },
+              {
+                filter: {
+                  fieldName: "pagePath",
+                  stringFilter: {
+                    matchType: "CONTAINS" as const,
+                    value: "undefined",
+                    caseSensitive: false,
+                  },
+                },
+              },
+            ],
           },
         },
       },
@@ -172,16 +189,32 @@ export async function GET(request: NextRequest) {
         ],
         dimensions: [{ name: "pagePath" }],
         metrics: [{ name: "screenPageViews" }],
-        // Mismo filtro para excluir "pagina/"
+        // Mismo filtro para excluir paginación y rutas "undefined"
         dimensionFilter: {
           notExpression: {
-            filter: {
-              fieldName: "pagePath",
-              stringFilter: {
-                matchType: "CONTAINS" as const,
-                value: "pagina/",
-                caseSensitive: false,
-              },
+            orGroup: {
+              expressions: [
+                {
+                  filter: {
+                    fieldName: "pagePath",
+                    stringFilter: {
+                      matchType: "CONTAINS" as const,
+                      value: "pagina/",
+                      caseSensitive: false,
+                    },
+                  },
+                },
+                {
+                  filter: {
+                    fieldName: "pagePath",
+                    stringFilter: {
+                      matchType: "CONTAINS" as const,
+                      value: "undefined",
+                      caseSensitive: false,
+                    },
+                  },
+                },
+              ],
             },
           },
         },
