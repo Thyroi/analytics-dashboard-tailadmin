@@ -255,7 +255,7 @@ export async function fetchLevel1Drilldown(
   // ESTRATEGIA: Hacer DOS POST en paralelo (más eficiente)
   // - POST 1: current period
   // - POST 2: previous period
-  const [level1DataCurrent, level1DataPrevious] = await Promise.all([
+  const [level1DataCurrent, level1DataPreviousConst] = await Promise.all([
     fetchLevel1Data(params.scopeType, params.scopeId, {
       db,
       granularity,
@@ -275,6 +275,9 @@ export async function fetchLevel1Drilldown(
   // Siempre que haya periodo previo, obtener root.<scope> total previo
   // y calcular la serie de diferencia (totalPrev - sum(childrenPrev)),
   // insertándola bajo la clave `root.<scope>` en level1DataPrevious
+  // Usar una variable mutable local para el previo
+  let level1DataPrevious = level1DataPreviousConst;
+
   if (startTimePrevious && endTimePrevious) {
     const exactScopePrev = scopeTokenRaw.endsWith("*")
       ? scopeTokenRaw.slice(0, -1)
