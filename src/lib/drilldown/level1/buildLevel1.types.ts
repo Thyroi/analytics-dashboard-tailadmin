@@ -56,6 +56,8 @@ export interface BuildLevel1Params {
   sumStrategy?: "sum" | "last"; // default "sum"
   // Batch: single call with many patterns, returns a single record map
   fetchMany: (patterns: string[]) => Promise<RawSeriesByKey>;
+  // Optional: total series for the scope (root.<scopeId> without .*) to reconcile gaps
+  scopeTotalSeries?: SeriesPoint[];
   window?: { startTime: string; endTime: string; granularity: "d" | "w" | "m" };
   debug?: boolean; // enable debug logging
 }

@@ -168,8 +168,8 @@ export const CHATBOT_TOWN_TOKENS: Record<TownId, string> = {
   lucenaDelPuerto: "lucena del puerto",
   manzanilla: "manzanilla",
   niebla: "niebla",
-  palos: "palos",
-  paternaDelCampo: "paterna",
+  palos: "palos de la frontera",
+  paternaDelCampo: "paterna del campo",
   rocianaDelCondado: "rociana del condado",
   villalba: "villalba", // SOLO primera palabra, requiere wildcard
   villarrasa: "villarrasa",

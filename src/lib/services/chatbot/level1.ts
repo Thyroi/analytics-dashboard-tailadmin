@@ -272,6 +272,63 @@ export async function fetchLevel1Drilldown(
       : Promise.resolve({} as RawSeriesByKey),
   ]);
 
+  // Siempre que haya periodo previo, obtener root.<scope> total previo
+  // y calcular la serie de diferencia (totalPrev - sum(childrenPrev)),
+  // insertándola bajo la clave `root.<scope>` en level1DataPrevious
+  if (startTimePrevious && endTimePrevious) {
+    const exactScopePrev = scopeTokenRaw.endsWith("*")
+      ? scopeTokenRaw.slice(0, -1)
+      : scopeTokenRaw;
+
+    const prevTotalMap = await fetchManyAPI([`root.${exactScopePrev}`], {
+      db,
+      granularity,
+      startTime: startTimePrevious,
+      endTime: endTimePrevious,
+    });
+
+    const prevTotalSeries = (prevTotalMap[`root.${exactScopePrev}`] ??
+      []) as RawSeriesByKey[string];
+
+    if (prevTotalSeries && Object.keys(level1DataPrevious || {}).length >= 0) {
+      const childTime = new Map<string, number>();
+      for (const series of Object.values(level1DataPrevious)) {
+        for (const p of series as { time: string; value: number }[]) {
+          childTime.set(p.time, (childTime.get(p.time) || 0) + (p.value || 0));
+        }
+      }
+      const totalTime = new Map<string, number>();
+      for (const p of prevTotalSeries as unknown as {
+        time: string;
+        value: number;
+      }[]) {
+        totalTime.set(p.time, (totalTime.get(p.time) || 0) + (p.value || 0));
+      }
+      const allTimes = new Set<string>([
+        ...Array.from(totalTime.keys()),
+        ...Array.from(childTime.keys()),
+      ]);
+      const diffSeries = Array.from(allTimes)
+        .sort((a, b) => a.localeCompare(b))
+        .map((t) => {
+          const tv = totalTime.get(t) ?? 0;
+          const cv = childTime.get(t) ?? 0;
+          const dv = tv - cv;
+          return { time: t, value: dv > 0 ? dv : 0 };
+        })
+        .filter((p) => p.value > 0);
+
+      if (diffSeries.length > 0) {
+        // Safe mutate of local variable before returning
+        level1DataPrevious = {
+          ...level1DataPrevious,
+          [`root.${exactScopePrev}`]:
+            diffSeries as unknown as RawSeriesByKey[string],
+        };
+      }
+    }
+  }
+
   const result = await buildLevel1({
     scopeType: params.scopeType,
     // CRITICAL: Use RAW token for child pattern construction (not app ID)
@@ -287,6 +344,21 @@ export async function fetchLevel1Drilldown(
         startTime: startTimeCurrent,
         endTime: endTimeCurrent,
       }),
+    // Provide total series for the scope to reconcile missing gap into "Otros"
+    scopeTotalSeries: await (async () => {
+      const exactScope = scopeTokenRaw.endsWith("*")
+        ? scopeTokenRaw.slice(0, -1)
+        : scopeTokenRaw;
+      const map = await fetchManyAPI([`root.${exactScope}`], {
+        db,
+        granularity,
+        startTime: startTimeCurrent,
+        endTime: endTimeCurrent,
+      });
+      const series = (map[`root.${exactScope}`] ??
+        []) as RawSeriesByKey[string];
+      return (series as unknown as { time: string; value: number }[]) || [];
+    })(),
     debug: params.debug,
   });
 

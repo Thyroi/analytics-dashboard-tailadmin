@@ -47,6 +47,34 @@ export async function buildLevel1(
   const otrosDetail: OtrosDetailItem[] = [];
 
   if (!level1Data || Object.keys(level1Data).length === 0) {
+    // Si no hay hijos pero tenemos la serie total del scope, retornar "Otros" con esa serie
+    if (params.scopeTotalSeries && params.scopeTotalSeries.length > 0) {
+      const value = aggregateKeyValue(
+        params.scopeTotalSeries,
+        params.sumStrategy ?? "sum"
+      );
+      const result: BuildLevel1Result = {
+        donutData: [{ id: "otros", label: "Otros", value }],
+        seriesBySlice: {
+          otros: aggregateSeriesByTime(params.scopeTotalSeries),
+        },
+        otrosDetail: [
+          {
+            key: `root.${
+              params.scopeId.endsWith("*")
+                ? params.scopeId.slice(0, -1)
+                : params.scopeId
+            }`,
+            series: params.scopeTotalSeries,
+          },
+        ],
+        sublevelMap: {},
+        total: value,
+        warnings: ["Nivel 1: sin datos (usando total del scope en 'Otros')"],
+      };
+      return result;
+    }
+
     const result: BuildLevel1Result = {
       donutData: [{ id: "otros", label: "Otros", value: 0 }],
       seriesBySlice: {},
@@ -176,9 +204,12 @@ export async function buildLevel1(
         .join(",\n  ")}\n]`
   );
 
+  // También necesitaremos la serie TOTAL del scope: root.<scope> (sin .*)
+  const exactScope = scopeId.endsWith("*") ? scopeId.slice(0, -1) : scopeId;
+
   const childrenMap: RawSeriesByKey = uniquePatterns.length
     ? await fetchMany(uniquePatterns)
-    : {};
+    : ({} as RawSeriesByKey);
 
   // Detect children by strict prefix
   const sublevelMap: Record<string, SublevelInfo> = {};
@@ -188,9 +219,16 @@ export async function buildLevel1(
     const info = foundMap.get(id)!;
     const pattern = `root.${scopeId}.${info.rawToken}.*`;
     const prefix = toPrefixFromPattern(pattern);
-    const hasChildren = Object.keys(childrenMap).some((k) =>
-      k.startsWith(prefix)
-    );
+    // Hijos reales: deben ser profundidad >= 4 y empezar por `${prefix}.`
+    // Además, ignoramos subclaves terminadas en "otros".
+    const hasChildren = Object.keys(childrenMap).some((k) => {
+      if (!k.startsWith(prefix + ".")) return false; // evita contar depth=3
+      const parts = k.split(".");
+      if (parts.length < 4) return false;
+      const last = (parts[parts.length - 1] || "").toLowerCase().trim();
+      if (last === "otros") return false;
+      return parts[0] === "root"; // estructura válida
+    });
     sublevelMap[id] = { hasChildren };
 
     if (!hasChildren) {
@@ -215,6 +253,46 @@ export async function buildLevel1(
   // Collect series from non-matched keys (already in otrosDetail)
   for (const item of otrosDetail) {
     otrosSeriesAccumulator.push(item.series);
+  }
+
+  // NUEVA REGLA: Añadir la diferencia (si disponemos de la serie total del scope)
+  if (params.scopeTotalSeries && params.scopeTotalSeries.length > 0) {
+    const totalSeries: SeriesPoint[] = params.scopeTotalSeries;
+    // Serie agregada de TODOS los hijos (incluso no mapeados)
+    const allChildrenPoints: SeriesPoint[] = Object.values(level1Data).flat();
+    const aggregatedChildren: SeriesPoint[] =
+      aggregateSeriesByTime(allChildrenPoints);
+    const totalMapByTime = new Map<string, number>(
+      totalSeries.map((p) => [p.time, p.value])
+    );
+    const childMapByTime = new Map<string, number>(
+      aggregatedChildren.map((p) => [p.time, p.value])
+    );
+    const allTimes = new Set<string>([
+      ...Array.from(totalMapByTime.keys()),
+      ...Array.from(childMapByTime.keys()),
+    ]);
+    const differenceSeries: SeriesPoint[] = Array.from(allTimes)
+      .sort((a, b) => a.localeCompare(b))
+      .map((t) => {
+        const totalV = totalMapByTime.get(t) ?? 0;
+        const childV = childMapByTime.get(t) ?? 0;
+        const diff = totalV - childV;
+        return { time: t, value: diff > 0 ? diff : 0 };
+      })
+      .filter((p) => p.value > 0);
+    if (differenceSeries.length > 0) {
+      // Agregar a series acumuladas de Otros
+      otrosSeriesAccumulator.push(differenceSeries);
+      // Agregar entrada a otrosDetail con clave "root.<scope>"
+      otrosDetail.push({ key: `root.${exactScope}`, series: differenceSeries });
+      // Sumar al bucket de Otros respetando la estrategia de suma
+      const diffValueForBucket = aggregateKeyValue(
+        differenceSeries,
+        sumStrategy
+      );
+      otrosBucket += diffValueForBucket;
+    }
   }
 
   function labelForId(id: string): string {

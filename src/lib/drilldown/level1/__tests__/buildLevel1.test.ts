@@ -324,6 +324,54 @@ describe("buildLevel1 - Nivel 1 Drilldown", () => {
     expect(nonOtros.length).toBe(1);
   });
 
+  it("No contar depth=3 como hijos (paterna del campo → SABOR sin subcategorías)", async () => {
+    const towns: TaxonomyTown[] = [
+      {
+        id: "paternaDelCampo",
+        displayName: "Paterna del Campo",
+        aliases: ["paterna del campo", "paterna"],
+      },
+    ];
+    const categories: TaxonomyCategory[] = [
+      {
+        id: "sabor",
+        displayName: "SABOR",
+        aliases: ["sabor", "gastronomía", "gastronomia"],
+      },
+    ];
+
+    const level1Data: RawSeriesByKey = {
+      "root.paterna del campo.sabor": [sp("20251110", 10)],
+    };
+
+    const fetchMany = vi.fn(async (patterns: string[]) => {
+      // La API devuelve erróneamente solo depth=3 (sin ".subcat")
+      // Aun así, NO debe contarse como hijos
+      return {
+        "root.paterna del campo.sabor": [sp("20251110", 10)],
+      } as RawSeriesByKey;
+    });
+
+    const res = await buildLevel1({
+      scopeType: "town",
+      scopeId: "paterna del campo",
+      level1Data,
+      towns,
+      categories,
+      fetchMany,
+      sumStrategy: "sum",
+      debug: false,
+    });
+
+    // Debe ir a Otros porque no existen subclaves depth>=4
+    const byId = Object.fromEntries(res.donutData.map((s) => [s.id, s.value]));
+    expect(byId["otros"]).toBe(10);
+    expect(Object.keys(byId)).not.toContain("sabor");
+
+    // sublevelMap debe marcar false
+    expect(res.sublevelMap).toEqual({ sabor: { hasChildren: false } });
+  });
+
   it("Dataset 'naturaleza' con tokens mixtos (categoría → towns, Otros correcto)", async () => {
     const towns: TaxonomyTown[] = [
       { id: "almonte", displayName: "Almonte", aliases: ["almonte"] },
