@@ -81,9 +81,15 @@ export function computeDeltaArtifact(
   } else if (prevValue === 0 && currValue! === 0) {
     state = "zero_vs_zero";
   } else if (prevValue === 0 && currValue! > 0) {
-    // Usar base=1 para calcular delta porcentual y poder mostrar siempre %
+    // Nueva regla solicitada:
+    // Si prev=0 y current en [1..9] → deltaPct = current * 100% (1→100%, 6→600%, etc.)
+    // Si current >= 10 → aplicar simulación base=1: ((current - 1) / 1) * 100
     state = "new_vs_zero";
-    deltaPct = ((currValue! - 1) / 1) * 100;
+    if (currValue! <= 9) {
+      deltaPct = currValue! * 100;
+    } else {
+      deltaPct = ((currValue! - 1) / 1) * 100;
+    }
   } else if (prevValue! > 0) {
     state = "ok";
     // Calcular delta porcentual

@@ -49,6 +49,30 @@ describe("computeDeltaArtifact", () => {
     expect(result.deltaPct).toBe(4100); // ((42 - 1) / 1) * 100 = 4100%
   });
 
+  it("debe manejar nuevo vs cero (curr=1, prev=0) regla 100%", () => {
+    const result = computeDeltaArtifact(1, 0);
+    expect(result.state).toBe("new_vs_zero");
+    expect(result.deltaPct).toBe(100);
+    const text = getDeltaMainText(result);
+    expect(text).toBe("+100,0%");
+  });
+
+  it("debe manejar nuevo vs cero (curr=6, prev=0) regla 600%", () => {
+    const result = computeDeltaArtifact(6, 0);
+    expect(result.state).toBe("new_vs_zero");
+    expect(result.deltaPct).toBe(600);
+    const text = getDeltaMainText(result);
+    expect(text).toBe("+600,0%");
+  });
+
+  it("debe manejar nuevo vs cero (curr=9, prev=0) regla 900%", () => {
+    const result = computeDeltaArtifact(9, 0);
+    expect(result.state).toBe("new_vs_zero");
+    expect(result.deltaPct).toBe(900);
+    const text = getDeltaMainText(result);
+    expect(text).toBe("+900,0%");
+  });
+
   it("debe manejar cero vs cero (curr=0, prev=0)", () => {
     const result = computeDeltaArtifact(0, 0);
 
