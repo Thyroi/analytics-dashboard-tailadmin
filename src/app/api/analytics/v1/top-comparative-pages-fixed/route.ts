@@ -211,6 +211,7 @@ export async function GET(req: Request) {
 
     // Construir axis usando el mismo patrón que drilldown/url
     const axis: AxisLagged = buildLaggedAxisForGranularity(g, { endISO });
+
     // ===== GA =====
     const auth: GoogleAuth = getAuth();
     const analyticsData = google.analyticsdata({ version: "v1beta", auth });

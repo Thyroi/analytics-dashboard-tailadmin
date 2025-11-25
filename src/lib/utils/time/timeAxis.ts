@@ -1,6 +1,11 @@
 // src/lib/utils/timeAxis.ts
 import type { Granularity } from "@/lib/types";
-import { addDaysUTC, parseISO, toISO, todayUTC } from "@/lib/utils/time/datetime";
+import {
+  addDaysUTC,
+  parseISO,
+  toISO,
+  todayUTC,
+} from "@/lib/utils/time/datetime";
 
 /** Eje y ventanas “lagged”:
  * - d/w → 7 días terminando ayer (o endISO) y previous = esos mismos 7 días pero -1 día
@@ -69,10 +74,11 @@ export function buildLaggedAxisForGranularity(
   const isYear = g === "y";
 
   if (isYear) {
-    // 12 meses current + previous desplazados -1 mes
+    // 12 meses current + previous desplazados -12 meses (año anterior completo)
     const cur = listLastNMonths(endBase, 12);
+    // Previous: 12 meses anteriores al inicio del current (sin solapamiento)
     const prevEnd = new Date(
-      Date.UTC(endBase.getUTCFullYear(), endBase.getUTCMonth() - 1, 1)
+      Date.UTC(endBase.getUTCFullYear(), endBase.getUTCMonth() - 12, 1)
     );
     const prv = listLastNMonths(prevEnd, 12);
 
@@ -103,8 +109,9 @@ export function buildLaggedAxisForGranularity(
   const N = g === "m" ? 30 : 7; // d y w usan 7; m usa 30
   const curEnd = endBase;
   const curStart = addDaysUTC(curEnd, -(N - 1));
-  const prevEnd = addDaysUTC(curEnd, -1);
-  const prevStart = addDaysUTC(prevEnd, -(N - 1));
+  // Previous: ventana anterior COMPLETA, sin solapamiento
+  const prevEnd = addDaysUTC(curStart, -1); // 1 día antes del inicio de current
+  const prevStart = addDaysUTC(prevEnd, -(N - 1)); // N días hacia atrás desde prevEnd
 
   const curRange = { start: toISO(curStart), end: toISO(curEnd) };
   const prevRange = { start: toISO(prevStart), end: toISO(prevEnd) };

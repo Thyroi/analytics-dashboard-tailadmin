@@ -3,12 +3,8 @@ import {
   normalizePropertyId,
   resolvePropertyId,
 } from "@/lib/utils/analytics/ga";
-import {
-  addDaysUTC,
-  addMonthsUTC,
-  parseISO,
-  toISO,
-} from "@/lib/utils/time/datetime";
+import { computeDeltaArtifact } from "@/lib/utils/delta/core";
+import { addDaysUTC, parseISO, toISO } from "@/lib/utils/time/datetime";
 import { analyticsdata_v1beta, google } from "googleapis";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -33,52 +29,86 @@ export type TopPagesTableResponse = {
 };
 
 /**
- * Calcula el período anterior con shift (UTC)
- *
- * ⚠️ MIGRADO A UTC - Usa parseISO, addDaysUTC, addMonthsUTC en lugar de .setDate()
+ * Convierte URL completa de GA4 a path relativo para el frontend
+ * Ejemplo: "https://wp.ideanto.com/about/" → "/about/"
+ *          "https://wp.ideanto.com/" → "/"
  */
-function calculateShiftedPeriod(
+function urlToPath(fullUrl: string): string {
+  const BASE_URL = "https://wp.ideanto.com";
+
+  // Si ya es un path relativo, devolverlo tal cual
+  if (fullUrl.startsWith("/")) {
+    return fullUrl;
+  }
+
+  // Remover el dominio base
+  if (fullUrl.startsWith(BASE_URL)) {
+    const path = fullUrl.substring(BASE_URL.length);
+    return path || "/"; // Si queda vacío, es la home
+  }
+
+  // Si es otro dominio o formato, devolver tal cual
+  return fullUrl;
+}
+
+/**
+ * Calcula el período previous basándose en el rango EXACTO que envía el frontend
+ * NO expande a ventanas fijas como la gráfica
+ *
+ * Ejemplo:
+ * - Frontend envía: start=2025-11-24, end=2025-11-24 (1 día)
+ *   → Previous: 2025-11-23 → 2025-11-23 (1 día anterior)
+ *
+ * - Frontend envía: start=2025-11-18, end=2025-11-24 (7 días)
+ *   → Previous: 2025-11-11 → 2025-11-17 (7 días anteriores)
+ */
+function calculatePreviousPeriod(
   start: string,
-  end: string,
-  granularity: "d" | "w" | "m" | "y"
+  end: string
 ): { start: string; end: string } {
   const startDate = parseISO(start);
   const endDate = parseISO(end);
 
-  let shiftedStart: Date;
-  let shiftedEnd: Date;
+  // Calcular número de días en el rango (inclusive)
+  const diffMs = endDate.getTime() - startDate.getTime();
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  const rangeDays = diffDays + 1; // +1 porque es inclusivo
 
-  switch (granularity) {
-    case "d":
-    case "w":
-      // Shift -1 día (UTC)
-      shiftedStart = addDaysUTC(startDate, -1);
-      shiftedEnd = addDaysUTC(endDate, -1);
-      break;
-    case "m":
-      // Shift -1 día (manteniendo buckets diarios dentro del mes) - UTC
-      shiftedStart = addDaysUTC(startDate, -1);
-      shiftedEnd = addDaysUTC(endDate, -1);
-      break;
-    case "y":
-      // Shift -1 mes (UTC)
-      shiftedStart = addMonthsUTC(startDate, -1);
-      shiftedEnd = addMonthsUTC(endDate, -1);
-      break;
-  }
+  // Previous end = start - 1 día
+  const prevEnd = addDaysUTC(startDate, -1);
+  // Previous start = prevEnd - (rangeDays - 1)
+  const prevStart = addDaysUTC(prevEnd, -(rangeDays - 1));
 
   return {
-    start: toISO(shiftedStart),
-    end: toISO(shiftedEnd),
+    start: toISO(prevStart),
+    end: toISO(prevEnd),
   };
 }
 
+/**
+ * Calcula delta porcentual usando la misma lógica que DeltaCards
+ * Para consistencia en toda la app
+ *
+ * IMPORTANTE: Trata prev=null como prev=0 para poder calcular deltas
+ * de páginas nuevas o sin datos en el período anterior
+ *
+ * @returns Delta en escala 0-1 (e.g., 0.12 = 12%) para compatibilidad con formatPercent
+ */
 function calculateDeltaPct(
   current: number,
   prev: number | null
 ): number | null {
-  if (prev === null || prev <= 0) return null;
-  return (current - prev) / prev;
+  // Normalizar null a 0 para poder calcular deltas tipo "new_vs_zero"
+  // Esto permite mostrar +700%, +1100%, etc. para páginas sin tráfico anterior
+  const prevNormalized = prev ?? 0;
+
+  // Usar la misma función que DeltaCards para consistencia
+  const artifact = computeDeltaArtifact(current, prevNormalized);
+
+  // computeDeltaArtifact retorna en escala 0-100 (e.g., 12 = 12%)
+  // formatPercent espera escala 0-1 (e.g., 0.12 = 12%)
+  // Convertir: 12 → 0.12
+  return artifact.deltaPct !== null ? artifact.deltaPct / 100 : null;
 }
 
 function extractLabel(path: string): string {
@@ -111,8 +141,6 @@ export async function GET(request: NextRequest) {
     const sortBy = searchParams.get("sortBy") ?? "visits";
     const sortDir = searchParams.get("sortDir") ?? "desc";
 
-    // CRITICAL DEBUG: Log processed parameters
-
     if (!start || !end || !granularity) {
       return NextResponse.json(
         { error: "Missing required parameters: start, end, granularity" },
@@ -120,7 +148,8 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const shiftedPrev = calculateShiftedPeriod(start, end, granularity);
+    // Calcular previous usando el rango EXACTO del frontend
+    const prevRange = calculatePreviousPeriod(start, end);
 
     // Setup GA4 client
     const auth = getAuth();
@@ -131,7 +160,7 @@ export async function GET(request: NextRequest) {
     const gaQueryParams = {
       property,
       dateRanges: [{ startDate: start, endDate: end }],
-      dimensions: [{ name: "pagePath" }],
+      dimensions: [{ name: "pageLocation" }], // Usar pageLocation (URLs completas) como la gráfica
       metrics: [{ name: "screenPageViews" }],
       // Filtro para excluir URLs de paginación y rutas "undefined"
       // Excluye rutas que contengan "pagina/" o la cadena "undefined"
@@ -141,7 +170,7 @@ export async function GET(request: NextRequest) {
             expressions: [
               {
                 filter: {
-                  fieldName: "pagePath",
+                  fieldName: "pageLocation",
                   stringFilter: {
                     matchType: "CONTAINS" as const,
                     value: "pagina/",
@@ -151,7 +180,7 @@ export async function GET(request: NextRequest) {
               },
               {
                 filter: {
-                  fieldName: "pagePath",
+                  fieldName: "pageLocation",
                   stringFilter: {
                     matchType: "CONTAINS" as const,
                     value: "undefined",
@@ -178,16 +207,12 @@ export async function GET(request: NextRequest) {
       requestBody: gaQueryParams,
     });
 
-    // CRITICAL DEBUG: Log GA4 response
-
     // Get previous period data
     const prevResponse = await ga.properties.runReport({
       property,
       requestBody: {
-        dateRanges: [
-          { startDate: shiftedPrev.start, endDate: shiftedPrev.end },
-        ],
-        dimensions: [{ name: "pagePath" }],
+        dateRanges: [{ startDate: prevRange.start, endDate: prevRange.end }],
+        dimensions: [{ name: "pageLocation" }], // Usar pageLocation (URLs completas) como la gráfica
         metrics: [{ name: "screenPageViews" }],
         // Mismo filtro para excluir paginación y rutas "undefined"
         dimensionFilter: {
@@ -196,7 +221,7 @@ export async function GET(request: NextRequest) {
               expressions: [
                 {
                   filter: {
-                    fieldName: "pagePath",
+                    fieldName: "pageLocation",
                     stringFilter: {
                       matchType: "CONTAINS" as const,
                       value: "pagina/",
@@ -206,7 +231,7 @@ export async function GET(request: NextRequest) {
                 },
                 {
                   filter: {
-                    fieldName: "pagePath",
+                    fieldName: "pageLocation",
                     stringFilter: {
                       matchType: "CONTAINS" as const,
                       value: "undefined",
@@ -222,22 +247,30 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    // Process current data
+    // Process current data - Convertir URLs completas a paths relativos
     const currentData = new Map<string, number>();
     currentResponse.data.rows?.forEach(
       (row: analyticsdata_v1beta.Schema$Row) => {
-        const path = row.dimensionValues?.[0]?.value ?? "";
+        const fullUrl = row.dimensionValues?.[0]?.value ?? "";
+        const path = urlToPath(fullUrl); // Convertir a path relativo
         const visits = parseInt(row.metricValues?.[0]?.value ?? "0");
-        currentData.set(path, visits);
+
+        // Si el path ya existe, sumar (por si hay duplicados)
+        const existing = currentData.get(path) ?? 0;
+        currentData.set(path, existing + visits);
       }
     );
 
-    // Process previous data
+    // Process previous data - Convertir URLs completas a paths relativos
     const prevData = new Map<string, number>();
     prevResponse.data.rows?.forEach((row: analyticsdata_v1beta.Schema$Row) => {
-      const path = row.dimensionValues?.[0]?.value ?? "";
+      const fullUrl = row.dimensionValues?.[0]?.value ?? "";
+      const path = urlToPath(fullUrl); // Convertir a path relativo
       const visits = parseInt(row.metricValues?.[0]?.value ?? "0");
-      prevData.set(path, visits);
+
+      // Si el path ya existe, sumar (por si hay duplicados)
+      const existing = prevData.get(path) ?? 0;
+      prevData.set(path, existing + visits);
     });
 
     // Combine and process ALL items
@@ -305,7 +338,7 @@ export async function GET(request: NextRequest) {
         granularity,
         start,
         end,
-        shiftedPrev,
+        shiftedPrev: prevRange,
       },
       data: paginatedItems,
     };
