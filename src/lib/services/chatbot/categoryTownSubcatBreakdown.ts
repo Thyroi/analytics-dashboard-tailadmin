@@ -104,7 +104,6 @@ export type FetchCategoryTownSubcatBreakdownParams = {
  * Filtra solo claves con profundidad 4: root.<cat>.<town>.<subcat>
  */
 // Función legacy - mantener por si es necesaria en el futuro
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function parseSubcategories(
   data: Record<string, Array<{ time: string; value: number }>>,
   opts: {

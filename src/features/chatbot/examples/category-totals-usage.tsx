@@ -6,6 +6,7 @@
  */
 
 import type { Granularity } from "@/lib/types";
+import Image from "next/image";
 import { useState } from "react";
 import {
   useChatbotCategoryHandlers,
@@ -105,7 +106,12 @@ export function ExampleCategoryDisplay() {
       <div className="categories-grid">
         {categories.map((category) => (
           <div key={category.id} className="category-card">
-            <img src={category.iconSrc} alt={category.label} />
+            <Image
+              src={category.iconSrc}
+              alt={category.label}
+              width={32}
+              height={32}
+            />
             <h3>{category.label}</h3>
             <p>Current: {category.currentValue}</p>
             <p>Previous: {category.previousValue}</p>

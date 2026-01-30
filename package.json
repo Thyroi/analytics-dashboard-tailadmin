@@ -7,7 +7,7 @@
     "build": "prisma generate && next build",
     "postinstall": "prisma generate",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint . --max-warnings=0",
     "test": "vitest --config vitest.config.mjs",
     "test:ui": "vitest --ui --config vitest.config.mjs",
     "test:run": "vitest run --config vitest.config.mjs",
@@ -61,7 +61,7 @@
     "zod": "^4.0.17"
   },
   "devDependencies": {
-    "@eslint/eslintrc": "^3",
+    "@eslint/eslintrc": "^3.3.3",
     "@playwright/test": "^1.56.0",
     "@tailwindcss/postcss": "^4",
     "@testing-library/jest-dom": "^6.9.1",
@@ -74,7 +74,9 @@
     "@types/react-dom": "^19",
     "@types/topojson-client": "^3.1.5",
     "@vitejs/plugin-react": "^5.0.4",
-    "eslint": "^9",
+    "baseline-browser-mapping": "^2.9.19",
+    "cross-env": "^10.1.0",
+    "eslint": "^9.39.2",
     "eslint-config-next": "^16.1.6",
     "happy-dom": "^20.0.0",
     "jsdom": "^27.0.0",

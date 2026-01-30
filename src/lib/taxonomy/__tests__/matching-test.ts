@@ -281,8 +281,6 @@ const totalTests =
   townTests.length +
   keyTests.length +
   hierarchyTests.length;
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const totalPassed = categoryPassed + townPassed + keyPassed + hierarchyPassed;
 const totalFailed = categoryFailed + townFailed + keyFailed + hierarchyFailed;
 
 if (totalFailed === 0) {

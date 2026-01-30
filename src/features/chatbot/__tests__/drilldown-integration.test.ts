@@ -18,7 +18,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 // Removed unused imports: todayUTC, addDaysUTC
 
 describe("Drilldown Integration Tests", () => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let fetchSpy: any;
 
   beforeEach(() => {
@@ -363,10 +362,8 @@ describe("Drilldown Integration Tests", () => {
 
   describe("Pattern Correctos", () => {
     it("Nivel 1 debe usar pattern 'root.<townId>.*'", async () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const capturedBodies: any[] = [];
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       fetchSpy.mockImplementation((_url: any, options: any) => {
         if (options && typeof options.body === "string") {
           const parsed = JSON.parse(options.body);

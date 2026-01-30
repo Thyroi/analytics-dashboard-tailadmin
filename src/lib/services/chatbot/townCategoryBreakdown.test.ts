@@ -14,7 +14,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fetchTownCategoryBreakdown } from "./townCategoryBreakdown";
 
 describe("fetchTownCategoryBreakdown", () => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let fetchSpy: any;
 
   beforeEach(() => {

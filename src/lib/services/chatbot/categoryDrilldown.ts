@@ -185,7 +185,6 @@ function formatDateForAPI(dateString: string): string {
  * Construye la URL para la query según parámetros
  * DEPRECATED: Ahora usamos POST, no GET
  */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function buildQueryUrl(params: CategoryDrilldownParams): string {
   const url = new URL("/api/chatbot/audit/tags", window.location.origin);
 

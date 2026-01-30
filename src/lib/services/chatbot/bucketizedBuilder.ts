@@ -203,7 +203,6 @@ export function buildLevel2FromOthers(params: Level2ParamsOthers): Bucketized {
  * Construye nivel 2 desde grupo normal
  * TODO: Implementar según necesidades
  */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function buildLevel2FromGroup(params: Level2ParamsGroup): Bucketized {
   // Por ahora, placeholder
   return {

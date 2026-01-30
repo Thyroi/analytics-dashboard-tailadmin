@@ -68,7 +68,6 @@ export async function fetchCategoryTownBreakdown(
     startISO = null,
     endISO = null,
     db = "project_huelva",
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     representativeCategoryRaw = null,
   } = params;
 

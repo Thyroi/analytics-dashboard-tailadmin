@@ -9,7 +9,6 @@ import { fetchTownCategorySubcatBreakdown } from "./townCategorySubcatBreakdown"
  */
 
 describe("diagnostic: playas vs fiestas (almonte, granularity=m)", () => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let fetchSpy: any;
 
   beforeEach(() => {
