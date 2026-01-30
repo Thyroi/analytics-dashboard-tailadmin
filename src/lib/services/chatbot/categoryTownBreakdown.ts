@@ -22,27 +22,24 @@ import { OTHERS_ID } from "./partition";
 
 // Shared module imports
 import {
-  formatDateForMindsaic,
-  computeDeltaPercent,
-} from "./shared/helpers";
+  aggregateDailyTotals,
+  parseCategoryTowns,
+} from "./shared/categoryParsers";
+import { computeDeltaPercent, formatDateForMindsaic } from "./shared/helpers";
 import { fetchMindsaicDataForCategory } from "./shared/mindsaicClient";
 import { buildSeriesForRange } from "./shared/seriesBuilder";
-import {
-  parseCategoryTowns,
-  aggregateDailyTotals,
-} from "./shared/categoryParsers";
 import type {
-  CategoryTownData,
   CategoryTownBreakdownResponse,
+  CategoryTownData,
   FetchCategoryTownBreakdownParams,
 } from "./shared/types";
 
 // Type re-exports for consumers
 export type {
-  OthersBreakdownEntry,
-  CategoryTownData,
   CategoryTownBreakdownResponse,
+  CategoryTownData,
   FetchCategoryTownBreakdownParams,
+  OthersBreakdownEntry,
 } from "./shared/types";
 
 /* ==================== Debug Flags ==================== */
@@ -108,8 +105,14 @@ export async function fetchCategoryTownBreakdown(
     clearTimeout(timeoutId);
 
     // 5. Parsear y sumar totales por town (depth=3) usando helpers compartidos
-    const currentResult = parseCategoryTowns(currentResponse.output || {}, categoryId);
-    const prevResult = parseCategoryTowns(prevResponse.output || {}, categoryId);
+    const currentResult = parseCategoryTowns(
+      currentResponse.output || {},
+      categoryId
+    );
+    const prevResult = parseCategoryTowns(
+      prevResponse.output || {},
+      categoryId
+    );
 
     const currentTotals = currentResult.totals;
     const prevTotals = prevResult.totals;
