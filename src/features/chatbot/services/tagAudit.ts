@@ -3,15 +3,14 @@
  * Según especificaciones del prompt maestro
  */
 
-import type { Granularity, TagAuditResponse } from "../types";
+import type { TagAuditResponse } from "../types";
 import { validateDateFormat } from "../utils/periods";
 
 const API_BASE_URL = "/api/chatbot/audit/tags";
-const DB_NAME = "project_huelva";
+const PROJECT_ID = "huelva";
 
 export type TagAuditParams = {
-  patterns: string;
-  granularity: Granularity;
+  patterns: string[];
   startTime?: string;
   endTime?: string;
 };
@@ -43,7 +42,6 @@ const CACHE_TTL = 5 * 60 * 1000; // 5 minutos
 function getCacheKey(params: TagAuditParams): string {
   return JSON.stringify({
     patterns: params.patterns,
-    granularity: params.granularity,
     startTime: params.startTime,
     endTime: params.endTime,
   });
@@ -53,30 +51,16 @@ function getCacheKey(params: TagAuditParams): string {
  * Valida parámetros antes de hacer la llamada
  */
 function validateParams(params: TagAuditParams): string | null {
-  if (!params.patterns) {
+  if (!params.patterns || params.patterns.length === 0) {
     return "Patterns es obligatorio";
   }
 
-  if (!params.patterns.startsWith("root.")) {
-    return "Patterns debe comenzar con 'root.'";
+  if (params.startTime && !validateDateFormat(params.startTime, "d")) {
+    return "Formato de startTime inválido (esperado yyyymmdd)";
   }
 
-  if (!["d", "w", "m", "y"].includes(params.granularity)) {
-    return "Granularidad debe ser 'd', 'w', 'm' o 'y'";
-  }
-
-  if (
-    params.startTime &&
-    !validateDateFormat(params.startTime, params.granularity)
-  ) {
-    return `Formato de startTime inválido para granularidad '${params.granularity}'`;
-  }
-
-  if (
-    params.endTime &&
-    !validateDateFormat(params.endTime, params.granularity)
-  ) {
-    return `Formato de endTime inválido para granularidad '${params.granularity}'`;
+  if (params.endTime && !validateDateFormat(params.endTime, "d")) {
+    return "Formato de endTime inválido (esperado yyyymmdd)";
   }
 
   return null;
@@ -86,7 +70,7 @@ function validateParams(params: TagAuditParams): string | null {
  * Realiza la llamada a la API de auditoría
  */
 export async function fetchTagAudit(
-  params: TagAuditParams
+  params: TagAuditParams,
 ): Promise<TagAuditResponse> {
   // Validar parámetros
   const validationError = validateParams(params);
@@ -119,12 +103,11 @@ export async function fetchTagAudit(
  * Ejecuta la request HTTP
  */
 async function performRequest(
-  params: TagAuditParams
+  params: TagAuditParams,
 ): Promise<TagAuditResponse> {
   const body = {
-    db: DB_NAME,
-    patterns: params.patterns, // La API espera patterns como string, no array
-    granularity: params.granularity,
+    id: PROJECT_ID,
+    patterns: params.patterns,
     ...(params.startTime && { startTime: params.startTime }),
     ...(params.endTime && { endTime: params.endTime }),
   };
@@ -180,8 +163,8 @@ export function clearCache(): void {
  * Genera patterns comunes según las especificaciones
  */
 export const PATTERNS = {
-  categoryTotal: (category: string) => `root.*.${category}.*`,
-  townTotal: (town: string) => `root.${town}.*`,
-  allCategories: () => "root.*.*",
-  allTowns: () => "root.*",
+  categoryTotal: (category: string) => `*.${category}`,
+  townTotal: (town: string) => `${town}.*`,
+  allCategories: () => "*.*",
+  allTowns: () => "*.*",
 } as const;

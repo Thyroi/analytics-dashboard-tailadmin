@@ -1,13 +1,13 @@
 "use client";
 
 import { useCategoriaDetails } from "@/features/analytics/hooks/categorias/useCategoriaDetails";
-import { useCategoryTownBreakdownRaw } from "@/features/chatbot/hooks/useCategoryTownBreakdownRaw";
+import { useCategoryTownBreakdown } from "@/features/chatbot/hooks/useCategoryTownBreakdown";
 import type { CategoryId } from "@/lib/taxonomy/categories";
 import type { DonutDatum, Granularity, SeriesPoint } from "@/lib/types";
 import { useMemo } from "react";
 
 /**
- * Hook que combina datos de GA4 (via useCategoriaDetails) y Chatbot (via useCategoryTownBreakdownRaw)
+ * Hook que combina datos de GA4 (via useCategoriaDetails) y Chatbot (via useCategoryTownBreakdown)
  * para una categoría específica, normalizando labels para detectar duplicados.
  *
  * Usado en:
@@ -18,7 +18,7 @@ export function useCombinedCategoryTownBreakdown(
   categoryId: CategoryId | null,
   granularity: Granularity,
   startDate: string,
-  endDate: string
+  endDate: string,
 ) {
   // Fetch GA4 data
   const ga4Result = useCategoriaDetails({
@@ -30,7 +30,7 @@ export function useCombinedCategoryTownBreakdown(
   });
 
   // Fetch Chatbot data
-  const chatbotResult = useCategoryTownBreakdownRaw({
+  const chatbotResult = useCategoryTownBreakdown({
     categoryId: categoryId!,
     startISO: startDate,
     endISO: endDate,
@@ -63,13 +63,13 @@ export function useCombinedCategoryTownBreakdown(
     ga4Series.current.forEach((point: SeriesPoint) => {
       currentMap.set(
         point.label,
-        (currentMap.get(point.label) || 0) + point.value
+        (currentMap.get(point.label) || 0) + point.value,
       );
     });
     chatbotSeries.current.forEach((point: SeriesPoint) => {
       currentMap.set(
         point.label,
-        (currentMap.get(point.label) || 0) + point.value
+        (currentMap.get(point.label) || 0) + point.value,
       );
     });
 
@@ -85,13 +85,13 @@ export function useCombinedCategoryTownBreakdown(
     ga4Series.previous.forEach((point: SeriesPoint) => {
       previousMap.set(
         point.label,
-        (previousMap.get(point.label) || 0) + point.value
+        (previousMap.get(point.label) || 0) + point.value,
       );
     });
     chatbotSeries.previous.forEach((point: SeriesPoint) => {
       previousMap.set(
         point.label,
-        (previousMap.get(point.label) || 0) + point.value
+        (previousMap.get(point.label) || 0) + point.value,
       );
     });
 
@@ -135,17 +135,18 @@ export function useCombinedCategoryTownBreakdown(
 
     // Agregar Chatbot donut
     chatbotDonut.forEach((item) => {
-      const normalized = normalizeLabel(item.townId);
+      const label = item.label || item.townId;
+      const normalized = normalizeLabel(label);
       const existing = combinedMap.get(normalized);
       if (existing) {
         // Si ya existe, sumar al valor y preferir el label más descriptivo (el más largo)
         existing.value += item.currentTotal;
-        if (item.townId.length > existing.label.length) {
-          existing.label = item.townId;
+        if (label.length > existing.label.length) {
+          existing.label = label;
         }
       } else {
         combinedMap.set(normalized, {
-          label: item.townId, // Usar el townId del chatbot
+          label,
           value: item.currentTotal,
         });
       }

@@ -16,7 +16,7 @@ import {
 
 function aggregateKeyValue(
   series: SeriesPoint[],
-  mode: "sum" | "last"
+  mode: "sum" | "last",
 ): number {
   return sumSeries(series, mode);
 }
@@ -30,7 +30,7 @@ function debugLog(debug: boolean | undefined, ...args: unknown[]) {
 }
 
 export async function buildLevel1(
-  params: BuildLevel1Params
+  params: BuildLevel1Params,
 ): Promise<BuildLevel1Result> {
   const {
     scopeType,
@@ -51,7 +51,7 @@ export async function buildLevel1(
     if (params.scopeTotalSeries && params.scopeTotalSeries.length > 0) {
       const value = aggregateKeyValue(
         params.scopeTotalSeries,
-        params.sumStrategy ?? "sum"
+        params.sumStrategy ?? "sum",
       );
       const result: BuildLevel1Result = {
         donutData: [{ id: "otros", label: "Otros", value }],
@@ -104,7 +104,7 @@ export async function buildLevel1(
     "🔥 PASO 1: Query inicial nivel 1\n" +
       `Scope: ${scopeType}=${scopeId}\n` +
       `Keys depth=2/3: [${keys.join(", ")}]\n` +
-      `Tails detectados: [${level1Tails.join(", ")}]`
+      `Tails detectados: [${level1Tails.join(", ")}]`,
   );
 
   // Matching scope-aware
@@ -131,11 +131,11 @@ export async function buildLevel1(
   for (const key of keys) {
     const series = level1Data[key] || [];
 
-    // EXCLUSIÓN 1: Ignorar literalmente cualquier key que contenga "otros" como último segmento
+    // EXCLUSIÓN 1: Si el backend trae "otros", lo ignoramos (no es slice navegable)
     const rawToken = getRawTokenForKey(key);
     if (rawToken && rawToken.toLowerCase().trim() === "otros") {
-      debugLog(debug, `⏭️  Ignorando key con "otros": ${key}`);
-      continue; // Skip completely - no lo agregamos a nada
+      debugLog(debug, `⏭️  Ignorando key "otros": ${key}`);
+      continue; // Skip completely
     }
 
     // EXCLUSIÓN 2: Ignorar keys con caracteres especiales (_, -) en el token
@@ -144,7 +144,7 @@ export async function buildLevel1(
     if (rawToken && /[_-]/.test(rawToken)) {
       debugLog(
         debug,
-        `⏭️  Ignorando key con caracteres especiales (_, -): ${key}`
+        `⏭️  Ignorando key con caracteres especiales (_, -): ${key}`,
       );
       continue; // Skip completely - no lo agregamos a nada
     }
@@ -183,6 +183,7 @@ export async function buildLevel1(
   const matchedIds = Array.from(foundMap.keys());
 
   for (const id of matchedIds) {
+    if (id === "otros") continue;
     const info = foundMap.get(id)!;
     // Build pattern using EXACT scopeId as provided and RAW token for child
     const childTokenRaw = info.rawToken;
@@ -201,7 +202,7 @@ export async function buildLevel1(
     "\n🔎 PASO 2: Verificando hijos (BATCH)\n" +
       `Patrones disparados: [\n  ${uniquePatterns
         .map((p) => `'${p}'`)
-        .join(",\n  ")}\n]`
+        .join(",\n  ")}\n]`,
   );
 
   // También necesitaremos la serie TOTAL del scope: root.<scope> (sin .*)
@@ -232,41 +233,48 @@ export async function buildLevel1(
     sublevelMap[id] = { hasChildren };
 
     if (!hasChildren) {
-      // Move its value to Otros bucket
       movedToOtros[id] = info.value;
     }
   }
+
 
   debugLog(
     debug,
     `→ Hijos detectados: { ${matchedIds
       .map((id) => `${id}:${sublevelMap[id]?.hasChildren ? "true" : "false"}`)
-      .join(", ")} }`
+      .join(", ")} }`,
   );
 
   // Build donut slices + seriesBySlice
   const slices: ChartSlice[] = [];
   const seriesBySlice: Record<string, SeriesPoint[]> = {};
+  const useComputedOtros = true;
   let otrosBucket = otrosValue; // start with non-matched totals
   const otrosSeriesAccumulator: SeriesPoint[][] = []; // collect series for Otros
 
   // Collect series from non-matched keys (already in otrosDetail)
-  for (const item of otrosDetail) {
-    otrosSeriesAccumulator.push(item.series);
+  if (useComputedOtros) {
+    for (const item of otrosDetail) {
+      otrosSeriesAccumulator.push(item.series);
+    }
   }
 
   // NUEVA REGLA: Añadir la diferencia (si disponemos de la serie total del scope)
-  if (params.scopeTotalSeries && params.scopeTotalSeries.length > 0) {
+  if (
+    useComputedOtros &&
+    params.scopeTotalSeries &&
+    params.scopeTotalSeries.length > 0
+  ) {
     const totalSeries: SeriesPoint[] = params.scopeTotalSeries;
     // Serie agregada de TODOS los hijos (incluso no mapeados)
     const allChildrenPoints: SeriesPoint[] = Object.values(level1Data).flat();
     const aggregatedChildren: SeriesPoint[] =
       aggregateSeriesByTime(allChildrenPoints);
     const totalMapByTime = new Map<string, number>(
-      totalSeries.map((p) => [p.time, p.value])
+      totalSeries.map((p) => [p.time, p.value]),
     );
     const childMapByTime = new Map<string, number>(
-      aggregatedChildren.map((p) => [p.time, p.value])
+      aggregatedChildren.map((p) => [p.time, p.value]),
     );
     const allTimes = new Set<string>([
       ...Array.from(totalMapByTime.keys()),
@@ -289,13 +297,14 @@ export async function buildLevel1(
       // Sumar al bucket de Otros respetando la estrategia de suma
       const diffValueForBucket = aggregateKeyValue(
         differenceSeries,
-        sumStrategy
+        sumStrategy,
       );
       otrosBucket += diffValueForBucket;
     }
   }
 
   function labelForId(id: string): string {
+    if (id === "otros") return "Otros";
     if (scopeType === "category") {
       const town = towns.find((t) => t.id === id);
       return town?.displayName ?? id;
@@ -317,6 +326,8 @@ export async function buildLevel1(
       const matched = matchFromAliases(token, list);
       if (matched?.id === id) {
         seriesForThisId.push(level1Data[key] || []);
+      } else if (id === "otros" && token.toLowerCase().trim() === "otros") {
+        seriesForThisId.push(level1Data[key] || []);
       }
     }
 
@@ -331,10 +342,9 @@ export async function buildLevel1(
       seriesBySlice[id] = aggregateSeriesByTime(seriesForThisId.flat());
     } else {
       otrosBucket += info.value;
-      // Collect series for Otros bucket
       otrosSeriesAccumulator.push(...seriesForThisId);
 
-      // IMPORTANTE: Agregar estas keys a otrosDetail para que se muestren en la vista "Otros"
+      // Agregar estas keys a otrosDetail
       for (const key of keys) {
         const tails = extractTailAfterScope(key, scopeId, scopeType);
         if (!tails || tails.length === 0) continue;
@@ -349,14 +359,14 @@ export async function buildLevel1(
   }
 
   // Aggregate Otros series
-  if (otrosSeriesAccumulator.length > 0) {
+  if (useComputedOtros && otrosSeriesAccumulator.length > 0) {
     seriesBySlice["otros"] = aggregateSeriesByTime(
-      otrosSeriesAccumulator.flat()
+      otrosSeriesAccumulator.flat(),
     );
   }
 
   // Add Otros slice if any value
-  if (otrosBucket > 0 || slices.length === 0) {
+  if (useComputedOtros && (otrosBucket > 0 || slices.length === 0)) {
     slices.push({ id: "otros", label: "Otros", value: otrosBucket });
   }
 
@@ -373,7 +383,7 @@ export async function buildLevel1(
     debug,
     "\n✅ RESUMEN:\n" +
       `Slices: [${slices.map((s) => `${s.label}(${s.value})`).join(", ")}]\n` +
-      `Otros: [${otrosDetail.map((o) => o.key).join(", ")}]`
+      `Otros: [${otrosDetail.map((o) => o.key).join(", ")}]`,
   );
 
   return {

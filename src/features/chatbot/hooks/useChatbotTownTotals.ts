@@ -61,7 +61,7 @@ function buildQueryKey(params: UseChatbotTownTotalsParams): unknown[] {
       g: params.granularity,
       start: params.startDate ?? null,
       end: params.endDate ?? null,
-      db: params.db ?? "project_huelva",
+      db: params.db ?? "huelva",
     },
   ];
 }
@@ -104,7 +104,7 @@ function transformToCardData(data: TownTotalData): TownCardData {
  * ```
  */
 export function useChatbotTownTotals(
-  params: UseChatbotTownTotalsParams
+  params: UseChatbotTownTotalsParams,
 ): UseChatbotTownTotalsResult {
   const query = useQuery({
     queryKey: buildQueryKey(params),

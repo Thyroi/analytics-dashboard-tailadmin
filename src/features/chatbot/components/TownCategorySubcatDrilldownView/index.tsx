@@ -37,7 +37,6 @@ export default function TownCategorySubcatDrilldownView({
   const { data, isLoading } = useTownCategorySubcatBreakdown({
     townId,
     categoryId,
-    representativeRawSegment: categoryRaw,
     startISO,
     endISO,
     windowGranularity,
@@ -54,7 +53,6 @@ export default function TownCategorySubcatDrilldownView({
   } = useTownCategorySubcatData({
     data,
     categoryId,
-    categoryRaw,
     windowGranularity,
   });
 

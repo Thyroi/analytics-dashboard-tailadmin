@@ -2,32 +2,40 @@ import { buildLevel1 } from "@/lib/drilldown/level1/buildLevel1";
 import type {
   BuildLevel1Result,
   RawSeriesByKey,
+  SeriesPoint,
   TaxonomyCategory,
   TaxonomyTown,
 } from "@/lib/drilldown/level1/buildLevel1.types";
-import { ChallengeError, safeJsonFetch } from "@/lib/fetch/safeFetch";
 import {
+  CATEGORY_ID_ORDER,
   CATEGORY_META,
   CATEGORY_SYNONYMS,
-  CHATBOT_CATEGORY_NEEDS_WILDCARD,
-  CHATBOT_CATEGORY_TOKENS,
   type CategoryId,
 } from "@/lib/taxonomy/categories";
 import {
-  CHATBOT_TOWN_NEEDS_WILDCARD,
-  CHATBOT_TOWN_TOKENS,
+  TOWN_ID_ORDER,
   TOWN_META,
   TOWN_SYNONYMS,
   type TownId,
 } from "@/lib/taxonomy/towns";
-import { computeRangesForSeries } from "@/lib/utils/time/timeWindows";
+import {
+  fetchMindsaicTagsData,
+  type MindsaicTagPoint,
+} from "./shared/mindsaicV2Client";
+import {
+  buildCategoryPattern,
+  buildTownPattern,
+  getCategoryToken,
+  getTownToken,
+  normalizeMindsaicV2Token,
+} from "./shared/v2Patterns";
 
 export type FetchLevel1Params = {
   scopeType: "category" | "town";
-  scopeId: string; // token as appears in data, e.g., "naturaleza" or "la palma del condado"
+  scopeId: string;
   granularity?: "d" | "w" | "m" | "y";
-  startTime?: string; // YYYYMMDD
-  endTime?: string; // YYYYMMDD
+  startTime?: string;
+  endTime?: string;
   db?: string;
   sumStrategy?: "sum" | "last";
   debug?: boolean;
@@ -42,326 +50,175 @@ export type FetchLevel1Response = BuildLevel1Result & {
     db: string;
   };
   raw?: {
-    level1Data: RawSeriesByKey;
-    level1DataPrevious?: RawSeriesByKey; // Datos del rango previo para comparación
-    // Optionally include children map for debugging
-    // childrenData?: RawSeriesByKey;
+    level1DataPrevious?: RawSeriesByKey;
   };
 };
 
+function toSeries(points: MindsaicTagPoint[] | undefined): SeriesPoint[] {
+  return (points || []).map((point) => ({
+    time: point.date,
+    value: point.value,
+  }));
+}
+
 function buildTownEntries(): TaxonomyTown[] {
-  const towns: TaxonomyTown[] = (Object.keys(TOWN_META) as TownId[]).map(
-    (id) => {
-      const meta = TOWN_META[id];
-      const aliases = new Set<string>();
-      // include synonyms and official label
-      (TOWN_SYNONYMS[id] || []).forEach((a) => aliases.add(a));
-      aliases.add(meta.label);
-      aliases.add(id); // e.g., "laPalmaDelCondado" (will be normalized on compare)
-      return {
-        id, // keep canonical app ID (camelCase)
-        displayName: meta.label,
-        aliases: Array.from(aliases),
-      } as TaxonomyTown;
-    }
-  );
-  return towns;
+  return TOWN_ID_ORDER.map((id) => ({
+    id,
+    displayName: TOWN_META[id].label,
+    aliases: [
+      id,
+      TOWN_META[id].label,
+      getTownToken(id),
+      ...(TOWN_SYNONYMS[id] || []),
+    ],
+  }));
 }
 
 function buildCategoryEntries(): TaxonomyCategory[] {
-  const categories: TaxonomyCategory[] = (
-    Object.keys(CATEGORY_META) as CategoryId[]
-  ).map((id) => {
-    const meta = CATEGORY_META[id];
-    const aliases = new Set<string>();
-    (CATEGORY_SYNONYMS[id] || []).forEach((a) => aliases.add(a));
-    aliases.add(meta.label);
-    aliases.add(id);
-    return {
-      id, // keep canonical app ID (camelCase)
-      displayName: meta.label,
-      aliases: Array.from(aliases),
-    } as TaxonomyCategory;
-  });
-  return categories;
+  return CATEGORY_ID_ORDER.map((id) => ({
+    id,
+    displayName: CATEGORY_META[id].label,
+    aliases: [
+      id,
+      CATEGORY_META[id].label,
+      getCategoryToken(id),
+      ...(CATEGORY_SYNONYMS[id] || []),
+    ],
+  }));
 }
 
-async function fetchManyAPI(
-  patterns: string[],
-  options: {
-    granularity: "d" | "w" | "m" | "y";
-    startTime?: string;
-    endTime?: string;
-    db: string;
+function buildScopeToken(scopeType: "category" | "town", scopeId: string) {
+  if (scopeType === "town") {
+    return (TOWN_META as Record<string, unknown>)[scopeId]
+      ? getTownToken(scopeId as TownId)
+      : normalizeMindsaicV2Token(scopeId);
   }
-): Promise<RawSeriesByKey> {
-  // Single POST with array of patterns, API supports 'patterns'
-  const payload = {
-    db: options.db,
-    patterns, // array of patterns for batch
-    // Always query Mindsaic with daily granularity; UI granularity only affects presentation
-    granularity: "d" as const,
-    ...(options.startTime && { startTime: options.startTime }),
-    ...(options.endTime && { endTime: options.endTime }),
-  };
 
-  // Use safeJsonFetch instead of raw fetch to detect upstream HTML challenges
-  try {
-    const json = (await safeJsonFetch("/api/chatbot/audit/tags", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    })) as unknown;
-
-    let output: unknown = {};
-    if (json && typeof json === "object") {
-      const j = json as Record<string, unknown>;
-      output = j.output ?? j.data ?? {};
-    }
-
-    return output as RawSeriesByKey;
-  } catch (err) {
-    if (err instanceof ChallengeError) return {} as RawSeriesByKey;
-    throw err;
-  }
+  return (CATEGORY_META as Record<string, unknown>)[scopeId]
+    ? getCategoryToken(scopeId as CategoryId)
+    : normalizeMindsaicV2Token(scopeId);
 }
 
-async function fetchLevel1Data(
-  scopeType: "category" | "town",
-  scopeId: string,
-  options: {
-    granularity: "d" | "w" | "m" | "y";
-    startTime?: string;
-    endTime?: string;
-    db: string;
-  }
-): Promise<RawSeriesByKey> {
-  // CRITICAL: Convert app ID to RAW token as it appears in data
-  // scopeId might be "fiestasTradiciones" (app ID) but data has "fiestas y tradiciones"
-  let scopeTokenForPattern = scopeId;
-
-  if (
-    scopeType === "category" &&
-    (CATEGORY_META as Record<string, unknown>)[scopeId]
-  ) {
-    const categoryId = scopeId as CategoryId;
-    const rawToken = CHATBOT_CATEGORY_TOKENS[categoryId];
-    // Verificar si esta categoría necesita wildcard (excepción)
-    const needsWildcard = CHATBOT_CATEGORY_NEEDS_WILDCARD.has(categoryId);
-    scopeTokenForPattern = needsWildcard ? `${rawToken}*` : rawToken;
-  }
-
-  if (
-    scopeType === "town" &&
-    (TOWN_META as Record<string, unknown>)[scopeId as TownId]
-  ) {
-    const townId = scopeId as TownId;
-    const rawToken = CHATBOT_TOWN_TOKENS[townId];
-    // Verificar si este pueblo necesita wildcard (excepción)
-    const needsWildcard = CHATBOT_TOWN_NEEDS_WILDCARD.has(townId);
-    scopeTokenForPattern = needsWildcard ? `${rawToken}*` : rawToken;
-  }
-
-  const pattern = `root.${scopeTokenForPattern}.*`;
-
-  const payload = {
-    db: options.db,
-    patterns: pattern,
-    // Always use daily for backend API; UI granularity is handled at aggregation layer
-    granularity: "d" as const,
-    ...(options.startTime && { startTime: options.startTime }),
-    ...(options.endTime && { endTime: options.endTime }),
-  };
-
-  try {
-    const json = (await safeJsonFetch("/api/chatbot/audit/tags", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    })) as unknown;
-
-    let output: unknown = {};
-    if (json && typeof json === "object") {
-      const j = json as Record<string, unknown>;
-      output = j.output ?? j.data ?? {};
+function buildScopePattern(scopeType: "category" | "town", scopeId: string) {
+  if (scopeType === "town") {
+    if ((TOWN_META as Record<string, unknown>)[scopeId]) {
+      return buildTownPattern(scopeId as TownId);
     }
-
-    return output as RawSeriesByKey;
-  } catch (err) {
-    if (err instanceof ChallengeError) return {} as RawSeriesByKey;
-    throw err;
+    return `${normalizeMindsaicV2Token(scopeId)}.*`;
   }
+
+  if ((CATEGORY_META as Record<string, unknown>)[scopeId]) {
+    return buildCategoryPattern(scopeId as CategoryId);
+  }
+  return `*.${normalizeMindsaicV2Token(scopeId)}`;
 }
 
 export async function fetchLevel1Drilldown(
-  params: FetchLevel1Params
+  params: FetchLevel1Params,
 ): Promise<FetchLevel1Response> {
   const granularity = params.granularity ?? "d";
-  const db = params.db ?? "project_huelva";
+  const db = params.db ?? "huelva";
 
-  const [towns, categories] = [buildTownEntries(), buildCategoryEntries()];
-
-  // CRITICAL: Convert scopeId (app ID) to RAW token for API queries
-  let scopeTokenRaw = params.scopeId;
-
-  if (
-    params.scopeType === "category" &&
-    (CATEGORY_META as Record<string, unknown>)[params.scopeId]
-  ) {
-    const categoryId = params.scopeId as CategoryId;
-    const rawToken = CHATBOT_CATEGORY_TOKENS[categoryId];
-    // Verificar si esta categoría necesita wildcard (excepción)
-    const needsWildcard = CHATBOT_CATEGORY_NEEDS_WILDCARD.has(categoryId);
-    scopeTokenRaw = needsWildcard ? `${rawToken}*` : rawToken;
+  const startTime = params.startTime;
+  if (!startTime) {
+    throw new Error("startTime es obligatorio para Level1");
   }
 
-  if (
-    params.scopeType === "town" &&
-    (TOWN_META as Record<string, unknown>)[params.scopeId as TownId]
-  ) {
-    const townId = params.scopeId as TownId;
-    const rawToken = CHATBOT_TOWN_TOKENS[townId];
-    // Verificar si este pueblo necesita wildcard (excepción)
-    const needsWildcard = CHATBOT_TOWN_NEEDS_WILDCARD.has(townId);
-    scopeTokenRaw = needsWildcard ? `${rawToken}*` : rawToken;
+  const towns = buildTownEntries();
+  const categories = buildCategoryEntries();
+  const scopeToken = buildScopeToken(params.scopeType, params.scopeId);
+  const pattern = buildScopePattern(params.scopeType, params.scopeId);
+
+  if (!pattern) {
+    return {
+      donutData: [],
+      seriesBySlice: {},
+      otrosDetail: [],
+      sublevelMap: {},
+      total: 0,
+      warnings: [],
+      scopeType: params.scopeType,
+      scopeId: params.scopeId,
+      meta: {
+        granularity,
+        range: { start: params.startTime, end: params.endTime },
+        db,
+      },
+    };
   }
 
-  // Calcular rangos current/previous si tenemos startTime y endTime
-  let startTimeCurrent: string | undefined = params.startTime;
-  let endTimeCurrent: string | undefined = params.endTime;
-  let startTimePrevious: string | undefined;
-  let endTimePrevious: string | undefined;
+  const response = await fetchMindsaicTagsData({
+    patterns: [pattern],
+    startTime,
+    endTime: params.endTime,
+    id: db,
+  });
 
-  if (params.startTime && params.endTime) {
-    // Convertir YYYYMMDD → YYYY-MM-DD para computeRangesForSeries
-    const startISO = `${params.startTime.slice(0, 4)}-${params.startTime.slice(
-      4,
-      6
-    )}-${params.startTime.slice(6, 8)}`;
-    const endISO = `${params.endTime.slice(0, 4)}-${params.endTime.slice(
-      4,
-      6
-    )}-${params.endTime.slice(6, 8)}`;
+  const output = response.output?.[pattern];
+  const dataMap = output?.data || {};
+  const prevMap = output?.previous || {};
 
-    const ranges = computeRangesForSeries(granularity, startISO, endISO);
+  const level1DataCurrent: RawSeriesByKey = Object.fromEntries(
+    Object.entries(dataMap).map(([key, series]) => [
+      `root.${scopeToken}.${key}`,
+      toSeries(series),
+    ]),
+  );
 
-    // Convertir de vuelta a YYYYMMDD
-    startTimeCurrent = ranges.current.start.replace(/-/g, "");
-    endTimeCurrent = ranges.current.end.replace(/-/g, "");
-    startTimePrevious = ranges.previous.start.replace(/-/g, "");
-    endTimePrevious = ranges.previous.end.replace(/-/g, "");
-  }
+  const level1DataPrevious: RawSeriesByKey | undefined = Object.keys(prevMap)
+    .length
+    ? Object.fromEntries(
+        Object.entries(prevMap).map(([key, series]) => [
+          `root.${scopeToken}.${key}`,
+          toSeries(series),
+        ]),
+      )
+    : undefined;
 
-  // ESTRATEGIA: Hacer DOS POST en paralelo (más eficiente)
-  // - POST 1: current period
-  // - POST 2: previous period
-  const [level1DataCurrent, level1DataPreviousConst] = await Promise.all([
-    fetchLevel1Data(params.scopeType, params.scopeId, {
-      db,
-      granularity,
-      startTime: startTimeCurrent,
-      endTime: endTimeCurrent,
-    }),
-    startTimePrevious && endTimePrevious
-      ? fetchLevel1Data(params.scopeType, params.scopeId, {
-          db,
-          granularity,
-          startTime: startTimePrevious,
-          endTime: endTimePrevious,
-        })
-      : Promise.resolve({} as RawSeriesByKey),
-  ]);
+  const scopeTotalSeries: SeriesPoint[] =
+    Object.values(level1DataCurrent).flat();
 
-  // Siempre que haya periodo previo, obtener root.<scope> total previo
-  // y calcular la serie de diferencia (totalPrev - sum(childrenPrev)),
-  // insertándola bajo la clave `root.<scope>` en level1DataPrevious
-  // Usar una variable mutable local para el previo
-  let level1DataPrevious = level1DataPreviousConst;
+  const fetchMany = async (patterns: string[]): Promise<RawSeriesByKey> => {
+    if (patterns.length === 0) return {};
 
-  if (startTimePrevious && endTimePrevious) {
-    const exactScopePrev = scopeTokenRaw.endsWith("*")
-      ? scopeTokenRaw.slice(0, -1)
-      : scopeTokenRaw;
-
-    const prevTotalMap = await fetchManyAPI([`root.${exactScopePrev}`], {
-      db,
-      granularity,
-      startTime: startTimePrevious,
-      endTime: endTimePrevious,
+    const mapping = patterns.map((rootPattern) => {
+      const parts = rootPattern.split(".");
+      const childToken = parts[2] ?? "";
+      const v2Pattern =
+        params.scopeType === "town"
+          ? `${scopeToken}.${childToken}.*`
+          : `${childToken}.${scopeToken}.*`;
+      return { rootPattern, childToken, v2Pattern };
     });
 
-    const prevTotalSeries = (prevTotalMap[`root.${exactScopePrev}`] ??
-      []) as RawSeriesByKey[string];
+    const responseMany = await fetchMindsaicTagsData({
+      patterns: mapping.map((m) => m.v2Pattern),
+      startTime,
+      endTime: params.endTime,
+      id: db,
+    });
 
-    if (prevTotalSeries && Object.keys(level1DataPrevious || {}).length >= 0) {
-      const childTime = new Map<string, number>();
-      for (const series of Object.values(level1DataPrevious)) {
-        for (const p of series as { time: string; value: number }[]) {
-          childTime.set(p.time, (childTime.get(p.time) || 0) + (p.value || 0));
-        }
-      }
-      const totalTime = new Map<string, number>();
-      for (const p of prevTotalSeries as unknown as {
-        time: string;
-        value: number;
-      }[]) {
-        totalTime.set(p.time, (totalTime.get(p.time) || 0) + (p.value || 0));
-      }
-      const allTimes = new Set<string>([
-        ...Array.from(totalTime.keys()),
-        ...Array.from(childTime.keys()),
-      ]);
-      const diffSeries = Array.from(allTimes)
-        .sort((a, b) => a.localeCompare(b))
-        .map((t) => {
-          const tv = totalTime.get(t) ?? 0;
-          const cv = childTime.get(t) ?? 0;
-          const dv = tv - cv;
-          return { time: t, value: dv > 0 ? dv : 0 };
-        })
-        .filter((p) => p.value > 0);
-
-      if (diffSeries.length > 0) {
-        // Safe mutate of local variable before returning
-        level1DataPrevious = {
-          ...level1DataPrevious,
-          [`root.${exactScopePrev}`]:
-            diffSeries as unknown as RawSeriesByKey[string],
-        };
+    const result: RawSeriesByKey = {};
+    for (const { v2Pattern, childToken } of mapping) {
+      const outputEntry = responseMany.output?.[v2Pattern];
+      const childDataMap = outputEntry?.data || {};
+      for (const [tagId, series] of Object.entries(childDataMap)) {
+        result[`root.${scopeToken}.${childToken}.${tagId}`] = toSeries(series);
       }
     }
-  }
+
+    return result;
+  };
 
   const result = await buildLevel1({
     scopeType: params.scopeType,
-    // CRITICAL: Use RAW token for child pattern construction (not app ID)
-    scopeId: scopeTokenRaw,
+    scopeId: scopeToken,
     level1Data: level1DataCurrent,
     towns,
     categories,
     sumStrategy: params.sumStrategy ?? "sum",
-    fetchMany: (patterns) =>
-      fetchManyAPI(patterns, {
-        db,
-        granularity,
-        startTime: startTimeCurrent,
-        endTime: endTimeCurrent,
-      }),
-    // Provide total series for the scope to reconcile missing gap into "Otros"
-    scopeTotalSeries: await (async () => {
-      const exactScope = scopeTokenRaw.endsWith("*")
-        ? scopeTokenRaw.slice(0, -1)
-        : scopeTokenRaw;
-      const map = await fetchManyAPI([`root.${exactScope}`], {
-        db,
-        granularity,
-        startTime: startTimeCurrent,
-        endTime: endTimeCurrent,
-      });
-      const series = (map[`root.${exactScope}`] ??
-        []) as RawSeriesByKey[string];
-      return (series as unknown as { time: string; value: number }[]) || [];
-    })(),
+    fetchMany,
+    scopeTotalSeries,
     debug: params.debug,
   });
 
@@ -371,11 +228,10 @@ export async function fetchLevel1Drilldown(
     scopeId: params.scopeId,
     meta: {
       granularity,
-      range: { start: startTimeCurrent, end: endTimeCurrent },
+      range: { start: params.startTime, end: params.endTime },
       db,
     },
     raw: {
-      level1Data: level1DataCurrent,
       level1DataPrevious,
     },
   };

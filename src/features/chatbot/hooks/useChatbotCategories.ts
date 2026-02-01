@@ -6,11 +6,12 @@
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 
-import { fetchChatbotTotals } from "@/lib/services/chatbot/totals";
+import {
+  fetchChatbotCategoryTotals,
+  type CategoryTotalsResponse,
+} from "@/lib/services/chatbot/categoryTotals";
 import { CATEGORY_META, CategoryId } from "@/lib/taxonomy/categories";
 import { type Granularity } from "@/lib/types";
-import { computeCategoryAndTownTotals } from "@/lib/utils/chatbot/aggregate";
-import { computeDeltaPct } from "@/lib/utils/time/timeWindows";
 
 export type CategoryCardData = {
   id: CategoryId;
@@ -35,36 +36,24 @@ export function useChatbotCategories({
   endDate,
   enabled = true,
 }: UseChatbotCategoriesOptions) {
-  // Query para datos raw del chatbot usando fetchChatbotTotals
-  const chatbotQuery = useQuery({
-    queryKey: ["chatbot", "totals", granularity, startDate, endDate],
-    queryFn: () => fetchChatbotTotals({ granularity, startDate, endDate }),
+  // Query para totales por categoría (Mindsaic v2)
+  const chatbotQuery = useQuery<CategoryTotalsResponse>({
+    queryKey: ["chatbot", "category-totals", granularity, startDate, endDate],
+    queryFn: () =>
+      fetchChatbotCategoryTotals({ granularity, startDate, endDate }),
     enabled,
     staleTime: 5 * 60 * 1000, // 5 minutos
     gcTime: 10 * 60 * 1000, // 10 minutos
     retry: 2,
   });
 
-  // Procesar datos raw del chatbot con la función aggregate
-  const chatbotAggregated = useMemo(() => {
-    if (!chatbotQuery.data) return null;
-    try {
-      return computeCategoryAndTownTotals(chatbotQuery.data);
-    } catch {
-      return null;
-    }
-  }, [chatbotQuery.data]);
-
   const categories = useMemo<CategoryCardData[]>(() => {
-    if (!chatbotAggregated?.categories) {
+    if (!chatbotQuery.data?.categories) {
       return [];
     }
 
-    const validCategories = chatbotAggregated.categories.filter(
-      (item) => item.id in CATEGORY_META
-    );
-
-    const processedCategories = validCategories
+    const processedCategories = chatbotQuery.data.categories
+      .filter((item) => item.id in CATEGORY_META)
       .map((category): CategoryCardData | null => {
         const categoryId = category.id as CategoryId;
         const categoryMeta = CATEGORY_META[categoryId];
@@ -75,10 +64,8 @@ export function useChatbotCategories({
           return null;
         }
 
-        // Calcular delta usando función oficial
-        const deltaPercent =
-          computeDeltaPct(currentValue, previousValue) ?? undefined;
-        const delta = currentValue - previousValue;
+        const deltaPercent = category.deltaPercent ?? undefined;
+        const delta = category.deltaAbs;
 
         const result = {
           id: categoryId,
@@ -96,7 +83,7 @@ export function useChatbotCategories({
       .sort((a, b) => b.currentValue - a.currentValue); // Ordenar por valor descendente
 
     return processedCategories;
-  }, [chatbotAggregated]);
+  }, [chatbotQuery.data]);
 
   return {
     categories,
@@ -105,6 +92,6 @@ export function useChatbotCategories({
     error: chatbotQuery.error,
     refetch: chatbotQuery.refetch,
     rawData: chatbotQuery.data,
-    aggregatedData: chatbotAggregated,
+    aggregatedData: null,
   };
 }

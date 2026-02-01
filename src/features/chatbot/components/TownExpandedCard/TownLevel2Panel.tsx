@@ -1,17 +1,13 @@
-import type { OtrosDetailItem } from "@/lib/drilldown/level1/buildLevel1.types";
 import type { CategoryId } from "@/lib/taxonomy/categories";
 import type { TownId } from "@/lib/taxonomy/towns";
 import type { WindowGranularity } from "@/lib/types";
 import TownCategorySubcatDrilldownView from "../TownCategorySubcatDrilldownView";
-import TownOthersBreakdownView from "../TownOthersBreakdownView";
 
 type TownLevel2PanelProps = {
   townId: string;
   townRaw: string;
   selectedCategoryId: CategoryId | null;
   selectedCategoryRaw: string | null;
-  isOthersView: boolean;
-  otrosDetail: OtrosDetailItem[];
   granularity: WindowGranularity;
   startDate?: string | null;
   endDate?: string | null;
@@ -23,15 +19,12 @@ type TownLevel2PanelProps = {
  * Panel de Nivel 2 para TownExpandedCard
  * Renderiza condicionalmente:
  * - TownCategorySubcatDrilldownView (cuando hay categoría seleccionada)
- * - TownOthersBreakdownView (cuando isOthersView es true)
  */
 export function TownLevel2Panel({
   townId,
   townRaw,
   selectedCategoryId,
   selectedCategoryRaw,
-  isOthersView,
-  otrosDetail,
   granularity,
   startDate,
   endDate,
@@ -39,7 +32,7 @@ export function TownLevel2Panel({
   onBack,
 }: TownLevel2PanelProps) {
   // No renderizar nada si no hay nivel 2 activo
-  if (!selectedCategoryId && !isOthersView) {
+  if (!selectedCategoryId) {
     return null;
   }
 
@@ -57,25 +50,6 @@ export function TownLevel2Panel({
           startISO={startDate}
           endISO={endDate}
           windowGranularity={granularity}
-          onBack={onBack}
-        />
-      )}
-
-      {isOthersView && otrosDetail.length > 0 && (
-        <TownOthersBreakdownView
-          townId={townId as TownId}
-          othersBreakdown={otrosDetail.map((o) => ({
-            key: o.key,
-            path: o.key.split("."),
-            value: o.series.reduce((acc, p) => acc + p.value, 0),
-            timePoints: o.series.map((p) => ({
-              time: p.time,
-              value: p.value,
-            })),
-          }))}
-          granularity={granularity}
-          startDate={startDate}
-          endDate={endDate}
           onBack={onBack}
         />
       )}

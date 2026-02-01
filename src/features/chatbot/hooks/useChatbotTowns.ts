@@ -7,13 +7,11 @@ import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 
 import {
-  fetchChatbotTotals,
-  type ChatbotTotalsResponse,
-} from "@/lib/services/chatbot/totals";
+  fetchChatbotTownTotals,
+  type TownTotalsResponse,
+} from "@/lib/services/chatbot/townTotals";
 import { TOWN_ID_ORDER, TOWN_META, type TownId } from "@/lib/taxonomy/towns";
 import { type Granularity } from "@/lib/types";
-import { computeCategoryAndTownTotals } from "@/lib/utils/chatbot/aggregate";
-import { computeDeltaPct } from "@/lib/utils/time/timeWindows";
 
 export type TownCardData = {
   id: TownId;
@@ -38,31 +36,17 @@ export function useChatbotTowns({
   endDate,
   enabled = true,
 }: UseChatbotTownsOptions) {
-  // Query para datos raw del chatbot (igual que useResumenTown)
-  const chatbotQuery = useQuery<ChatbotTotalsResponse>({
-    queryKey: ["chatbot", "totals", granularity, startDate, endDate],
-    queryFn: () => fetchChatbotTotals({ granularity, startDate, endDate }),
+  // Query para totales por town (Mindsaic v2)
+  const chatbotQuery = useQuery<TownTotalsResponse>({
+    queryKey: ["chatbot", "town-totals", granularity, startDate, endDate],
+    queryFn: () => fetchChatbotTownTotals({ granularity, startDate, endDate }),
     enabled,
     staleTime: 5 * 60 * 1000, // 5 minutos
     gcTime: 10 * 60 * 1000, // 10 minutos
     retry: 2,
   });
 
-  // Procesar datos raw del chatbot con la función aggregate (igual que useResumenTown)
-  const chatbotAggregated = useMemo(() => {
-    if (!chatbotQuery.data) return null;
-    try {
-      return computeCategoryAndTownTotals(chatbotQuery.data);
-    } catch {
-      return null;
-    }
-  }, [chatbotQuery.data]);
-
   const towns = useMemo<TownCardData[]>(() => {
-    if (!chatbotAggregated?.towns) {
-      return [];
-    }
-
     const processedTowns = TOWN_ID_ORDER.map((townId): TownCardData | null => {
       const townMeta = TOWN_META[townId];
 
@@ -71,8 +55,8 @@ export function useChatbotTowns({
       }
 
       // Buscar datos del town en los resultados agregados
-      const chatbotTown = chatbotAggregated.towns.find(
-        (town) => town.id === townId
+      const chatbotTown = chatbotQuery.data?.towns.find(
+        (town) => town.id === townId,
       );
 
       const currentValue = chatbotTown?.currentTotal ?? 0;
@@ -83,10 +67,8 @@ export function useChatbotTowns({
         return null;
       }
 
-      // Calcular delta usando función oficial
-      const deltaPercent =
-        computeDeltaPct(currentValue, previousValue) ?? undefined;
-      const delta = currentValue - previousValue;
+      const deltaPercent = chatbotTown?.deltaPercent ?? undefined;
+      const delta = chatbotTown?.deltaAbs ?? currentValue - previousValue;
 
       return {
         id: townId,
@@ -102,7 +84,7 @@ export function useChatbotTowns({
       .sort((a, b) => b.currentValue - a.currentValue); // Ordenar por valor descendente
 
     return processedTowns;
-  }, [chatbotAggregated]);
+  }, [chatbotQuery.data]);
 
   return {
     towns,
@@ -111,6 +93,6 @@ export function useChatbotTowns({
     error: chatbotQuery.error,
     refetch: chatbotQuery.refetch,
     rawData: chatbotQuery.data,
-    aggregatedData: chatbotAggregated,
+    aggregatedData: null,
   };
 }

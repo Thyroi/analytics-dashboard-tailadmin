@@ -7,6 +7,8 @@ export default defineConfig({
     setupFiles: ["__tests__/setup.ts"],
     include: ["src/**/*.{test,spec}.{ts,tsx}"],
     exclude: ["node_modules", "dist", ".next", "e2e", "tests-old"],
+    silent: false,
+    disableConsoleIntercept: true,
   },
   envDir: ".",
   resolve: {

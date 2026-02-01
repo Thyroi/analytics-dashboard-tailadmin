@@ -47,7 +47,7 @@ export function useTownCategoryBreakdown({
   startISO = null,
   endISO = null,
   windowGranularity = "d",
-  db = "project_huelva",
+  db = "huelva",
   enabled = true,
 }: UseTownCategoryBreakdownParams): UseTownCategoryBreakdownResult {
   const queryClient = useQueryClient();

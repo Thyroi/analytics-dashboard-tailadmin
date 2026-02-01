@@ -2,10 +2,10 @@ export type ChatbotGranularity = "d" | "w" | "m" | "y";
 export type ChatbotPoint = { time: string; value: number };
 
 export type ChatbotRequest = {
-  pattern: string;
-  granularity: ChatbotGranularity;
+  patterns: string[];
   startTime?: string;
   endTime?: string;
+  id?: string;
 };
 
 export type ChatbotResponse = {
@@ -17,12 +17,11 @@ import { ChallengeError, safeJsonFetch } from "@/lib/fetch/safeFetch";
 
 export async function fetchChatbotTags(
   input: ChatbotRequest,
-  init?: RequestInit
+  init?: RequestInit,
 ): Promise<ChatbotResponse> {
   const requestBody = {
-    db: "project_huelva",
-    patterns: [input.pattern], // ✨ FIX: El endpoint POST espera 'patterns' (array), no 'pattern' (string)
-    granularity: input.granularity,
+    id: input.id ?? "huelva",
+    patterns: input.patterns,
     ...(input.startTime && { startTime: input.startTime }),
     ...(input.endTime && { endTime: input.endTime }),
   };

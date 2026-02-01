@@ -69,7 +69,7 @@ export default function TownExpandedCard({
     granularity,
     startDate,
     endDate,
-    db: "project_huelva",
+    db: "huelva",
     sumStrategy: "sum",
     debug: false,
   });
@@ -97,11 +97,8 @@ export default function TownExpandedCard({
     const slice = level1Data.donutData.find((s) => s.label === label);
     if (!slice) return;
 
-    // Vista "Otros"
-    if (slice.id === "otros") {
-      navigation.handleOthersSelect();
-      return;
-    }
+    // "Otros" no es clickeable en nivel 1
+    if (slice.id === "otros") return;
 
     // Categoría normal
     const categoryId = slice.id as CategoryId;
@@ -140,7 +137,7 @@ export default function TownExpandedCard({
         imgSrc={townIcon}
         onClose={onClose}
         onBack={
-          navigation.selectedCategoryId || navigation.isOthersView
+          navigation.selectedCategoryId
             ? navigation.handleBackToLevel1
             : undefined
         }
@@ -175,8 +172,6 @@ export default function TownExpandedCard({
         townRaw={townRaw}
         selectedCategoryId={navigation.selectedCategoryId}
         selectedCategoryRaw={navigation.selectedCategoryRaw}
-        isOthersView={navigation.isOthersView}
-        otrosDetail={level1Data?.otrosDetail || []}
         granularity={granularity}
         startDate={startDate}
         endDate={endDate}

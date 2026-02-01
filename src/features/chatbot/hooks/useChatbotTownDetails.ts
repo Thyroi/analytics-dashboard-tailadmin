@@ -1,25 +1,16 @@
 /**
  * Hook para obtener detalles de un town específico - solo datos de chatbot
- * Basado en useTownDetails pero simplificado para chatbot únicamente
- *
- * POLÍTICA DE TIEMPO:
- * - Usa computeRangesForSeries de timeWindows.ts (comportamiento Series estándar)
- * - Granularidad "d" = 7 días para series (NO 1 día)
- * - Previous = ventana contigua del mismo tamaño
- * - Respeta rangos custom del usuario (startDate/endDate)
  */
 
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 
 import {
-  fetchChatbotTotals,
-  type ChatbotTotalsResponse,
-} from "@/lib/services/chatbot/totals";
+  fetchTownCategoryBreakdown,
+  type TownCategoryBreakdownResponse,
+} from "@/lib/services/chatbot/townCategoryBreakdown";
 import type { TownId } from "@/lib/taxonomy/towns";
 import type { Granularity } from "@/lib/types";
-import { buildSeriesAndDonutFocused } from "@/lib/utils/data";
-import { computeRangesForSeries } from "@/lib/utils/time/timeWindows";
 
 export type UseChatbotTownDetailsOptions = {
   townId: TownId;
@@ -36,47 +27,49 @@ export function useChatbotTownDetails({
   endDate,
   enabled = true,
 }: UseChatbotTownDetailsOptions) {
-  // Query para datos raw del chatbot
-  const chatbotQuery = useQuery<ChatbotTotalsResponse>({
-    queryKey: ["chatbot", "totals", granularity, startDate, endDate],
-    queryFn: () => fetchChatbotTotals({ granularity, startDate, endDate }),
-    enabled,
-    staleTime: 5 * 60 * 1000, // 5 minutos
-    gcTime: 10 * 60 * 1000, // 10 minutos
+  const chatbotQuery = useQuery<TownCategoryBreakdownResponse>({
+    queryKey: [
+      "chatbot",
+      "town",
+      "details",
+      townId,
+      granularity,
+      startDate,
+      endDate,
+    ],
+    queryFn: () =>
+      fetchTownCategoryBreakdown({
+        townId,
+        startISO: startDate ?? null,
+        endISO: endDate ?? null,
+        windowGranularity: granularity,
+      }),
+    enabled: enabled && !!townId,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
     retry: 2,
   });
 
-  // Procesar series y donut para el town específico
   const processedData = useMemo(() => {
     if (!chatbotQuery.data || !townId) {
       return { status: "loading" } as const;
     }
 
     try {
-      // Usar computeRangesForSeries de timeWindows.ts (comportamiento Series estándar)
-      const ranges = computeRangesForSeries(granularity, startDate, endDate);
-
-      // Usar buildSeriesAndDonutFocused con focus en town
-      const result = buildSeriesAndDonutFocused(
-        {
-          granularity,
-          currentRange: ranges.current,
-          prevRange: ranges.previous,
-          focus: { type: "town", id: townId },
-        },
-        chatbotQuery.data
-      );
-
-      // Calcular total de interacciones
-      const totalInteractions = result.series.current.reduce(
-        (sum, point) => sum + point.value,
-        0
+      const result = chatbotQuery.data;
+      const donutData = result.categories
+        .filter((item) => item.currentTotal > 0)
+        .map((item) => ({ label: item.label, value: item.currentTotal }));
+      const series = result.series ?? { current: [], previous: [] };
+      const totalInteractions = result.categories.reduce(
+        (sum, item) => sum + item.currentTotal,
+        0,
       );
 
       return {
         status: "ready" as const,
-        series: result.series,
-        donutData: result.donutData,
+        series,
+        donutData,
         totalInteractions,
       };
     } catch (error) {
@@ -85,7 +78,7 @@ export function useChatbotTownDetails({
         message: error instanceof Error ? error.message : "Error desconocido",
       };
     }
-  }, [chatbotQuery.data, townId, granularity, startDate, endDate]);
+  }, [chatbotQuery.data, townId]);
 
   return {
     state: processedData,

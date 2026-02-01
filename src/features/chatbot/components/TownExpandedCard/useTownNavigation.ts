@@ -11,10 +11,8 @@ type UseTownNavigationParams = {
 type UseTownNavigationResult = {
   selectedCategoryId: CategoryId | null;
   selectedCategoryRaw: string | null;
-  isOthersView: boolean;
   level2Ref: React.RefObject<HTMLDivElement | null>;
   handleCategorySelect: (categoryId: CategoryId, categoryRaw: string) => void;
-  handleOthersSelect: () => void;
   handleBackToLevel1: () => void;
 };
 
@@ -34,16 +32,26 @@ export function useTownNavigation({
   const [selectedCategoryId, setSelectedCategoryId] =
     useState<CategoryId | null>(null);
   const [selectedCategoryRaw, setSelectedCategoryRaw] = useState<string | null>(
-    null
+    null,
   );
-  const [isOthersView, setIsOthersView] = useState(false);
+
+  const scrollToLevel2 = () => {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        level2Ref.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+          inline: "nearest",
+        });
+      });
+    });
+  };
 
   // Cerrar nivel 2 cuando cambia la granularidad
   useEffect(() => {
-    const wasLevel2Open = selectedCategoryId !== null || isOthersView;
+    const wasLevel2Open = selectedCategoryId !== null;
     setSelectedCategoryId(null);
     setSelectedCategoryRaw(null);
-    setIsOthersView(false);
 
     if (wasLevel2Open && onScrollToLevel1) {
       setTimeout(() => {
@@ -55,19 +63,15 @@ export function useTownNavigation({
 
   const handleCategorySelect = (
     categoryId: CategoryId,
-    categoryRaw: string
+    categoryRaw: string,
   ) => {
     setSelectedCategoryId(categoryId);
     setSelectedCategoryRaw(categoryRaw);
-    setIsOthersView(false);
 
     // Scroll al nivel 2
     setTimeout(() => {
-      level2Ref.current?.scrollIntoView({
-        behavior: "smooth",
-        block: "start",
-      });
-    }, 100);
+      scrollToLevel2();
+    }, 150);
 
     // Callback externo
     if (onSelectCategory) {
@@ -75,33 +79,16 @@ export function useTownNavigation({
     }
   };
 
-  const handleOthersSelect = () => {
-    setIsOthersView(true);
-    setSelectedCategoryId(null);
-    setSelectedCategoryRaw(null);
-
-    // Scroll al nivel 2
-    setTimeout(() => {
-      level2Ref.current?.scrollIntoView({
-        behavior: "smooth",
-        block: "start",
-      });
-    }, 100);
-  };
-
   const handleBackToLevel1 = () => {
     setSelectedCategoryId(null);
     setSelectedCategoryRaw(null);
-    setIsOthersView(false);
   };
 
   return {
     selectedCategoryId,
     selectedCategoryRaw,
-    isOthersView,
     level2Ref,
     handleCategorySelect,
-    handleOthersSelect,
     handleBackToLevel1,
   };
 }

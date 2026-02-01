@@ -30,43 +30,29 @@ describe("Drilldown Integration Tests", () => {
 
   describe("Navegación Multinivel", () => {
     it("Nivel 1: debe filtrar solo profundidad === 3 (categorías)", async () => {
-      const mockResponseCurrent = {
+      const pattern = "almonte.*";
+      const mockResponse = {
         code: 200,
         output: {
-          "root.almonte": [{ time: "20241020", value: 200 }], // prof=2 → va a Otros
-          "root.almonte.playas": [{ time: "20241020", value: 100 }], // prof=3 → incluir
+          [pattern]: {
+            region: null,
+            topic: null,
+            tags: [
+              { id: "playas", label: "Playas", total: 100 },
+              { id: "__others__", label: "Otros", total: 200 },
+            ],
+            data: {},
+            previous: {},
+          },
         },
       };
 
-      const mockResponsePrevious = {
-        code: 200,
-        output: {
-          "root.almonte.playas": [{ time: "20241019", value: 80 }],
-        },
-      };
-
-      // Mock para children verification
-      const mockVerificationResponse = {
-        code: 200,
-        output: {
-          "root.almonte.playas.matalascañas": [{ time: "20241020", value: 50 }],
-        },
-      };
-
-      let callCount = 0;
-      fetchSpy.mockImplementation(() => {
-        callCount++;
-        const response =
-          callCount === 1
-            ? mockResponseCurrent
-            : callCount === 2
-            ? mockResponsePrevious
-            : mockVerificationResponse;
-        return Promise.resolve({
+      fetchSpy.mockImplementation(() =>
+        Promise.resolve({
           ok: true,
-          json: () => Promise.resolve(response),
-        } as Response);
-      });
+          json: () => Promise.resolve(mockResponse),
+        } as Response),
+      );
 
       const result = await fetchTownCategoryBreakdown({
         townId: "almonte",
@@ -75,29 +61,37 @@ describe("Drilldown Integration Tests", () => {
         endISO: "2024-10-20",
       });
 
-      // Debe incluir solo categorías prof=3 (prof=2 va a Otros, prof=4 no se suma)
       const playasCategory = result.categories.find(
-        (cat) => cat.categoryId === "playas"
+        (cat) => cat.categoryId === "playas",
       );
       expect(playasCategory?.currentTotal).toBe(100); // Solo prof=3
 
       // Total: 100 (playas prof=3) + 200 (prof=2 en Otros)
       const totalFromCategories = result.categories.reduce(
         (sum, cat) => sum + cat.currentTotal,
-        0
+        0,
       );
       expect(totalFromCategories).toBe(300);
     });
 
     it("Nivel 2: debe filtrar solo profundidad === 4 (subcategorías)", async () => {
+      const pattern = "almonte.playas.*";
       const mockResponse = {
-        data: {
-          "root.almonte.playas": [{ time: "20241020", value: 100 }], // prof=3 → excluir
-          "root.almonte.playas.carabeo": [{ time: "20241020", value: 50 }], // prof=4 → incluir
-          "root.almonte.playas.bolonia": [{ time: "20241020", value: 30 }], // prof=4 → incluir
-          "root.almonte.playas.carabeo.norte": [
-            { time: "20241020", value: 10 },
-          ], // prof=5 → excluir
+        code: 200,
+        output: {
+          [pattern]: {
+            region: null,
+            topic: null,
+            tags: [
+              { id: "carabeo", label: "Carabeo", total: 50 },
+              { id: "bolonia", label: "Bolonia", total: 30 },
+            ],
+            data: {
+              carabeo: [{ date: "20241020", value: 50 }],
+              bolonia: [{ date: "20241020", value: 30 }],
+            },
+            previous: {},
+          },
         },
       };
 
@@ -105,7 +99,7 @@ describe("Drilldown Integration Tests", () => {
         Promise.resolve({
           ok: true,
           json: () => Promise.resolve(mockResponse),
-        } as Response)
+        } as Response),
       );
 
       const result = await fetchTownCategorySubcatBreakdown({
@@ -116,15 +110,15 @@ describe("Drilldown Integration Tests", () => {
         endISO: "2024-10-20",
       });
 
-      // Debe incluir solo subcategorías (prof=4)
+      // Debe incluir subcategorías desde tags
       expect(result.subcategories).toHaveLength(2);
       expect(
-        result.subcategories.find((s) => s.subcategoryName === "carabeo")
-          ?.currentTotal
+        result.subcategories.find((s) => s.subcategoryName === "Carabeo")
+          ?.currentTotal,
       ).toBe(50);
       expect(
-        result.subcategories.find((s) => s.subcategoryName === "bolonia")
-          ?.currentTotal
+        result.subcategories.find((s) => s.subcategoryName === "Bolonia")
+          ?.currentTotal,
       ).toBe(30);
     });
   });
@@ -182,16 +176,25 @@ describe("Drilldown Integration Tests", () => {
 
   describe("Modo Anual", () => {
     it("debe agrupar series a YYYY-MM cuando windowGranularity='y'", async () => {
-      // Datos con múltiples días en el mismo mes
+      const pattern = "almonte.playas.*";
       const mockResponse = {
-        data: {
-          "root.almonte.playas.carabeo": [
-            { time: "20241001", value: 10 },
-            { time: "20241015", value: 20 },
-            { time: "20241020", value: 15 },
-            { time: "20241101", value: 25 },
-            { time: "20241115", value: 30 },
-          ],
+        code: 200,
+        output: {
+          [pattern]: {
+            region: null,
+            topic: null,
+            tags: [{ id: "carabeo", label: "Carabeo", total: 100 }],
+            data: {
+              carabeo: [
+                { date: "20241001", value: 10 },
+                { date: "20241015", value: 20 },
+                { date: "20241020", value: 15 },
+                { date: "20241101", value: 25 },
+                { date: "20241115", value: 30 },
+              ],
+            },
+            previous: {},
+          },
         },
       };
 
@@ -199,7 +202,7 @@ describe("Drilldown Integration Tests", () => {
         Promise.resolve({
           ok: true,
           json: () => Promise.resolve(mockResponse),
-        } as Response)
+        } as Response),
       );
 
       const result = await fetchTownCategorySubcatBreakdown({
@@ -211,7 +214,7 @@ describe("Drilldown Integration Tests", () => {
       });
 
       const carabeo = result.subcategories.find(
-        (s) => s.subcategoryName === "carabeo"
+        (s) => s.subcategoryName === "Carabeo",
       );
 
       // Debe tener series agrupadas por mes
@@ -233,11 +236,17 @@ describe("Drilldown Integration Tests", () => {
 
   describe("Empty States y Deltas", () => {
     it("debe renderizar todas las categorías aunque tengan 0 datos", async () => {
+      const pattern = "almonte.*";
       const mockResponse = {
         code: 200,
         output: {
-          "root.almonte.playas": [{ time: "20241020", value: 50 }],
-          // Resto de categorías sin datos
+          [pattern]: {
+            region: null,
+            topic: null,
+            tags: [{ id: "playas", label: "Playas", total: 50 }],
+            data: {},
+            previous: {},
+          },
         },
       };
 
@@ -245,7 +254,7 @@ describe("Drilldown Integration Tests", () => {
         Promise.resolve({
           ok: true,
           json: () => Promise.resolve(mockResponse),
-        } as Response)
+        } as Response),
       );
 
       const result = await fetchTownCategoryBreakdown({
@@ -260,47 +269,33 @@ describe("Drilldown Integration Tests", () => {
       expect(result.categories.length).toBeGreaterThan(1);
 
       const naturalezaCategory = result.categories.find(
-        (cat) => cat.categoryId === "naturaleza"
+        (cat) => cat.categoryId === "naturaleza",
       );
       expect(naturalezaCategory).toBeDefined();
       expect(naturalezaCategory?.currentTotal).toBe(0);
     });
 
     it("debe devolver deltaPct = null cuando prevTotal <= 0", async () => {
-      const mockResponseCurrent = {
+      const pattern = "almonte.*";
+      const mockResponse = {
         code: 200,
         output: {
-          "root.almonte.playas": [{ time: "20241020", value: 50 }],
+          [pattern]: {
+            region: null,
+            topic: null,
+            tags: [{ id: "playas", label: "Playas", total: 50 }],
+            data: {},
+            previous: {},
+          },
         },
       };
 
-      const mockResponsePrevious = {
-        code: 200,
-        output: {}, // Sin datos en previous
-      };
-
-      // Mock para children verification
-      const mockVerificationResponse = {
-        code: 200,
-        output: {
-          "root.almonte.playas.matalascañas": [{ time: "20241020", value: 10 }],
-        },
-      };
-
-      let callCount = 0;
-      fetchSpy.mockImplementation(() => {
-        callCount++;
-        const response =
-          callCount === 1
-            ? mockResponseCurrent
-            : callCount === 2
-            ? mockResponsePrevious
-            : mockVerificationResponse;
-        return Promise.resolve({
+      fetchSpy.mockImplementation(() =>
+        Promise.resolve({
           ok: true,
-          json: () => Promise.resolve(response),
-        } as Response);
-      });
+          json: () => Promise.resolve(mockResponse),
+        } as Response),
+      );
 
       const result = await fetchTownCategoryBreakdown({
         townId: "almonte",
@@ -310,7 +305,7 @@ describe("Drilldown Integration Tests", () => {
       });
 
       const playasCategory = result.categories.find(
-        (cat) => cat.categoryId === "playas"
+        (cat) => cat.categoryId === "playas",
       );
       expect(playasCategory?.currentTotal).toBe(50);
       expect(playasCategory?.prevTotal).toBe(0);
@@ -318,30 +313,28 @@ describe("Drilldown Integration Tests", () => {
     });
 
     it("debe calcular deltaPct correctamente cuando prev > 0", async () => {
-      const mockResponseCurrent = {
+      const pattern = "almonte.*";
+      const mockResponse = {
         code: 200,
         output: {
-          "root.almonte.playas": [{ time: "20241020", value: 150 }],
+          [pattern]: {
+            region: null,
+            topic: null,
+            tags: [{ id: "playas", label: "Playas", total: 150 }],
+            data: {},
+            previous: {
+              playas: [{ date: "20241019", value: 100 }],
+            },
+          },
         },
       };
 
-      const mockResponsePrevious = {
-        code: 200,
-        output: {
-          "root.almonte.playas": [{ time: "20241019", value: 100 }],
-        },
-      };
-
-      let callCount = 0;
-      fetchSpy.mockImplementation(() => {
-        callCount++;
-        const response =
-          callCount === 1 ? mockResponseCurrent : mockResponsePrevious;
-        return Promise.resolve({
+      fetchSpy.mockImplementation(() =>
+        Promise.resolve({
           ok: true,
-          json: () => Promise.resolve(response),
-        } as Response);
-      });
+          json: () => Promise.resolve(mockResponse),
+        } as Response),
+      );
 
       const result = await fetchTownCategoryBreakdown({
         townId: "almonte",
@@ -351,7 +344,7 @@ describe("Drilldown Integration Tests", () => {
       });
 
       const playasCategory = result.categories.find(
-        (cat) => cat.categoryId === "playas"
+        (cat) => cat.categoryId === "playas",
       );
       expect(playasCategory?.currentTotal).toBe(150);
       expect(playasCategory?.prevTotal).toBe(100);
@@ -382,19 +375,29 @@ describe("Drilldown Integration Tests", () => {
         endISO: "2024-10-20",
       });
 
-      expect(capturedBodies.length).toBe(2); // current + previous
-      for (const body of capturedBodies) {
-        // El servicio usa "patterns" no "pattern"
-        expect(body.patterns).toBe("root.almonte.*");
-      }
+      expect(capturedBodies.length).toBe(1);
+      const body = capturedBodies[0];
+      expect(body.patterns).toEqual(["almonte.*"]);
     });
 
     it("Nivel 2 debe usar pattern 'root.<townId>.<categoryId>.*'", async () => {
       fetchSpy.mockImplementation(() =>
         Promise.resolve({
           ok: true,
-          json: () => Promise.resolve({ data: {} }),
-        } as Response)
+          json: () =>
+            Promise.resolve({
+              code: 200,
+              output: {
+                "almonte.playas.*": {
+                  region: null,
+                  topic: null,
+                  tags: [],
+                  data: {},
+                  previous: {},
+                },
+              },
+            }),
+        } as Response),
       );
 
       await fetchTownCategorySubcatBreakdown({
@@ -406,12 +409,10 @@ describe("Drilldown Integration Tests", () => {
       });
 
       const calls = fetchSpy.mock.calls;
-      expect(calls.length).toBe(2); // current + previous
+      expect(calls.length).toBe(1);
 
-      for (const call of calls) {
-        const body = JSON.parse((call[1] as RequestInit).body as string);
-        expect(body.patterns).toBe("root.almonte.playas.*"); // ✅ API usa "patterns" no "pattern"
-      }
+      const body = JSON.parse((calls[0][1] as RequestInit).body as string);
+      expect(body.patterns).toEqual(["almonte.playas.*"]);
     });
   });
 });

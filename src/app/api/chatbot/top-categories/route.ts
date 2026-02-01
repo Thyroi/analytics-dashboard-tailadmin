@@ -1,27 +1,20 @@
 import { NextResponse } from "next/server";
 
-const MINDSAIC_BASE_URL = "https://c01.mindsaic.com:2053";
-const MINDSAIC_PATH = "/audit/tags";
-const MINDSAIC_DB = "project_huelva";
+const MINDSAIC_BASE_URL = "https://c00.mindsaic.com:2053";
+const MINDSAIC_PATH = "/tags/data";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { patterns, granularity, startTime, endTime, db } = body;
+    const { patterns, startTime, endTime, id } = body;
 
     // Validación mínima
-    if (!Array.isArray(patterns) || patterns.length === 0 || !granularity) {
+    if (!Array.isArray(patterns) || patterns.length === 0 || !startTime) {
       return NextResponse.json(
-        { code: 400, error: "patterns (array) y granularity son obligatorios" },
-        { status: 400 }
-      );
-    }
-    if (!["d", "w", "m", "y"].includes(granularity)) {
-      return NextResponse.json(
-        { code: 400, error: "granularity inválida" },
-        { status: 400 }
+        { code: 400, error: "patterns (array) y startTime son obligatorios" },
+        { status: 400 },
       );
     }
 
@@ -35,9 +28,8 @@ export async function POST(req: Request) {
       signal: controller.signal,
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        db: db ?? MINDSAIC_DB,
+        id: id ?? "huelva",
         patterns,
-        granularity,
         ...(startTime ? { startTime } : null),
         ...(endTime ? { endTime } : null),
       }),
@@ -47,7 +39,7 @@ export async function POST(req: Request) {
       const text = await res.text().catch(() => "");
       return NextResponse.json(
         { code: res.status, error: text || res.statusText },
-        { status: 502 }
+        { status: 502 },
       );
     }
 

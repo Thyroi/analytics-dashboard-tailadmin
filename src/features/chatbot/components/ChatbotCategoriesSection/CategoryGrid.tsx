@@ -13,6 +13,10 @@ export function CategoryGrid({
   onCategoryClick,
   selectedCategoryId,
 }: CategoryGridProps) {
+  const visibleCategories = categories.filter(
+    (category) => category.id !== "otros",
+  );
+
   if (isLoading) {
     return <LoadingGrid />;
   }
@@ -21,13 +25,13 @@ export function CategoryGrid({
     return <ErrorState error={error} onRetry={refetch} />;
   }
 
-  if (categories.length === 0) {
+  if (visibleCategories.length === 0) {
     return <EmptyState />;
   }
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-      {categories.map((category) => (
+      {visibleCategories.map((category) => (
         <CategoryCard
           key={category.id}
           data={category}

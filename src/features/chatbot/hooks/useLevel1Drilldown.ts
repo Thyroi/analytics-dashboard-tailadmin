@@ -38,14 +38,14 @@ function buildKey(p: UseLevel1DrilldownParams): unknown[] {
       g: p.granularity,
       start: p.startDate ?? null,
       end: p.endDate ?? null,
-      db: p.db ?? "project_huelva",
+      db: p.db ?? "huelva",
       sum: p.sumStrategy ?? "sum",
     },
   ];
 }
 
 export function useLevel1Drilldown(
-  params: UseLevel1DrilldownParams
+  params: UseLevel1DrilldownParams,
 ): UseLevel1DrilldownResult {
   const query = useQuery({
     queryKey: buildKey(params),

@@ -44,15 +44,18 @@ Object.defineProperty(window, "matchMedia", {
   })),
 });
 
-// Mock console methods in tests to avoid noise
-global.console = {
-  ...console,
-  log: vi.fn(),
-  debug: vi.fn(),
-  info: vi.fn(),
-  warn: vi.fn(),
-  error: vi.fn(),
-};
+// Mock console methods in tests to avoid noise (opt-in)
+const shouldMockConsole = process.env.VITEST_MOCK_CONSOLE === "1";
+if (shouldMockConsole) {
+  global.console = {
+    ...console,
+    log: vi.fn(),
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+  };
+}
 
 // Mock Auth0
 vi.mock("@auth0/nextjs-auth0", () => ({
@@ -92,7 +95,7 @@ vi.mock("react-apexcharts", () => ({
   default: vi
     .fn()
     .mockImplementation(
-      () => `<div data-testid="mock-chart">Chart Component</div>`
+      () => `<div data-testid="mock-chart">Chart Component</div>`,
     ),
 }));
 

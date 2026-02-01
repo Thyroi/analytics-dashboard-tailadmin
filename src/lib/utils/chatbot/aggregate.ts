@@ -27,18 +27,6 @@ export type ApiMeta = {
 export type ApiResponse = { code: number; output: ApiOutput; meta: ApiMeta };
 
 // ===== Tipos de salida =====
-export type TotalsItem = {
-  id: CategoryId | TownId;
-  title: string;
-  currentTotal: number;
-  prevTotal: number;
-};
-
-export type TotalsResult = {
-  categories: ReadonlyArray<TotalsItem>;
-  towns: ReadonlyArray<TotalsItem>;
-};
-
 export type TotalsDebugRow = {
   key: string;
   segments: string[];
@@ -135,7 +123,7 @@ function splitSegmentsAfterRoot(rawKey: string): string[] {
 function detectTownAndCategory(
   rawKey: string,
   townIndex: Map<string, TownId>,
-  catIndex: Map<string, CategoryId>
+  catIndex: Map<string, CategoryId>,
 ): { townId?: TownId; categoryId?: CategoryId; segments: string[] } {
   const segments = splitSegmentsAfterRoot(rawKey);
   if (segments.length === 0) return { segments };
@@ -199,105 +187,6 @@ export function detectTownAndCategoryFromPath(rawKey: string): {
   return detectTownAndCategory(rawKey, townIndex, catIndex);
 }
 
-// ======= FUNCIÓN PRINCIPAL =======
-export function computeCategoryAndTownTotals(
-  api: ApiResponse,
-  opts?: TotalsOptions
-): TotalsResult {
-  const { output, meta } = api;
-
-  const currentStart = compactDate(meta.range.current.start); // YYYYMMDD
-  const currentEnd = compactDate(meta.range.current.end);
-  const prevStart = compactDate(meta.range.previous.start);
-  const prevEnd = compactDate(meta.range.previous.end);
-
-  const catIndex = buildCategorySynIndex();
-  const townIndex = buildTownSynIndex();
-
-  const catTotals: Record<CategoryId, { current: number; prev: number }> =
-    Object.fromEntries(
-      CATEGORY_ID_ORDER.map((id) => [id, { current: 0, prev: 0 }])
-    ) as Record<CategoryId, { current: number; prev: number }>;
-
-  const townTotals: Record<TownId, { current: number; prev: number }> =
-    Object.fromEntries(
-      TOWN_ID_ORDER.map((id) => [id, { current: 0, prev: 0 }])
-    ) as Record<TownId, { current: number; prev: number }>;
-
-  const debug = opts?.debug === true;
-  const onDebugRow = opts?.onDebugRow;
-
-  for (const rawKey of Object.keys(output)) {
-    const { townId, categoryId, segments } = detectTownAndCategory(
-      rawKey,
-      townIndex,
-      catIndex
-    );
-    if (!townId && !categoryId) {
-      if (debug && onDebugRow) {
-        onDebugRow({
-          key: rawKey,
-          segments,
-          addedCurrent: 0,
-          addedPrev: 0,
-        });
-      }
-      continue;
-    }
-
-    let addCur = 0;
-    let addPrev = 0;
-
-    const series = output[rawKey]!;
-    for (const pt of series) {
-      const ymd = pt.time;
-      const v = pt.value ?? 0;
-
-      const isInCurrent = inRange(ymd, currentStart, currentEnd);
-      const isInPrev = inRange(ymd, prevStart, prevEnd);
-
-      if (isInCurrent) addCur += v;
-      if (isInPrev) addPrev += v;
-    }
-
-    if (categoryId) {
-      catTotals[categoryId].current += addCur;
-      catTotals[categoryId].prev += addPrev;
-    }
-    if (townId) {
-      townTotals[townId].current += addCur;
-      townTotals[townId].prev += addPrev;
-    }
-
-    if (debug && onDebugRow) {
-      onDebugRow({
-        key: rawKey,
-        segments,
-        townId,
-        categoryId,
-        addedCurrent: addCur,
-        addedPrev: addPrev,
-      });
-    }
-  }
-
-  const categories: TotalsItem[] = CATEGORY_ID_ORDER.map((id) => ({
-    id,
-    title: CATEGORY_META[id].label,
-    currentTotal: catTotals[id].current,
-    prevTotal: catTotals[id].prev,
-  }));
-
-  const towns: TotalsItem[] = TOWN_ID_ORDER.map((id) => ({
-    id,
-    title: TOWN_META[id].label,
-    currentTotal: townTotals[id].current,
-    prevTotal: townTotals[id].prev,
-  }));
-
-  return { categories, towns };
-}
-
 // ===== NUEVA FUNCIÓN PARA SERIES =====
 
 export type SeriesPoint = { label: string; value: number };
@@ -321,7 +210,7 @@ export type SeriesResult = {
  */
 export function computeCategorySeriesFromChatbot(
   apiResponse: ApiResponse,
-  options: TotalsOptions = {}
+  options: TotalsOptions = {},
 ): SeriesResult {
   const { debug = false, onDebugRow } = options;
   const { output, meta } = apiResponse;
@@ -362,7 +251,7 @@ export function computeCategorySeriesFromChatbot(
     const { categoryId, segments } = detectTownAndCategory(
       rawKey,
       townIndex,
-      catIndex
+      catIndex,
     );
 
     if (!categoryId) {

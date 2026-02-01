@@ -61,7 +61,7 @@ function buildQueryKey(params: UseChatbotCategoryTotalsParams): unknown[] {
       g: params.granularity,
       start: params.startDate ?? null,
       end: params.endDate ?? null,
-      db: params.db ?? "project_huelva",
+      db: params.db ?? "huelva",
     },
   ];
 }
@@ -104,7 +104,7 @@ function transformToCardData(data: CategoryTotalData): CategoryCardData {
  * ```
  */
 export function useChatbotCategoryTotals(
-  params: UseChatbotCategoryTotalsParams
+  params: UseChatbotCategoryTotalsParams,
 ): UseChatbotCategoryTotalsResult {
   const query = useQuery({
     queryKey: buildQueryKey(params),

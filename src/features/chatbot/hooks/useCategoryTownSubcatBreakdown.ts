@@ -25,8 +25,6 @@ export type UseCategoryTownSubcatBreakdownParams = {
   windowGranularity?: WindowGranularity;
   db?: string;
   enabled?: boolean;
-  representativeCategoryRaw?: string | null;
-  representativeTownRaw?: string | null;
 };
 
 export type UseCategoryTownSubcatBreakdownResult = {
@@ -52,10 +50,8 @@ export function useCategoryTownSubcatBreakdown({
   startISO = null,
   endISO = null,
   windowGranularity = "d",
-  db = "project_huelva",
+  db = "huelva",
   enabled = true,
-  representativeCategoryRaw = null,
-  representativeTownRaw = null,
 }: UseCategoryTownSubcatBreakdownParams): UseCategoryTownSubcatBreakdownResult {
   const queryClient = useQueryClient();
 
@@ -68,8 +64,6 @@ export function useCategoryTownSubcatBreakdown({
     {
       categoryId,
       townId,
-      representativeCategoryRaw,
-      representativeTownRaw,
       startISO,
       endISO,
       g: windowGranularity,
@@ -88,8 +82,6 @@ export function useCategoryTownSubcatBreakdown({
       return fetchCategoryTownSubcatBreakdown({
         categoryId,
         townId,
-        representativeCategoryRaw,
-        representativeTownRaw,
         startISO,
         endISO,
         windowGranularity,

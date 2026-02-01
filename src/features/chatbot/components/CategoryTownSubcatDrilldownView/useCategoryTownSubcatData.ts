@@ -1,4 +1,3 @@
-import { CATEGORY_META } from "@/lib/taxonomy/categories";
 import type { DonutDatum } from "@/lib/types";
 import { useMemo } from "react";
 import type {
@@ -14,9 +13,6 @@ import { useCategoryTownSubcatBucketing } from "./useCategoryTownSubcatBucketing
  */
 export function useCategoryTownSubcatData({
   data,
-  categoryId,
-  townId,
-  townRaw,
   granularity,
 }: UseCategoryTownSubcatDataParams): CategoryTownSubcatDataResult {
   const startDate = data?.meta?.range?.current?.start;
@@ -25,7 +21,7 @@ export function useCategoryTownSubcatData({
   const { bucketLabels, toBucketKey } = useCategoryTownSubcatBucketing(
     startDate,
     endDate,
-    granularity
+    granularity,
   );
 
   return useMemo(() => {
@@ -52,7 +48,7 @@ export function useCategoryTownSubcatData({
 
     const total = subcategories.reduce(
       (sum, subcat) => sum + subcat.currentTotal,
-      0
+      0,
     );
 
     // Insights: top 3 subcategorías
@@ -64,51 +60,20 @@ export function useCategoryTownSubcatData({
         delta: subcat.deltaPercent,
       }));
 
-    // Helper: parse raw maps (keys depth 4: root.<category>.<town>.<subcat>)
+    // Helper: parse raw maps (keys = subcategory id)
     const parseRawToMap = (
-      raw: Record<string, Array<{ time: string; value: number }>> | undefined
+      raw: Record<string, Array<{ time: string; value: number }>> | undefined,
     ) => {
       const map = new Map<string, Record<string, number>>();
       if (!raw) return map;
-
-      // Normalizar: eliminar acentos y lowercase
-      const normalize = (s: string) =>
-        s
-          .normalize("NFD")
-          .replace(/[\u0300-\u036f]/g, "")
-          .toLowerCase()
-          .trim();
-
-      const { token: categoryToken } = CATEGORY_META[categoryId]
-        ? { token: CATEGORY_META[categoryId].label.toLowerCase() }
-        : { token: categoryId.toLowerCase() };
-
-      const normalizedCategoryToken = normalize(categoryToken);
-      const normalizedTownId = normalize(townId);
-      const townTokenToMatch = townRaw ? normalize(townRaw) : normalizedTownId;
-
       for (const [key, series] of Object.entries(raw)) {
-        const parts = key.split(".");
-        if (parts.length !== 4 || parts[0] !== "root") continue;
-
-        const normalizedCId = normalize(parts[1]);
-        const normalizedTId = normalize(parts[2]);
-
-        // Ensure matches this category/town ordering
-        if (
-          normalizedCId !== normalizedCategoryToken ||
-          normalizedTId !== townTokenToMatch
-        )
-          continue;
-
-        const rawSub = parts[3];
-        if (!rawSub) continue;
-        const sub = rawSub.trim().toLowerCase();
+        if (!key) continue;
+        const sub = key.trim().toLowerCase();
         const dateMap: Record<string, number> = map.get(sub) || {};
         for (const p of series) {
           const dIso = `${p.time.slice(0, 4)}-${p.time.slice(
             4,
-            6
+            6,
           )}-${p.time.slice(6, 8)}`;
           const bucket = toBucketKey(dIso);
           dateMap[bucket] = (dateMap[bucket] || 0) + p.value;
@@ -128,7 +93,7 @@ export function useCategoryTownSubcatData({
     }
 
     const subKeys = Array.from(
-      new Set([...rawCurrentMap.keys(), ...Array.from(nameMap.keys())])
+      new Set([...rawCurrentMap.keys(), ...Array.from(nameMap.keys())]),
     );
 
     // Limit to top-K subcategories
@@ -137,7 +102,7 @@ export function useCategoryTownSubcatData({
         const cur = rawCurrentMap.get(k) || {};
         const t = Object.values(cur).reduce((a, b) => a + b, 0);
         return { key: k, total: t };
-      }
+      },
     );
     totalBySub.sort((a, b) => b.total - a.total);
     const K = 6;
@@ -193,5 +158,5 @@ export function useCategoryTownSubcatData({
       groupedCategories: bucketLabels,
       groupedSeries,
     };
-  }, [data, categoryId, townId, townRaw, bucketLabels, toBucketKey]);
+  }, [data, bucketLabels, toBucketKey]);
 }

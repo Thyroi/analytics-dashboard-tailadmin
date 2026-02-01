@@ -2,10 +2,9 @@
  * Tests para townCategorySubcatBreakdown service (PR #13)
  *
  * Verifica:
- * - Filtrado profundidad==4
- * - Normalización de nombres de subcategorías
+ * - Subcategorías desde tags (v2)
  * - Agrupación YYYY-MM para granularidad anual
- * - POST dual con pattern correcto
+ * - POST único con pattern correcto
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -22,13 +21,20 @@ describe("fetchTownCategorySubcatBreakdown", () => {
     vi.restoreAllMocks();
   });
 
-  it("debe filtrar solo claves con profundidad === 4", async () => {
+  it("debe mapear subcategorías desde tags", async () => {
+    const pattern = "almonte.playas.*";
     const mockResponse = {
-      data: {
-        "root.almonte.playas.carabeo": [{ time: "20241020", value: 50 }], // prof=4 → incluir
-        "root.almonte.playas": [{ time: "20241020", value: 100 }], // prof=3 → excluir
-        "root.almonte.playas.carabeo.extra": [{ time: "20241020", value: 10 }], // prof=5 → excluir
-        "root.almonte.sabor.local": [{ time: "20241020", value: 30 }], // prof=4 → incluir
+      code: 200,
+      output: {
+        [pattern]: {
+          region: null,
+          topic: null,
+          tags: [{ id: "carabeo", label: "Carabeo", total: 50 }],
+          data: {
+            carabeo: [{ date: "20241020", value: 50 }],
+          },
+          previous: {},
+        },
       },
     };
 
@@ -48,28 +54,32 @@ describe("fetchTownCategorySubcatBreakdown", () => {
       endISO: "2024-10-20",
     });
 
-    // Verificar que solo se procesó profundidad==4
     const carabeoSubcat = result.subcategories.find(
-      (s) => s.subcategoryName === "carabeo"
+      (s) => s.subcategoryName === "Carabeo",
     );
     expect(carabeoSubcat?.currentTotal).toBe(50);
-
-    // No debe incluir "local" porque es de categoría "sabor", no "playas"
-    const localSubcat = result.subcategories.find(
-      (s) => s.subcategoryName === "local"
-    );
-    expect(localSubcat).toBeUndefined();
   });
 
-  it("debe normalizar nombres de subcategorías (trim, espacios, lowercase)", async () => {
+  it("debe usar label si está disponible", async () => {
+    const pattern = "almonte.playas.*";
     const mockResponse = {
-      data: {
-        "root.almonte.playas.Playa  del    Carmen": [
-          { time: "20241020", value: 25 },
-        ],
-        "root.almonte.playas.playa  Del  CARMEN": [
-          { time: "20241020", value: 15 },
-        ],
+      code: 200,
+      output: {
+        [pattern]: {
+          region: null,
+          topic: null,
+          tags: [
+            {
+              id: "playa_del_carmen",
+              label: "Playa del Carmen",
+              total: 40,
+            },
+          ],
+          data: {
+            playa_del_carmen: [{ date: "20241020", value: 40 }],
+          },
+          previous: {},
+        },
       },
     };
 
@@ -77,7 +87,7 @@ describe("fetchTownCategorySubcatBreakdown", () => {
       Promise.resolve({
         ok: true,
         json: () => Promise.resolve(mockResponse),
-      } as Response)
+      } as Response),
     );
 
     const result = await fetchTownCategorySubcatBreakdown({
@@ -88,18 +98,29 @@ describe("fetchTownCategorySubcatBreakdown", () => {
       endISO: "2024-10-20",
     });
 
-    // Debe agrupar las dos variantes en una sola subcategoría normalizada
     expect(result.subcategories).toHaveLength(1);
-    expect(result.subcategories[0].subcategoryName).toBe("playa del carmen");
-    expect(result.subcategories[0].currentTotal).toBe(40); // 25 + 15
+    expect(result.subcategories[0].subcategoryName).toBe("Playa del Carmen");
+    expect(result.subcategories[0].currentTotal).toBe(40);
   });
 
-  it("debe usar el pattern correcto: root.<townId>.<categoryId>.*", async () => {
+  it("debe usar el pattern correcto: <town>.<category>.*", async () => {
     fetchSpy.mockImplementation(() =>
       Promise.resolve({
         ok: true,
-        json: () => Promise.resolve({ data: {} }),
-      } as Response)
+        json: () =>
+          Promise.resolve({
+            code: 200,
+            output: {
+              "almonte.playas.*": {
+                region: null,
+                topic: null,
+                tags: [],
+                data: {},
+                previous: {},
+              },
+            },
+          }),
+      } as Response),
     );
 
     await fetchTownCategorySubcatBreakdown({
@@ -110,38 +131,36 @@ describe("fetchTownCategorySubcatBreakdown", () => {
       endISO: "2024-10-20",
     });
 
-    // Verificar que ambos POSTs usan el pattern correcto
     const calls = fetchSpy.mock.calls;
-    expect(calls.length).toBe(2); // current + previous
-
-    for (const call of calls) {
-      const body = JSON.parse(call[1].body);
-      expect(body.patterns).toBe("root.almonte.playas.*");
-      expect(body.granularity).toBe("d");
-    }
+    expect(calls.length).toBe(1);
+    const body = JSON.parse(calls[0][1].body);
+    expect(body.patterns).toEqual(["almonte.playas.*"]);
+    expect(body.id).toBe("huelva");
   });
 
   it("debe calcular deltaPct = null si prevTotal <= 0", async () => {
-    const mockResponseCurrent = {
-      data: {
-        "root.almonte.playas.carabeo": [{ time: "20241020", value: 50 }],
+    const pattern = "almonte.playas.*";
+    const mockResponse = {
+      code: 200,
+      output: {
+        [pattern]: {
+          region: null,
+          topic: null,
+          tags: [{ id: "carabeo", label: "Carabeo", total: 50 }],
+          data: {
+            carabeo: [{ date: "20241020", value: 50 }],
+          },
+          previous: {},
+        },
       },
     };
 
-    const mockResponsePrevious = {
-      data: {}, // Sin datos en previous
-    };
-
-    let callCount = 0;
-    fetchSpy.mockImplementation(() => {
-      callCount++;
-      const response =
-        callCount === 1 ? mockResponseCurrent : mockResponsePrevious;
-      return Promise.resolve({
+    fetchSpy.mockImplementation(() =>
+      Promise.resolve({
         ok: true,
-        json: () => Promise.resolve(response),
-      } as Response);
-    });
+        json: () => Promise.resolve(mockResponse),
+      } as Response),
+    );
 
     const result = await fetchTownCategorySubcatBreakdown({
       townId: "almonte",
@@ -161,8 +180,20 @@ describe("fetchTownCategorySubcatBreakdown", () => {
     fetchSpy.mockImplementation(() =>
       Promise.resolve({
         ok: true,
-        json: () => Promise.resolve({ data: {} }),
-      } as Response)
+        json: () =>
+          Promise.resolve({
+            code: 200,
+            output: {
+              "almonte.playas.*": {
+                region: null,
+                topic: null,
+                tags: [],
+                data: {},
+                previous: {},
+              },
+            },
+          }),
+      } as Response),
     );
 
     const result = await fetchTownCategorySubcatBreakdown({

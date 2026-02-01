@@ -11,13 +11,11 @@
  */
 
 import {
-  fetchChatbotTotals,
-  type ChatbotTotalsResponse,
-} from "@/lib/services/chatbot/totals";
+  fetchCategoryTownBreakdown,
+  type CategoryTownBreakdownResponse,
+} from "@/lib/services/chatbot/categoryTownBreakdown";
 import type { CategoryId } from "@/lib/taxonomy/categories";
 import type { DonutDatum, Granularity, SeriesPoint } from "@/lib/types";
-import { buildSeriesAndDonutFocused } from "@/lib/utils/data";
-import { computeRangesForSeries } from "@/lib/utils/time/timeWindows";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 
@@ -62,7 +60,7 @@ type LoadingState = {
 
 type ReadyState = {
   status: "ready";
-  data: ChatbotTotalsResponse;
+  data: CategoryTownBreakdownResponse;
   subcategories: SubcategoryData[];
   lineSeriesData: SeriesPoint[];
   donutData: DonutDatum[];
@@ -95,7 +93,7 @@ const EMPTY_DONUT_DATA: DonutDatum[] = [];
  * Hook principal para obtener drilldown de categoría
  */
 export function useCategoryDrilldown(
-  options: UseCategoryDrilldownOptions
+  options: UseCategoryDrilldownOptions,
 ): CategoryDrilldownState {
   const {
     categoryId,
@@ -107,25 +105,27 @@ export function useCategoryDrilldown(
   } = options;
 
   // Query para obtener datos del chatbot usando fetchChatbotTotals (igual que useCategoryDetails)
-  const chatbotQuery = useQuery<ChatbotTotalsResponse>({
-    queryKey: ["chatbot", "totals", granularity, startDate, endDate],
-    queryFn: () => {
-      // Usar computeRangesForSeries de timeWindows.ts para consistencia
-      // Esta función maneja correctamente el comportamiento de Series:
-      // - Granularidad "d" = 7 días
-      // - Previous = ventana contigua del mismo tamaño
-      const ranges = computeRangesForSeries(granularity, startDate, endDate);
-
-      return fetchChatbotTotals({
-        granularity,
-        startDate: ranges.previous.start,
-        endDate: ranges.current.end,
-      });
-    },
+  const chatbotQuery = useQuery<CategoryTownBreakdownResponse>({
+    queryKey: [
+      "chatbot",
+      "category",
+      "drilldown",
+      categoryId,
+      granularity,
+      startDate,
+      endDate,
+    ],
+    queryFn: () =>
+      fetchCategoryTownBreakdown({
+        categoryId,
+        startISO: startDate ?? null,
+        endISO: endDate ?? null,
+        windowGranularity: granularity,
+      }),
     enabled: enabled && !!categoryId,
     refetchInterval,
-    staleTime: 1000 * 60 * 5, // 5 minutos
-    gcTime: 1000 * 60 * 10, // 10 minutos
+    staleTime: 1000 * 60 * 5,
+    gcTime: 1000 * 60 * 10,
   });
 
   // Procesar datos del chatbot usando buildSeriesAndDonutFocused (misma lógica que useCategoryDetails)
@@ -140,43 +140,27 @@ export function useCategoryDrilldown(
     }
 
     try {
-      // Usar computeRangesForSeries de timeWindows.ts (comportamiento Series estándar)
-      const ranges = computeRangesForSeries(granularity, startDate, endDate);
+      const result = chatbotQuery.data;
+      const donutData = result.towns
+        .filter((item) => item.currentTotal > 0)
+        .map((item) => ({ label: item.label, value: item.currentTotal }));
 
-      // Usar buildSeriesAndDonutFocused para procesar los datos (igual que useCategoryDetails)
-      const result = buildSeriesAndDonutFocused(
-        {
-          granularity,
-          currentRange: ranges.current,
-          prevRange: ranges.previous,
-          focus: { type: "category", id: categoryId },
-        },
-        chatbotQuery.data
-      );
-
-      // Convertir a formato compatible con el componente de drilldown
-      const subcategories: SubcategoryData[] = result.donutData.map((item) => ({
+      const subcategories: SubcategoryData[] = result.towns.map((item) => ({
         label: item.label,
-        totalValue: item.value,
-        timeSeriesData: result.series.current
-          .filter((point) => point.label.includes(item.label))
-          .map((point) => ({
-            time: point.label, // Usar label como time para compatibilidad
-            value: point.value,
-          })),
+        totalValue: item.currentTotal,
+        timeSeriesData: [],
       }));
 
-      // Usar directamente las series de línea que devuelve buildSeriesAndDonutFocused
-      const lineSeriesData = result.series.current;
-      const totalInteractions = result.donutData.reduce(
-        (sum, item) => sum + item.value,
-        0
+      const lineSeriesData = result.series?.current ?? [];
+      const totalInteractions = result.towns.reduce(
+        (sum, item) => sum + item.currentTotal,
+        0,
       );
 
       return {
         subcategories,
         lineSeriesData,
-        donutData: result.donutData,
+        donutData,
         totalInteractions,
       };
     } catch {
@@ -187,7 +171,7 @@ export function useCategoryDrilldown(
         totalInteractions: 0,
       };
     }
-  }, [chatbotQuery.data, categoryId, granularity, startDate, endDate]);
+  }, [chatbotQuery.data, categoryId]);
 
   // Estados basados en la query del chatbot
   if (chatbotQuery.isLoading) {
@@ -253,7 +237,7 @@ export function useChatbotCategoryDrilldown(
   categoryId: CategoryId,
   granularity: Granularity,
   endDate?: string,
-  startDate?: string
+  startDate?: string,
 ): {
   subcategories: SubcategoryData[];
   lineSeriesData: SeriesPoint[];

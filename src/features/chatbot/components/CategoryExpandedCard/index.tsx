@@ -68,7 +68,7 @@ export default function CategoryExpandedCard({
     granularity,
     startDate,
     endDate,
-    db: "project_huelva",
+    db: "huelva",
     sumStrategy: "sum",
     debug: false,
   });
@@ -96,11 +96,8 @@ export default function CategoryExpandedCard({
     const slice = level1Data.donutData.find((s) => s.label === label);
     if (!slice) return;
 
-    // Vista "Otros"
-    if (slice.id === "otros") {
-      navigation.handleOthersSelect();
-      return;
-    }
+    // "Otros" no es clickeable en nivel 1
+    if (slice.id === "otros") return;
 
     // Pueblo normal
     const townId = slice.id as TownId;
@@ -116,12 +113,7 @@ export default function CategoryExpandedCard({
   }
 
   // Empty state solo cuando NO está cargando y no hay datos
-  if (
-    !isLoading &&
-    (!level1Data?.donutData ||
-      level1Data.donutData.length === 0 ||
-      totalInteractions === 0)
-  ) {
+  if (!isLoading && (!donutData || donutData.length === 0)) {
     return (
       <CategoryEmptyState
         title={categoryLabel}
@@ -141,9 +133,7 @@ export default function CategoryExpandedCard({
         imgSrc={categoryIcon}
         onClose={onClose}
         onBack={
-          navigation.selectedTownId || navigation.isOthersView
-            ? navigation.handleBackToLevel1
-            : undefined
+          navigation.selectedTownId ? navigation.handleBackToLevel1 : undefined
         }
       />
 
@@ -176,8 +166,6 @@ export default function CategoryExpandedCard({
         categoryRaw={categoryRaw}
         selectedTownId={navigation.selectedTownId}
         selectedTownRaw={navigation.selectedTownRaw}
-        isOthersView={navigation.isOthersView}
-        otrosDetail={level1Data?.otrosDetail || []}
         granularity={granularity}
         startDate={startDate}
         endDate={endDate}
