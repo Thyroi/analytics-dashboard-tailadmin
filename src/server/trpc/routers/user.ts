@@ -1,5 +1,8 @@
 // server/trpc/routers/user.ts
 import { Prisma } from "@prisma/client";
+import { TRPCError } from "@trpc/server";
+import argon2 from "argon2";
+import { z } from "zod";
 import { protectedProcedure, publicProcedure, router } from "../router";
 import {
   ProfileSchema,
@@ -143,5 +146,47 @@ export const userRouter = router({
         ...saved,
         social: normalizeSocialFromPrisma(saved.social ?? null),
       };
+    }),
+
+  /** === CHANGE PASSWORD === */
+  changePassword: protectedProcedure
+    .input(
+      z.object({
+        currentPassword: z.string().min(1),
+        newPassword: z.string().min(8),
+      }),
+    )
+    .output(z.object({ ok: z.literal(true) }))
+    .mutation(async ({ ctx, input }) => {
+      const dbUser = await ctx.prisma.user.findUnique({
+        where: { id: ctx.dbUser!.id },
+        select: { password: true },
+      });
+
+      if (!dbUser?.password) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Este usuario no tiene contraseña local",
+        });
+      }
+
+      const isValid = await argon2.verify(
+        dbUser.password,
+        input.currentPassword,
+      );
+      if (!isValid) {
+        throw new TRPCError({
+          code: "UNAUTHORIZED",
+          message: "Contraseña actual inválida",
+        });
+      }
+
+      const hashed = await argon2.hash(input.newPassword);
+      await ctx.prisma.user.update({
+        where: { id: ctx.dbUser!.id },
+        data: { password: hashed },
+      });
+
+      return { ok: true };
     }),
 });

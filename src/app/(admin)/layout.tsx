@@ -1,4 +1,3 @@
-import AdminLayoutShell from "@/layout/AdminLayout";
 import { auth0 } from "@/lib/auth0";
 import { verifyJWT } from "@/lib/jwt";
 import { cookies } from "next/headers";
@@ -22,5 +21,5 @@ export default async function AdminSectionLayout({
   children: React.ReactNode;
 }) {
   await requireSession();
-  return <AdminLayoutShell>{children}</AdminLayoutShell>;
+  return <>{children}</>;
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import EditProfileModal from "@/components/common/EditProfileModal";
+import ChangePasswordModal from "@/components/dashboard/Modal/ChangePasswordModal";
 import { trpc } from "@/lib/trpc/client";
 import { useMemo, useState } from "react";
 import ProfileAddress from "./ProfileAddress";
@@ -56,16 +57,21 @@ export default function ProfileClient() {
 function ProfileView({ me }: { me: Me }) {
   const { email, profile } = me;
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
 
   const socials = useMemo(
     () => parseSocial(profile?.social),
-    [profile?.social]
+    [profile?.social],
   );
 
   return (
     <>
       <div className="space-y-6">
-        <ProfileHeader me={me} onEditClick={() => setIsEditModalOpen(true)} />
+        <ProfileHeader
+          me={me}
+          onEditClick={() => setIsEditModalOpen(true)}
+          onChangePasswordClick={() => setIsPasswordModalOpen(true)}
+        />
         <ProfilePersonalInfo profile={profile} email={email} />
         <ProfileAddress profile={profile} />
         {hasAnySocial(socials) && <ProfileSocialNetworks socials={socials} />}
@@ -75,6 +81,10 @@ function ProfileView({ me }: { me: Me }) {
         isOpen={isEditModalOpen}
         onClose={() => setIsEditModalOpen(false)}
         user={me}
+      />
+      <ChangePasswordModal
+        isOpen={isPasswordModalOpen}
+        onClose={() => setIsPasswordModalOpen(false)}
       />
     </>
   );

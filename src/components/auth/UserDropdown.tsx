@@ -48,11 +48,13 @@ export default function UserDropdown({ user, className = "" }: Props) {
       await fetch("/api/auth/local/logout", { method: "POST" });
 
       // 2. Redirigir a logout de Auth0 (que también limpia su sesión)
-      window.location.href = "/auth/logout";
+      const returnTo = encodeURIComponent(`${window.location.origin}/login`);
+      window.location.href = `/auth/logout?returnTo=${returnTo}`;
     } catch (error) {
       console.error("Error al cerrar sesión:", error);
       // Aún así redirigir a Auth0 logout
-      window.location.href = "/auth/logout";
+      const returnTo = encodeURIComponent(`${window.location.origin}/login`);
+      window.location.href = `/auth/logout?returnTo=${returnTo}`;
     }
   };
 
