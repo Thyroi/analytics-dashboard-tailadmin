@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import { useEffect } from "react";
 import { ChartContainer } from "./ChartContainer";
 import { ChartHeader } from "./ChartHeader";
 import { useChartOptions } from "./chartOptions";
@@ -27,6 +28,18 @@ export default function GroupedBarChart({
 }: GroupedBarChartProps) {
   const { chartSeries, colors } = useChartColors(series, defaultColors);
 
+  useEffect(() => {
+    const id = setTimeout(() => {
+      try {
+        window.dispatchEvent(new Event("resize"));
+      } catch {
+        // no-op
+      }
+    }, 0);
+
+    return () => clearTimeout(id);
+  }, [categories.length, series.length, height]);
+
   const options = useChartOptions({
     categories,
     colors,
@@ -50,6 +63,7 @@ export default function GroupedBarChart({
             series={chartSeries}
             type="bar"
             height={height}
+            width="100%"
           />
         </div>
       </div>

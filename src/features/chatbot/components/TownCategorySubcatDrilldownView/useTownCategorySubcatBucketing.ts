@@ -1,4 +1,5 @@
 import type { WindowGranularity } from "@/lib/types";
+import { addDaysUTC, parseISO, toISO } from "@/lib/utils/time/datetime";
 import { useMemo } from "react";
 
 interface BucketingResult {
@@ -13,19 +14,17 @@ interface BucketingResult {
 export function useTownCategorySubcatBucketing(
   startDate: string | undefined,
   endDate: string | undefined,
-  windowGranularity: WindowGranularity
+  windowGranularity: WindowGranularity,
 ): BucketingResult {
   return useMemo(() => {
     // Build date categories from range (inclusive)
     const dates: string[] = [];
     if (startDate && endDate) {
-      const s = new Date(startDate);
-      const e = new Date(endDate);
-      for (let d = new Date(s); d <= e; d.setDate(d.getDate() + 1)) {
-        const yyyy = d.getFullYear();
-        const mm = String(d.getMonth() + 1).padStart(2, "0");
-        const dd = String(d.getDate()).padStart(2, "0");
-        dates.push(`${yyyy}-${mm}-${dd}`);
+      let d = parseISO(startDate);
+      const e = parseISO(endDate);
+      while (d <= e) {
+        dates.push(toISO(d));
+        d = addDaysUTC(d, 1);
       }
     }
 
@@ -46,7 +45,7 @@ export function useTownCategorySubcatBucketing(
       if (bucketMode === "m") {
         return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(
           2,
-          "0"
+          "0",
         )}`;
       }
       // week bucket (ISO week-ish label - Monday of week)

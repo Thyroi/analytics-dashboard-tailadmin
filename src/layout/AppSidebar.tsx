@@ -43,14 +43,10 @@ export default function AppSidebar() {
       if (b === "/") return a === "/"; // Home solo exacto
       return a === b || a.startsWith(b + "/"); // Marca activo también en subrutas
     },
-    [pathname]
+    [pathname],
   );
 
-  const secondaryItems = useMemo(
-    () =>
-      isAdmin ? [...SECONDARY_ITEMS_BASE, ADMIN_ITEM] : SECONDARY_ITEMS_BASE,
-    [isAdmin]
-  );
+  const secondaryItems = useMemo(() => SECONDARY_ITEMS_BASE, []);
 
   return (
     <aside
@@ -59,8 +55,8 @@ export default function AppSidebar() {
           isExpanded || isMobileOpen
             ? "w-[290px]"
             : isHovered
-            ? "w-[290px]"
-            : "w-[90px]"
+              ? "w-[290px]"
+              : "w-[90px]"
         }
         ${isMobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
       `}
@@ -81,6 +77,12 @@ export default function AppSidebar() {
         <SidebarSection items={PRIMARY_ITEMS} isActive={isActive} />
         <div className="my-3 border-t border-gray-200 dark:border-gray-800" />
         <SidebarSection items={secondaryItems} isActive={isActive} />
+        {isAdmin && (
+          <>
+            <div className="my-3 border-t border-gray-200 dark:border-gray-800" />
+            <SidebarSection items={[ADMIN_ITEM]} isActive={isActive} />
+          </>
+        )}
       </nav>
     </aside>
   );

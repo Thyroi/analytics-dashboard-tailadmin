@@ -15,7 +15,7 @@ export default function AppHeader() {
   if (!mounted) return null;
 
   return (
-    <header className="flex items-center h-14 px-4 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
+    <header className="sticky top-0 z-40 flex items-center h-14 px-4 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
       {/* Botón menú (izquierda) */}
       <button
         className="lg:hidden p-2 text-gray-700 dark:text-gray-300"

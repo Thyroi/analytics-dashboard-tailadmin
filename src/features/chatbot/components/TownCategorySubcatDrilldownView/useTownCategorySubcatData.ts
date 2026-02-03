@@ -87,6 +87,18 @@ export function useTownCategorySubcatData({
 
     const rawCurrentMap = parseRawToMap(data?.raw?.current);
 
+    const labelsFromRaw = Array.from(rawCurrentMap.values()).reduce(
+      (acc: Set<string>, dateMap) => {
+        Object.keys(dateMap).forEach((k) => acc.add(k));
+        return acc;
+      },
+      new Set<string>(),
+    );
+    const effectiveBucketLabels =
+      windowGranularity === "d" && labelsFromRaw.size > 0
+        ? Array.from(labelsFromRaw).sort()
+        : bucketLabels;
+
     // Gather unique subcategory keys preserving original label
     const nameMap = new Map<string, string>();
     for (const s of subcategories) {
@@ -96,6 +108,67 @@ export function useTownCategorySubcatData({
     const subKeys = Array.from(
       new Set([...rawCurrentMap.keys(), ...Array.from(nameMap.keys())]),
     );
+
+    const K = 6;
+
+    // Fallback para granularidad diaria cuando no hay series crudas
+    if (windowGranularity === "d" && rawCurrentMap.size === 0) {
+      const totals = subcategories
+        .map((s) => ({
+          key: s.subcategoryName.toLowerCase(),
+          label: s.subcategoryName,
+          total: s.currentTotal,
+        }))
+        .sort((a, b) => b.total - a.total);
+
+      const top = totals.slice(0, K);
+      const other = totals.slice(K);
+
+      const palette = [
+        "#3B82F6",
+        "#10B981",
+        "#F59E0B",
+        "#EF4444",
+        "#8B5CF6",
+        "#06B6D4",
+      ];
+      const otherColor = "#9CA3AF";
+
+      const groupedSeries: Array<{
+        name: string;
+        data: number[];
+        color?: string;
+      }> = [];
+
+      const lastIdx = Math.max(effectiveBucketLabels.length - 1, 0);
+
+      top.forEach((t, idx) => {
+        const dataArr = effectiveBucketLabels.map((_, i) =>
+          i === lastIdx ? t.total : 0,
+        );
+        groupedSeries.push({
+          name: t.label,
+          data: dataArr,
+          color: palette[idx % palette.length],
+        });
+      });
+
+      if (other.length > 0) {
+        const otherTotal = other.reduce((sum, s) => sum + s.total, 0);
+        const dataArr = effectiveBucketLabels.map((_, i) =>
+          i === lastIdx ? otherTotal : 0,
+        );
+        groupedSeries.push({ name: "Otros", data: dataArr, color: otherColor });
+      }
+
+      return {
+        donutData: donut,
+        totalInteractions: total,
+        insights: topSubcats,
+        groupedCategories: effectiveBucketLabels,
+        groupedSeries,
+      };
+    }
 
     // Limit to top-K subcategories
     const totalBySub: Array<{ key: string; total: number }> = subKeys.map(
@@ -109,7 +182,6 @@ export function useTownCategorySubcatData({
       },
     );
     totalBySub.sort((a, b) => b.total - a.total);
-    const K = 6;
     const topKeys = totalBySub.slice(0, K).map((t) => t.key);
     const otherKeys = totalBySub.slice(K).map((t) => t.key);
 
@@ -138,7 +210,7 @@ export function useTownCategorySubcatData({
     for (const k of topKeys) {
       const label = nameMap.get(k) || k;
       const curMap = rawCurrentMap.get(k) || {};
-      const curData = bucketLabels.map((b) => curMap[b] || 0);
+      const curData = effectiveBucketLabels.map((b) => curMap[b] || 0);
       const color = colorsByName[k];
       groupedSeries.push({ name: label, data: curData, color });
     }
@@ -147,11 +219,11 @@ export function useTownCategorySubcatData({
       const curAgg: Record<string, number> = {};
       for (const k of otherKeys) {
         const curMap = rawCurrentMap.get(k) || {};
-        for (const b of bucketLabels) {
+        for (const b of effectiveBucketLabels) {
           curAgg[b] = (curAgg[b] || 0) + (curMap[b] || 0);
         }
       }
-      const curData = bucketLabels.map((b) => curAgg[b] || 0);
+      const curData = effectiveBucketLabels.map((b) => curAgg[b] || 0);
       groupedSeries.push({ name: `Otros`, data: curData, color: otherColor });
     }
 
@@ -159,8 +231,8 @@ export function useTownCategorySubcatData({
       donutData: donut,
       totalInteractions: total,
       insights: topSubcats,
-      groupedCategories: bucketLabels,
+      groupedCategories: effectiveBucketLabels,
       groupedSeries,
     };
-  }, [data, bucketLabels, toBucketKey]);
+  }, [data, bucketLabels, toBucketKey, windowGranularity]);
 }
