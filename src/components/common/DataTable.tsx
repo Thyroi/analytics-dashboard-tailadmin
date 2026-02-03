@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
 import { MagnifyingGlassIcon } from "@heroicons/react/24/outline";
+import { useMemo, useState } from "react";
 
 export type Column<T> = {
   header: string;
@@ -18,6 +18,7 @@ export type RowAction<T> = {
   onClick: (row: T) => void | Promise<void>;
   tone?: "default" | "primary" | "danger";
   icon?: React.ReactNode;
+  iconOnly?: boolean;
 };
 
 type DataTableProps<T> = {
@@ -56,7 +57,7 @@ export default function DataTable<T>({
         if (!c.searchValue) return false;
         const v = c.searchValue(row)?.toLowerCase?.() ?? "";
         return v.includes(lowers);
-      })
+      }),
     );
   }, [q, data, columns, enableSearch, onSearchChange]);
 
@@ -135,17 +136,24 @@ export default function DataTable<T>({
                           <button
                             key={ai}
                             onClick={() => a.onClick(row)}
+                            aria-label={a.label}
+                            title={a.iconOnly ? a.label : undefined}
                             className={[
-                              "inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-medium border",
+                              "inline-flex items-center gap-1 rounded-lg text-xs font-medium border",
+                              a.iconOnly ? "px-2 py-2" : "px-2.5 py-1.5",
                               a.tone === "danger"
                                 ? "text-red-600 border-red-200 hover:bg-red-50 dark:text-red-400 dark:border-red-900/50 dark:hover:bg-red-950/40"
                                 : a.tone === "primary"
-                                ? "text-blue-600 border-blue-200 hover:bg-blue-50 dark:text-blue-400 dark:border-blue-900/50 dark:hover:bg-blue-950/40"
-                                : "text-gray-700 border-gray-200 hover:bg-gray-50 dark:text-gray-300 dark:border-gray-700 dark:hover:bg-gray-800",
+                                  ? "text-blue-600 border-blue-200 hover:bg-blue-50 dark:text-blue-400 dark:border-blue-900/50 dark:hover:bg-blue-950/40"
+                                  : "text-gray-700 border-gray-200 hover:bg-gray-50 dark:text-gray-300 dark:border-gray-700 dark:hover:bg-gray-800",
                             ].join(" ")}
                           >
                             {a.icon}
-                            {a.label}
+                            {a.iconOnly ? (
+                              <span className="sr-only">{a.label}</span>
+                            ) : (
+                              a.label
+                            )}
                           </button>
                         ))}
                       </div>

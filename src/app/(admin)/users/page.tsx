@@ -1,13 +1,16 @@
 "use client";
 
-import { useMemo, useState } from "react";
 import DataTable, { Column, RowAction } from "@/components/common/DataTable";
+import DeleteUserModal from "@/components/dashboard/Modal/DeleteUserModal";
+import EditUserRoleModal from "@/components/dashboard/Modal/EditUserRoleModal";
 import { trpc } from "@/lib/trpc/client";
 import type { User as MeUser } from "@/server/trpc/schemas/user";
+import { PencilSquareIcon, TrashIcon } from "@heroicons/react/24/outline";
+import { useMemo, useState } from "react";
 
 // 👇 importa tipos (ajusta el path de AppRouter al tuyo)
-import type { TRPCClientErrorLike } from "@trpc/react-query";
 import type { AppRouter } from "@/server/trpc"; // o "@/server/trpc/index" / "@/server/trpc/router"
+import type { TRPCClientErrorLike } from "@trpc/react-query";
 
 // --- type guard SIN any ---
 function isTrpcError(e: unknown): e is TRPCClientErrorLike<AppRouter> {
@@ -27,12 +30,42 @@ function initials(name?: string | null, email?: string) {
   return take.toUpperCase() || (email?.[0]?.toUpperCase() ?? "?");
 }
 
+function getUserName(user: MeUser) {
+  return (
+    [user.profile?.firstName, user.profile?.lastName]
+      .filter(Boolean)
+      .join(" ") || user.email.split("@")[0]
+  );
+}
+
+function roleChipClasses(roleName?: string | null) {
+  const name = (roleName ?? "").toLowerCase();
+  if (name.includes("admin")) {
+    return "border-red-200 bg-red-50 text-red-700 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-300";
+  }
+  if (name.includes("manager")) {
+    return "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-300";
+  }
+  if (name.includes("editor")) {
+    return "border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-900/50 dark:bg-blue-950/40 dark:text-blue-300";
+  }
+  if (name.includes("viewer") || name.includes("read")) {
+    return "border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-800 dark:bg-slate-950/40 dark:text-slate-300";
+  }
+  return "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-300";
+}
+
 export default function UsersPage() {
-  const { data: users, isLoading, error, isError } =
-    trpc.admin.listUsers.useQuery<MeUser[]>();
+  const {
+    data: users,
+    isLoading,
+    error,
+    isError,
+  } = trpc.admin.listUsers.useQuery<MeUser[]>();
 
   // ❌ sin any, ✅ con type guard
-  const forbidden = isError && isTrpcError(error) && error.data?.code === "FORBIDDEN";
+  const forbidden =
+    isError && isTrpcError(error) && error.data?.code === "FORBIDDEN";
 
   const { data: roles } = trpc.admin.listRoles.useQuery(undefined, {
     enabled: !forbidden,
@@ -47,26 +80,24 @@ export default function UsersPage() {
   });
 
   const [search, setSearch] = useState("");
+  const [editUser, setEditUser] = useState<MeUser | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<MeUser | null>(null);
 
   const columns = useMemo<Column<MeUser>[]>(
     () => [
       {
         header: "User",
         className: "min-w-[240px]",
-        searchValue: (u) =>
-          `${u.profile?.firstName ?? ""} ${u.profile?.lastName ?? ""} ${u.email}`.trim(),
+        searchValue: (u) => getUserName(u),
         cell: (u) => {
-          const fullName =
-            [u.profile?.firstName, u.profile?.lastName].filter(Boolean).join(" ") ||
-            u.email.split("@")[0];
+          const fullName = getUserName(u);
           return (
             <div className="flex items-center gap-3">
               <div className="h-8 w-8 rounded-full bg-gradient-to-br from-green-100 to-emerald-100 text-green-700 flex items-center justify-center text-xs font-semibold">
                 {initials(fullName, u.email)}
               </div>
-              <div>
-                <div className="font-medium text-gray-900 dark:text-gray-100">{fullName}</div>
-                <div className="text-gray-500 text-xs">{u.email}</div>
+              <div className="font-medium text-gray-900 dark:text-gray-100">
+                {fullName}
               </div>
             </div>
           );
@@ -77,25 +108,15 @@ export default function UsersPage() {
         width: "180px",
         searchValue: (u) => u.roles.map((r) => r.role.name).join(","),
         cell: (u) => {
-          const current = u.roles[0]?.role?.name ?? "—";
+          const roleName = u.roles[0]?.role?.name ?? "—";
           return (
-            <select
-              className="rounded-md border border-gray-200 dark:border-gray-700 bg-transparent px-2 py-1 text-sm"
-              defaultValue={current}
-              onChange={(e) => {
-                const roleName = e.target.value;
-                const roleId = roles?.find((r) => r.name === roleName)?.id;
-                if (!roleId) return;
-                setUserRole.mutate({ userId: u.id, roleId });
-              }}
+            <span
+              className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium ${roleChipClasses(
+                roleName,
+              )}`}
             >
-              <option disabled>—</option>
-              {roles?.map((r) => (
-                <option key={r.id} value={r.name}>
-                  {r.name}
-                </option>
-              ))}
-            </select>
+              {roleName}
+            </span>
           );
         },
       },
@@ -110,7 +131,7 @@ export default function UsersPage() {
         ),
       },
     ],
-    [roles, setUserRole]
+    [],
   );
 
   const actions = useMemo<RowAction<MeUser>[]>(
@@ -118,21 +139,19 @@ export default function UsersPage() {
       {
         label: "Edit",
         tone: "primary",
-        onClick: (u) => {
-          alert(`Edit user ${u.email}`);
-        },
+        iconOnly: true,
+        icon: <PencilSquareIcon className="h-4 w-4" />,
+        onClick: (u) => setEditUser(u),
       },
       {
         label: "Delete",
         tone: "danger",
-        onClick: (u) => {
-          if (confirm(`Delete ${u.email}?`)) {
-            deleteUser.mutate({ userId: u.id });
-          }
-        },
+        iconOnly: true,
+        icon: <TrashIcon className="h-4 w-4" />,
+        onClick: (u) => setDeleteTarget(u),
       },
     ],
-    [deleteUser]
+    [],
   );
 
   const filtered = useMemo(() => {
@@ -140,10 +159,9 @@ export default function UsersPage() {
     if (!search.trim()) return users;
     const q = search.toLowerCase();
     return users.filter((u) => {
-      const name = `${u.profile?.firstName ?? ""} ${u.profile?.lastName ?? ""}`.toLowerCase();
-      const emails = u.email.toLowerCase();
+      const name = getUserName(u).toLowerCase();
       const roleNames = u.roles.map((r) => r.role.name.toLowerCase()).join(",");
-      return name.includes(q) || emails.includes(q) || roleNames.includes(q);
+      return name.includes(q) || roleNames.includes(q);
     });
   }, [users, search]);
 
@@ -159,11 +177,46 @@ export default function UsersPage() {
       actions={actions}
       loading={isLoading}
       enableSearch
-      searchPlaceholder="Search name, email, role..."
+      searchPlaceholder="Search name or role..."
       onSearchChange={setSearch}
       emptyState={<span>No users found</span>}
     />
   );
 
-  return <div className="space-y-4">{content}</div>;
+  const editUserLabel = editUser ? getUserName(editUser) : "";
+  const deleteUserLabel = deleteTarget ? getUserName(deleteTarget) : "";
+
+  return (
+    <div className="space-y-4">
+      {content}
+      <EditUserRoleModal
+        isOpen={!!editUser}
+        onClose={() => setEditUser(null)}
+        userLabel={editUserLabel}
+        roles={roles}
+        initialRoleId={editUser?.roles[0]?.role?.id ?? null}
+        isPending={setUserRole.isPending}
+        onSave={(roleId) => {
+          if (!editUser) return;
+          setUserRole.mutate(
+            { userId: editUser.id, roleId },
+            { onSuccess: () => setEditUser(null) },
+          );
+        }}
+      />
+      <DeleteUserModal
+        isOpen={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        userLabel={deleteUserLabel}
+        isPending={deleteUser.isPending}
+        onConfirm={() => {
+          if (!deleteTarget) return;
+          deleteUser.mutate(
+            { userId: deleteTarget.id },
+            { onSuccess: () => setDeleteTarget(null) },
+          );
+        }}
+      />
+    </div>
+  );
 }

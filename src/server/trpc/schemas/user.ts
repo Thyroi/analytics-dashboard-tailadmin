@@ -46,6 +46,7 @@ export const RoleSchema = z.object({
   name: z.string(),
   description: z.string().nullable(),
 });
+export type Role = z.infer<typeof RoleSchema>;
 
 export const UserRoleSchema = z.object({
   userId: z.string(),
