@@ -12,7 +12,13 @@ import { ToastProvider } from "@/context/ToastContext";
 
 export function WarmupUser() {
   // precarga datos mínimos del usuario (no bloquea render)
-  trpc.user.me.useQuery(undefined, { staleTime: 5 * 60 * 1000, retry: false });
+  trpc.user.meOptional.useQuery(undefined, {
+    staleTime: 5 * 60 * 1000,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    retry: 0,
+  });
   return null;
 }
 
@@ -29,7 +35,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
           },
         }),
       ],
-    })
+    }),
   );
 
   return (

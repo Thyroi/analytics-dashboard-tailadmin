@@ -1,5 +1,4 @@
 // server/trpc/routers/user.ts
-import { ensureUser } from "@/server/auth/ensureUser";
 import { Prisma } from "@prisma/client";
 import { protectedProcedure, publicProcedure, router } from "../router";
 import {
@@ -23,7 +22,7 @@ function normalizeSocialFromPrisma(json: unknown): Social | null {
  *  - objeto     => guardar tal cual
  */
 function encodeSocial(
-  social: Social | null | undefined
+  social: Social | null | undefined,
 ): Prisma.InputJsonValue | undefined {
   if (typeof social === "undefined") return undefined;
   if (social === null) return {} as Prisma.InputJsonValue;
@@ -75,7 +74,7 @@ export const userRouter = router({
         if (!dbUser) return null;
 
         const social = normalizeSocialFromPrisma(
-          dbUser.profile?.social ?? null
+          dbUser.profile?.social ?? null,
         );
         return {
           ...dbUser,
@@ -99,36 +98,21 @@ export const userRouter = router({
         return null;
       }
 
-      try {
-        // Primero asegurar que el usuario existe
-        await ensureUser({
-          sub,
-          email,
-          picture,
-        });
+      const dbUser = await ctx.prisma.user.findUnique({
+        where: { auth0Sub: sub },
+        include: {
+          profile: true,
+          roles: { include: { role: true } },
+        },
+      });
 
-        // Luego obtener el usuario completo con todas las relaciones
-        const dbUser = await ctx.prisma.user.findUnique({
-          where: { auth0Sub: sub },
-          include: {
-            profile: true,
-            roles: { include: { role: true } },
-          },
-        });
+      if (!dbUser) return null;
 
-        if (!dbUser) return null;
-
-        const social = normalizeSocialFromPrisma(
-          dbUser.profile?.social ?? null
-        );
-        return {
-          ...dbUser,
-          profile: dbUser.profile ? { ...dbUser.profile, social } : null,
-        };
-      } catch (error) {
-        console.error("Error al crear/obtener usuario con Auth0:", error);
-        return null;
-      }
+      const social = normalizeSocialFromPrisma(dbUser.profile?.social ?? null);
+      return {
+        ...dbUser,
+        profile: dbUser.profile ? { ...dbUser.profile, social } : null,
+      };
     }),
 
   /** === UPDATE / UPSERT PROFILE === */

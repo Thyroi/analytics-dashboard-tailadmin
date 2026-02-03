@@ -16,7 +16,6 @@ export async function ensureUser({
 }: EnsureUserInput) {
   // ===== CASO 1: Login con Auth0 =====
   if (sub) {
-    // Buscar por auth0Sub
     const existing = await prisma.user.findUnique({
       where: { auth0Sub: sub },
       include: {
@@ -26,44 +25,15 @@ export async function ensureUser({
     });
     if (existing) return existing;
 
-    // Si no existe, crear usuario nuevo con password por defecto
-    await prisma.role.upsert({
-      where: { name: "ADMIN" },
-      create: { name: "ADMIN" },
-      update: {},
-    });
-    await prisma.role.upsert({
-      where: { name: "VIEWER" },
-      create: { name: "VIEWER" },
-      update: {},
-    });
-
-    const hashedPassword = await argon2.hash("condadoHuelva123");
-
-    const created = await prisma.user.create({
-      data: {
-        auth0Sub: sub,
-        email,
-        password: hashedPassword,
-        avatarUrl: picture ?? undefined,
-        profile: { create: {} },
-        roles: {
-          create: [{ role: { connect: { name: "VIEWER" } } }],
-        },
-      },
-      include: {
-        roles: { include: { role: true } },
-        profile: true,
-      },
-    });
-
-    return created;
+    throw new Error("Usuario no registrado");
   }
 
   // ===== CASO 2: Login Local (email + password) =====
   if (password) {
-    const user = await prisma.user.findUnique({
-      where: { email },
+    const normalizedEmail = email.trim().toLowerCase();
+
+    const user = await prisma.user.findFirst({
+      where: { email: { equals: normalizedEmail, mode: "insensitive" } },
       select: {
         id: true,
         email: true,
@@ -83,7 +53,7 @@ export async function ensureUser({
 
     if (!user.password) {
       throw new Error(
-        "Este usuario no tiene contraseña configurada. Usa Auth0 para iniciar sesión."
+        "Este usuario no tiene contraseña configurada. Usa Auth0 para iniciar sesión.",
       );
     }
 

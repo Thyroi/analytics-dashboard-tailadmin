@@ -22,9 +22,9 @@ export default function AuthUserMenu({
     isFetching,
     refetch,
   } = trpc.user.meOptional.useQuery(undefined, {
-    staleTime: 0,
-    refetchOnMount: "always",
-    refetchOnWindowFocus: true,
+    staleTime: 2 * 60 * 1000,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
     refetchOnReconnect: true,
     retry: 0,
     placeholderData: (prev) => prev,
@@ -55,7 +55,7 @@ export default function AuthUserMenu({
     };
   }, [me]);
 
-  if (isLoading || isFetching) {
+  if (!me && (isLoading || isFetching)) {
     return (
       <div
         className={`h-9 w-28 rounded-full bg-gray-200 dark:bg-white/10 animate-pulse ${className}`}

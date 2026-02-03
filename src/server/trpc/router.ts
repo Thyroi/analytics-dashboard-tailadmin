@@ -1,11 +1,9 @@
-import { ensureUser } from "@/server/auth/ensureUser";
 import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
-import type { Context } from "./context";
+import type { Context, DbUser as ContextDbUser } from "./context";
 
 // 👇 Tipo que refleja el ctx luego de withDbUser
-type DbUser = Awaited<ReturnType<typeof ensureUser>>;
-type AuthedContext = Context & { dbUser: DbUser };
+type AuthedContext = Context & { dbUser: ContextDbUser };
 
 const t = initTRPC.context<Context>().create({ transformer: superjson });
 
@@ -19,11 +17,21 @@ const withDbUser = t.middleware(async ({ ctx, next }) => {
 
   // Caso 1: Login con Auth0 (tiene 'sub')
   if (u.sub) {
-    const dbUser = await ensureUser({
-      sub: u.sub,
-      email: u.email as string,
-      picture: u.picture,
+    const dbUser = await ctx.prisma.user.findUnique({
+      where: { auth0Sub: u.sub },
+      include: {
+        roles: { include: { role: true } },
+        profile: true,
+      },
     });
+
+    if (!dbUser) {
+      throw new TRPCError({
+        code: "UNAUTHORIZED",
+        message: "Usuario no registrado",
+      });
+    }
+
     return next({ ctx: { ...ctx, dbUser } as AuthedContext });
   }
 

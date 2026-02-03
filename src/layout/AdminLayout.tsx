@@ -1,30 +1,38 @@
 "use client";
 
 import { useSidebar } from "@/context/SidebarContext";
-import { usePathname } from "next/navigation";
 import AppHeader from "@/layout/AppHeader";
 import AppSidebar from "@/layout/AppSidebar";
 import Backdrop from "@/layout/Backdrop";
-import SubHeader from "./SubHeader";
+import { usePathname } from "next/navigation";
 import React from "react";
+import SubHeader from "./SubHeader";
 
-export default function AdminLayout({ children }: { children: React.ReactNode }) {
+export default function AdminLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const { isExpanded, isHovered, isMobileOpen } = useSidebar();
   const pathname = usePathname();
+
+  if (pathname === "/login") {
+    return <>{children}</>;
+  }
 
   // Rutas válidas donde SÍ debe mostrarse el SubHeader
   const validRoutes = ["/", "/analytics", "/chatbot", "/users", "/test-tags"];
 
   // Si la ruta actual no coincide con ninguna válida => 404
   const is404 = !validRoutes.some((route) =>
-    route === "/" ? pathname === "/" : pathname.startsWith(route)
+    route === "/" ? pathname === "/" : pathname.startsWith(route),
   );
 
   const mainContentMargin = isMobileOpen
     ? "ml-0"
     : isExpanded || isHovered
-    ? "lg:ml-[290px]"
-    : "lg:ml-[90px]";
+      ? "lg:ml-[290px]"
+      : "lg:ml-[90px]";
 
   return (
     <div className="min-h-screen xl:flex">

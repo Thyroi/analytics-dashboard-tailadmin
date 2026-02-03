@@ -1,8 +1,10 @@
 "use client";
 
 import DataTable, { Column, RowAction } from "@/components/common/DataTable";
+import CreateUserModal from "@/components/dashboard/Modal/CreateUserModal";
 import DeleteUserModal from "@/components/dashboard/Modal/DeleteUserModal";
 import EditUserRoleModal from "@/components/dashboard/Modal/EditUserRoleModal";
+import { useToast } from "@/hooks/useToast";
 import { trpc } from "@/lib/trpc/client";
 import type { User as MeUser } from "@/server/trpc/schemas/user";
 import { PencilSquareIcon, TrashIcon } from "@heroicons/react/24/outline";
@@ -72,14 +74,37 @@ export default function UsersPage() {
   });
 
   const utils = trpc.useUtils();
+  const toast = useToast();
   const setUserRole = trpc.admin.setUserRole.useMutation({
-    onSuccess: () => utils.admin.listUsers.invalidate(),
+    onSuccess: () => {
+      utils.admin.listUsers.invalidate();
+      toast.success("Rol actualizado correctamente");
+    },
+    onError: (err) => {
+      toast.error(err.message || "No se pudo actualizar el rol");
+    },
+  });
+  const createUser = trpc.admin.createUser.useMutation({
+    onSuccess: () => {
+      utils.admin.listUsers.invalidate();
+      toast.success("Usuario creado correctamente");
+    },
+    onError: (err) => {
+      toast.error(err.message || "No se pudo crear el usuario");
+    },
   });
   const deleteUser = trpc.admin.deleteUser.useMutation({
-    onSuccess: () => utils.admin.listUsers.invalidate(),
+    onSuccess: () => {
+      utils.admin.listUsers.invalidate();
+      toast.success("Usuario eliminado correctamente");
+    },
+    onError: (err) => {
+      toast.error(err.message || "No se pudo eliminar el usuario");
+    },
   });
 
   const [search, setSearch] = useState("");
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editUser, setEditUser] = useState<MeUser | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<MeUser | null>(null);
 
@@ -170,17 +195,28 @@ export default function UsersPage() {
       No tienes permisos para ver esta sección.
     </div>
   ) : (
-    <DataTable<MeUser>
-      title="Users"
-      data={filtered}
-      columns={columns}
-      actions={actions}
-      loading={isLoading}
-      enableSearch
-      searchPlaceholder="Search name or role..."
-      onSearchChange={setSearch}
-      emptyState={<span>No users found</span>}
-    />
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-semibold">Users</h2>
+        <button
+          onClick={() => setIsCreateOpen(true)}
+          className="inline-flex items-center rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700"
+        >
+          Crear usuario
+        </button>
+      </div>
+      <DataTable<MeUser>
+        title=""
+        data={filtered}
+        columns={columns}
+        actions={actions}
+        loading={isLoading}
+        enableSearch
+        searchPlaceholder="Search name or role..."
+        onSearchChange={setSearch}
+        emptyState={<span>No users found</span>}
+      />
+    </div>
   );
 
   const editUserLabel = editUser ? getUserName(editUser) : "";
@@ -189,6 +225,17 @@ export default function UsersPage() {
   return (
     <div className="space-y-4">
       {content}
+      <CreateUserModal
+        isOpen={isCreateOpen}
+        onClose={() => setIsCreateOpen(false)}
+        roles={roles}
+        isPending={createUser.isPending}
+        onCreate={(input) => {
+          createUser.mutate(input, {
+            onSuccess: () => setIsCreateOpen(false),
+          });
+        }}
+      />
       <EditUserRoleModal
         isOpen={!!editUser}
         onClose={() => setEditUser(null)}

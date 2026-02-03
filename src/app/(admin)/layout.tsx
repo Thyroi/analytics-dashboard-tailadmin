@@ -1,4 +1,4 @@
-import HomePageClient from "@/features/home/HomePageClient";
+import AdminLayoutShell from "@/layout/AdminLayout";
 import { auth0 } from "@/lib/auth0";
 import { verifyJWT } from "@/lib/jwt";
 import { cookies } from "next/headers";
@@ -16,7 +16,11 @@ async function requireSession() {
   if (!payload) redirect("/login");
 }
 
-export default async function Home() {
+export default async function AdminSectionLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   await requireSession();
-  return <HomePageClient />;
+  return <AdminLayoutShell>{children}</AdminLayoutShell>;
 }
