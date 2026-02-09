@@ -17,7 +17,7 @@ export type TownCategoryDrilldownPanelProps = {
 
 export type DayData = {
   categories: string[];
-  groupedSeries: Array<{ name: string; data: number[] }>;
+  groupedSeries: Array<{ name: string; data: Array<number | null> }>;
   donut: Array<{ id: string; label: string; value: number }>;
   deltaPct: number;
   seriesByUrl: Array<{ name: string; path: string; data: number[] }>;

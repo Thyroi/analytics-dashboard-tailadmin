@@ -44,8 +44,8 @@ export function Level2Chart({
         chartTitle="Comparación por sub-categorías"
         chartSubtitle="Cada fecha muestra todas las sub-categorías"
         chartHeight={400}
-        tooltipFormatter={(val) => val.toLocaleString()}
-        yAxisFormatter={(val) => val.toString()}
+        tooltipFormatter={(val) => (val ?? 0).toLocaleString()}
+        yAxisFormatter={(val) => (val ?? 0).toString()}
         legendPosition="bottom"
         donutData={dayData.donut}
         deltaPct={dayData.deltaPct}

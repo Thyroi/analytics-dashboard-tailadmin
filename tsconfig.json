@@ -1,11 +1,7 @@
 {
   "compilerOptions": {
     "target": "ES2017",
-    "lib": [
-      "dom",
-      "dom.iterable",
-      "esnext"
-    ],
+    "lib": ["dom", "dom.iterable", "esnext"],
     "allowJs": true,
     "skipLibCheck": true,
     "strict": true,
@@ -23,19 +19,12 @@
       }
     ],
     "baseUrl": ".",
+    "ignoreDeprecations": "6.0",
     "paths": {
-      "@/*": [
-        "./src/*"
-      ],
-      "@features/*": [
-        "./src/features/*"
-      ],
-      "@lib/*": [
-        "./src/lib/*"
-      ],
-      "@server/*": [
-        "./src/server/*"
-      ]
+      "@/*": ["./src/*"],
+      "@features/*": ["./src/features/*"],
+      "@lib/*": ["./src/lib/*"],
+      "@server/*": ["./src/server/*"]
     }
   },
   "include": [
@@ -46,7 +35,5 @@
     "src/app/(dashboard)/test-tags",
     ".next/dev/types/**/*.ts"
   ],
-  "exclude": [
-    "node_modules"
-  ]
+  "exclude": ["node_modules"]
 }

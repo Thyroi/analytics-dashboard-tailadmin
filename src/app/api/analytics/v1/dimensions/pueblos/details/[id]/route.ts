@@ -20,6 +20,7 @@ import {
   buildCategoriesDonutForTown,
   buildUrlsDonutForTownCategory,
 } from "@/lib/utils/data";
+import { parseGA4Date } from "@/lib/utils/data/parsers";
 import {
   matchCategoryIdFromPath,
   matchTownIdFromPath,
@@ -37,7 +38,7 @@ import { NextRequest, NextResponse } from "next/server";
 /* -------- handler -------- */
 export async function GET(
   req: NextRequest,
-  ctx: { params: Promise<{ id: string }> }
+  ctx: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id } = await ctx.params;
@@ -46,7 +47,7 @@ export async function GET(
     if (!TOWN_ID_ORDER.includes(id as TownId)) {
       return NextResponse.json(
         { error: `Invalid townId '${id}'` },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -57,7 +58,7 @@ export async function GET(
     const startQ = searchParams.get("startDate");
     const endQ = searchParams.get("endDate");
     const granularityParam = searchParams.get(
-      "granularity"
+      "granularity",
     ) as Granularity | null;
     const categoryFilter = searchParams.get("categoryId"); // Filter by specific category for drilldown
 
@@ -67,7 +68,7 @@ export async function GET(
         {
           error: "Missing required parameters: startDate and endDate",
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -132,7 +133,7 @@ export async function GET(
       filteredRows as GA4Row[],
       matchTownIdFromPath,
       townId,
-      ranges
+      ranges,
     );
 
     // Formatear series con labels correctos
@@ -156,7 +157,7 @@ export async function GET(
           categoryFilter,
           donutRanges.current.start,
           donutRanges.current.end,
-          actualGranularity
+          actualGranularity,
         )
       : buildCategoriesDonutForTown(
           rows as GA4Row[],
@@ -165,8 +166,90 @@ export async function GET(
           matchCategoryIdFromPath,
           donutRanges.current.start,
           donutRanges.current.end,
-          actualGranularity
+          actualGranularity,
         );
+
+    const drilldownRows = categoryFilter
+      ? (filteredRows as GA4Row[]).filter((r) => {
+          const url = String(r.dimensionValues?.[1]?.value ?? "");
+          const path = safeUrlPathname(url);
+          return (
+            matchTownIdFromPath(path) === townId &&
+            matchCategoryIdFromPath(path) === categoryFilter
+          );
+        })
+      : [];
+
+    const topCurrentUrls =
+      categoryFilter && actualGranularity === "d"
+        ? donutData.slice(0, 5).map((item) => item.label)
+        : [];
+
+    const topPreviousUrls =
+      categoryFilter && actualGranularity === "d"
+        ? (() => {
+            const totals = new Map<string, number>();
+
+            for (const r of drilldownRows) {
+              const dateRaw = String(r.dimensionValues?.[0]?.value ?? "");
+              if (!dateRaw) continue;
+
+              const iso = parseGA4Date(dateRaw, actualGranularity);
+              if (iso < ranges.previous.start || iso > ranges.previous.end) {
+                continue;
+              }
+
+              const url = String(r.dimensionValues?.[1]?.value ?? "");
+              const value = Number(r.metricValues?.[0]?.value ?? 0);
+              totals.set(url, (totals.get(url) || 0) + value);
+            }
+
+            return Array.from(totals.entries())
+              .sort((a, b) => b[1] - a[1])
+              .slice(0, 5)
+              .map(([url]) => url);
+          })()
+        : [];
+
+    const unionUrls = [
+      ...topCurrentUrls,
+      ...topPreviousUrls.filter((url) => !topCurrentUrls.includes(url)),
+    ];
+    const unionSet = new Set(unionUrls);
+
+    const seriesByUrl =
+      categoryFilter && actualGranularity === "d" && unionUrls.length > 0
+        ? (() => {
+            const countsCurrent = new Map<string, number>();
+            const countsPrevious = new Map<string, number>();
+
+            for (const r of drilldownRows) {
+              const dateRaw = String(r.dimensionValues?.[0]?.value ?? "");
+              if (!dateRaw) continue;
+
+              const iso = parseGA4Date(dateRaw, actualGranularity);
+              const url = String(r.dimensionValues?.[1]?.value ?? "");
+              if (!unionSet.has(url)) continue;
+
+              const value = Number(r.metricValues?.[0]?.value ?? 0);
+
+              if (iso >= ranges.current.start && iso <= ranges.current.end) {
+                countsCurrent.set(url, (countsCurrent.get(url) || 0) + value);
+              }
+
+              if (iso >= ranges.previous.start && iso <= ranges.previous.end) {
+                countsPrevious.set(url, (countsPrevious.get(url) || 0) + value);
+              }
+            }
+
+            return unionUrls.map((url) => ({
+              path: url,
+              name: url.split("/").filter(Boolean).pop() || url,
+              current: countsCurrent.get(url) ?? null,
+              previous: countsPrevious.get(url) ?? null,
+            }));
+          })()
+        : undefined;
 
     // Calcular delta
     const deltaPct = computeDeltaPct(totalCurrent, totalPrevious);
@@ -182,6 +265,7 @@ export async function GET(
         series,
         donutData,
         deltaPct,
+        seriesByUrl,
         debug: {
           totalRows: rows.length,
           matchedRows: rows.filter((r) => {
@@ -194,7 +278,7 @@ export async function GET(
           previousTotal: totalPrevious,
         },
       },
-      { status: 200 }
+      { status: 200 },
     );
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : "Unknown error";

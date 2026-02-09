@@ -5,18 +5,24 @@ import type { DayData } from "./types";
 type DrilldownData = {
   loading: boolean;
   donut: Array<{ label: string; value: number }>;
-  deltaPct: number;
+  deltaPct: number | null;
   response: {
     series: {
       current: Array<{ label: string; value: number }>;
       previous: Array<{ label: string; value: number }>;
     };
   };
+  seriesByUrl?: Array<{
+    path: string;
+    name: string;
+    current: number | null;
+    previous: number | null;
+  }>;
 };
 
 export function useDayDataTransform(
   isDayGranularity: boolean,
-  drilldown: DrilldownData | null
+  drilldown: DrilldownData | null,
 ): DayData | null {
   return useMemo(() => {
     if (!isDayGranularity || !drilldown || drilldown.loading) return null;
@@ -26,23 +32,20 @@ export function useDayDataTransform(
     const previousDate =
       drilldown.response.series.previous[0]?.label || "Anterior";
 
-    // Obtener los valores actuales por URL del donut
-    const currentValues = drilldown.donut.map((item) => item.value);
-
-    // Calcular valores previous basados en deltaPct para cada URL
-    const previousValues = drilldown.donut.map((item) => {
-      const current = item.value;
-      const delta = drilldown.deltaPct;
-      if (delta === 0) return current;
-      // previous = current / (1 + delta/100)
-      const previous = current / (1 + delta / 100);
-      return Math.round(previous);
-    });
+    const seriesSources =
+      drilldown.seriesByUrl && drilldown.seriesByUrl.length > 0
+        ? drilldown.seriesByUrl
+        : drilldown.donut.map((item) => ({
+            path: item.label,
+            name: item.label,
+            current: item.value,
+            previous: null,
+          }));
 
     // Cada sub-categoría es una serie con 2 valores: [previous, current]
-    const groupedSeries = drilldown.donut.map((item, index) => ({
-      name: formatUrlForDisplay(item.label),
-      data: [previousValues[index], currentValues[index]],
+    const groupedSeries = seriesSources.map((item) => ({
+      name: formatUrlForDisplay(item.path),
+      data: [item.previous ?? null, item.current ?? null],
     }));
 
     // Formatear también el donut para que las URLs se vean bien
@@ -53,17 +56,17 @@ export function useDayDataTransform(
     }));
 
     // Crear seriesByUrl para que useDonutSelection funcione
-    const seriesByUrl = drilldown.donut.map((item) => ({
-      name: formatUrlForDisplay(item.label),
-      path: item.label, // URL original
-      data: [0], // Dummy data para compatibilidad
+    const seriesByUrl = seriesSources.map((item) => ({
+      name: item.name,
+      path: item.path,
+      data: [item.current ?? 0],
     }));
 
     return {
       categories: [previousDate, currentDate],
       groupedSeries,
       donut: formattedDonut,
-      deltaPct: drilldown.deltaPct,
+      deltaPct: drilldown.deltaPct ?? 0,
       seriesByUrl,
     };
   }, [isDayGranularity, drilldown]);

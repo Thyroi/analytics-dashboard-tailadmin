@@ -21,14 +21,20 @@ type DrilldownResponse = {
     previous: { label: string; value: number }[];
   };
   donutData: { label: string; value: number }[];
-  deltaPct: number;
+  deltaPct: number | null;
+  seriesByUrl?: Array<{
+    path: string;
+    name: string;
+    current: number | null;
+    previous: number | null;
+  }>;
 };
 
 type Ready = {
   loading: false;
   response: DrilldownResponse;
   donut: DonutDatum[];
-  deltaPct: number;
+  deltaPct: number | null;
 };
 
 type Pending = { loading: true };
@@ -50,7 +56,7 @@ export function useDrilldownDetails(
     granularity: Granularity;
     endISO?: string;
     startISO?: string; // Nueva propiedad opcional
-  }
+  },
 ): Ready | Pending {
   const { granularity, endISO, startISO, ...drilldownConfig } = config;
 

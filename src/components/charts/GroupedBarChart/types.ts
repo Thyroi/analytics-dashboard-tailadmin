@@ -2,7 +2,7 @@ import type { ApexOptions } from "apexcharts";
 
 export type GroupedBarSeries = {
   name: string;
-  data: number[];
+  data: Array<number | null>;
   color?: string; // Color específico para esta serie
 };
 

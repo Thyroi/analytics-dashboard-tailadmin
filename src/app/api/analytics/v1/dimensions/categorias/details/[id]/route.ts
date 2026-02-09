@@ -30,6 +30,7 @@ import {
   buildTownsDonutForCategory,
   buildUrlsDonutForCategoryTown,
 } from "@/lib/utils/data";
+import { parseGA4Date } from "@/lib/utils/data/parsers";
 
 import {
   matchCategoryIdFromPath,
@@ -53,7 +54,7 @@ type Ranges = {
 
 export async function GET(
   req: NextRequest,
-  ctx: { params: Promise<{ id: string }> }
+  ctx: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id } = await ctx.params;
@@ -62,7 +63,7 @@ export async function GET(
     if (!CATEGORY_ID_ORDER.includes(id as CategoryId)) {
       return NextResponse.json(
         { error: `Invalid categoryId '${id}'` },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -75,7 +76,7 @@ export async function GET(
     const startDate = searchParams.get("startDate");
     const endDate = searchParams.get("endDate");
     const granularityOverride = searchParams.get(
-      "granularity"
+      "granularity",
     ) as Granularity | null;
 
     // Formato legacy del servicio (compatibilidad)
@@ -106,7 +107,7 @@ export async function GET(
           error:
             "Missing required parameters: (startDate,endDate) or (currentStart,currentEnd)",
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -177,7 +178,7 @@ export async function GET(
       filteredRows,
       matchCategoryIdFromPath,
       categoryId,
-      ranges
+      ranges,
     );
 
     // Series formateadas (incluye totales y labels)
@@ -200,7 +201,7 @@ export async function GET(
           townFilter,
           donutRanges.current.start,
           donutRanges.current.end,
-          finalGranularity
+          finalGranularity,
         )
       : buildTownsDonutForCategory(
           rows,
@@ -209,8 +210,90 @@ export async function GET(
           matchTownIdFromPath,
           donutRanges.current.start,
           donutRanges.current.end,
-          finalGranularity
+          finalGranularity,
         );
+
+    const drilldownRows = townFilter
+      ? filteredRows.filter((r) => {
+          const url = String(r.dimensionValues?.[1]?.value ?? "");
+          const path = safeUrlPathname(url);
+          return (
+            matchTownIdFromPath(path) === townFilter &&
+            matchCategoryIdFromPath(path) === categoryId
+          );
+        })
+      : [];
+
+    const topCurrentUrls =
+      townFilter && finalGranularity === "d"
+        ? donutData.slice(0, 5).map((item) => item.label)
+        : [];
+
+    const topPreviousUrls =
+      townFilter && finalGranularity === "d"
+        ? (() => {
+            const totals = new Map<string, number>();
+
+            for (const r of drilldownRows) {
+              const dateRaw = String(r.dimensionValues?.[0]?.value ?? "");
+              if (!dateRaw) continue;
+
+              const iso = parseGA4Date(dateRaw, finalGranularity);
+              if (iso < ranges.previous.start || iso > ranges.previous.end) {
+                continue;
+              }
+
+              const url = String(r.dimensionValues?.[1]?.value ?? "");
+              const value = Number(r.metricValues?.[0]?.value ?? 0);
+              totals.set(url, (totals.get(url) || 0) + value);
+            }
+
+            return Array.from(totals.entries())
+              .sort((a, b) => b[1] - a[1])
+              .slice(0, 5)
+              .map(([url]) => url);
+          })()
+        : [];
+
+    const unionUrls = [
+      ...topCurrentUrls,
+      ...topPreviousUrls.filter((url) => !topCurrentUrls.includes(url)),
+    ];
+    const unionSet = new Set(unionUrls);
+
+    const seriesByUrl =
+      townFilter && finalGranularity === "d" && unionUrls.length > 0
+        ? (() => {
+            const countsCurrent = new Map<string, number>();
+            const countsPrevious = new Map<string, number>();
+
+            for (const r of drilldownRows) {
+              const dateRaw = String(r.dimensionValues?.[0]?.value ?? "");
+              if (!dateRaw) continue;
+
+              const iso = parseGA4Date(dateRaw, finalGranularity);
+              const url = String(r.dimensionValues?.[1]?.value ?? "");
+              if (!unionSet.has(url)) continue;
+
+              const value = Number(r.metricValues?.[0]?.value ?? 0);
+
+              if (iso >= ranges.current.start && iso <= ranges.current.end) {
+                countsCurrent.set(url, (countsCurrent.get(url) || 0) + value);
+              }
+
+              if (iso >= ranges.previous.start && iso <= ranges.previous.end) {
+                countsPrevious.set(url, (countsPrevious.get(url) || 0) + value);
+              }
+            }
+
+            return unionUrls.map((url) => ({
+              path: url,
+              name: url.split("/").filter(Boolean).pop() || url,
+              current: countsCurrent.get(url) ?? null,
+              previous: countsPrevious.get(url) ?? null,
+            }));
+          })()
+        : undefined;
 
     // Delta (misma semántica null-safe del util)
     const deltaPct = computeDeltaPct(totalCurrent, totalPrevious);
@@ -244,6 +327,7 @@ export async function GET(
           series,
           donutData,
           deltaPct,
+          seriesByUrl,
           // Totales explícitos del periodo actual/anterior (útiles para tarjetas o depuración)
           totals: {
             current: totalCurrent,
@@ -263,7 +347,7 @@ export async function GET(
           },
         },
       },
-      { status: 200 }
+      { status: 200 },
     );
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : "Unknown error";

@@ -59,17 +59,13 @@ export default function TownCategoryDrilldownPanel({
     isDayGranularity,
     drilldown.loading
       ? null
-      : (drilldown as unknown as {
-          loading: boolean;
-          donut: Array<{ label: string; value: number }>;
-          deltaPct: number;
-          response: {
-            series: {
-              current: Array<{ label: string; value: number }>;
-              previous: Array<{ label: string; value: number }>;
-            };
-          };
-        })
+      : {
+          loading: false,
+          donut: drilldown.donut,
+          deltaPct: drilldown.deltaPct,
+          response: drilldown.response,
+          seriesByUrl: drilldown.response.seriesByUrl,
+        },
   );
 
   // Level 3 state management
@@ -80,13 +76,13 @@ export default function TownCategoryDrilldownPanel({
     dd.loading,
     granularity,
     startISO,
-    endISO
+    endISO,
   );
 
   const name = useMemo(() => {
     return headline === "town"
-      ? TOWN_META[townId]?.label ?? "Pueblo"
-      : CATEGORY_META[categoryId]?.label ?? "Categoría";
+      ? (TOWN_META[townId]?.label ?? "Pueblo")
+      : (CATEGORY_META[categoryId]?.label ?? "Categoría");
   }, [headline, townId, categoryId]);
 
   return (
