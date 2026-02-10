@@ -14,6 +14,7 @@ import {
   normalizePropertyId,
   resolvePropertyId,
 } from "@/lib/utils/analytics/ga";
+import { runReportLimited } from "@/lib/utils/analytics/ga4RateLimit";
 import { buildPageViewUnionRequest } from "@/lib/utils/analytics/ga4Requests";
 import {
   matchCategoryIdFromPath,
@@ -31,7 +32,7 @@ export async function GET(req: Request) {
     const startQ = searchParams.get("startDate");
     const endQ = searchParams.get("endDate");
     const granularityOverride = searchParams.get(
-      "granularity"
+      "granularity",
     ) as Granularity | null;
 
     // Validar que tenemos fechas requeridas
@@ -40,7 +41,7 @@ export async function GET(req: Request) {
         {
           error: "Missing required parameters: startDate and endDate",
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -68,7 +69,7 @@ export async function GET(req: Request) {
       metrics: [{ name: "eventCount" }],
     });
 
-    const resp = await analytics.properties.runReport({
+    const resp = await runReportLimited(analytics, {
       property,
       requestBody,
     });
@@ -76,10 +77,10 @@ export async function GET(req: Request) {
 
     // Inicializar totales usando las categorías de la taxonomía
     const currentTotals: Record<CategoryId, number> = Object.fromEntries(
-      CATEGORY_ID_ORDER.map((k) => [k, 0])
+      CATEGORY_ID_ORDER.map((k) => [k, 0]),
     ) as Record<CategoryId, number>;
     const previousTotals: Record<CategoryId, number> = Object.fromEntries(
-      CATEGORY_ID_ORDER.map((k) => [k, 0])
+      CATEGORY_ID_ORDER.map((k) => [k, 0]),
     ) as Record<CategoryId, number>;
 
     // Procesar filas con soporte para yearMonth (6 dígitos) y date (8 dígitos)
@@ -92,7 +93,7 @@ export async function GET(req: Request) {
         // date dimension: YYYYMMDD
         iso = `${dateRaw.slice(0, 4)}-${dateRaw.slice(4, 6)}-${dateRaw.slice(
           6,
-          8
+          8,
         )}`;
       } else if (dateRaw.length === 6) {
         // yearMonth dimension: YYYYMM → usar primer día del mes
@@ -151,7 +152,7 @@ export async function GET(req: Request) {
           items,
         },
       },
-      { status: 200 }
+      { status: 200 },
     );
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : "Unknown error";

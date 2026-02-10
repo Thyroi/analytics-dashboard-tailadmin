@@ -8,6 +8,7 @@ import {
   normalizePropertyId,
   resolvePropertyId,
 } from "@/lib/utils/analytics/ga";
+import { runReportLimited } from "@/lib/utils/analytics/ga4RateLimit";
 import {
   getEnglishRegionName,
   translateCountry,
@@ -35,7 +36,7 @@ export async function querySimpleDonut(
   granularity: Granularity,
   startQ?: string | null,
   endQ?: string | null,
-  additionalFilters?: analyticsdata_v1beta.Schema$FilterExpression[]
+  additionalFilters?: analyticsdata_v1beta.Schema$FilterExpression[],
 ): Promise<SimpleDonutResponse> {
   // Usar rangos KPI (agregación)
   const ranges = computeRangesForKPI(granularity, startQ, endQ);
@@ -64,7 +65,7 @@ export async function querySimpleDonut(
     limit: "50", // Límite generoso para donuts
   };
 
-  const resp = await analytics.properties.runReport({
+  const resp = await runReportLimited(analytics, {
     property,
     requestBody: request,
   });
@@ -98,7 +99,7 @@ export async function queryCountries(
   granularity: Granularity,
   startQ?: string | null,
   endQ?: string | null,
-  limit: number = 100
+  limit: number = 100,
 ): Promise<CountriesResponse> {
   // Usar rangos KPI (agregación)
   const ranges = computeRangesForKPI(granularity, startQ, endQ);
@@ -132,8 +133,8 @@ export async function queryCountries(
 
   // Ejecutar queries en paralelo
   const [totalResp, countriesResp] = await Promise.all([
-    analytics.properties.runReport({ property, requestBody: totalReq }),
-    analytics.properties.runReport({ property, requestBody: countriesReq }),
+    runReportLimited(analytics, { property, requestBody: totalReq }),
+    runReportLimited(analytics, { property, requestBody: countriesReq }),
   ]);
 
   const globalTotal =
@@ -169,7 +170,7 @@ export async function queryRegions(
   granularity: Granularity,
   startQ?: string | null,
   endQ?: string | null,
-  limit: number = 100
+  limit: number = 100,
 ): Promise<RegionsResponse> {
   // Usar rangos KPI (agregación)
   const ranges = computeRangesForKPI(granularity, startQ, endQ);
@@ -210,8 +211,8 @@ export async function queryRegions(
 
   // Ejecutar queries en paralelo
   const [totalResp, regionsResp] = await Promise.all([
-    analytics.properties.runReport({ property, requestBody: totalReq }),
-    analytics.properties.runReport({ property, requestBody: regionsReq }),
+    runReportLimited(analytics, { property, requestBody: totalReq }),
+    runReportLimited(analytics, { property, requestBody: regionsReq }),
   ]);
 
   const total =
@@ -246,7 +247,7 @@ export async function queryCities(
   granularity: Granularity,
   startQ?: string | null,
   endQ?: string | null,
-  limit: number = 100
+  limit: number = 100,
 ): Promise<CitiesResponse> {
   // Usar rangos KPI (agregación)
   const ranges = computeRangesForKPI(granularity, startQ, endQ);
@@ -303,8 +304,8 @@ export async function queryCities(
 
   // Ejecutar queries en paralelo
   const [totalResp, citiesResp] = await Promise.all([
-    analytics.properties.runReport({ property, requestBody: totalReq }),
-    analytics.properties.runReport({ property, requestBody: citiesReq }),
+    runReportLimited(analytics, { property, requestBody: totalReq }),
+    runReportLimited(analytics, { property, requestBody: citiesReq }),
   ]);
 
   const total =

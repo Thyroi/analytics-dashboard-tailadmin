@@ -3,6 +3,7 @@
  */
 
 import type { DonutDatum } from "@/lib/types";
+import { runReportLimited } from "@/lib/utils/analytics/ga4RateLimit";
 import { analyticsdata_v1beta } from "googleapis";
 import { num } from "../drilldown/helpers";
 import type { DateRange, Totals } from "../drilldown/types";
@@ -65,7 +66,7 @@ export async function fetchUrlTotalsAggregated(
     limit: "100000",
   };
 
-  const resp = await analyticsData.properties.runReport({
+  const resp = await runReportLimited(analyticsData, {
     property,
     requestBody: req,
   });
@@ -159,7 +160,7 @@ export async function fetchDonutData(
     limit: "100000",
   };
 
-  const r = await analyticsData.properties.runReport({
+  const r = await runReportLimited(analyticsData, {
     property,
     requestBody: req,
   });

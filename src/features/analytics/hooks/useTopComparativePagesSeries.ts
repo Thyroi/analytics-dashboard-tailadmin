@@ -1,4 +1,5 @@
 // Hook for the working fixed API
+import { fetchJSON } from "@/lib/api/analytics";
 import type { SeriesPoint } from "@/lib/types";
 import { useQuery } from "@tanstack/react-query";
 
@@ -20,7 +21,7 @@ export type FixedApiResponse = {
 export function useTopComparativePagesSeries(
   selectedPaths: string[],
   granularity: "d" | "w" | "m" | "y" = "d",
-  dateRange?: { start: string; end: string }
+  dateRange?: { start: string; end: string },
 ) {
   return useQuery({
     queryKey: [
@@ -55,13 +56,7 @@ export function useTopComparativePagesSeries(
 
       const fullUrl = `/api/analytics/v1/top-comparative-pages-fixed?${url.toString()}`;
 
-      const response = await fetch(fullUrl);
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      return response.json();
+      return fetchJSON<FixedApiResponse>(fullUrl);
     },
     enabled: selectedPaths.length > 0,
     staleTime: 5 * 60 * 1000, // 5 minutes

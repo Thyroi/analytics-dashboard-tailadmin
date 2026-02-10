@@ -1,5 +1,6 @@
 "use client";
 
+import { fetchJSON } from "@/lib/api/analytics";
 import type { Granularity } from "@/lib/types";
 import { useQuery } from "@tanstack/react-query";
 
@@ -31,16 +32,8 @@ export function useDevices({
 
   const { data, isLoading, error } = useQuery<DevicesResponse, Error>({
     queryKey: ["analytics", "devices", granularity, start, end],
-    queryFn: async () => {
-      const res = await fetch(`/api/analytics/v1/devices?${params}`);
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({}));
-        throw new Error(
-          errData.error || `Error ${res.status}: ${res.statusText}`
-        );
-      }
-      return res.json();
-    },
+    queryFn: () =>
+      fetchJSON<DevicesResponse>(`/api/analytics/v1/devices?${params}`),
     staleTime: 5 * 60 * 1000, // 5 min
     gcTime: 10 * 60 * 1000, // 10 min
   });
@@ -54,7 +47,7 @@ export function useDevices({
  * Coloriza los dispositivos con colores específicos.
  */
 export function colorizeDevices(
-  items: DonutItem[]
+  items: DonutItem[],
 ): Array<DonutItem & { color: string }> {
   const colorMap: Record<string, string> = {
     desktop: "#3b82f6", // blue-500

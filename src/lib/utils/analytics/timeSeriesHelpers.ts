@@ -8,6 +8,7 @@ import {
   normalizePropertyId,
   resolvePropertyId,
 } from "@/lib/utils/analytics/ga";
+import { runReportLimited } from "@/lib/utils/analytics/ga4RateLimit";
 import {
   deriveAutoRangeForGranularity,
   deriveRangeEndingYesterday,
@@ -46,10 +47,10 @@ export function enumerateDaysUTC(startISO: string, endISO: string): string[] {
   const s = parseISO(startISO);
   const e = parseISO(endISO);
   const cur = new Date(
-    Date.UTC(s.getUTCFullYear(), s.getUTCMonth(), s.getUTCDate())
+    Date.UTC(s.getUTCFullYear(), s.getUTCMonth(), s.getUTCDate()),
   );
   const end = new Date(
-    Date.UTC(e.getUTCFullYear(), e.getUTCMonth(), e.getUTCDate())
+    Date.UTC(e.getUTCFullYear(), e.getUTCMonth(), e.getUTCDate()),
   );
   const out: string[] = [];
   while (cur <= end) {
@@ -72,7 +73,7 @@ export function ymKey(y: number, mZeroBased: number): string {
 /** Últimos n meses (incluyendo el mes de `endDate`) */
 export function listLastNMonths(
   endDate: Date,
-  n = 12
+  n = 12,
 ): {
   labels: string[]; // ["YYYY-MM", ...]
   keys: string[]; // ["YYYYMM", ...] para mapear contra GA
@@ -100,7 +101,7 @@ export async function queryTopPagesRange(
   start?: string,
   end?: string,
   top: number = 5,
-  includeTotal: boolean = true
+  includeTotal: boolean = true,
 ): Promise<TopPagesRangePayload> {
   const range =
     start && end
@@ -128,7 +129,7 @@ export async function queryTopPagesRange(
     limit: "100000",
   };
 
-  const resp = await analytics.properties.runReport({
+  const resp = await runReportLimited(analytics, {
     property,
     requestBody: request,
   });
@@ -195,7 +196,7 @@ export async function queryUserAcquisitionRange(
   granularity: Granularity,
   start?: string,
   end?: string,
-  includeTotal: boolean = true
+  includeTotal: boolean = true,
 ): Promise<AcquisitionRangePayload> {
   // Rango actual: si no pasan start/end, usar ventana que TERMINA AYER.
   const range =
@@ -206,7 +207,7 @@ export async function queryUserAcquisitionRange(
           const r = deriveRangeEndingYesterday(
             granularity,
             todayUTC(),
-            dayAsWeek
+            dayAsWeek,
           );
           return r;
         })();
@@ -251,7 +252,7 @@ export async function queryUserAcquisitionRange(
     limit: "100000",
   };
 
-  const resp = await analytics.properties.runReport({
+  const resp = await runReportLimited(analytics, {
     property,
     requestBody: request,
   });
@@ -272,7 +273,7 @@ export async function queryUserAcquisitionRange(
       if (slotRaw.length === 8) {
         key = `${slotRaw.slice(0, 4)}-${slotRaw.slice(4, 6)}-${slotRaw.slice(
           6,
-          8
+          8,
         )}`;
       }
     } else {
@@ -296,7 +297,7 @@ export async function queryUserAcquisitionRange(
 
   // Ordenamos canales por total desc y generamos series
   const channels = [...seriesMap.keys()].sort(
-    (a, b) => (totalsByChannel.get(b) ?? 0) - (totalsByChannel.get(a) ?? 0)
+    (a, b) => (totalsByChannel.get(b) ?? 0) - (totalsByChannel.get(a) ?? 0),
   );
 
   const series: SeriesItem[] = channels.map((name) => ({
@@ -328,7 +329,7 @@ export async function queryUserAcquisitionRange(
  * Handler para top pages range
  */
 export async function handleTopPagesRangeRequest(
-  req: Request
+  req: Request,
 ): Promise<TopPagesRangePayload> {
   const { searchParams } = new URL(req.url);
 
@@ -345,7 +346,7 @@ export async function handleTopPagesRangeRequest(
  * Handler para user acquisition range
  */
 export async function handleUserAcquisitionRangeRequest(
-  req: Request
+  req: Request,
 ): Promise<AcquisitionRangePayload> {
   const { searchParams } = new URL(req.url);
 

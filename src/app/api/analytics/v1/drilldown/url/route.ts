@@ -5,6 +5,7 @@ import {
   normalizePropertyId,
   resolvePropertyId,
 } from "@/lib/utils/analytics/ga";
+import { runReportLimited } from "@/lib/utils/analytics/ga4RateLimit";
 import { safePathname } from "@/lib/utils/routing/url";
 import {
   calculatePreviousRangeForAxis,
@@ -170,7 +171,7 @@ export async function GET(req: Request) {
       limit: "200000",
     };
 
-    const seriesResp = await analyticsData.properties.runReport({
+    const seriesResp = await runReportLimited(analyticsData, {
       property,
       requestBody: reqSeries,
     });
@@ -249,20 +250,18 @@ export async function GET(req: Request) {
     const deltaPct = pctDelta(totals.current, totals.previous); // ref: vistas
 
     // ===== KPIs (current / previous) =====
-    const [totCurr, totPrev] = await Promise.all([
-      fetchUrlTotalsAggregated(
-        analyticsData,
-        property,
-        axis.curRange,
-        targetUrl,
-      ),
-      fetchUrlTotalsAggregated(
-        analyticsData,
-        property,
-        axis.prevRange,
-        targetUrl,
-      ),
-    ]);
+    const totCurr = await fetchUrlTotalsAggregated(
+      analyticsData,
+      property,
+      axis.curRange,
+      targetUrl,
+    );
+    const totPrev = await fetchUrlTotalsAggregated(
+      analyticsData,
+      property,
+      axis.prevRange,
+      targetUrl,
+    );
 
     const kpisCurrent = {
       ...totCurr,
@@ -300,32 +299,30 @@ export async function GET(req: Request) {
     };
 
     // ===== Donuts (current) — usando módulo compartido =====
-    const [operatingSystems, devices, countries] = await Promise.all([
-      fetchDonutData(
-        analyticsData,
-        property,
-        donutRange,
-        targetUrl,
-        "operatingSystem",
-        "screenPageViews",
-      ),
-      fetchDonutData(
-        analyticsData,
-        property,
-        donutRange,
-        targetUrl,
-        "deviceCategory",
-        "activeUsers",
-      ),
-      fetchDonutData(
-        analyticsData,
-        property,
-        donutRange,
-        targetUrl,
-        "country",
-        "activeUsers",
-      ),
-    ]);
+    const operatingSystems = await fetchDonutData(
+      analyticsData,
+      property,
+      donutRange,
+      targetUrl,
+      "operatingSystem",
+      "screenPageViews",
+    );
+    const devices = await fetchDonutData(
+      analyticsData,
+      property,
+      donutRange,
+      targetUrl,
+      "deviceCategory",
+      "activeUsers",
+    );
+    const countries = await fetchDonutData(
+      analyticsData,
+      property,
+      donutRange,
+      targetUrl,
+      "country",
+      "activeUsers",
+    );
 
     return NextResponse.json(
       {

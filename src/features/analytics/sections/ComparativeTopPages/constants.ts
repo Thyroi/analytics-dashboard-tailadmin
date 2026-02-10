@@ -7,6 +7,6 @@ export const CHART_WRAPPER_CLASSES = `
 
 export const BORDER_LEFT_COLOR = "var(--color-huelva-primary, #E55338)";
 
-export const AUTO_SELECT_COUNT = 5;
+export const AUTO_SELECT_COUNT = 3;
 export const MAX_PAGES = 8;
 export const INITIAL_PAGE_SIZE = 10;

@@ -14,6 +14,7 @@ import {
   normalizePropertyId,
   resolvePropertyId,
 } from "@/lib/utils/analytics/ga";
+import { runReportLimited } from "@/lib/utils/analytics/ga4RateLimit";
 import { buildUnionRunReportRequest } from "@/lib/utils/analytics/ga4Requests";
 import { safeUrlPathname } from "@/lib/utils/routing/pathMatching";
 import {
@@ -72,12 +73,12 @@ export function extractStandardParams(searchParams: URLSearchParams) {
 export async function executeGA4Query(
   analytics: ReturnType<typeof google.analyticsdata>,
   property: string,
-  request: ReturnType<typeof computeRangesFromQuery>
+  request: ReturnType<typeof computeRangesFromQuery>,
 ) {
   const unionRequest = createPageViewRequest(request);
 
   return withRetry(async () => {
-    const response = await analytics.properties.runReport({
+    const response = await runReportLimited(analytics, {
       property,
       requestBody: unionRequest,
     });
@@ -88,7 +89,7 @@ export async function executeGA4Query(
 
 /** Crea request estándar para page_view events */
 export function createPageViewRequest(
-  ranges: ReturnType<typeof computeRangesFromQuery>
+  ranges: ReturnType<typeof computeRangesFromQuery>,
 ) {
   return buildUnionRunReportRequest({
     current: ranges.current,
@@ -125,7 +126,7 @@ export function processGA4Rows<T extends string>(
     metricValues?: Array<{ value?: unknown }>;
   }>,
   ranges: ReturnType<typeof computeRangesFromQuery>,
-  matchFunction: (path: string) => T | null
+  matchFunction: (path: string) => T | null,
 ): {
   currentTotals: Record<T, number>;
   previousTotals: Record<T, number>;
@@ -147,7 +148,7 @@ export function processGA4Rows<T extends string>(
 
       const iso = `${dateRaw.slice(0, 4)}-${dateRaw.slice(
         4,
-        6
+        6,
       )}-${dateRaw.slice(6, 8)}`;
       const url = String(r.dimensionValues?.[1]?.value ?? "");
 
@@ -201,7 +202,7 @@ export function createStandardResponse<T>(
     title: string;
     total: number;
     deltaPct: number | null;
-  }>
+  }>,
 ) {
   return {
     granularity,
@@ -216,7 +217,7 @@ export function createResponseItems<T extends string>(
   ids: T[],
   currentTotals: Record<T, number>,
   previousTotals: Record<T, number>,
-  getTitleFunction: (id: T) => string
+  getTitleFunction: (id: T) => string,
 ) {
   return ids.map((id) => {
     const curr = currentTotals[id] ?? 0;

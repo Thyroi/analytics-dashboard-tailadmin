@@ -11,7 +11,7 @@ import type { DonutDatum, Granularity, Point, SeriesPoint } from "@/lib/types";
 
 /** Construye querystring ignorando undefined/null */
 export function buildQS(
-  params: Record<string, string | number | boolean | null | undefined>
+  params: Record<string, string | number | boolean | null | undefined>,
 ) {
   const sp = new URLSearchParams();
   for (const [k, v] of Object.entries(params)) {
@@ -38,23 +38,47 @@ function getErrorMessage(raw: unknown): string | null {
 }
 
 /** fetch JSON con manejo de error {error} o {error:{message}} (sin any) */
+const MAX_ANALYTICS_CONCURRENT = Number(
+  process.env.NEXT_PUBLIC_ANALYTICS_MAX_CONCURRENT ?? 2,
+);
+let activeRequests = 0;
+const requestQueue: Array<() => void> = [];
+
+async function acquireRequestSlot(): Promise<void> {
+  if (activeRequests >= MAX_ANALYTICS_CONCURRENT) {
+    await new Promise<void>((resolve) => requestQueue.push(resolve));
+  }
+  activeRequests += 1;
+}
+
+function releaseRequestSlot() {
+  activeRequests = Math.max(0, activeRequests - 1);
+  const next = requestQueue.shift();
+  if (next) next();
+}
+
 export async function fetchJSON<T>(
   url: string,
-  init?: RequestInit
+  init?: RequestInit,
 ): Promise<T> {
-  const res = await fetch(url, {
-    ...init,
-    headers: { "cache-control": "no-cache", ...(init?.headers ?? {}) },
-  });
+  await acquireRequestSlot();
+  try {
+    const res = await fetch(url, {
+      ...init,
+      headers: { "cache-control": "no-cache", ...(init?.headers ?? {}) },
+    });
 
-  const raw: unknown = await res.json().catch(() => ({}));
+    const raw: unknown = await res.json().catch(() => ({}));
 
-  if (!res.ok) {
-    const message = getErrorMessage(raw) ?? `HTTP ${res.status}`;
-    throw new Error(message);
+    if (!res.ok) {
+      const message = getErrorMessage(raw) ?? `HTTP ${res.status}`;
+      throw new Error(message);
+    }
+
+    return raw as T;
+  } finally {
+    releaseRequestSlot();
   }
-
-  return raw as T;
 }
 /* ====================== Payloads: Overview ======================= */
 

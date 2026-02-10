@@ -3,6 +3,7 @@ import {
   normalizePropertyId,
   resolvePropertyId,
 } from "@/lib/utils/analytics/ga";
+import { runReportLimited } from "@/lib/utils/analytics/ga4RateLimit";
 import { computeDeltaArtifact } from "@/lib/utils/delta/core";
 import { addDaysUTC, parseISO, toISO } from "@/lib/utils/time/datetime";
 import { analyticsdata_v1beta, google } from "googleapis";
@@ -64,7 +65,7 @@ function urlToPath(fullUrl: string): string {
  */
 function calculatePreviousPeriod(
   start: string,
-  end: string
+  end: string,
 ): { start: string; end: string } {
   const startDate = parseISO(start);
   const endDate = parseISO(end);
@@ -96,7 +97,7 @@ function calculatePreviousPeriod(
  */
 function calculateDeltaPct(
   current: number,
-  prev: number | null
+  prev: number | null,
 ): number | null {
   // Normalizar null a 0 para poder calcular deltas tipo "new_vs_zero"
   // Esto permite mostrar +700%, +1100%, etc. para páginas sin tráfico anterior
@@ -144,7 +145,7 @@ export async function GET(request: NextRequest) {
     if (!start || !end || !granularity) {
       return NextResponse.json(
         { error: "Missing required parameters: start, end, granularity" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -202,13 +203,13 @@ export async function GET(request: NextRequest) {
     };
 
     // Get current period data - INCREASED LIMIT TO CAPTURE ALL PAGES
-    const currentResponse = await ga.properties.runReport({
+    const currentResponse = await runReportLimited(ga, {
       property,
       requestBody: gaQueryParams,
     });
 
     // Get previous period data
-    const prevResponse = await ga.properties.runReport({
+    const prevResponse = await runReportLimited(ga, {
       property,
       requestBody: {
         dateRanges: [{ startDate: prevRange.start, endDate: prevRange.end }],
@@ -258,7 +259,7 @@ export async function GET(request: NextRequest) {
         // Si el path ya existe, sumar (por si hay duplicados)
         const existing = currentData.get(path) ?? 0;
         currentData.set(path, existing + visits);
-      }
+      },
     );
 
     // Process previous data - Convertir URLs completas a paths relativos
@@ -294,7 +295,7 @@ export async function GET(request: NextRequest) {
       allItems = allItems.filter(
         (item) =>
           item.label.toLowerCase().includes(searchLower) ||
-          item.path.toLowerCase().includes(searchLower)
+          item.path.toLowerCase().includes(searchLower),
       );
     }
 
@@ -351,7 +352,7 @@ export async function GET(request: NextRequest) {
         error: "Internal server error",
         details: error instanceof Error ? error.message : String(error),
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

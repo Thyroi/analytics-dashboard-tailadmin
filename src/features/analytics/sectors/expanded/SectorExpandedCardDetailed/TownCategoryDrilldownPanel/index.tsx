@@ -35,17 +35,17 @@ export default function TownCategoryDrilldownPanel({
 
   const isDayGranularity = granularity === "d";
 
-  // TOP-5 URLs para gráfica (no para donut - donut muestra todas)
+  // TOP-3 URLs para gráfica (no para donut - donut muestra todas)
   // Solo necesario si NO es granularidad día
-  const top5Urls = useMemo(() => {
+  const top3Urls = useMemo(() => {
     if (drilldown.loading || isDayGranularity) return [];
-    const urls = drilldown.donut.slice(0, 5).map((item) => item.label);
+    const urls = drilldown.donut.slice(0, 3).map((item) => item.label);
     return urls;
   }, [drilldown, isDayGranularity]);
 
-  // Solo fetch TOP-5 para la gráfica (skip si es granularidad día)
+  // Solo fetch TOP-3 para la gráfica (skip si es granularidad día)
   const urlSeries = useUrlSeries({
-    urls: top5Urls,
+    urls: top3Urls,
     granularity,
     startISO,
     endISO,

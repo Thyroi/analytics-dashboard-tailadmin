@@ -8,6 +8,7 @@ import {
   normalizePropertyId,
   resolvePropertyId,
 } from "@/lib/utils/analytics/ga";
+import { runReportLimited } from "@/lib/utils/analytics/ga4RateLimit";
 import { addDaysUTC, parseISO, toISO } from "@/lib/utils/time/datetime";
 import { computeRangesForSeries } from "@/lib/utils/time/timeWindows";
 import { analyticsdata_v1beta, google } from "googleapis";
@@ -56,21 +57,21 @@ function listYearMonthKeys(startISO: string, endISO: string): string[] {
   const out: string[] = [];
 
   let current = new Date(
-    Date.UTC(start.getUTCFullYear(), start.getUTCMonth(), 1)
+    Date.UTC(start.getUTCFullYear(), start.getUTCMonth(), 1),
   );
   const endMonth = new Date(
-    Date.UTC(end.getUTCFullYear(), end.getUTCMonth(), 1)
+    Date.UTC(end.getUTCFullYear(), end.getUTCMonth(), 1),
   );
 
   while (current.getTime() <= endMonth.getTime()) {
     out.push(
       `${current.getUTCFullYear()}-${String(current.getUTCMonth() + 1).padStart(
         2,
-        "0"
-      )}`
+        "0",
+      )}`,
     );
     current = new Date(
-      Date.UTC(current.getUTCFullYear(), current.getUTCMonth() + 1, 1)
+      Date.UTC(current.getUTCFullYear(), current.getUTCMonth() + 1, 1),
     );
   }
 
@@ -81,7 +82,7 @@ function listYearMonthKeys(startISO: string, endISO: string): string[] {
 export async function queryOverview(
   granularity: Granularity,
   startISO?: string,
-  endISO?: string
+  endISO?: string,
 ): Promise<OverviewResponse> {
   const gParam = granularity.toLowerCase() as Granularity;
 
@@ -90,7 +91,7 @@ export async function queryOverview(
   const { current, previous } = computeRangesForSeries(
     gParam,
     startISO,
-    endISO
+    endISO,
   );
 
   const curRange: Range = current;
@@ -151,11 +152,11 @@ export async function queryOverview(
       const d = new Date(Date.UTC(y, m - 1, 1));
       const monthsOffset = Math.round(offsetDays / 30);
       const d2 = new Date(
-        Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + monthsOffset, 1)
+        Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + monthsOffset, 1),
       );
       return `${d2.getUTCFullYear()}-${String(d2.getUTCMonth() + 1).padStart(
         2,
-        "0"
+        "0",
       )}`;
     }
     // Para date, sumar offsetDays
@@ -164,7 +165,7 @@ export async function queryOverview(
 
   async function fetchUsersSeries(
     range: Range,
-    isPrev = false
+    isPrev = false,
   ): Promise<Point[]> {
     const req: analyticsdata_v1beta.Schema$RunReportRequest = {
       dateRanges: [{ startDate: range.start, endDate: range.end }],
@@ -174,7 +175,7 @@ export async function queryOverview(
       orderBys: [{ dimension: { dimensionName: dimensionTime } }],
       limit: "100000",
     };
-    const resp = await analyticsData.properties.runReport({
+    const resp = await runReportLimited(analyticsData, {
       property,
       requestBody: req,
     });
@@ -194,7 +195,7 @@ export async function queryOverview(
 
   async function fetchInteractionsSeries(
     range: Range,
-    isPrev = false
+    isPrev = false,
   ): Promise<Point[]> {
     const req: analyticsdata_v1beta.Schema$RunReportRequest = {
       dateRanges: [{ startDate: range.start, endDate: range.end }],
@@ -204,7 +205,7 @@ export async function queryOverview(
       orderBys: [{ dimension: { dimensionName: dimensionTime } }],
       limit: "100000",
     };
-    const resp = await analyticsData.properties.runReport({
+    const resp = await runReportLimited(analyticsData, {
       property,
       requestBody: req,
     });
@@ -256,7 +257,7 @@ export async function queryOverview(
 
 /* ================= Handler ================= */
 export async function handleOverviewRequest(
-  req: Request
+  req: Request,
 ): Promise<OverviewResponse> {
   const { searchParams } = new URL(req.url);
 

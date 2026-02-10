@@ -5,6 +5,7 @@ import {
   normalizePropertyId,
   resolvePropertyId,
 } from "@/lib/utils/analytics/ga";
+import { runReportLimited } from "@/lib/utils/analytics/ga4RateLimit";
 import { addDaysUTC, todayUTC } from "@/lib/utils/time/datetime";
 import {
   buildLaggedAxisForGranularity,
@@ -19,56 +20,13 @@ export const runtime = "nodejs";
 
 /* ---------- tipos/helpers ---------- */
 
-/** Obtener dimensions customizadas de GA4 */
-async function fetchDimensionApiNames(
-  analyticsData: analyticsdata_v1beta.Analyticsdata,
-  propertyId: string
-): Promise<string[]> {
-  const name = `${normalizePropertyId(propertyId)}/metadata`;
-  const meta = await analyticsData.properties.getMetadata({ name });
-  return (
-    meta.data.dimensions?.map((d) => d.apiName ?? "").filter((s) => s) ?? []
-  );
-}
-
-/** Resolver dimension customizada */
-function resolveCustomEventDim(
-  available: string[],
-  base: string
-): string | undefined {
-  const candidates = [
-    `customEvent:${base.toLowerCase()}`,
-    `customEvent:${base.charAt(0).toUpperCase()}${base.slice(1)}`,
-    `customEvent:${base}`,
-  ];
-
-  const availLC = available.map((a) => a.toLowerCase());
-  for (const cand of candidates) {
-    const idx = availLC.indexOf(cand.toLowerCase());
-    if (idx >= 0) return available[idx];
-  }
-
-  // Fallback por sufijo
-  const suffix = `:${base.toLowerCase()}`;
-  const idx = availLC.findIndex(
-    (a) => a.startsWith("customevent:") && a.endsWith(suffix)
-  );
-  if (idx >= 0) return available[idx];
-
-  return undefined;
-}
-
 /** Serie temporal para una URL específica usando el patrón de drilldown/url */
 async function fetchUrlSeries(
   analyticsData: analyticsdata_v1beta.Analyticsdata,
   property: string,
   axis: AxisLagged,
   targetUrl: string,
-  dimsAvailable: string[]
 ): Promise<{ current: SeriesPoint[]; previous: SeriesPoint[] }> {
-  const puebloDimName = resolveCustomEventDim(dimsAvailable, "pueblo");
-  const categoriaDimName = resolveCustomEventDim(dimsAvailable, "categoria");
-
   const N = axis.xLabels.length;
 
   // Usar filtros AND para eventName Y pageLocation exacta (como en drilldown/url)
@@ -95,14 +53,12 @@ async function fetchUrlSeries(
     },
   ];
 
-  // Construir dimensiones para series: tiempo + pageLocation + eventName + customs
+  // Construir dimensiones para series: tiempo + pageLocation + eventName
   const seriesDimensions: analyticsdata_v1beta.Schema$Dimension[] = [
     { name: axis.dimensionTime }, // "date" | "yearMonth"
     { name: "eventName" },
     { name: "pageLocation" },
   ];
-  if (puebloDimName) seriesDimensions.push({ name: puebloDimName });
-  if (categoriaDimName) seriesDimensions.push({ name: categoriaDimName });
 
   const reqSeries: analyticsdata_v1beta.Schema$RunReportRequest = {
     dateRanges: [
@@ -119,7 +75,7 @@ async function fetchUrlSeries(
     limit: "200000",
   };
 
-  const seriesResp = await analyticsData.properties.runReport({
+  const seriesResp = await runReportLimited(analyticsData, {
     property,
     requestBody: reqSeries,
   });
@@ -145,7 +101,7 @@ async function fetchUrlSeries(
       if (slotRaw.length === 8) {
         slotKey = `${slotRaw.slice(0, 4)}-${slotRaw.slice(
           4,
-          6
+          6,
         )}-${slotRaw.slice(6, 8)}`;
       }
     } else {
@@ -217,41 +173,34 @@ export async function GET(req: Request) {
     const analyticsData = google.analyticsdata({ version: "v1beta", auth });
     const property = normalizePropertyId(resolvePropertyId());
 
-    // ===== Obtener dimensiones customizadas una vez =====
-    const dimsAvailable = await fetchDimensionApiNames(
-      analyticsData,
-      property.replace("properties/", "")
-    );
-
     // ===== Construir URLs completas para GA4 =====
     const BASE_URL = "https://wp.ideanto.com";
 
     // ===== Procesar todas las URLs en paralelo =====
-    const seriesPromises = includeSeriesFor.map((path) => {
+    const series = [] as Array<{ path: string; data: SeriesPoint[] }>;
+    for (const path of includeSeriesFor) {
       // Construir URL completa: GA4 almacena URLs completas, no paths relativos
       const fullUrl = path.startsWith("http") ? path : `${BASE_URL}${path}`;
 
-      return fetchUrlSeries(
-        analyticsData,
-        property,
-        axis,
-        fullUrl,
-        dimsAvailable
-      )
-        .then((seriesData) => ({
+      try {
+        const seriesData = await fetchUrlSeries(
+          analyticsData,
+          property,
+          axis,
+          fullUrl,
+        );
+        series.push({
           path: path, // Devolver el path original para el frontend
           data: seriesData.current, // Solo devolvemos current para el chart
-        }))
-        .catch((error) => {
-          console.error(`❌ ERROR PROCESSING ${path}:`, error);
-          return {
-            path: path,
-            data: [], // Serie vacía en caso de error
-          };
         });
-    });
-
-    const series = await Promise.all(seriesPromises);
+      } catch (error) {
+        console.error(`❌ ERROR PROCESSING ${path}:`, error);
+        series.push({
+          path: path,
+          data: [], // Serie vacía en caso de error
+        });
+      }
+    }
 
     return NextResponse.json({
       series,

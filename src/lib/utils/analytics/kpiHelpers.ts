@@ -8,6 +8,7 @@ import {
   normalizePropertyId,
   resolvePropertyId,
 } from "@/lib/utils/analytics/ga";
+import { runReportLimited } from "@/lib/utils/analytics/ga4RateLimit";
 import { computeRangesForKPI } from "@/lib/utils/time/timeWindows";
 import { analyticsdata_v1beta, google } from "googleapis";
 
@@ -56,7 +57,7 @@ export async function queryKpiTotals(
   property: string,
   start: string,
   end: string,
-  additionalFilters?: analyticsdata_v1beta.Schema$FilterExpression[]
+  additionalFilters?: analyticsdata_v1beta.Schema$FilterExpression[],
 ): Promise<KpiTotals> {
   const request: analyticsdata_v1beta.Schema$RunReportRequest = {
     dateRanges: [{ startDate: start, endDate: end }],
@@ -78,7 +79,7 @@ export async function queryKpiTotals(
     limit: "1",
   };
 
-  const resp = await analytics.properties.runReport({
+  const resp = await runReportLimited(analytics, {
     property,
     requestBody: request,
   });
@@ -101,7 +102,7 @@ export async function queryKpiTotals(
  */
 export function computeKpiDeltaPct(
   current: KpiTotals,
-  previous: KpiTotals
+  previous: KpiTotals,
 ): KpiDeltaPct {
   const pct = (c: number, p: number): number | null =>
     p <= 0 ? (c > 0 ? 1 : null) : c / p - 1;
@@ -113,7 +114,7 @@ export function computeKpiDeltaPct(
     screenPageViews: pct(current.screenPageViews, previous.screenPageViews),
     averageSessionDuration: pct(
       current.averageSessionDuration,
-      previous.averageSessionDuration
+      previous.averageSessionDuration,
     ),
   };
 }
@@ -123,7 +124,7 @@ export function computeKpiDeltaPct(
  */
 export function computeKpiDeltas(
   current: KpiTotals,
-  previous: KpiTotals
+  previous: KpiTotals,
 ): KpiDeltas {
   return {
     activeUsers: current.activeUsers - previous.activeUsers,
@@ -142,7 +143,7 @@ export async function handleKpiRequest(
   granularity: Granularity,
   startQ?: string | null,
   endQ?: string | null,
-  additionalFilters?: analyticsdata_v1beta.Schema$FilterExpression[]
+  additionalFilters?: analyticsdata_v1beta.Schema$FilterExpression[],
 ): Promise<KpiResponse> {
   // Calcular rangos usando función estandarizada
   const ranges = computeRangesForKPI(granularity, startQ, endQ);
@@ -159,14 +160,14 @@ export async function handleKpiRequest(
       property,
       ranges.current.start,
       ranges.current.end,
-      additionalFilters
+      additionalFilters,
     ),
     queryKpiTotals(
       analytics,
       property,
       ranges.previous.start,
       ranges.previous.end,
-      additionalFilters
+      additionalFilters,
     ),
   ]);
 

@@ -18,6 +18,7 @@ import {
   normalizePropertyId,
   resolvePropertyId,
 } from "@/lib/utils/analytics/ga";
+import { runReportLimited } from "@/lib/utils/analytics/ga4RateLimit";
 import { buildPageViewUnionRequest } from "@/lib/utils/analytics/ga4Requests";
 
 import {
@@ -149,7 +150,7 @@ export async function GET(
       metrics: [{ name: "eventCount" }],
     });
 
-    const resp = await analytics.properties.runReport({
+    const resp = await runReportLimited(analytics, {
       property,
       requestBody,
     });
