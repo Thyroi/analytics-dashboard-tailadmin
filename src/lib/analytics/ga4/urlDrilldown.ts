@@ -6,7 +6,6 @@ import type { DonutDatum } from "@/lib/types";
 import { analyticsdata_v1beta } from "googleapis";
 import { num } from "../drilldown/helpers";
 import type { DateRange, Totals } from "../drilldown/types";
-import { fetchDimensionApiNames, resolveCustomEventDim } from "./dimensions";
 
 /**
  * Obtiene KPIs totales agregados para una URL específica
@@ -16,23 +15,13 @@ export async function fetchUrlTotalsAggregated(
   analyticsData: analyticsdata_v1beta.Analyticsdata,
   property: string,
   range: DateRange,
-  targetUrl: string
+  targetUrl: string,
 ): Promise<Totals> {
-  // Obtener dimensiones customizadas disponibles
-  const dimsAvailable = await fetchDimensionApiNames(
-    analyticsData,
-    property.replace("properties/", "")
-  );
-  const puebloDimName = resolveCustomEventDim(dimsAvailable, "pueblo");
-  const categoriaDimName = resolveCustomEventDim(dimsAvailable, "categoria");
-
-  // Construir dimensiones: siempre eventName y pageLocation, más las customizadas si están disponibles
+  // Construir dimensiones: siempre eventName y pageLocation
   const dimensions: analyticsdata_v1beta.Schema$Dimension[] = [
     { name: "eventName" },
     { name: "pageLocation" },
   ];
-  if (puebloDimName) dimensions.push({ name: puebloDimName });
-  if (categoriaDimName) dimensions.push({ name: categoriaDimName });
 
   // Usar filtros AND para eventName Y pageLocation
   const filters: analyticsdata_v1beta.Schema$FilterExpression[] = [
@@ -126,24 +115,14 @@ export async function fetchDonutData(
   range: DateRange,
   targetUrl: string,
   dimension: "operatingSystem" | "deviceCategory" | "browser" | "country",
-  metric: "screenPageViews" | "activeUsers"
+  metric: "screenPageViews" | "activeUsers",
 ): Promise<DonutDatum[]> {
-  // Obtener dimensiones customizadas disponibles
-  const dimsAvailable = await fetchDimensionApiNames(
-    analyticsData,
-    property.replace("properties/", "")
-  );
-  const puebloDimName = resolveCustomEventDim(dimsAvailable, "pueblo");
-  const categoriaDimName = resolveCustomEventDim(dimsAvailable, "categoria");
-
-  // Construir dimensiones para donuts: target + eventName + pageLocation + customs
+  // Construir dimensiones para donuts: target + eventName + pageLocation
   const donutDimensions: analyticsdata_v1beta.Schema$Dimension[] = [
     { name: dimension },
     { name: "eventName" },
     { name: "pageLocation" },
   ];
-  if (puebloDimName) donutDimensions.push({ name: puebloDimName });
-  if (categoriaDimName) donutDimensions.push({ name: categoriaDimName });
 
   // Usar filtros AND como en KPIs: eventName Y pageLocation
   const donutFilters: analyticsdata_v1beta.Schema$FilterExpression[] = [
@@ -192,7 +171,7 @@ export async function fetchDonutData(
     const dims = row.dimensionValues ?? [];
     const mets = row.metricValues ?? [];
 
-    // Las dimensiones están en orden: [targetDim, eventName, pageLocation, pueblo?, categoria?]
+    // Las dimensiones están en orden: [targetDim, eventName, pageLocation]
     const raw = String(dims[0]?.value ?? "Unknown").trim();
     const label = raw.length > 0 ? raw : "Unknown";
     const val = Number(mets[0]?.value ?? 0);

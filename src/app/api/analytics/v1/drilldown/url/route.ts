@@ -27,12 +27,8 @@ import {
   safeDiv,
 } from "@/lib/analytics/drilldown/helpers";
 import {
-  fetchDimensionApiNames,
-  resolveCustomEventDim,
-} from "@/lib/analytics/ga4/dimensions";
-import {
-  fetchUrlTotalsAggregated,
   fetchDonutData,
+  fetchUrlTotalsAggregated,
 } from "@/lib/analytics/ga4/urlDrilldown";
 
 export const dynamic = "force-dynamic";
@@ -49,7 +45,7 @@ export async function GET(req: Request) {
     if (!rawPath) {
       return NextResponse.json(
         { error: "Missing 'path' query param" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -83,7 +79,7 @@ export async function GET(req: Request) {
       const prevLabels = generateLabelsForRange(
         prevRange.start,
         prevRange.end,
-        g
+        g,
       );
 
       // Convertir labels a keys (sin guiones)
@@ -126,14 +122,6 @@ export async function GET(req: Request) {
     const analyticsData = google.analyticsdata({ version: "v1beta", auth });
     const property = normalizePropertyId(resolvePropertyId());
 
-    // ===== Obtener dimensiones customizadas una vez para toda la función =====
-    const dimsAvailable = await fetchDimensionApiNames(
-      analyticsData,
-      property.replace("properties/", "")
-    );
-    const puebloDimName = resolveCustomEventDim(dimsAvailable, "pueblo");
-    const categoriaDimName = resolveCustomEventDim(dimsAvailable, "categoria");
-
     // ===== Serie por bucket: engagement (seg) y vistas =====
     // Usar filtros AND para eventName Y pageLocation como en KPIs
     const seriesFilters: analyticsdata_v1beta.Schema$FilterExpression[] = [
@@ -159,14 +147,12 @@ export async function GET(req: Request) {
       },
     ];
 
-    // Construir dimensiones para series: tiempo + pageLocation + eventName + customs
+    // Construir dimensiones para series: tiempo + pageLocation + eventName
     const seriesDimensions: analyticsdata_v1beta.Schema$Dimension[] = [
       { name: axis.dimensionTime }, // "date" | "yearMonth"
       { name: "eventName" },
       { name: "pageLocation" },
     ];
-    if (puebloDimName) seriesDimensions.push({ name: puebloDimName });
-    if (categoriaDimName) seriesDimensions.push({ name: categoriaDimName });
 
     const reqSeries: analyticsdata_v1beta.Schema$RunReportRequest = {
       dateRanges: [
@@ -202,7 +188,7 @@ export async function GET(req: Request) {
       const dims = r.dimensionValues ?? [];
       const mets = r.metricValues ?? [];
 
-      // Las dimensiones están en orden: [time, eventName, pageLocation, pueblo?, categoria?]
+      // Las dimensiones están en orden: [time, eventName, pageLocation]
       const slotRaw = String(dims[0]?.value ?? "");
 
       const eng = Number(mets[0]?.value ?? 0);
@@ -268,13 +254,13 @@ export async function GET(req: Request) {
         analyticsData,
         property,
         axis.curRange,
-        targetUrl
+        targetUrl,
       ),
       fetchUrlTotalsAggregated(
         analyticsData,
         property,
         axis.prevRange,
-        targetUrl
+        targetUrl,
       ),
     ]);
 
@@ -282,7 +268,7 @@ export async function GET(req: Request) {
       ...totCurr,
       avgEngagementPerUser: safeDiv(
         totCurr.userEngagementDuration,
-        totCurr.activeUsers
+        totCurr.activeUsers,
       ),
       eventsPerSession: safeDiv(totCurr.eventCount, totCurr.sessions),
     };
@@ -290,7 +276,7 @@ export async function GET(req: Request) {
       ...totPrev,
       avgEngagementPerUser: safeDiv(
         totPrev.userEngagementDuration,
-        totPrev.activeUsers
+        totPrev.activeUsers,
       ),
       eventsPerSession: safeDiv(totPrev.eventCount, totPrev.sessions),
     };
@@ -301,15 +287,15 @@ export async function GET(req: Request) {
       sessions: pctDelta(totCurr.sessions, totPrev.sessions),
       averageSessionDuration: pctDelta(
         totCurr.averageSessionDuration,
-        totPrev.averageSessionDuration
+        totPrev.averageSessionDuration,
       ),
       avgEngagementPerUser: pctDelta(
         kpisCurrent.avgEngagementPerUser,
-        kpisPrevious.avgEngagementPerUser
+        kpisPrevious.avgEngagementPerUser,
       ),
       eventsPerSession: pctDelta(
         kpisCurrent.eventsPerSession,
-        kpisPrevious.eventsPerSession
+        kpisPrevious.eventsPerSession,
       ),
     };
 
@@ -321,7 +307,7 @@ export async function GET(req: Request) {
         donutRange,
         targetUrl,
         "operatingSystem",
-        "screenPageViews"
+        "screenPageViews",
       ),
       fetchDonutData(
         analyticsData,
@@ -329,7 +315,7 @@ export async function GET(req: Request) {
         donutRange,
         targetUrl,
         "deviceCategory",
-        "activeUsers"
+        "activeUsers",
       ),
       fetchDonutData(
         analyticsData,
@@ -337,7 +323,7 @@ export async function GET(req: Request) {
         donutRange,
         targetUrl,
         "country",
-        "activeUsers"
+        "activeUsers",
       ),
     ]);
 
@@ -358,7 +344,7 @@ export async function GET(req: Request) {
         countries,
         deltaPct,
       },
-      { status: 200 }
+      { status: 200 },
     );
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : "Unknown error";
