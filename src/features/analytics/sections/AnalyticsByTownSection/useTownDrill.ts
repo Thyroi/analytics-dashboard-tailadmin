@@ -8,7 +8,7 @@ import type { Drill, Level2Data } from "./types";
 export function useTownDrill(
   calculatedGranularity: Granularity,
   currentPeriod: { start: string; end: string },
-  queryClient: QueryClient
+  queryClient: QueryClient,
 ) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [drill, setDrill] = useState<Drill | null>(null);
@@ -40,11 +40,15 @@ export function useTownDrill(
         setDrill(newDrill);
       }
     },
-    [expandedId, drill, queryClient]
+    [expandedId, drill, queryClient],
   );
 
   const handleClose = useCallback(() => {
     setExpandedId(null);
+    setDrill(null);
+  }, []);
+
+  const handleCloseLevel2 = useCallback(() => {
     setDrill(null);
   }, []);
 
@@ -81,5 +85,6 @@ export function useTownDrill(
     handleOpen,
     handleSliceClick,
     handleClose,
+    handleCloseLevel2,
   };
 }

@@ -57,10 +57,6 @@ export function Level2Chart({
     );
   }
 
-  if (ddLoading) {
-    return <ChartPairSkeleton />;
-  }
-
   // Para otras granularidades: comparación por URLs
   return (
     <ChartPair

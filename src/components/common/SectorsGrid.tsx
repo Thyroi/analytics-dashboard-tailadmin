@@ -55,6 +55,7 @@ type BaseProps = {
 type DetailedProps = BaseProps & {
   variant: "detailed";
   onSliceClick?: (label: string) => void;
+  onCloseLevel2?: () => void;
 
   /** Nivel 2 data - si se pasa, se renderiza el drilldown */
   level2Data?: {
@@ -173,6 +174,7 @@ export default function SectorsGrid(props: Props) {
                           }
                         : undefined
                     }
+                    onCloseLevel2={props.onCloseLevel2}
                     {...variant}
                   />
                 ) : (

@@ -3,9 +3,10 @@
 import { useDrilldownDetails } from "@/features/analytics/hooks/useDrilldownDetails";
 import { useDrilldownTransformation } from "@/features/analytics/hooks/useDrilldownTransformation";
 import { useUrlSeries } from "@/features/analytics/hooks/useUrlSeries";
+import { useToast } from "@/hooks/useToast";
 import { CATEGORY_META } from "@/lib/taxonomy/categories";
 import { TOWN_META } from "@/lib/taxonomy/towns";
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import DrilldownTitle from "../DrilldownTitle";
 import { Level2Chart } from "./Level2Chart";
 import { Level3Details } from "./Level3Details";
@@ -22,7 +23,10 @@ export default function TownCategoryDrilldownPanel({
   color = "dark",
   startISO,
   endISO,
+  onCloseLevel2,
 }: TownCategoryDrilldownPanelProps) {
+  const { warning } = useToast();
+  const closedRef = useRef(false);
   // Nivel 2: sub-actividades (series por URL + donut)
   const drilldown = useDrilldownDetails({
     type: "pueblo-category",
@@ -68,12 +72,39 @@ export default function TownCategoryDrilldownPanel({
         },
   );
 
+  useEffect(() => {
+    if (closedRef.current) return;
+    if (drilldown.loading) return;
+
+    const hasData = isDayGranularity
+      ? (dayData?.donut?.length ?? 0) > 0
+      : dd.donut.length > 0;
+
+    if (!hasData && onCloseLevel2) {
+      closedRef.current = true;
+      warning("No hay datos para este rango. Cerramos el nivel 2.", 3500);
+      onCloseLevel2();
+    }
+  }, [
+    drilldown.loading,
+    isDayGranularity,
+    dayData,
+    dd.donut.length,
+    onCloseLevel2,
+    warning,
+  ]);
+
   // Level 3 state management
   const level3 = useLevel3State(
     isDayGranularity,
     dayData,
     dd.seriesByUrl,
-    dd.loading,
+    urlSeries.loading,
+    isDayGranularity
+      ? (dayData?.donut ?? []).map((item) => item.id)
+      : drilldown.loading
+        ? []
+        : drilldown.donut.map((item) => item.label),
     granularity,
     startISO,
     endISO,
@@ -107,7 +138,7 @@ export default function TownCategoryDrilldownPanel({
           isDayGranularity={isDayGranularity}
           dayData={dayData}
           drilldownLoading={drilldown.loading}
-          ddLoading={dd.loading}
+          ddLoading={urlSeries.loading}
           ddXLabels={dd.xLabels}
           ddSeriesByUrl={dd.seriesByUrl}
           ddDonut={dd.donut}

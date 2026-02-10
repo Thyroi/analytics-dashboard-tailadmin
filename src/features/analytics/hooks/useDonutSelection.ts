@@ -14,8 +14,25 @@ export function useDonutSelection(seriesByUrl: SeriesByUrl) {
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
   const detailsRef = useRef<HTMLDivElement | null>(null);
 
+  const clearSelection = useCallback(() => {
+    setSelectedPath(null);
+  }, []);
+
   const handleDonutSliceClick = useCallback(
     (sub: string) => {
+      // Si el label ya es una URL/path, usarla directamente
+      if (sub.startsWith("/") || sub.startsWith("http")) {
+        setSelectedPath(sub);
+        queryClient.cancelQueries({ queryKey: ["url-drilldown"] });
+        setTimeout(() => {
+          detailsRef.current?.scrollIntoView({
+            behavior: "smooth",
+            block: "start",
+          });
+        }, 150);
+        return;
+      }
+
       // Adaptamos el formato para que funcione con pickPathForSubActivity
       const adaptedSeries = seriesByUrl.map((s) => ({
         name: s.name,
@@ -25,17 +42,13 @@ export function useDonutSelection(seriesByUrl: SeriesByUrl) {
 
       const candidate = pickPathForSubActivity(
         sub,
-        adaptedSeries as UrlSeries[]
+        adaptedSeries as UrlSeries[],
       );
 
       if (candidate) {
         // Actualizar estado (incluso si es el mismo path)
         setSelectedPath(candidate);
-
-        // Invalidar queries por prefijo para forzar refetch inmediato
-        queryClient.invalidateQueries({
-          queryKey: ["url-drilldown"],
-        });
+        queryClient.cancelQueries({ queryKey: ["url-drilldown"] });
 
         // Hacer scroll al nivel 3 (siempre, para asegurar visibilidad)
         setTimeout(() => {
@@ -46,12 +59,13 @@ export function useDonutSelection(seriesByUrl: SeriesByUrl) {
         }, 150);
       }
     },
-    [queryClient, seriesByUrl]
+    [queryClient, seriesByUrl],
   );
 
   return {
     selectedPath,
     detailsRef,
     handleDonutSliceClick,
+    clearSelection,
   };
 }

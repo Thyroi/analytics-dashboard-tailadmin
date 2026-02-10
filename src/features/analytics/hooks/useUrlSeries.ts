@@ -20,7 +20,7 @@ type UrlDrilldownResponse = {
     current: Record<string, number>;
     previous: Record<string, number>;
     deltaPct: Record<string, number>;
-  };
+  } | null;
   operatingSystems: DonutDatum[];
   genders: DonutDatum[];
   countries: DonutDatum[];
@@ -75,6 +75,7 @@ export function useUrlSeries({
         const params = new URLSearchParams();
         params.set("path", url);
         params.set("granularity", granularity);
+        params.set("mode", "series");
         if (startISO) params.set("startDate", startISO);
         if (endISO) params.set("endDate", endISO);
 
@@ -145,7 +146,7 @@ export function useUrlSeries({
     })
     .filter(
       (item): item is { name: string; data: number[]; path: string } =>
-        item !== null
+        item !== null,
     );
 
   return {

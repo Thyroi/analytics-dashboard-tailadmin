@@ -33,6 +33,7 @@ type BaseProps = {
     startISO?: string;
     endISO?: string;
   };
+  onCloseLevel2?: () => void;
 };
 
 type Props = BaseProps & IconOrImage;
@@ -48,6 +49,7 @@ export default function SectorExpandedCardDetailed(props: Props) {
     onClose,
     onSliceClick,
     level2,
+    onCloseLevel2,
   } = props;
 
   const imgSrc =
@@ -113,6 +115,7 @@ export default function SectorExpandedCardDetailed(props: Props) {
             headline="category"
             startISO={level2.startISO}
             endISO={level2.endISO}
+            onCloseLevel2={onCloseLevel2}
           />
         </div>
       )}

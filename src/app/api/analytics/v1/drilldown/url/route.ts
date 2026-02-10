@@ -40,6 +40,7 @@ export async function GET(req: Request) {
     const url = new URL(req.url);
     const rawPath = url.searchParams.get("path") || ""; // URL completa
     const g = (url.searchParams.get("granularity") || "d") as Granularity;
+    const mode = url.searchParams.get("mode") || "full";
     const endISOParam = url.searchParams.get("endDate") || undefined;
     const startISOParam = url.searchParams.get("startDate") || undefined;
 
@@ -248,6 +249,24 @@ export async function GET(req: Request) {
 
     const seriesAvg = ratioSeries(seriesEng, seriesVws); // segundos promedio por bucket
     const deltaPct = pctDelta(totals.current, totals.previous); // ref: vistas
+
+    if (mode === "series") {
+      return NextResponse.json(
+        {
+          granularity: g,
+          range: { current: axis.curRange, previous: axis.prevRange },
+          context: { path: targetPath },
+          xLabels: axis.xLabels,
+          seriesAvgEngagement: seriesAvg,
+          kpis: null,
+          operatingSystems: [],
+          devices: [],
+          countries: [],
+          deltaPct,
+        },
+        { status: 200 },
+      );
+    }
 
     // ===== KPIs (current / previous) =====
     const totCurr = await fetchUrlTotalsAggregated(

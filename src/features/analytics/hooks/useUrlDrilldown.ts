@@ -60,9 +60,9 @@ type State =
 export function useUrlDrilldown({ path, granularity, startISO, endISO }: Args) {
   const { data, isLoading, error } = useQuery({
     queryKey: ["url-drilldown", path, granularity, startISO, endISO],
-    queryFn: async (): Promise<UrlDrilldownResponse> => {
+    queryFn: async ({ signal }): Promise<UrlDrilldownResponse> => {
       if (!path) throw new Error("Path is required");
-      return getUrlDrilldown({ path, granularity, startISO, endISO });
+      return getUrlDrilldown({ path, granularity, startISO, endISO, signal });
     },
     enabled: Boolean(path),
     staleTime: 5 * 60 * 1000, // 5 minutos

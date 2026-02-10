@@ -54,6 +54,7 @@ export function SectionContent() {
     handleOpen,
     handleSliceClick,
     handleClose,
+    handleCloseLevel2,
   } = useCategoryDrill(calculatedGranularity, currentPeriod, queryClient);
 
   // Calcular rangos correctos para SERIES según mode y granularity
@@ -61,7 +62,7 @@ export function SectionContent() {
     mode,
     calculatedGranularity,
     startDate,
-    endDate
+    endDate,
   );
 
   // NIVEL 1 - usar granularidad CALCULADA y rangos correctos
@@ -109,6 +110,7 @@ export function SectionContent() {
         onSliceClick={handleSliceClick}
         isDeltaLoading={isInitialLoading || isFetching}
         level2Data={level2Data}
+        onCloseLevel2={handleCloseLevel2}
         startDate={startDate}
         endDate={endDate}
       />

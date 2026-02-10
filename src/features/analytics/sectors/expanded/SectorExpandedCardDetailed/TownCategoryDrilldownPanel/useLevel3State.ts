@@ -1,6 +1,8 @@
 import { useDonutSelection } from "@/features/analytics/hooks/useDonutSelection";
 import { useUrlDrilldown } from "@/features/analytics/hooks/useUrlDrilldown";
+import { useToast } from "@/hooks/useToast";
 import type { Granularity } from "@/lib/types";
+import { useEffect, useMemo } from "react";
 import type { DayData } from "./types";
 
 type SeriesByUrl = Array<{ name: string; path: string; data: number[] }>;
@@ -9,19 +11,37 @@ export function useLevel3State(
   isDayGranularity: boolean,
   dayData: DayData | null,
   ddSeriesByUrl: SeriesByUrl,
-  ddLoading: boolean,
+  seriesLoading: boolean,
+  validPaths: string[],
   granularity: Granularity,
   startISO?: string,
-  endISO?: string
+  endISO?: string,
 ) {
+  const { warning } = useToast();
   // Handle donut selection
-  const { selectedPath, detailsRef, handleDonutSliceClick } = useDonutSelection(
-    isDayGranularity && dayData
-      ? dayData.seriesByUrl
-      : ddLoading
-      ? []
-      : ddSeriesByUrl
-  );
+  const { selectedPath, detailsRef, handleDonutSliceClick, clearSelection } =
+    useDonutSelection(
+      isDayGranularity && dayData
+        ? dayData.seriesByUrl
+        : seriesLoading
+          ? []
+          : ddSeriesByUrl,
+    );
+
+  const availablePaths = useMemo(() => new Set(validPaths), [validPaths]);
+
+  useEffect(() => {
+    if (!selectedPath) return;
+    if (seriesLoading) return;
+
+    if (!availablePaths.has(selectedPath)) {
+      warning(
+        "La URL seleccionada no tiene datos en este rango. Cerramos el nivel 3.",
+        3500,
+      );
+      clearSelection();
+    }
+  }, [selectedPath, seriesLoading, availablePaths, warning, clearSelection]);
 
   // Nivel 3: URL seleccionada
   const url = useUrlDrilldown({

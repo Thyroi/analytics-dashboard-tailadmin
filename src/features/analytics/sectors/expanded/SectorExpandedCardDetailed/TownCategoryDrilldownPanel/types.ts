@@ -13,6 +13,7 @@ export type TownCategoryDrilldownPanelProps = {
   startISO?: string;
   /** Fin del rango (YYYY-MM-DD) */
   endISO?: string;
+  onCloseLevel2?: () => void;
 };
 
 export type DayData = {

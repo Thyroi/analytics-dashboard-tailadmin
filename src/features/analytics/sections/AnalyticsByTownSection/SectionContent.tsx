@@ -43,7 +43,7 @@ export function SectionContent() {
 
   const displayedIds = useMemo<string[]>(
     () => (state.status === "ready" ? (ids as string[]) : [...TOWN_ID_ORDER]),
-    [state.status, ids]
+    [state.status, ids],
   );
 
   const {
@@ -55,11 +55,12 @@ export function SectionContent() {
     handleOpen,
     handleSliceClick,
     handleClose,
+    handleCloseLevel2,
   } = useTownDrill(calculatedGranularity, currentPeriod, queryClient);
 
   const { series: seriesTown, donutData: donutTown } = useTownDetails(
     (drill?.kind === "town" ? drill.townId : townId) ?? ("almonte" as TownId),
-    calculatedGranularity
+    calculatedGranularity,
   );
 
   const { getDeltaPctFor, getDeltaArtifactFor, getSeriesFor, getDonutFor } =
@@ -97,6 +98,7 @@ export function SectionContent() {
         onSliceClick={handleSliceClick}
         isDeltaLoading={isInitialLoading || isFetching}
         level2Data={level2Data}
+        onCloseLevel2={handleCloseLevel2}
         startDate={startDate}
         endDate={endDate}
       />

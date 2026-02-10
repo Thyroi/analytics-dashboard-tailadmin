@@ -21,6 +21,7 @@ interface CategoryGridProps {
   onSliceClick: (label: string) => void;
   isDeltaLoading: boolean;
   level2Data: Level2Data | undefined;
+  onCloseLevel2?: () => void;
   startDate: Date;
   endDate: Date;
 }
@@ -40,6 +41,7 @@ export function CategoryGrid({
   onSliceClick,
   isDeltaLoading,
   level2Data,
+  onCloseLevel2,
   startDate,
   endDate,
 }: CategoryGridProps) {
@@ -61,6 +63,7 @@ export function CategoryGrid({
       onSliceClick={onSliceClick}
       isDeltaLoading={isDeltaLoading}
       level2Data={level2Data}
+      onCloseLevel2={onCloseLevel2}
       startDate={startDate}
       endDate={endDate}
     />

@@ -24,13 +24,44 @@ export function useDrilldownTransformation(
   urlSeries: UrlSeriesData,
 ) {
   return useMemo(() => {
-    if (drilldown.loading || urlSeries.loading) {
+    if (drilldown.loading) {
       return {
         loading: true,
         xLabels: [],
         seriesByUrl: [],
         donut: [],
         deltaPct: 0,
+        colorsByName: {},
+      };
+    }
+
+    if (urlSeries.loading) {
+      const sortedItems = [...drilldown.donut].sort(
+        (a, b) => b.value - a.value,
+      );
+      const colors = generateBrandGradient(sortedItems.length, [
+        "#902919",
+        "#E55338",
+        "#F5AA35",
+      ]);
+      const colorByUrl = new Map<string, string>();
+      sortedItems.forEach((item, index) => {
+        colorByUrl.set(item.label, colors[index]);
+      });
+
+      const formattedDonut = drilldown.donut.map((item) => ({
+        id: item.label,
+        label: formatUrlForDisplay(item.label),
+        value: item.value,
+        color: colorByUrl.get(item.label) || colors[0],
+      }));
+
+      return {
+        loading: false,
+        xLabels: [],
+        seriesByUrl: [],
+        donut: formattedDonut,
+        deltaPct: drilldown.deltaPct ?? 0,
         colorsByName: {},
       };
     }
