@@ -9,7 +9,7 @@ type DrilldownItem = {
 
 type DrilldownData =
   | { loading: true }
-  | { loading: false; donut: DrilldownItem[]; deltaPct: number };
+  | { loading: false; donut: DrilldownItem[]; deltaPct: number | null };
 
 type UrlSeriesData =
   | { loading: true }
@@ -21,7 +21,7 @@ type UrlSeriesData =
 
 export function useDrilldownTransformation(
   drilldown: DrilldownData,
-  urlSeries: UrlSeriesData
+  urlSeries: UrlSeriesData,
 ) {
   return useMemo(() => {
     if (drilldown.loading || urlSeries.loading) {
@@ -42,7 +42,7 @@ export function useDrilldownTransformation(
         xLabels: [],
         seriesByUrl: [],
         donut: [],
-        deltaPct: drilldown.deltaPct,
+        deltaPct: drilldown.deltaPct ?? 0,
         colorsByName: {},
       };
     }
@@ -51,7 +51,7 @@ export function useDrilldownTransformation(
     const seriesByUrl = drilldown.donut
       .map((item) => {
         const realData = urlSeries.seriesByUrl.find(
-          (series) => series.path === item.label || series.name === item.label
+          (series) => series.path === item.label || series.name === item.label,
         );
 
         if (!realData) {
@@ -66,7 +66,7 @@ export function useDrilldownTransformation(
       })
       .filter(
         (item): item is { name: string; data: number[]; path: string } =>
-          item !== null
+          item !== null,
       );
 
     const xLabels = urlSeries.xLabels;
@@ -110,7 +110,7 @@ export function useDrilldownTransformation(
       xLabels,
       seriesByUrl,
       donut: formattedDonut,
-      deltaPct: drilldown.deltaPct,
+      deltaPct: drilldown.deltaPct ?? 0,
       colorsByName: Object.fromEntries(colorsByName), // Convertir Map a objeto para pasar como prop
     };
   }, [drilldown, urlSeries]);
