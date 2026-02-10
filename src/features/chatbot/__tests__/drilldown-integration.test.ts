@@ -75,7 +75,7 @@ describe("Drilldown Integration Tests", () => {
     });
 
     it("Nivel 2: debe filtrar solo profundidad === 4 (subcategorías)", async () => {
-      const pattern = "almonte.playas.*";
+      const pattern = "almonte.playas";
       const mockResponse = {
         code: 200,
         output: {
@@ -176,7 +176,7 @@ describe("Drilldown Integration Tests", () => {
 
   describe("Modo Anual", () => {
     it("debe agrupar series a YYYY-MM cuando windowGranularity='y'", async () => {
-      const pattern = "almonte.playas.*";
+      const pattern = "almonte.playas";
       const mockResponse = {
         code: 200,
         output: {
@@ -354,7 +354,7 @@ describe("Drilldown Integration Tests", () => {
   });
 
   describe("Pattern Correctos", () => {
-    it("Nivel 1 debe usar pattern 'root.<townId>.*'", async () => {
+    it("Nivel 1 debe usar pattern '<townId>.*'", async () => {
       const capturedBodies: any[] = [];
 
       fetchSpy.mockImplementation((_url: any, options: any) => {
@@ -380,7 +380,7 @@ describe("Drilldown Integration Tests", () => {
       expect(body.patterns).toEqual(["almonte.*"]);
     });
 
-    it("Nivel 2 debe usar pattern 'root.<townId>.<categoryId>.*'", async () => {
+    it("Nivel 2 debe usar pattern '<townId>.<categoryId>'", async () => {
       fetchSpy.mockImplementation(() =>
         Promise.resolve({
           ok: true,
@@ -388,7 +388,7 @@ describe("Drilldown Integration Tests", () => {
             Promise.resolve({
               code: 200,
               output: {
-                "almonte.playas.*": {
+                "almonte.playas": {
                   region: null,
                   topic: null,
                   tags: [],
@@ -412,7 +412,7 @@ describe("Drilldown Integration Tests", () => {
       expect(calls.length).toBe(1);
 
       const body = JSON.parse((calls[0][1] as RequestInit).body as string);
-      expect(body.patterns).toEqual(["almonte.playas.*"]);
+      expect(body.patterns).toEqual(["almonte.playas"]);
     });
   });
 });

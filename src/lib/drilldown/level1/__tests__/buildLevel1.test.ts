@@ -29,9 +29,9 @@ describe("buildLevel1 - Nivel 1 Drilldown", () => {
     };
 
     const expectedPatterns = [
-      "root.naturaleza.almonte.*",
-      "root.naturaleza.bonares.*",
-      "root.naturaleza.niebla.*",
+      "root.naturaleza.almonte",
+      "root.naturaleza.bonares",
+      "root.naturaleza.niebla",
     ];
 
     const fetchMany = vi.fn(async (patterns: string[]) => {
@@ -60,7 +60,7 @@ describe("buildLevel1 - Nivel 1 Drilldown", () => {
 
     // Slices → Almonte(4), Bonares(6), Otros(1 + 1 de Niebla) = 2
     const map = Object.fromEntries(
-      res.donutData.map((s) => [s.label, s.value])
+      res.donutData.map((s) => [s.label, s.value]),
     );
     expect(map["Bonares"]).toBe(6);
     expect(map["Almonte"]).toBe(4);
@@ -120,12 +120,12 @@ describe("buildLevel1 - Nivel 1 Drilldown", () => {
     };
 
     const expectedPatterns = [
-      "root.la palma del condado.circuito monteblanco.*",
-      "root.la palma del condado.espacios museísticos.*",
-      "root.la palma del condado.fiestas y tradiciones.*",
-      "root.la palma del condado.gastronomía.*",
-      "root.la palma del condado.naturaleza.*",
-      "root.la palma del condado.patrimonio.*",
+      "root.la palma del condado.circuito monteblanco",
+      "root.la palma del condado.espacios museísticos",
+      "root.la palma del condado.fiestas y tradiciones",
+      "root.la palma del condado.gastronomía",
+      "root.la palma del condado.naturaleza",
+      "root.la palma del condado.patrimonio",
     ];
 
     const fetchMany = vi.fn(async (patterns: string[]) => {
@@ -162,7 +162,7 @@ describe("buildLevel1 - Nivel 1 Drilldown", () => {
     });
 
     const slicesById = Object.fromEntries(
-      res.donutData.map((s) => [s.id, s.value])
+      res.donutData.map((s) => [s.id, s.value]),
     );
     // Slices = 4 con hijos
     expect(Object.keys(slicesById)).toContain("otros");
@@ -224,7 +224,7 @@ describe("buildLevel1 - Nivel 1 Drilldown", () => {
     };
 
     const fetchMany = vi.fn(async (patterns: string[]) => {
-      expect(patterns).toEqual(["root.La Palma del Condado.   naturAleza.*"]);
+      expect(patterns).toEqual(["root.La Palma del Condado.   naturAleza"]);
       return {
         "root.La Palma del Condado.   naturAleza.sub": [sp("20251014", 1)],
       };
@@ -279,7 +279,7 @@ describe("buildLevel1 - Nivel 1 Drilldown", () => {
     expect(res.donutData[0]?.value).toBe(1); // Ahora sí debe ser 1
   });
 
-  it("Anti-regresión: NO usar root.<scope>*.<id>.* para verificar hijos", async () => {
+  it("Anti-regresión: NO usar root.<scope>*.<id> para verificar hijos", async () => {
     const towns: TaxonomyTown[] = [
       {
         id: "la_palma_del_condado",
@@ -302,7 +302,7 @@ describe("buildLevel1 - Nivel 1 Drilldown", () => {
     const fetchMany = vi.fn(async (patterns: string[]) => {
       // Asegurar patrón correcto exacto, sin wildcard en el scope conocido
       expect(patterns).toEqual([
-        "root.la palma del condado.circuito monteblanco.*",
+        "root.la palma del condado.circuito monteblanco",
       ]);
       return {
         "root.la palma del condado.circuito monteblanco.sub": [
@@ -402,9 +402,9 @@ describe("buildLevel1 - Nivel 1 Drilldown", () => {
     };
 
     const expectedPatterns = [
-      "root.naturaleza.almonte.*",
-      "root.naturaleza.bonares.*",
-      "root.naturaleza.niebla.*",
+      "root.naturaleza.almonte",
+      "root.naturaleza.bonares",
+      "root.naturaleza.niebla",
     ];
 
     const fetchMany = vi.fn(async (patterns: string[]) => {
@@ -435,7 +435,7 @@ describe("buildLevel1 - Nivel 1 Drilldown", () => {
     // Otros directos: 1 + 2 + 1 + 5 + 1 + 1 + 1 + 1 + 1 + 1 + 1 = 16
 
     const byLabel = Object.fromEntries(
-      res.donutData.map((s) => [s.label, s.value])
+      res.donutData.map((s) => [s.label, s.value]),
     );
     expect(byLabel["Almonte"]).toBe(4);
     expect(byLabel["Bonares"]).toBe(6);
@@ -491,7 +491,7 @@ describe("buildLevel1 - Nivel 1 Drilldown", () => {
     };
 
     const expectedPatterns = [
-      "root.la palma del condado.fiestas y tradiciones.*",
+      "root.la palma del condado.fiestas y tradiciones",
     ];
 
     const fetchMany = vi.fn(async (patterns: string[]) => {
@@ -518,7 +518,7 @@ describe("buildLevel1 - Nivel 1 Drilldown", () => {
     // "gastronomia" sin alias en categories → Otros
     // "otros" → Se ignora (exclusión en buildLevel1)
     const byLabel = Object.fromEntries(
-      res.donutData.map((s) => [s.label, s.value])
+      res.donutData.map((s) => [s.label, s.value]),
     );
     expect(byLabel["Fiestas y tradiciones"]).toBe(10);
     expect(byLabel["Otros"]).toBe(5); // solo gastronomia (5), "otros" se ignora

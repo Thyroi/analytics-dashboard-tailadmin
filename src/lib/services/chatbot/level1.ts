@@ -186,8 +186,8 @@ export async function fetchLevel1Drilldown(
       const childToken = parts[2] ?? "";
       const v2Pattern =
         params.scopeType === "town"
-          ? `${scopeToken}.${childToken}.*`
-          : `${childToken}.${scopeToken}.*`;
+          ? `${scopeToken}.${childToken}`
+          : `${childToken}.${scopeToken}`;
       return { rootPattern, childToken, v2Pattern };
     });
 

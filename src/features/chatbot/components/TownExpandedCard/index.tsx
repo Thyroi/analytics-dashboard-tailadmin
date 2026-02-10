@@ -1,8 +1,8 @@
 /**
  * Componente de drilldown expandido para towns (TOWN-FIRST)
  *
- * NIVEL 1: Town → Categorías (usando pattern root.<townId>.*)
- * NIVEL 2: Town+Categoría → Subcategorías (usando pattern root.<townId>.<categoriaRaw>.*)
+ * NIVEL 1: Town → Categorías (usando pattern <townId>.*)
+ * NIVEL 2: Town+Categoría → Subcategorías (usando pattern <townId>.<categoriaRaw>)
  *
  * Navegación reactiva: Nivel 2 aparece DEBAJO de Nivel 1 (no reemplaza)
  *

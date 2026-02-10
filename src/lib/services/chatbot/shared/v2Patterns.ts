@@ -56,7 +56,7 @@ export function buildCategoryTownPattern(
   categoryId: CategoryId,
   townId: TownId,
 ): string {
-  return `${getTownToken(townId)}.${getCategoryToken(categoryId)}.*`;
+  return `${getTownToken(townId)}.${getCategoryToken(categoryId)}`;
 }
 
 export function matchTownIdFromToken(token: string): TownId | null {

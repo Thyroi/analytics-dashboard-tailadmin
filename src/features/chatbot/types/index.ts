@@ -71,8 +71,8 @@ export const CHATBOT_TIMEZONE = "America/Bogota";
 
 // Constantes para patterns
 export const PATTERN_TEMPLATES = {
-  categoryTotal: (category: string) => `root.*.${category}.*`,
-  categoryByTown: (category: string) => `root.*.${category}.*`,
-  townTotal: (town: string) => `root.${town}.*`,
-  townByCategory: (town: string) => `root.${town}.*`,
+  categoryTotal: (category: string) => `*.${category}`,
+  categoryByTown: (category: string) => `*.${category}`,
+  townTotal: (town: string) => `${town}.*`,
+  townByCategory: (town: string) => `${town}.*`,
 } as const;

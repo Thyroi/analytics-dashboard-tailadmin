@@ -188,9 +188,9 @@ export async function buildLevel1(
     // Build pattern using EXACT scopeId as provided and RAW token for child
     const childTokenRaw = info.rawToken;
     if (scopeType === "category") {
-      patterns.push(`root.${scopeId}.${childTokenRaw}.*`);
+      patterns.push(`root.${scopeId}.${childTokenRaw}`);
     } else {
-      patterns.push(`root.${scopeId}.${childTokenRaw}.*`);
+      patterns.push(`root.${scopeId}.${childTokenRaw}`);
     }
   }
 
@@ -218,7 +218,7 @@ export async function buildLevel1(
 
   for (const id of matchedIds) {
     const info = foundMap.get(id)!;
-    const pattern = `root.${scopeId}.${info.rawToken}.*`;
+    const pattern = `root.${scopeId}.${info.rawToken}`;
     const prefix = toPrefixFromPattern(pattern);
     // Hijos reales: deben ser profundidad >= 4 y empezar por `${prefix}.`
     // Además, ignoramos subclaves terminadas en "otros".
@@ -236,7 +236,6 @@ export async function buildLevel1(
       movedToOtros[id] = info.value;
     }
   }
-
 
   debugLog(
     debug,

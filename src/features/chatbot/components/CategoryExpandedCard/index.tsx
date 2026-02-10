@@ -1,8 +1,8 @@
 /**
  * Componente de drilldown expandido para categorías (CATEGORY-FIRST)
  *
- * NIVEL 1: Categoría → Pueblos (usando pattern root.<categoriaRaw>.*)
- * NIVEL 2: Categoría+Pueblo → Subcategorías (usando pattern root.<categoriaRaw>.<puebloRaw>.*)
+ * NIVEL 1: Categoría → Pueblos (usando pattern *.<categoriaRaw>)
+ * NIVEL 2: Categoría+Pueblo → Subcategorías (usando pattern <puebloRaw>.<categoriaRaw>)
  *
  * Navegación reactiva: Nivel 2 aparece DEBAJO de Nivel 1 (no reemplaza)
  *

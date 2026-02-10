@@ -20,7 +20,7 @@ describe("diagnostic: playas vs fiestas (almonte, granularity=m)", () => {
   });
 
   it("playas should produce subcategories with series", async () => {
-    const pattern = "almonte.playas.*";
+    const pattern = "almonte.playas";
     const mockResponse = {
       code: 200,
       output: {
@@ -88,7 +88,7 @@ describe("diagnostic: playas vs fiestas (almonte, granularity=m)", () => {
   });
 
   it("fiestasTradiciones should produce subcategories with series (diagnose differences)", async () => {
-    const pattern = "almonte.fiestas_y_tradiciones.*";
+    const pattern = "almonte.fiestas_y_tradiciones";
 
     const mockResponseA = {
       code: 200,

@@ -2,7 +2,7 @@
  * Componente para Nivel 2: Categoría + Town → Subcategorías
  *
  * Muestra el drilldown de subcategorías para una categoría+town específico
- * usando pattern root.<categoriaRaw>.<townRaw>.*
+ * usando pattern <townRaw>.<categoriaRaw>
  */
 
 "use client";

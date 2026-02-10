@@ -22,7 +22,7 @@ describe("fetchTownCategorySubcatBreakdown", () => {
   });
 
   it("debe mapear subcategorías desde tags", async () => {
-    const pattern = "almonte.playas.*";
+    const pattern = "almonte.playas";
     const mockResponse = {
       code: 200,
       output: {
@@ -61,7 +61,7 @@ describe("fetchTownCategorySubcatBreakdown", () => {
   });
 
   it("debe usar label si está disponible", async () => {
-    const pattern = "almonte.playas.*";
+    const pattern = "almonte.playas";
     const mockResponse = {
       code: 200,
       output: {
@@ -103,7 +103,7 @@ describe("fetchTownCategorySubcatBreakdown", () => {
     expect(result.subcategories[0].currentTotal).toBe(40);
   });
 
-  it("debe usar el pattern correcto: <town>.<category>.*", async () => {
+  it("debe usar el pattern correcto: <town>.<category>", async () => {
     fetchSpy.mockImplementation(() =>
       Promise.resolve({
         ok: true,
@@ -111,7 +111,7 @@ describe("fetchTownCategorySubcatBreakdown", () => {
           Promise.resolve({
             code: 200,
             output: {
-              "almonte.playas.*": {
+              "almonte.playas": {
                 region: null,
                 topic: null,
                 tags: [],
@@ -134,12 +134,12 @@ describe("fetchTownCategorySubcatBreakdown", () => {
     const calls = fetchSpy.mock.calls;
     expect(calls.length).toBe(1);
     const body = JSON.parse(calls[0][1].body);
-    expect(body.patterns).toEqual(["almonte.playas.*"]);
+    expect(body.patterns).toEqual(["almonte.playas"]);
     expect(body.id).toBe("huelva");
   });
 
   it("debe calcular deltaPct = null si prevTotal <= 0", async () => {
-    const pattern = "almonte.playas.*";
+    const pattern = "almonte.playas";
     const mockResponse = {
       code: 200,
       output: {
@@ -184,7 +184,7 @@ describe("fetchTownCategorySubcatBreakdown", () => {
           Promise.resolve({
             code: 200,
             output: {
-              "almonte.playas.*": {
+              "almonte.playas": {
                 region: null,
                 topic: null,
                 tags: [],

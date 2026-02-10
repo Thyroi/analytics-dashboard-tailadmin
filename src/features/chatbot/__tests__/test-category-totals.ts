@@ -64,11 +64,11 @@ export async function testDeltaPercentNull() {
   const result = await fetchChatbotCategoryTotals({ granularity: "m" });
 
   const categoriesWithZeroPrev = result.categories.filter(
-    (c) => c.prevTotal === 0
+    (c) => c.prevTotal === 0,
   );
 
   const allNullDelta = categoriesWithZeroPrev.every(
-    (c) => c.deltaPercent === null
+    (c) => c.deltaPercent === null,
   );
 
   console.log("✅ Categories with prev=0:", categoriesWithZeroPrev.length);
@@ -76,7 +76,7 @@ export async function testDeltaPercentNull() {
 
   categoriesWithZeroPrev.forEach((c) => {
     console.log(
-      `  - ${c.label}: current=${c.currentTotal}, prev=${c.prevTotal}, delta%=${c.deltaPercent}`
+      `  - ${c.label}: current=${c.currentTotal}, prev=${c.prevTotal}, delta%=${c.deltaPercent}`,
     );
   });
 
@@ -151,7 +151,7 @@ export async function testSynonymMapping() {
     console.log(`  - Previous: ${fiestas.prevTotal}`);
     console.log(`  - Delta %: ${fiestas.deltaPercent}`);
     console.log(
-      "  - Note: This should include data from 'fiestas' and 'fiestas_y_tradiciones' tokens"
+      "  - Note: This should include data from 'fiestas' and 'fiestas_y_tradiciones' tokens",
     );
   }
 

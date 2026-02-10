@@ -10,7 +10,7 @@ import { useTownCategorySubcatBucketing } from "./useTownCategorySubcatBucketing
 /**
  * Hook para transformar datos de subcategorías a formato ChartPair.
  * Incluye donut, series agrupadas, insights y totales.
- * Version town-first (root.<town>.<category>.<subcat>)
+ * Version town-first (<town>.<category>.<subcat>)
  */
 export function useTownCategorySubcatData({
   data,

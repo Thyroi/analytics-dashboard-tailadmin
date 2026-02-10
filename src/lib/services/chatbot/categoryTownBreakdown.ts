@@ -4,7 +4,7 @@
  * NIVEL 1: Categoría → Towns (category-first)
  *
  * Reglas:
- * - Pattern: "root.<categoriaRaw>.*" (solo esa categoría, usando segmento crudo)
+ * - Pattern: "*.{categoria}" (solo esa categoría, usando segmento crudo)
  * - Filtro: profundidad === 3 (root.<categoria>.<pueblo>)
  * - POST dual: current + previous con granularity="d"
  * - Mapeo TOWN_SYNONYMS case-insensitive
