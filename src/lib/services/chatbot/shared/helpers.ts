@@ -2,6 +2,12 @@
  * Helpers compartidos para servicios de chatbot breakdown
  */
 
+import type {
+  MindsaicPatternOutput,
+  MindsaicTagEntry,
+  MindsaicTagPoint,
+} from "./mindsaicV2Client";
+
 /**
  * Convierte formato YYYY-MM-DD a YYYYMMDD requerido por Mindsaic
  */
@@ -16,7 +22,7 @@ export function formatDateForMindsaic(dateISO: string): string {
  */
 export function computeDeltaPercent(
   current: number,
-  prev: number
+  prev: number,
 ): number | null {
   if (prev <= 0) return null;
   return ((current - prev) / prev) * 100;
@@ -60,9 +66,31 @@ export function normalizeSubcategoryName(raw: string): string {
  * Suma todos los valores de una serie temporal
  */
 export function sumSeries(
-  series: Array<{ time: string; value: number }>
+  series: Array<{ time: string; value: number }>,
 ): number {
   return series.reduce((acc, p) => acc + (p.value || 0), 0);
+}
+
+export function resolvePreviousMap(
+  entry?: MindsaicPatternOutput,
+): Record<string, MindsaicTagPoint[]> {
+  return entry?.preData ?? entry?.previous ?? {};
+}
+
+export function resolvePrevTotalFromTag(
+  tag: MindsaicTagEntry,
+  prevMap: Record<string, MindsaicTagPoint[]>,
+): number {
+  const prevSeries = prevMap[tag.id];
+  if (prevSeries?.length) {
+    return prevSeries.reduce((sum, point) => sum + (point.value || 0), 0);
+  }
+
+  if (typeof tag.delta === "number") {
+    return (tag.total || 0) - tag.delta;
+  }
+
+  return 0;
 }
 
 /**
@@ -70,7 +98,7 @@ export function sumSeries(
  * Usado cuando windowGranularity === 'y' para limitar a máx 12 buckets
  */
 export function groupSeriesByMonth(
-  series: Array<{ time: string; value: number }>
+  series: Array<{ time: string; value: number }>,
 ): Array<{ time: string; value: number }> {
   const monthMap = new Map<string, number>();
 
@@ -119,7 +147,7 @@ export function normalizeForSynonymMatching(raw: string): string {
 export function buildSynonymIndex<T extends string>(
   idList: readonly T[],
   metaMap: Record<T, { label: string }>,
-  synonymsMap: Record<T, string[]>
+  synonymsMap: Record<T, string[]>,
 ): Map<string, T> {
   const index = new Map<string, T>();
 
@@ -147,7 +175,7 @@ export function buildSynonymIndex<T extends string>(
  */
 export function calculateDeltas(
   currentTotal: number,
-  prevTotal: number
+  prevTotal: number,
 ): { deltaAbs: number; deltaPercent: number | null } {
   const deltaAbs = currentTotal - prevTotal;
   const deltaPercent = computeDeltaPercent(currentTotal, prevTotal);

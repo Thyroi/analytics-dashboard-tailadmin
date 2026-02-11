@@ -14,7 +14,12 @@ export type MindsaicPatternOutput = {
   topic: string | null;
   tags: MindsaicTagEntry[];
   data: Record<string, MindsaicTagPoint[]>;
+  preData?: Record<string, MindsaicTagPoint[]>;
   previous?: Record<string, MindsaicTagPoint[]>;
+  totalCurrent?: number;
+  totalPrevious?: number;
+  totalPrev?: number;
+  totalDelta?: number;
 };
 
 export type MindsaicTagsResponse = {

@@ -14,7 +14,12 @@ import type { CategoryId } from "@/lib/taxonomy/categories";
 import type { TownId } from "@/lib/taxonomy/towns";
 import type { WindowGranularity } from "@/lib/types";
 import { computeRangesForKPI } from "@/lib/utils/time/timeWindows";
-import { computeDeltaPercent, groupSeriesByMonth } from "./shared/helpers";
+import {
+  computeDeltaPercent,
+  groupSeriesByMonth,
+  resolvePreviousMap,
+  resolvePrevTotalFromTag,
+} from "./shared/helpers";
 import { fetchMindsaicTagsData } from "./shared/mindsaicV2Client";
 import { buildCategoryTownPattern } from "./shared/v2Patterns";
 
@@ -91,14 +96,13 @@ export async function fetchCategoryTownSubcatBreakdown({
   const output = response.output?.[pattern];
   const tags = output?.tags || [];
   const dataMap = output?.data || {};
-  const prevMap = output?.previous || {};
+  const prevMap = resolvePreviousMap(output);
 
   const toISO = (ymd: string) =>
     `${ymd.slice(0, 4)}-${ymd.slice(4, 6)}-${ymd.slice(6, 8)}`;
 
   const subcategories: CategoryTownSubcatData[] = tags.map((tag) => {
-    const prevSeries = prevMap[tag.id] || [];
-    const prevTotal = prevSeries.reduce((sum, p) => sum + (p.value || 0), 0);
+    const prevTotal = resolvePrevTotalFromTag(tag, prevMap);
     const deltaAbs = (tag.total || 0) - prevTotal;
     const deltaPercent = computeDeltaPercent(tag.total || 0, prevTotal);
     const rawSeries = (dataMap[tag.id] || []).map((point) => ({

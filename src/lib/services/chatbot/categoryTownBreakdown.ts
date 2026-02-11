@@ -19,7 +19,12 @@ import type { SeriesPoint } from "@/lib/types";
 import { computeRangesForKPI } from "@/lib/utils/time/timeWindows";
 import { OTHERS_ID } from "./partition";
 
-import { computeDeltaPercent, formatDateForMindsaic } from "./shared/helpers";
+import {
+  computeDeltaPercent,
+  formatDateForMindsaic,
+  resolvePreviousMap,
+  resolvePrevTotalFromTag,
+} from "./shared/helpers";
 import { fetchMindsaicTagsData } from "./shared/mindsaicV2Client";
 import { buildSeriesForRange } from "./shared/seriesBuilder";
 import type {
@@ -99,7 +104,7 @@ export async function fetchCategoryTownBreakdown(
   const output = response.output?.[pattern];
   const tags = output?.tags || [];
   const dataMap = output?.data || {};
-  const prevMap = output?.previous || {};
+  const prevMap = resolvePreviousMap(output);
 
   const totalsByTown = new Map<TownId | typeof OTHERS_ID, number>();
   const prevTotalsByTown = new Map<TownId | typeof OTHERS_ID, number>();
@@ -110,8 +115,7 @@ export async function fetchCategoryTownBreakdown(
     if (!key) continue;
     totalsByTown.set(key, (totalsByTown.get(key) || 0) + (tag.total || 0));
 
-    const prevSeries = prevMap[tag.id] || [];
-    const prevTotal = prevSeries.reduce((sum, p) => sum + (p.value || 0), 0);
+    const prevTotal = resolvePrevTotalFromTag(tag, prevMap);
     prevTotalsByTown.set(key, (prevTotalsByTown.get(key) || 0) + prevTotal);
   }
 

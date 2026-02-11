@@ -11,7 +11,11 @@
 import { TOWN_ID_ORDER, TOWN_META, type TownId } from "@/lib/taxonomy/towns";
 import type { WindowGranularity } from "@/lib/types";
 import { computeRangesForKPI } from "@/lib/utils/time/timeWindows";
-import { computeDeltaPercent, formatDateForMindsaic } from "./shared/helpers";
+import {
+  computeDeltaPercent,
+  formatDateForMindsaic,
+  resolvePreviousMap,
+} from "./shared/helpers";
 import {
   fetchMindsaicTagsData,
   type MindsaicPatternOutput,
@@ -102,8 +106,17 @@ export async function fetchChatbotTownTotals(
   const towns: TownTotalData[] = TOWN_ID_ORDER.map((townId) => {
     const pattern = buildTownPattern(townId);
     const entry = response.output?.[pattern];
-    const currentTotal = sumTagTotals(entry);
-    const prevTotal = sumSeriesMap(entry?.previous);
+    const prevMap = resolvePreviousMap(entry);
+    const currentTotal =
+      typeof entry?.totalCurrent === "number"
+        ? entry.totalCurrent
+        : sumTagTotals(entry);
+    const prevTotal =
+      typeof entry?.totalPrevious === "number"
+        ? entry.totalPrevious
+        : typeof entry?.totalPrev === "number"
+          ? entry.totalPrev
+          : sumSeriesMap(prevMap);
     const deltaAbs = currentTotal - prevTotal;
     const deltaPercent = computeDeltaPercent(currentTotal, prevTotal);
 

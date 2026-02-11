@@ -18,6 +18,7 @@ import {
   TOWN_SYNONYMS,
   type TownId,
 } from "@/lib/taxonomy/towns";
+import { resolvePreviousMap } from "./shared/helpers";
 import {
   fetchMindsaicTagsData,
   type MindsaicTagPoint,
@@ -156,7 +157,7 @@ export async function fetchLevel1Drilldown(
 
   const output = response.output?.[pattern];
   const dataMap = output?.data || {};
-  const prevMap = output?.previous || {};
+  const prevMap = resolvePreviousMap(output);
 
   const level1DataCurrent: RawSeriesByKey = Object.fromEntries(
     Object.entries(dataMap).map(([key, series]) => [

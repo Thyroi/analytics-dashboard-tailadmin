@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
-const MINDSAIC_BASE_URL = "https://c00.mindsaic.com:2053";
+const MINDSAIC_BASE_URL = "https://c01.mindsaic.com:2053";
+const MINDSAIC_FALLBACK_URL = "https://c00.mindsaic.com:2053";
 const MINDSAIC_PATH = "/tags/data";
 
 export const dynamic = "force-dynamic";
@@ -23,7 +24,7 @@ export async function POST(req: Request) {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 15000); // 15s
 
-    const res = await fetch(url, {
+    let res = await fetch(url, {
       method: "POST",
       signal: controller.signal,
       headers: { "Content-Type": "application/json" },
@@ -35,8 +36,42 @@ export async function POST(req: Request) {
       }),
     }).finally(() => clearTimeout(timeout));
 
+    if (res.status === 404) {
+      console.warn("Mindsaic C01 404 (top-categories), retrying with C00", {
+        payload: {
+          id: id ?? "huelva",
+          patterns,
+          startTime,
+          endTime,
+        },
+      });
+      const fallbackUrl = `${MINDSAIC_FALLBACK_URL}${MINDSAIC_PATH}`;
+      res = await fetch(fallbackUrl, {
+        method: "POST",
+        signal: controller.signal,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: id ?? "huelva",
+          patterns,
+          ...(startTime ? { startTime } : null),
+          ...(endTime ? { endTime } : null),
+        }),
+      });
+    }
+
     if (!res.ok) {
       const text = await res.text().catch(() => "");
+      console.error("Mindsaic C01 error (top-categories)", {
+        status: res.status,
+        statusText: res.statusText,
+        payload: {
+          id: id ?? "huelva",
+          patterns,
+          startTime,
+          endTime,
+        },
+        responseBody: text,
+      });
       return NextResponse.json(
         { code: res.status, error: text || res.statusText },
         { status: 502 },

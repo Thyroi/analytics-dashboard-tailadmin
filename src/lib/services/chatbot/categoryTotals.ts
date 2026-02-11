@@ -16,7 +16,11 @@ import {
 } from "@/lib/taxonomy/categories";
 import type { WindowGranularity } from "@/lib/types";
 import { computeRangesForKPI } from "@/lib/utils/time/timeWindows";
-import { computeDeltaPercent, formatDateForMindsaic } from "./shared/helpers";
+import {
+  computeDeltaPercent,
+  formatDateForMindsaic,
+  resolvePreviousMap,
+} from "./shared/helpers";
 import {
   fetchMindsaicTagsData,
   type MindsaicPatternOutput,
@@ -106,8 +110,17 @@ export async function fetchChatbotCategoryTotals(
     (categoryId) => {
       const pattern = buildCategoryPattern(categoryId);
       const entry = pattern ? response.output?.[pattern] : undefined;
-      const currentTotal = sumTagTotals(entry);
-      const prevTotal = sumSeriesMap(entry?.previous);
+      const prevMap = resolvePreviousMap(entry);
+      const currentTotal =
+        typeof entry?.totalCurrent === "number"
+          ? entry.totalCurrent
+          : sumTagTotals(entry);
+      const prevTotal =
+        typeof entry?.totalPrevious === "number"
+          ? entry.totalPrevious
+          : typeof entry?.totalPrev === "number"
+            ? entry.totalPrev
+            : sumSeriesMap(prevMap);
       const deltaAbs = currentTotal - prevTotal;
       const deltaPercent = computeDeltaPercent(currentTotal, prevTotal);
 

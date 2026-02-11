@@ -62,6 +62,17 @@ export async function GET(req: Request) {
 
     if (!res.ok) {
       const text = await res.text().catch(() => "");
+      console.error("Mindsaic C01 error", {
+        status: res.status,
+        statusText: res.statusText,
+        payload: {
+          id: id || "huelva",
+          patterns,
+          startISO,
+          endISO,
+        },
+        responseBody: text,
+      });
       return NextResponse.json(
         { code: res.status, error: text || res.statusText },
         { status: 502 },
@@ -95,7 +106,8 @@ export async function POST(req: Request) {
     }
 
     // Llamada directa a la API de Mindsaic v2
-    const mindsaicUrl = "https://c00.mindsaic.com:2053/tags/data";
+    const mindsaicUrl = "https://c01.mindsaic.com:2053/tags/data";
+    const fallbackUrl = "https://c00.mindsaic.com:2053/tags/data";
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 15000);
 
@@ -109,7 +121,7 @@ export async function POST(req: Request) {
       forwardHeaders["x-internal-auth"] = internalToken;
     }
 
-    const res = await fetch(mindsaicUrl, {
+    let res = await fetch(mindsaicUrl, {
       method: "POST",
       signal: controller.signal,
       headers: forwardHeaders,
@@ -120,6 +132,28 @@ export async function POST(req: Request) {
         ...(endTime && { endTime }),
       }),
     }).finally(() => clearTimeout(timeout));
+
+    if (res.status === 404) {
+      console.warn("Mindsaic C01 404, retrying with C00", {
+        payload: {
+          id: id || "huelva",
+          patterns,
+          startTime,
+          endTime,
+        },
+      });
+      res = await fetch(fallbackUrl, {
+        method: "POST",
+        signal: controller.signal,
+        headers: forwardHeaders,
+        body: JSON.stringify({
+          id: id || "huelva",
+          patterns,
+          ...(startTime && { startTime }),
+          ...(endTime && { endTime }),
+        }),
+      });
+    }
 
     if (!res.ok) {
       const text = await res.text().catch(() => "");
