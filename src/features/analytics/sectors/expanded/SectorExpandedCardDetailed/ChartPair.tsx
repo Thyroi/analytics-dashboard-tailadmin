@@ -50,11 +50,11 @@ type Props = LineChartMode | MultiLineMode;
 export default function ChartPair(props: Props) {
   return (
     <div
-      className={`grid grid-cols-1 xl:grid-cols-2 gap-4 ${
+      className={`grid grid-cols-1 xl:grid-cols-2 gap-4 items-stretch ${
         props.className ?? ""
       }`}
     >
-      <div>
+      <div className="flex w-full h-full">
         {props.mode === "line" ? (
           <LineSide series={props.series} granularity={props.granularity} />
         ) : (
@@ -67,13 +67,15 @@ export default function ChartPair(props: Props) {
         )}
       </div>
 
-      <DonutSection
-        donutData={props.donutData}
-        onSliceClick={props.onDonutSlice}
-        centerLabel={props.donutCenterLabel}
-        actionButtonTarget={props.actionButtonTarget}
-        showActivityButton={props.showActivityButton}
-      />
+      <div className="flex w-full h-full">
+        <DonutSection
+          donutData={props.donutData}
+          onSliceClick={props.onDonutSlice}
+          centerLabel={props.donutCenterLabel}
+          actionButtonTarget={props.actionButtonTarget}
+          showActivityButton={props.showActivityButton}
+        />
+      </div>
     </div>
   );
 }
@@ -99,11 +101,13 @@ function LineSide({
   const prev = series.previous.slice(-n).map((p) => p.value);
 
   return (
-    <ChartSection
-      categories={cats}
-      currData={curr}
-      prevData={prev}
-      granularity={granularity}
-    />
+    <div className="w-full h-full">
+      <ChartSection
+        categories={cats}
+        currData={curr}
+        prevData={prev}
+        granularity={granularity}
+      />
+    </div>
   );
 }

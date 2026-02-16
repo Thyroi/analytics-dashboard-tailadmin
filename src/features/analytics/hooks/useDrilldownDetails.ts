@@ -123,10 +123,24 @@ export function useDrilldownDetails(
   }
 
   // Estado exitoso
-  const donut: DonutDatum[] = (data.donutData ?? []).map((d) => ({
-    label: d.label,
-    value: d.value,
-  }));
+  // Ocultar slices irrelevantes que renderizan como 0.00% en la leyenda
+  const rawDonut = (data.donutData ?? []).filter(
+    (d) => Number.isFinite(d.value) && d.value > 0,
+  );
+  const donutTotal = rawDonut.reduce((sum, item) => sum + item.value, 0);
+
+  const donut: DonutDatum[] =
+    donutTotal > 0
+      ? rawDonut
+          .filter((d) => {
+            const pct = (d.value / donutTotal) * 100;
+            return Number(pct.toFixed(2)) > 0;
+          })
+          .map((d) => ({
+            label: d.label,
+            value: d.value,
+          }))
+      : [];
 
   return {
     loading: false,

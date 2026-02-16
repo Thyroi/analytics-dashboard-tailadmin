@@ -11,7 +11,7 @@ vi.mock("@/lib/api/analytics", () => ({
 // Helper function to get a different category for testing
 function getDifferentCategory(currentCategory: CategoryId): CategoryId {
   const availableCategories = CATEGORY_ID_ORDER.filter(
-    (id) => id !== currentCategory
+    (id) => id !== currentCategory,
   );
   return availableCategories[0] || "fiestasTradiciones"; // fallback
 }
@@ -61,7 +61,7 @@ describe("useDrilldownDetails", () => {
         townId: "almonte",
         categoryId: "naturaleza",
         granularity: "d",
-      })
+      }),
     );
 
     // Initially loading
@@ -73,7 +73,7 @@ describe("useDrilldownDetails", () => {
 
     // Verify correct endpoint was called
     expect(mockFetchJSON).toHaveBeenCalledWith(
-      "/api/analytics/v1/dimensions/pueblos/details/almonte?granularity=d&categoryId=naturaleza"
+      "/api/analytics/v1/dimensions/pueblos/details/almonte?granularity=d&categoryId=naturaleza",
     );
 
     // Verify returned data structure
@@ -95,7 +95,7 @@ describe("useDrilldownDetails", () => {
         categoryId: "naturaleza",
         townId: "almonte",
         granularity: "d",
-      })
+      }),
     );
 
     // Initially loading
@@ -107,7 +107,7 @@ describe("useDrilldownDetails", () => {
 
     // Verify correct endpoint was called (categoria endpoint with townId filter)
     expect(mockFetchJSON).toHaveBeenCalledWith(
-      "/api/analytics/v1/dimensions/categorias/details/naturaleza?granularity=d&townId=almonte"
+      "/api/analytics/v1/dimensions/categorias/details/naturaleza?granularity=d&townId=almonte",
     );
   });
 
@@ -119,12 +119,12 @@ describe("useDrilldownDetails", () => {
         categoryId: "naturaleza",
         granularity: "d",
         endISO: "2025-10-15",
-      })
+      }),
     );
 
     await waitFor(() => {
       expect(mockFetchJSON).toHaveBeenCalledWith(
-        "/api/analytics/v1/dimensions/pueblos/details/almonte?granularity=d&endDate=2025-10-15&categoryId=naturaleza"
+        "/api/analytics/v1/dimensions/pueblos/details/almonte?granularity=d&endDate=2025-10-15&categoryId=naturaleza",
       );
     });
   });
@@ -139,12 +139,12 @@ describe("useDrilldownDetails", () => {
           townId: "almonte",
           categoryId: "naturaleza",
           granularity,
-        })
+        }),
       );
 
       await waitFor(() => {
         expect(mockFetchJSON).toHaveBeenCalledWith(
-          expect.stringContaining(`granularity=${granularity}`)
+          expect.stringContaining(`granularity=${granularity}`),
         );
       });
 
@@ -163,7 +163,7 @@ describe("useDrilldownDetails", () => {
         townId: "almonte",
         categoryId: "naturaleza",
         granularity: "d",
-      })
+      }),
     );
 
     expect(result.current.loading).toBe(true);
@@ -221,11 +221,11 @@ describe("useDrilldownDetails", () => {
     expect(mockFetchJSON).toHaveBeenCalledTimes(2);
     expect(mockFetchJSON).toHaveBeenNthCalledWith(
       1,
-      `/api/analytics/v1/dimensions/pueblos/details/almonte?granularity=d&categoryId=${initialCategory}`
+      `/api/analytics/v1/dimensions/pueblos/details/almonte?granularity=d&categoryId=${initialCategory}`,
     );
     expect(mockFetchJSON).toHaveBeenNthCalledWith(
       2,
-      `/api/analytics/v1/dimensions/pueblos/details/almonte?granularity=d&categoryId=${differentCategory}`
+      `/api/analytics/v1/dimensions/pueblos/details/almonte?granularity=d&categoryId=${differentCategory}`,
     );
   });
 
@@ -247,7 +247,7 @@ describe("useDrilldownDetails", () => {
         townId: "almonte",
         categoryId: "naturaleza",
         granularity: "d",
-      })
+      }),
     );
 
     await waitFor(() => {
@@ -275,7 +275,7 @@ describe("useDrilldownDetails", () => {
         townId: "almonte",
         categoryId: "naturaleza",
         granularity: "d",
-      })
+      }),
     );
 
     await waitFor(() => {
@@ -299,7 +299,7 @@ describe("useDrilldownDetails", () => {
         townId: "almonte",
         categoryId: "naturaleza",
         granularity: "d",
-      })
+      }),
     );
 
     await waitFor(() => {
@@ -307,5 +307,34 @@ describe("useDrilldownDetails", () => {
     });
 
     expect(!result.current.loading && result.current.donut).toEqual([]);
+  });
+
+  test("filters donut entries that round to 0.00%", async () => {
+    const customResponse = {
+      ...mockDrilldownResponse,
+      donutData: [
+        { label: "Principal", value: 1000000 },
+        { label: "Irrelevante", value: 1 },
+      ],
+    };
+
+    mockFetchJSON.mockResolvedValue(customResponse);
+
+    const { result } = renderHook(() =>
+      useDrilldownDetails({
+        type: "pueblo-category",
+        townId: "almonte",
+        categoryId: "naturaleza",
+        granularity: "d",
+      }),
+    );
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+
+    expect(!result.current.loading && result.current.donut).toEqual([
+      { label: "Principal", value: 1000000 },
+    ]);
   });
 });

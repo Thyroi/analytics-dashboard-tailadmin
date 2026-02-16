@@ -3,6 +3,22 @@ import type { SeriesPoint } from "@/lib/types";
 import type { DeltaArtifact } from "@/lib/utils/delta/types";
 import { useCallback, useMemo } from "react";
 
+function filterVisibleDonutItems(
+  items: Array<{ label: string; value: number }>,
+): Array<{ label: string; value: number }> {
+  const positiveItems = items.filter(
+    (item) => Number.isFinite(item.value) && item.value > 0,
+  );
+
+  const total = positiveItems.reduce((sum, item) => sum + item.value, 0);
+  if (total <= 0) return [];
+
+  return positiveItems.filter((item) => {
+    const pct = (item.value / total) * 100;
+    return Number(pct.toFixed(2)) > 0;
+  });
+}
+
 type QueryState = {
   status: "ready" | "loading" | "error" | "idle";
   [key: string]: unknown;
@@ -22,27 +38,27 @@ export function useTownDataHandlers(
   itemsById: TownItemsById,
   townId: TownId | null,
   seriesTown: { current: SeriesPoint[]; previous: SeriesPoint[] } | null,
-  donutTown: Array<{ label: string; value: number }> | null
+  donutTown: Array<{ label: string; value: number }> | null,
 ) {
   const EMPTY_SERIES = useMemo(
     () => ({ current: [] as SeriesPoint[], previous: [] as SeriesPoint[] }),
-    []
+    [],
   );
 
   const getDeltaPctFor = useCallback(
     (id: string) =>
       state.status === "ready"
-        ? itemsById[id as TownId]?.deltaPct ?? null
+        ? (itemsById[id as TownId]?.deltaPct ?? null)
         : null,
-    [state.status, itemsById]
+    [state.status, itemsById],
   );
 
   const getDeltaArtifactFor = useCallback(
     (id: string) =>
       state.status === "ready"
-        ? itemsById[id as TownId]?.deltaArtifact ?? null
+        ? (itemsById[id as TownId]?.deltaArtifact ?? null)
         : null,
-    [state.status, itemsById]
+    [state.status, itemsById],
   );
 
   const getSeriesFor = useCallback(
@@ -50,19 +66,19 @@ export function useTownDataHandlers(
       if (townId && _id === townId && seriesTown) return seriesTown;
       return EMPTY_SERIES;
     },
-    [townId, seriesTown, EMPTY_SERIES]
+    [townId, seriesTown, EMPTY_SERIES],
   );
 
   const getDonutFor = useCallback(
     (_id: string) => {
       if (townId && _id === townId) {
-        return (
-          donutTown?.map((d) => ({ label: d.label, value: d.value })) || []
+        return filterVisibleDonutItems(
+          donutTown?.map((d) => ({ label: d.label, value: d.value })) || [],
         );
       }
       return [];
     },
-    [townId, donutTown]
+    [townId, donutTown],
   );
 
   return {

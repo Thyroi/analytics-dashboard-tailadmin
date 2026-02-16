@@ -2,7 +2,7 @@
 
 import { useTheme } from "next-themes";
 import dynamic from "next/dynamic";
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { DEFAULT_PALETTE } from "./constants";
 import type { LineChartProps } from "./types";
 import { useChartOptions } from "./useChartOptions";
@@ -29,11 +29,13 @@ export default function LineChart({
 }: LineChartProps) {
   const { theme } = useTheme();
   const isDark = theme === "dark";
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const [containerHeight, setContainerHeight] = useState(0);
 
   const { colors, dashArray, strokeWidths } = useLineChartStyles(
     series,
     colorsByName,
-    palette
+    palette,
   );
 
   const fill = useFillConfig(type, brandAreaGradient);
@@ -49,7 +51,7 @@ export default function LineChart({
     showLegend,
     legendPosition,
     isDark,
-    optionsExtra
+    optionsExtra,
   );
 
   const key = useMemo(
@@ -57,11 +59,48 @@ export default function LineChart({
       `${type}-${smooth ? "smooth" : "straight"}-${isDark ? "dark" : "light"}|${
         categories.length
       }|${series.map((s) => s.name).join(",")}`,
-    [type, smooth, isDark, categories.length, series]
+    [type, smooth, isDark, categories.length, series],
   );
+
+  useEffect(() => {
+    const element = containerRef.current;
+    if (!element) return;
+
+    const updateHeight = () => {
+      const nextHeight = Math.round(element.clientHeight);
+      if (nextHeight > 0) {
+        setContainerHeight((prev) => (prev !== nextHeight ? nextHeight : prev));
+      }
+    };
+
+    updateHeight();
+
+    const observer = new ResizeObserver(() => {
+      updateHeight();
+    });
+    observer.observe(element);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, []);
+
+  const resolvedChartHeight = useMemo(() => {
+    if (typeof height === "number") return height;
+
+    if (typeof height === "string") {
+      const pxMatch = height.match(/^(\d+)px$/);
+      if (pxMatch) {
+        return Number(pxMatch[1]);
+      }
+    }
+
+    return containerHeight > 0 ? containerHeight : 320;
+  }, [height, containerHeight]);
 
   return (
     <div
+      ref={containerRef}
       className={`w-full h-full overflow-hidden ${className}`}
       style={{ height }}
     >
@@ -70,7 +109,7 @@ export default function LineChart({
         options={options}
         series={series}
         type={type}
-        height="100%"
+        height={resolvedChartHeight}
         width="100%"
       />
     </div>

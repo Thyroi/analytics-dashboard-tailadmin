@@ -27,26 +27,40 @@ export default function DonutSection({
   titleColor = "text-gray-700",
   showActivityButton = true,
 }: DonutSectionProps) {
+  const visibleDonutData = useMemo(() => {
+    const positiveItems = (donutData ?? []).filter(
+      (item) => Number.isFinite(item.value) && item.value > 0,
+    );
+    const total = positiveItems.reduce((sum, item) => sum + item.value, 0);
+
+    if (total <= 0) return [] as DonutDatum[];
+
+    return positiveItems.filter((item) => {
+      const pct = (item.value / total) * 100;
+      return Number(pct.toFixed(2)) > 0;
+    });
+  }, [donutData]);
+
   const items = useMemo<DonutCardItem[]>(
     () =>
-      (donutData ?? []).map((d) => ({
+      visibleDonutData.map((d) => ({
         label: d.label,
         value: d.value,
         color: d.color,
       })),
-    [donutData]
+    [visibleDonutData],
   );
 
   // Mapa de label formateado -> id original (URL)
   const labelToId = useMemo(() => {
     const map = new Map<string, string>();
-    (donutData ?? []).forEach((d) => {
+    visibleDonutData.forEach((d) => {
       if (d.id) {
         map.set(d.label, d.id);
       }
     });
     return map;
-  }, [donutData]);
+  }, [visibleDonutData]);
 
   // Wrapper para el click: si hay id, usarlo en lugar del label
   const handleSliceClick = (label: string) => {
@@ -56,7 +70,7 @@ export default function DonutSection({
   };
 
   return (
-    <div className="w-full min-h-[420px] flex">
+    <div className="w-full h-full min-h-[420px] flex">
       <DonutCard
         items={items}
         onSliceClick={onSliceClick ? handleSliceClick : undefined}
@@ -66,7 +80,7 @@ export default function DonutSection({
         centerValueOverride={centerValueOverride}
         actionHref={showActivityButton ? actionButtonTarget : undefined}
         height={420}
-        className="w-full"
+        className="w-full h-full"
       />
     </div>
   );
