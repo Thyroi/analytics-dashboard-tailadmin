@@ -211,4 +211,38 @@ describe("fetchTownCategorySubcatBreakdown", () => {
     expect(result.meta.range.current).toBeDefined();
     expect(result.meta.range.previous).toBeDefined();
   });
+
+  it("debe usar el pattern para Otros en town-first: '<town>.otros'", async () => {
+    fetchSpy.mockImplementation(() =>
+      Promise.resolve({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            code: 200,
+            output: {
+              "almonte.otros": {
+                region: null,
+                topic: null,
+                tags: [],
+                data: {},
+                previous: {},
+              },
+            },
+          }),
+      } as Response),
+    );
+
+    await fetchTownCategorySubcatBreakdown({
+      townId: "almonte",
+      categoryId: "otros",
+      windowGranularity: "d",
+      startISO: "2024-10-20",
+      endISO: "2024-10-20",
+    });
+
+    const calls = fetchSpy.mock.calls;
+    expect(calls.length).toBe(1);
+    const body = JSON.parse(calls[0][1].body);
+    expect(body.patterns).toEqual(["almonte.otros"]);
+  });
 });

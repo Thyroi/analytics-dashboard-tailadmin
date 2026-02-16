@@ -97,9 +97,6 @@ export default function TownExpandedCard({
     const slice = level1Data.donutData.find((s) => s.label === label);
     if (!slice) return;
 
-    // "Otros" no es clickeable en nivel 1
-    if (slice.id === "otros") return;
-
     // Categoría normal
     const categoryId = slice.id as CategoryId;
     const categoryRaw = CHATBOT_CATEGORY_TOKENS[categoryId];

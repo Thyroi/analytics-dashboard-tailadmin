@@ -4,7 +4,7 @@ import type { DonutDatum, WindowGranularity } from "@/lib/types";
 
 export interface CategoryTownSubcatDrilldownViewProps {
   categoryId: CategoryId;
-  townId: TownId;
+  townId: TownId | "otros";
   categoryRaw?: string | null;
   townRaw?: string | null;
   granularity: WindowGranularity;
@@ -62,7 +62,7 @@ export interface UseCategoryTownSubcatDataParams {
     | null
     | undefined;
   categoryId: CategoryId;
-  townId: TownId;
+  townId: TownId | "otros";
   townRaw?: string | null;
   granularity: WindowGranularity;
 }

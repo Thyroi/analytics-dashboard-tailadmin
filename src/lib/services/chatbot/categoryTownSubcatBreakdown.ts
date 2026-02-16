@@ -4,7 +4,8 @@
  * NIVEL 2: Categoría+Town → Subcategorías (category-first)
  *
  * Reglas (Mindsaic v2):
- * - Pattern: "<town>.<category>"
+ * - Pattern: "<town>.<category>" (normal)
+ * - Pattern para Otros (category-first): "otros.<category>"
  * - POST /tags/data con id y patterns[]
  * - `tags` contiene totales por subcategoría
  * - `data` y `previous` contienen series por subcategoría
@@ -36,7 +37,7 @@ export type CategoryTownSubcatData = {
 
 export type CategoryTownSubcatBreakdownResponse = {
   categoryId: CategoryId;
-  townId: TownId;
+  townId: TownId | "otros";
   subcategories: CategoryTownSubcatData[];
   meta: {
     granularity: WindowGranularity;
@@ -66,7 +67,7 @@ export type CategoryTownSubcatBreakdownResponse = {
 
 export type FetchCategoryTownSubcatBreakdownParams = {
   categoryId: CategoryId;
-  townId: TownId;
+  townId: TownId | "otros";
   startISO?: string | null;
   endISO?: string | null;
   windowGranularity?: WindowGranularity;

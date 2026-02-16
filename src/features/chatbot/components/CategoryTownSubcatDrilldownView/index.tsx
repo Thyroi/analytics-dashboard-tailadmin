@@ -33,7 +33,8 @@ export default function CategoryTownSubcatDrilldownView({
   onSubcategoryClick,
 }: CategoryTownSubcatDrilldownViewProps) {
   const categoryLabel = CATEGORY_META[categoryId]?.label || categoryId;
-  const townLabel = TOWN_META[townId]?.label || townId;
+  const townLabel =
+    townId === "otros" ? "Otros" : TOWN_META[townId]?.label || townId;
 
   // Fetch data usando el hook de nivel 2
   const { data, isLoading, isError, error } = useCategoryTownSubcatBreakdown({

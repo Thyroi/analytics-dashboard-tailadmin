@@ -19,7 +19,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 export type UseCategoryTownSubcatBreakdownParams = {
   categoryId: CategoryId | null;
-  townId: TownId | null;
+  townId: TownId | "otros" | null;
   startISO?: string | null;
   endISO?: string | null;
   windowGranularity?: WindowGranularity;

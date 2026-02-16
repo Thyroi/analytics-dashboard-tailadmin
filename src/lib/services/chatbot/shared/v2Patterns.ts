@@ -35,7 +35,11 @@ export function getCategoryToken(categoryId: CategoryId): string {
   return normalizeMindsaicV2Token(label);
 }
 
-export function getTownToken(townId: TownId): string {
+type CategoryTownPatternTownId = TownId | "otros";
+
+export function getTownToken(townId: CategoryTownPatternTownId): string {
+  if (townId === "otros") return "otros";
+
   const override = TOWN_TOKEN_OVERRIDES[townId];
   if (override) return override;
 
@@ -54,9 +58,11 @@ export function buildTownPattern(townId: TownId): string {
 
 export function buildCategoryTownPattern(
   categoryId: CategoryId,
-  townId: TownId,
+  townId: CategoryTownPatternTownId,
 ): string {
-  return `${getTownToken(townId)}.${getCategoryToken(categoryId)}`;
+  const townToken = getTownToken(townId);
+  const categoryToken = getCategoryToken(categoryId);
+  return `${townToken}.${categoryToken}`;
 }
 
 export function matchTownIdFromToken(token: string): TownId | null {

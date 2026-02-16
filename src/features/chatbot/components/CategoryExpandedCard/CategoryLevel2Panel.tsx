@@ -1,12 +1,12 @@
 import type { CategoryId } from "@/lib/taxonomy/categories";
-import type { TownId } from "@/lib/taxonomy/towns";
 import type { WindowGranularity } from "@/lib/types";
 import CategoryTownSubcatDrilldownView from "../CategoryTownSubcatDrilldownView";
+import type { CategoryDrilldownTownId } from "./CategoryExpandedCard.types";
 
 type CategoryLevel2PanelProps = {
   categoryId: CategoryId;
   categoryRaw: string;
-  selectedTownId: TownId | null;
+  selectedTownId: CategoryDrilldownTownId | null;
   selectedTownRaw: string | null;
   granularity: WindowGranularity;
   startDate?: string | null;

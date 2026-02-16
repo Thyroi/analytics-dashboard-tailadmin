@@ -4,7 +4,8 @@
  * NIVEL 2: Town+Categoría → Subcategorías
  *
  * Reglas (Mindsaic v2):
- * - Pattern: "<town>.<category>"
+ * - Pattern: "<town>.<category>" (normal)
+ * - Pattern para Otros (town-first): "<town>.otros"
  * - POST /tags/data con id y patterns[]
  * - `tags` contiene totales por subcategoría
  * - `data` y `previous` contienen series por subcategoría

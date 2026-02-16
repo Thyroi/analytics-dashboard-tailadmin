@@ -1,18 +1,18 @@
-import type { TownId } from "@/lib/taxonomy/towns";
 import type { WindowGranularity } from "@/lib/types";
 import { useEffect, useRef, useState } from "react";
+import type { CategoryDrilldownTownId } from "./CategoryExpandedCard.types";
 
 type UseCategoryNavigationParams = {
   granularity: WindowGranularity;
   onScrollToLevel1?: () => void;
-  onTownClick?: (townId: TownId) => void;
+  onTownClick?: (townId: CategoryDrilldownTownId) => void;
 };
 
 type UseCategoryNavigationResult = {
-  selectedTownId: TownId | null;
+  selectedTownId: CategoryDrilldownTownId | null;
   selectedTownRaw: string | null;
   level2Ref: React.RefObject<HTMLDivElement | null>;
-  handleTownSelect: (townId: TownId, townRaw: string) => void;
+  handleTownSelect: (townId: CategoryDrilldownTownId, townRaw: string) => void;
   handleBackToLevel1: () => void;
 };
 
@@ -29,7 +29,8 @@ export function useCategoryNavigation({
   onTownClick,
 }: UseCategoryNavigationParams): UseCategoryNavigationResult {
   const level2Ref = useRef<HTMLDivElement>(null);
-  const [selectedTownId, setSelectedTownId] = useState<TownId | null>(null);
+  const [selectedTownId, setSelectedTownId] =
+    useState<CategoryDrilldownTownId | null>(null);
   const [selectedTownRaw, setSelectedTownRaw] = useState<string | null>(null);
 
   const scrollToLevel2 = () => {
@@ -58,7 +59,10 @@ export function useCategoryNavigation({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [granularity]);
 
-  const handleTownSelect = (townId: TownId, townRaw: string) => {
+  const handleTownSelect = (
+    townId: CategoryDrilldownTownId,
+    townRaw: string,
+  ) => {
     setSelectedTownId(townId);
     setSelectedTownRaw(townRaw);
 

@@ -22,11 +22,7 @@ import {
   CATEGORY_META,
   CHATBOT_CATEGORY_TOKENS,
 } from "@/lib/taxonomy/categories";
-import {
-  CHATBOT_TOWN_TOKENS,
-  TOWN_META,
-  type TownId,
-} from "@/lib/taxonomy/towns";
+import { CHATBOT_TOWN_TOKENS, TOWN_META } from "@/lib/taxonomy/towns";
 import { useLevel1Drilldown } from "../../hooks/useLevel1Drilldown";
 import { CategoryEmptyState, CategoryErrorState } from "./CategoryEmptyState";
 import type { CategoryExpandedCardProps } from "./CategoryExpandedCard.types";
@@ -85,7 +81,9 @@ export default function CategoryExpandedCard({
   // Subtítulo dinámico
   const subtitle = navigation.selectedTownId
     ? `${categoryLabel} › ${
-        TOWN_META[navigation.selectedTownId]?.label
+        navigation.selectedTownId === "otros"
+          ? "Otros"
+          : TOWN_META[navigation.selectedTownId]?.label
       } • Análisis de subcategorías`
     : `Análisis por pueblos • ${totalInteractions.toLocaleString()} interacciones totales`;
 
@@ -96,12 +94,9 @@ export default function CategoryExpandedCard({
     const slice = level1Data.donutData.find((s) => s.label === label);
     if (!slice) return;
 
-    // "Otros" no es clickeable en nivel 1
-    if (slice.id === "otros") return;
-
     // Pueblo normal
-    const townId = slice.id as TownId;
-    const townRaw = CHATBOT_TOWN_TOKENS[townId];
+    const townId = slice.id as "otros" | keyof typeof CHATBOT_TOWN_TOKENS;
+    const townRaw = townId === "otros" ? "otros" : CHATBOT_TOWN_TOKENS[townId];
     navigation.handleTownSelect(townId, townRaw);
   };
 
