@@ -134,8 +134,11 @@ export async function buildLevel1(
     // EXCLUSIÓN 1: Si el backend trae "otros", lo ignoramos (no es slice navegable)
     const rawToken = getRawTokenForKey(key);
     if (rawToken && rawToken.toLowerCase().trim() === "otros") {
-      debugLog(debug, `⏭️  Ignorando key "otros": ${key}`);
-      continue; // Skip completely
+      const add = aggregateKeyValue(series, sumStrategy);
+      otrosValue += add;
+      otrosDetail.push({ key, series });
+      debugLog(debug, `ℹ️  Acumulando key "otros" en bucket Otros: ${key}`);
+      continue;
     }
 
     // EXCLUSIÓN 2: Ignorar keys con caracteres especiales (_, -) en el token
@@ -214,7 +217,6 @@ export async function buildLevel1(
 
   // Detect children by strict prefix
   const sublevelMap: Record<string, SublevelInfo> = {};
-  const movedToOtros: Record<string, number> = {};
 
   for (const id of matchedIds) {
     const info = foundMap.get(id)!;
@@ -231,10 +233,6 @@ export async function buildLevel1(
       return parts[0] === "root"; // estructura válida
     });
     sublevelMap[id] = { hasChildren };
-
-    if (!hasChildren) {
-      movedToOtros[id] = info.value;
-    }
   }
 
   debugLog(
@@ -330,31 +328,14 @@ export async function buildLevel1(
       }
     }
 
-    if (sublevelMap[id]?.hasChildren) {
-      slices.push({
-        id,
-        label: labelForId(id),
-        value: info.value,
-        rawToken: info.rawToken,
-      });
-      // Aggregate series for this slice
-      seriesBySlice[id] = aggregateSeriesByTime(seriesForThisId.flat());
-    } else {
-      otrosBucket += info.value;
-      otrosSeriesAccumulator.push(...seriesForThisId);
-
-      // Agregar estas keys a otrosDetail
-      for (const key of keys) {
-        const tails = extractTailAfterScope(key, scopeId, scopeType);
-        if (!tails || tails.length === 0) continue;
-        const token = tails[0];
-        const { list } = getEntries();
-        const matched = matchFromAliases(token, list);
-        if (matched?.id === id) {
-          otrosDetail.push({ key, series: level1Data[key] || [] });
-        }
-      }
-    }
+    slices.push({
+      id,
+      label: labelForId(id),
+      value: info.value,
+      rawToken: info.rawToken,
+    });
+    // Aggregate series for this slice (aunque no tenga hijos, debe verse en nivel 1)
+    seriesBySlice[id] = aggregateSeriesByTime(seriesForThisId.flat());
   }
 
   // Aggregate Otros series

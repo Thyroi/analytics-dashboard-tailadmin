@@ -18,6 +18,7 @@ const MapBanner = () => {
           src="/condado-banner.png"
           alt="Condado de Huelva - Mancomunidad de Desarrollo"
           fill
+          sizes="(max-width: 1024px) 100vw, (max-width: 1536px) calc(100vw - 320px), 1206px"
           priority
           className="object-cover object-bottom"
         />
@@ -31,7 +32,7 @@ const MapBanner = () => {
             height={250}
             priority
             className="object-contain drop-shadow-lg"
-            style={{ width: "auto", height: "auto" }} 
+            style={{ width: "auto", height: "auto" }}
           />
         </div>
       </div>

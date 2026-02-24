@@ -58,13 +58,14 @@ describe("buildLevel1 - Nivel 1 Drilldown", () => {
       debug: true,
     });
 
-    // Slices → Almonte(4), Bonares(6), Otros(1 + 1 de Niebla) = 2
+    // Slices → Almonte(4), Bonares(6), Niebla(1), Otros(paisaje=1)
     const map = Object.fromEntries(
       res.donutData.map((s) => [s.label, s.value]),
     );
     expect(map["Bonares"]).toBe(6);
     expect(map["Almonte"]).toBe(4);
-    expect(map["Otros"]).toBe(2);
+    expect(map["Niebla"]).toBe(1);
+    expect(map["Otros"]).toBe(1);
 
     expect(res.sublevelMap).toEqual({
       almonte: { hasChildren: true },
@@ -161,17 +162,16 @@ describe("buildLevel1 - Nivel 1 Drilldown", () => {
       debug: true,
     });
 
-    const slicesById = Object.fromEntries(
-      res.donutData.map((s) => [s.id, s.value]),
+    const byLabel = Object.fromEntries(
+      res.donutData.map((s) => [s.label, s.value]),
     );
-    // Slices = 4 con hijos
-    expect(Object.keys(slicesById)).toContain("otros");
-    const nonOtros = res.donutData.filter((s) => s.id !== "otros");
-    expect(nonOtros.length).toBe(4);
-
-    // Otros = espacios museísticos + gastronomía (1 + 1) = 2
-    const otrosSlice = res.donutData.find((s) => s.id === "otros");
-    expect(otrosSlice?.value).toBe(2);
+    expect(byLabel["NATURALEZA"]).toBe(4);
+    expect(byLabel["FIESTAS Y TRADICIONES"]).toBe(3);
+    expect(byLabel["CIRCUITO MONTEBLANCO"]).toBe(2);
+    expect(byLabel["PATRIMONIO"]).toBe(2);
+    expect(byLabel["ESPACIOS MUSEÍSTICOS"]).toBe(1);
+    expect(byLabel["GASTRONOMÍA"]).toBe(1);
+    expect(byLabel["Otros"]).toBeUndefined();
   });
 
   it("SumStrategy 'last' toma el último punto", async () => {
@@ -363,10 +363,10 @@ describe("buildLevel1 - Nivel 1 Drilldown", () => {
       debug: false,
     });
 
-    // Debe ir a Otros porque no existen subclaves depth>=4
+    // Debe mantenerse como slice aunque no existan subclaves depth>=4
     const byId = Object.fromEntries(res.donutData.map((s) => [s.id, s.value]));
-    expect(byId["otros"]).toBe(10);
-    expect(Object.keys(byId)).not.toContain("sabor");
+    expect(byId["sabor"]).toBe(10);
+    expect(byId["otros"]).toBeUndefined();
 
     // sublevelMap debe marcar false
     expect(res.sublevelMap).toEqual({ sabor: { hasChildren: false } });
@@ -516,12 +516,12 @@ describe("buildLevel1 - Nivel 1 Drilldown", () => {
 
     // "fiestas y tradiciones" debe matchear → slice con hasChildren=true
     // "gastronomia" sin alias en categories → Otros
-    // "otros" → Se ignora (exclusión en buildLevel1)
+    // "otros" del backend también debe acumularse en bucket Otros
     const byLabel = Object.fromEntries(
       res.donutData.map((s) => [s.label, s.value]),
     );
     expect(byLabel["Fiestas y tradiciones"]).toBe(10);
-    expect(byLabel["Otros"]).toBe(5); // solo gastronomia (5), "otros" se ignora
+    expect(byLabel["Otros"]).toBe(7); // gastronomia (5) + otros backend (2)
 
     expect(res.sublevelMap).toEqual({
       fiestasTradiciones: { hasChildren: true },
@@ -532,5 +532,36 @@ describe("buildLevel1 - Nivel 1 Drilldown", () => {
       sp("20251014", 10),
     ]);
     expect(res.seriesBySlice["otros"]).toBeDefined();
+  });
+
+  it("No debe caer en empty-state cuando solo llega 'otros' con valor > 0", async () => {
+    const towns: TaxonomyTown[] = [
+      { id: "almonte", displayName: "Almonte", aliases: ["almonte"] },
+    ];
+    const categories: TaxonomyCategory[] = [];
+
+    const level1Data: RawSeriesByKey = {
+      "root.playas.otros": [sp("20260126", 2), sp("20260128", 1)],
+    };
+
+    const fetchMany = vi.fn(async () => ({}) as RawSeriesByKey);
+
+    const res = await buildLevel1({
+      scopeType: "category",
+      scopeId: "playas",
+      level1Data,
+      towns,
+      categories,
+      fetchMany,
+      sumStrategy: "sum",
+    });
+
+    const otros = res.donutData.find((s) => s.id === "otros");
+    expect(otros?.value).toBe(3);
+    expect(res.total).toBe(3);
+    expect(res.seriesBySlice["otros"]).toEqual([
+      sp("20260126", 2),
+      sp("20260128", 1),
+    ]);
   });
 });
