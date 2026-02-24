@@ -37,7 +37,7 @@ export function useCategoryData({
             label: slice.label,
             value: slice.value,
             color: undefined,
-          } as DonutDatum)
+          }) as DonutDatum,
       );
 
     // Line series CURRENT: usar series agregadas por slice
@@ -48,12 +48,12 @@ export function useCategoryData({
       // Convertir YYYYMMDD → YYYY-MM-DD
       const dateLabel = (point as { time: string; value: number }).time.replace(
         /(\d{4})(\d{2})(\d{2})/,
-        "$1-$2-$3"
+        "$1-$2-$3",
       );
       const current = timeMapCurrent.get(dateLabel) || 0;
       timeMapCurrent.set(
         dateLabel,
-        current + (point as { time: string; value: number }).value
+        current + (point as { time: string; value: number }).value,
       );
     }
 
@@ -73,7 +73,7 @@ export function useCategoryData({
         })),
         granularity,
         startISO,
-        endISO
+        endISO,
       );
     } else {
       // Fallback: usar solo datos disponibles
@@ -104,12 +104,19 @@ export function useCategoryData({
             // Convertir YYYYMMDD → YYYY-MM-DD
             const dateLabel = point.time.replace(
               /(\d{4})(\d{2})(\d{2})/,
-              "$1-$2-$3"
+              "$1-$2-$3",
             );
             const current = timeMapPrev.get(dateLabel) || 0;
             timeMapPrev.set(dateLabel, current + point.value);
           }
         }
+
+        const prevKeysSorted = Array.from(timeMapPrev.keys()).sort((a, b) =>
+          a.localeCompare(b),
+        );
+        const prevStart = prevKeysSorted[0] ?? ranges.previous.start;
+        const prevEnd =
+          prevKeysSorted[prevKeysSorted.length - 1] ?? ranges.previous.end;
 
         // Generar rango completo con fillMissingDates
         lineSeriesPrevious = fillMissingDates(
@@ -118,8 +125,8 @@ export function useCategoryData({
             value,
           })),
           granularity,
-          ranges.previous.start,
-          ranges.previous.end
+          prevStart,
+          prevEnd,
         );
       } else {
         // Si no hay datos previous, crear serie vacía con el rango completo
@@ -127,7 +134,7 @@ export function useCategoryData({
           [],
           granularity,
           ranges.previous.start,
-          ranges.previous.end
+          ranges.previous.end,
         );
       }
     }
