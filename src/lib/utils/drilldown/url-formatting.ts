@@ -1,35 +1,42 @@
 /**
- * Función para formatear URLs removiendo el dominio wp.ideanto.com
+ * Función para formatear URLs removiendo dominio/protocolo
  * y convirtiendo segmentos en formato legible manteniendo TODOS los niveles
  * Ejemplo: /almonte/naturaleza/ruta-ciclista → "Almonte / Naturaleza / Ruta Ciclista"
  */
 export function formatUrlForDisplay(url: string): string {
   try {
-    let workingUrl = url;
+    const raw = String(url ?? "").trim();
 
-    // Remover la base https://wp.ideanto.com
-    if (workingUrl.startsWith("https://wp.ideanto.com")) {
-      workingUrl = workingUrl.replace("https://wp.ideanto.com", "");
-    } else if (workingUrl.startsWith("http://wp.ideanto.com")) {
-      workingUrl = workingUrl.replace("http://wp.ideanto.com", "");
+    let pathname = raw;
+
+    // Si es URL absoluta (o protocol-relative), extraer solo pathname
+    if (
+      raw.startsWith("http://") ||
+      raw.startsWith("https://") ||
+      raw.startsWith("//")
+    ) {
+      const normalized = raw.startsWith("//") ? `https:${raw}` : raw;
+      pathname = new URL(normalized).pathname;
     }
 
-    // Remover query params y hash para el procesamiento
-    const hashIndex = workingUrl.indexOf("#");
-    if (hashIndex !== -1) {
-      workingUrl = workingUrl.substring(0, hashIndex);
-    }
-
-    const queryIndex = workingUrl.indexOf("?");
-    if (queryIndex !== -1) {
-      workingUrl = workingUrl.substring(0, queryIndex);
-    }
+    // Remover query params/hash por seguridad
+    const noHash = pathname.split("#")[0] ?? pathname;
+    pathname = noHash.split("?")[0] ?? noHash;
 
     // Normalizar path
-    const pathname = workingUrl.startsWith("/") ? workingUrl : "/" + workingUrl;
+    pathname = pathname.startsWith("/") ? pathname : `/${pathname}`;
 
     // Separar segmentos del path
-    const segments = pathname.split("/").filter(Boolean);
+    let segments = pathname.split("/").filter(Boolean);
+
+    // Fallback para valores tipo "dominio.com/ruta" sin protocolo
+    // o strings legacy como "https:/dominio/ruta"
+    if (segments.length > 1) {
+      const first = (segments[0] || "").toLowerCase();
+      if (first === "http:" || first === "https:" || first.includes(".")) {
+        segments = segments.slice(1);
+      }
+    }
 
     if (segments.length === 0) {
       return "Inicio";
