@@ -53,6 +53,35 @@ function urlToPath(fullUrl: string): string {
 }
 
 /**
+ * Excluye URLs no dicientes para negocio:
+ * - Query-only pseudo paths (ej: ?fbclid=...)
+ * - Cualquier URL/path con query params (ej: /?locale=en-gb, /evento?preview=true)
+ */
+function shouldExcludeTopPagePath(rawPath: string): boolean {
+  const value = String(rawPath || "").trim();
+  if (!value) return true;
+
+  if (value.startsWith("?")) {
+    return true;
+  }
+
+  try {
+    const parsed =
+      value.startsWith("http://") || value.startsWith("https://")
+        ? new URL(value)
+        : new URL(
+            value.startsWith("/") ? value : `/${value}`,
+            "https://dummy.local",
+          );
+
+    const hasQueryParams = Array.from(parsed.searchParams.keys()).length > 0;
+    return hasQueryParams;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Calcula el período previous basándose en el rango EXACTO que envía el frontend
  * NO expande a ventanas fijas como la gráfica
  *
@@ -254,6 +283,7 @@ export async function GET(request: NextRequest) {
       (row: analyticsdata_v1beta.Schema$Row) => {
         const fullUrl = row.dimensionValues?.[0]?.value ?? "";
         const path = urlToPath(fullUrl); // Convertir a path relativo
+        if (shouldExcludeTopPagePath(path)) return;
         const visits = parseInt(row.metricValues?.[0]?.value ?? "0");
 
         // Si el path ya existe, sumar (por si hay duplicados)
@@ -267,6 +297,7 @@ export async function GET(request: NextRequest) {
     prevResponse.data.rows?.forEach((row: analyticsdata_v1beta.Schema$Row) => {
       const fullUrl = row.dimensionValues?.[0]?.value ?? "";
       const path = urlToPath(fullUrl); // Convertir a path relativo
+      if (shouldExcludeTopPagePath(path)) return;
       const visits = parseInt(row.metricValues?.[0]?.value ?? "0");
 
       // Si el path ya existe, sumar (por si hay duplicados)
