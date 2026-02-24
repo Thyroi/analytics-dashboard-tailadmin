@@ -56,12 +56,13 @@ function ChatbotCategoriesSectionContent() {
 
   // Hook principal con React Query (sin useEffect)
   const effectiveGranularity = getCalculatedGranularity();
+  const isRangeMode = mode === "range";
 
-  const { categories, isLoading, isError, error, refetch } =
+  const { categories, isLoading, isFetching, isError, error, refetch } =
     useChatbotCategoryTotals({
       granularity: effectiveGranularity,
-      startDate: startDateStr,
-      endDate: endDateStr,
+      startDate: isRangeMode ? startDateStr : null,
+      endDate: isRangeMode ? endDateStr : null,
     });
 
   // Drilldown state management
@@ -127,6 +128,7 @@ function ChatbotCategoriesSectionContent() {
         <CategoryGrid
           categories={categories}
           isLoading={isLoading}
+          isFetching={isFetching}
           isError={isError}
           error={error}
           refetch={refetch}

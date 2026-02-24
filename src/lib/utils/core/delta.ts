@@ -24,9 +24,12 @@ export function ringVisuals(delta: number | null) {
     delta === null
       ? DELTA_COLORS.none
       : delta >= 0
-      ? DELTA_COLORS.pos
-      : DELTA_COLORS.neg;
+        ? DELTA_COLORS.pos
+        : DELTA_COLORS.neg;
   const trackColor = "rgba(0,0,0,0)";
-  const ringBackground = `conic-gradient(${ringColor} 0deg ${deg}deg, ${trackColor} ${deg}deg 360deg)`;
+  const ringBackground =
+    progress >= 100
+      ? `conic-gradient(${ringColor} 0deg 360deg)`
+      : `conic-gradient(${ringColor} 0deg ${deg}deg, ${trackColor} ${deg}deg 360deg)`;
   return { deg, ringColor, trackColor, ringBackground };
 }

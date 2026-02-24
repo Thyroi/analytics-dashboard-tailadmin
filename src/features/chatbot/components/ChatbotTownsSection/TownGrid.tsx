@@ -7,6 +7,7 @@ import type { TownGridProps } from "./types";
 export function TownGrid({
   towns,
   isLoading,
+  isFetching,
   isError,
   error,
   onRefetch,
@@ -33,6 +34,7 @@ export function TownGrid({
           data={town}
           onClick={() => onTownClick(town.id)}
           isSelected={selectedTownId === town.id}
+          isLoading={isFetching}
         />
       ))}
     </div>

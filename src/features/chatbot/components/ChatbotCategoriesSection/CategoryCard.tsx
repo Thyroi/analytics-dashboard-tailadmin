@@ -5,6 +5,7 @@ export function CategoryCard({
   data,
   onCategoryClick,
   isSelected,
+  isLoading,
 }: CategoryCardProps) {
   return (
     <DeltaCard
@@ -18,7 +19,7 @@ export function CategoryCard({
           ? "ring-2 ring-blue-500 dark:ring-blue-400 shadow-lg bg-blue-50 dark:bg-blue-900/20"
           : "hover:shadow-lg"
       }`}
-      loading={false}
+      loading={isLoading}
     />
   );
 }

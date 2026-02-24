@@ -14,22 +14,22 @@ export default function CardDelta({ deltaPct, loading, deltaArtifact }: Props) {
   const displayText = deltaArtifact
     ? getDeltaMainText(deltaArtifact)
     : deltaPct !== null && deltaPct !== undefined && Number.isFinite(deltaPct)
-    ? deltaPct === 0
-      ? "Sin actividad"
-      : `${deltaPct > 0 ? "+" : deltaPct < 0 ? "−" : ""}${Math.abs(
-          deltaPct
-        ).toLocaleString("es-ES", { maximumFractionDigits: 0 })}%`
-    : "Sin datos suficientes";
+      ? deltaPct === 0
+        ? "Sin actividad"
+        : `${deltaPct > 0 ? "+" : deltaPct < 0 ? "−" : ""}${Math.abs(
+            deltaPct,
+          ).toLocaleString("es-ES", { maximumFractionDigits: 0 })}%`
+      : "Sin datos suficientes";
 
   const colorClass = deltaArtifact
     ? getDeltaColor(deltaArtifact)
     : deltaPct === null
-    ? "text-gray-400"
-    : deltaPct === 0
-    ? "text-gray-400"
-    : deltaPct > 0
-    ? "text-[#35C759]"
-    : "text-[#E74C3C]";
+      ? "text-gray-400"
+      : deltaPct === 0
+        ? "text-gray-400"
+        : deltaPct > 0
+          ? "text-[#35C759]"
+          : "text-[#E74C3C]";
 
   // Solo es "sin datos" si realmente no hay current o no hay prev Y no hay current
   // Los estados new_vs_zero, zero_vs_zero tienen datos válidos para mostrar
@@ -54,14 +54,31 @@ export default function CardDelta({ deltaPct, loading, deltaArtifact }: Props) {
   const isSinActividadLegacy = !deltaArtifact && deltaPct === 0;
 
   // Determinar tamaño: más pequeño para "sin actividad", pequeño para "sin datos", normal para el resto
-  const fontSize =
-    isSinActividad || isSinActividadLegacy ? 16 : isNoData ? 14 : 28;
-  const lineHeight =
-    isSinActividad || isSinActividadLegacy
-      ? "16px"
-      : isNoData
-      ? "18px"
-      : "28px";
+  const displayLength = displayText.length;
+  const isCompact = isSinActividad || isSinActividadLegacy;
+
+  let fontSize = 28;
+  let lineHeight = "28px";
+
+  if (isCompact) {
+    fontSize = 16;
+    lineHeight = "16px";
+  } else if (isNoData) {
+    fontSize = 14;
+    lineHeight = "18px";
+  } else if (displayLength >= 10) {
+    fontSize = 18;
+    lineHeight = "20px";
+  } else if (displayLength >= 9) {
+    fontSize = 20;
+    lineHeight = "22px";
+  } else if (displayLength >= 8) {
+    fontSize = 22;
+    lineHeight = "24px";
+  } else if (displayLength >= 7) {
+    fontSize = 24;
+    lineHeight = "26px";
+  }
 
   return (
     <div
@@ -69,6 +86,8 @@ export default function CardDelta({ deltaPct, loading, deltaArtifact }: Props) {
       style={{
         fontSize,
         lineHeight,
+        whiteSpace: "nowrap",
+        fontVariantNumeric: "tabular-nums",
         visibility: loading ? "hidden" : "visible",
       }}
     >

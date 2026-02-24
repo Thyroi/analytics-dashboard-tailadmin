@@ -4,6 +4,7 @@ import type { TownCardData } from "../types";
 interface TownsGridSectionProps {
   towns: TownCardData[];
   isLoading: boolean;
+  isFetching: boolean;
   isError: boolean;
   error: Error | null;
   onRefetch: () => void;
@@ -14,6 +15,7 @@ interface TownsGridSectionProps {
 export function TownsGridSection({
   towns,
   isLoading,
+  isFetching,
   isError,
   error,
   onRefetch,
@@ -25,6 +27,7 @@ export function TownsGridSection({
       <TownGrid
         towns={towns}
         isLoading={isLoading}
+        isFetching={isFetching}
         isError={isError}
         error={error}
         onRefetch={onRefetch}

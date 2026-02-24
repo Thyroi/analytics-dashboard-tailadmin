@@ -79,7 +79,40 @@ export default function DeltaCard(props: Props) {
     return deltaPct === null || deltaPct === 0;
   }, [deltaArtifact, deltaPct]);
 
-  const { ringBackground } = useMemo(() => ringVisuals(deltaPct), [deltaPct]);
+  const visualDelta = useMemo(() => {
+    if (!deltaArtifact) return deltaPct;
+
+    const isSinActividadState =
+      deltaArtifact.state === "zero_vs_zero" ||
+      (deltaArtifact.state === "new_vs_zero" &&
+        deltaArtifact.baseInfo.current === 0) ||
+      (deltaArtifact.state === "ok" &&
+        deltaArtifact.baseInfo.current === 0 &&
+        deltaArtifact.baseInfo.prev !== null &&
+        deltaArtifact.baseInfo.prev > 0);
+
+    if (isSinActividadState) {
+      return 0;
+    }
+
+    if (
+      typeof deltaArtifact.deltaPct === "number" &&
+      Number.isFinite(deltaArtifact.deltaPct)
+    ) {
+      return deltaArtifact.deltaPct;
+    }
+
+    if (deltaArtifact.state === "no_current") {
+      return 0;
+    }
+
+    return deltaPct;
+  }, [deltaArtifact, deltaPct]);
+
+  const { ringBackground } = useMemo(
+    () => ringVisuals(visualDelta),
+    [visualDelta],
+  );
 
   // Determinar estilos y comportamiento basado en si hay datos insuficientes
   const isClickable = !hasInsufficientData && typeof onClick === "function";
@@ -98,8 +131,8 @@ export default function DeltaCard(props: Props) {
       "focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-1 " +
       "focus-visible:ring-offset-white dark:focus-visible:ring-offset-gray-800 appearance-none"
     : hasInsufficientData
-    ? "cursor-default"
-    : "";
+      ? "cursor-default"
+      : "";
 
   const selectedRing = expanded
     ? "ring-2 ring-emerald-400 ring-offset-1"

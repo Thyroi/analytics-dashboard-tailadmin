@@ -5,6 +5,7 @@ import type { DeltaArtifact } from "@/lib/utils/delta/types";
 export type TownGridProps = {
   towns: TownCardData[];
   isLoading: boolean;
+  isFetching: boolean;
   isError: boolean;
   error: Error | null;
   onRefetch: () => void;

@@ -44,12 +44,14 @@ export function SectionContent() {
 
   // Hook principal con React Query (sin useEffect)
   const effectiveGranularity = getCalculatedGranularity();
+  const isRangeMode = mode === "range";
 
-  const { towns, isLoading, isError, error, refetch } = useChatbotTownTotals({
-    granularity: effectiveGranularity,
-    startDate: startDateStr,
-    endDate: endDateStr,
-  });
+  const { towns, isLoading, isFetching, isError, error, refetch } =
+    useChatbotTownTotals({
+      granularity: effectiveGranularity,
+      startDate: isRangeMode ? startDateStr : null,
+      endDate: isRangeMode ? endDateStr : null,
+    });
 
   return (
     <section className="max-w-[1560px] mx-auto w-full">
@@ -91,6 +93,7 @@ export function SectionContent() {
       <TownsGridSection
         towns={towns}
         isLoading={isLoading}
+        isFetching={isFetching}
         isError={isError}
         error={error}
         onRefetch={refetch}

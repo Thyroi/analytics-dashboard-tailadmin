@@ -5,9 +5,15 @@ type Props = {
   data: TownCardData;
   onClick?: () => void;
   isSelected?: boolean;
+  isLoading?: boolean;
 };
 
-export default function TownCard({ data, onClick, isSelected }: Props) {
+export default function TownCard({
+  data,
+  onClick,
+  isSelected,
+  isLoading = false,
+}: Props) {
   const { label, iconSrc, deltaPercent, deltaArtifact } = data;
 
   return (
@@ -24,7 +30,7 @@ export default function TownCard({ data, onClick, isSelected }: Props) {
         imgSrc={iconSrc}
         deltaPct={deltaPercent ?? null}
         deltaArtifact={deltaArtifact}
-        loading={false}
+        loading={isLoading}
         isTown={true}
         className="h-full"
         onClick={onClick}

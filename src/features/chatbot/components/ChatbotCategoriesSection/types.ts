@@ -12,6 +12,7 @@ export type CategoryCardData = {
 export type CategoryGridProps = {
   categories: CategoryCardData[];
   isLoading: boolean;
+  isFetching: boolean;
   isError: boolean;
   error: Error | null;
   refetch: () => void;
@@ -23,4 +24,5 @@ export type CategoryCardProps = {
   data: CategoryCardData;
   onCategoryClick: (categoryId: string) => void;
   isSelected: boolean;
+  isLoading: boolean;
 };

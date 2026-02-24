@@ -7,6 +7,7 @@ import type { CategoryGridProps } from "./types";
 export function CategoryGrid({
   categories,
   isLoading,
+  isFetching,
   isError,
   error,
   refetch,
@@ -37,6 +38,7 @@ export function CategoryGrid({
           data={category}
           onCategoryClick={onCategoryClick}
           isSelected={selectedCategoryId === category.id}
+          isLoading={isFetching}
         />
       ))}
     </div>

@@ -41,6 +41,7 @@ export type UseChatbotCategoryTotalsParams = {
 export type UseChatbotCategoryTotalsResult = {
   categories: CategoryCardData[];
   isLoading: boolean;
+  isFetching: boolean;
   isError: boolean;
   error: Error | null;
   refetch: () => void;
@@ -72,6 +73,11 @@ function buildQueryKey(params: UseChatbotCategoryTotalsParams): unknown[] {
 function transformToCardData(data: CategoryTotalData): CategoryCardData {
   // Calcular deltaArtifact usando valores actuales y anteriores
   const deltaArtifact = computeDeltaArtifact(data.currentTotal, data.prevTotal);
+  const normalizedDeltaPercent =
+    typeof deltaArtifact.deltaPct === "number" &&
+    Number.isFinite(deltaArtifact.deltaPct)
+      ? deltaArtifact.deltaPct
+      : data.deltaPercent;
 
   return {
     id: data.id,
@@ -80,7 +86,7 @@ function transformToCardData(data: CategoryTotalData): CategoryCardData {
     currentValue: data.currentTotal,
     previousValue: data.prevTotal,
     delta: data.deltaAbs,
-    deltaPercent: data.deltaPercent,
+    deltaPercent: normalizedDeltaPercent,
     deltaArtifact, // Incluir artifact completo
   };
 }
@@ -129,6 +135,7 @@ export function useChatbotCategoryTotals(
   return {
     categories,
     isLoading: query.isLoading,
+    isFetching: query.isFetching,
     isError: query.isError,
     error: query.error,
     refetch: query.refetch,
