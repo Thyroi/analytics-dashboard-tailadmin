@@ -1,9 +1,25 @@
 import type { CategoryId } from "@/lib/taxonomy/categories";
-import { CATEGORY_META } from "@/lib/taxonomy/categories";
+import {
+  CATEGORY_ID_ORDER,
+  CATEGORY_META,
+  CATEGORY_SYNONYMS,
+} from "@/lib/taxonomy/categories";
 import type { TownId } from "@/lib/taxonomy/towns";
 import { TOWN_META } from "@/lib/taxonomy/towns";
 
-const CATEGORY_TOKEN_OVERRIDES: Partial<Record<CategoryId, string>> = {
+const CATEGORY_TOKEN_OVERRIDES: Record<CategoryId, string> = {
+  naturaleza: "naturaleza",
+  fiestasTradiciones: "tradiciones",
+  playas: "playas",
+  espaciosMuseisticos: "museos",
+  patrimonio: "patrimonio",
+  rutasCulturales: "rutas_culturales",
+  rutasSenderismo: "senderismo",
+  sabor: "gastronomia",
+  donana: "donana",
+  circuitoMonteblanco: "monteblanco",
+  laRabida: "la_rabida",
+  lugaresColombinos: "lugares_colombinos",
   otros: "otros",
 };
 
@@ -80,14 +96,20 @@ export function matchTownIdFromToken(token: string): TownId | null {
 }
 
 export function matchCategoryIdFromToken(token: string): CategoryId | null {
-  const normalized = normalizeMindsaicV2Token(token);
-  const entries = Object.entries(CATEGORY_META) as Array<
-    [CategoryId, { label: string }]
-  >;
+  if (token === "__others__") return null;
 
-  for (const [categoryId] of entries) {
-    const candidate = getCategoryToken(categoryId);
-    if (candidate === normalized) return categoryId;
+  const normalized = normalizeMindsaicV2Token(token);
+  for (const categoryId of CATEGORY_ID_ORDER) {
+    const candidates = new Set<string>([
+      getCategoryToken(categoryId),
+      normalizeMindsaicV2Token(categoryId),
+      normalizeMindsaicV2Token(CATEGORY_META[categoryId]?.label || categoryId),
+      ...(CATEGORY_SYNONYMS[categoryId] || []).map((syn) =>
+        normalizeMindsaicV2Token(syn),
+      ),
+    ]);
+
+    if (candidates.has(normalized)) return categoryId;
   }
 
   return null;

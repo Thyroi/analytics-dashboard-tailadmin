@@ -88,7 +88,7 @@ describe("diagnostic: playas vs fiestas (almonte, granularity=m)", () => {
   });
 
   it("fiestasTradiciones should produce subcategories with series (diagnose differences)", async () => {
-    const pattern = "almonte.fiestas_y_tradiciones";
+    const pattern = "almonte.tradiciones";
 
     const mockResponseA = {
       code: 200,
