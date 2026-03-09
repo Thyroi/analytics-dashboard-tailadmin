@@ -24,11 +24,15 @@ const CATEGORY_TOKEN_OVERRIDES: Record<CategoryId, string> = {
 };
 
 const TOWN_TOKEN_OVERRIDES: Partial<Record<TownId, string>> = {
-  laPalmaDelCondado: "palma",
+  laPalmaDelCondado: "la palma",
   lucenaDelPuerto: "lucena",
   paternaDelCampo: "paterna",
   rocianaDelCondado: "rociana",
   palos: "palos",
+};
+
+const LEGACY_TOWN_TOKEN_ALIASES: Partial<Record<TownId, string[]>> = {
+  laPalmaDelCondado: ["palma"],
 };
 
 export function normalizeMindsaicV2Token(value: string): string {
@@ -89,7 +93,13 @@ export function matchTownIdFromToken(token: string): TownId | null {
 
   for (const [townId] of entries) {
     const candidate = getTownToken(townId);
-    if (candidate === normalized) return townId;
+    if (normalizeMindsaicV2Token(candidate) === normalized) return townId;
+
+    const legacyAliases = LEGACY_TOWN_TOKEN_ALIASES[townId] ?? [];
+    const matchesLegacy = legacyAliases.some(
+      (alias) => normalizeMindsaicV2Token(alias) === normalized,
+    );
+    if (matchesLegacy) return townId;
   }
 
   return null;

@@ -1,5 +1,11 @@
-import { buildCategoryPattern, getCategoryToken } from "./v2Patterns";
 import { describe, expect, it } from "vitest";
+import {
+  buildCategoryPattern,
+  buildTownPattern,
+  getCategoryToken,
+  getTownToken,
+  matchTownIdFromToken,
+} from "./v2Patterns";
 
 describe("v2Patterns category token mapping", () => {
   it("uses canonical category tokens expected by chatbot backend", () => {
@@ -33,5 +39,15 @@ describe("v2Patterns category token mapping", () => {
 
   it("keeps others excluded from wildcard pattern requests", () => {
     expect(buildCategoryPattern("otros")).toBeNull();
+  });
+
+  it("uses specific token for La Palma del Condado", () => {
+    expect(getTownToken("laPalmaDelCondado")).toBe("la palma");
+    expect(buildTownPattern("laPalmaDelCondado")).toBe("la palma.*");
+  });
+
+  it("keeps backward compatibility for legacy palma token", () => {
+    expect(matchTownIdFromToken("la palma")).toBe("laPalmaDelCondado");
+    expect(matchTownIdFromToken("palma")).toBe("laPalmaDelCondado");
   });
 });
