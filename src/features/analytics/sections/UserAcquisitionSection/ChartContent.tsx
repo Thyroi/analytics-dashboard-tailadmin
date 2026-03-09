@@ -69,6 +69,39 @@ function formatUserAcquisitionLabel(
   return raw;
 }
 
+function formatXAxisTickLabel(value: string, granularity: Granularity): string {
+  const baseLabel = formatUserAcquisitionLabel(value, granularity);
+
+  if (granularity === "m") {
+    const day = Number.parseInt(baseLabel, 10);
+    if (!Number.isFinite(day)) return baseLabel;
+    return day % 4 === 1 ? baseLabel : "";
+  }
+
+  return baseLabel;
+}
+
+function formatTooltipDate(value: string): string {
+  const raw = String(value ?? "").trim();
+  const isoDay = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  const isoMonth = raw.match(/^(\d{4})-(\d{2})$/);
+
+  if (isoDay) {
+    const year = isoDay[1];
+    const month = SPANISH_MONTHS[Number(isoDay[2]) - 1] ?? isoDay[2];
+    const day = isoDay[3];
+    return `${day}-${month}-${year}`;
+  }
+
+  if (isoMonth) {
+    const year = isoMonth[1];
+    const month = SPANISH_MONTHS[Number(isoMonth[2]) - 1] ?? isoMonth[2];
+    return `${month}-${year}`;
+  }
+
+  return raw;
+}
+
 export function ChartContent({
   granularity,
   categories,
@@ -80,19 +113,41 @@ export function ChartContent({
   const chartOptionsExtra: ApexOptions = {
     xaxis: {
       labels: {
-        formatter: (value: string) =>
-          formatUserAcquisitionLabel(value, granularity),
+        formatter: (value: string) => formatXAxisTickLabel(value, granularity),
         style: { colors: "#FB923C" },
       },
       axisBorder: { color: "#FB923C" },
       axisTicks: { color: "#FB923C" },
     },
     yaxis: { labels: { style: { colors: "#FB923C" } } },
-    grid: { borderColor: "rgba(251,146,60,0.3)" },
+    tooltip: {
+      x: {
+        formatter: (_value: number, opts?: unknown) => {
+          const dataPointIndex =
+            typeof opts === "object" &&
+            opts !== null &&
+            "dataPointIndex" in opts &&
+            typeof (opts as { dataPointIndex?: number }).dataPointIndex ===
+              "number"
+              ? (opts as { dataPointIndex: number }).dataPointIndex
+              : -1;
+
+          if (dataPointIndex >= 0 && dataPointIndex < categories.length) {
+            return formatTooltipDate(categories[dataPointIndex]);
+          }
+
+          return formatTooltipDate(String(_value ?? ""));
+        },
+      },
+    },
+    grid: {
+      borderColor: "rgba(251,146,60,0.3)",
+      padding: { left: -10, right: 20, top: 0, bottom: 0 },
+    },
   };
 
   return (
-    <div className="card bg-analytics-gradient h-full flex flex-col">
+    <div className="user-acquisition-chart card bg-analytics-gradient h-full flex flex-col overflow-visible">
       <div className="card-header">
         <Header
           className="flex items-center h-full"
@@ -104,14 +159,15 @@ export function ChartContent({
         />
       </div>
 
-      <div className="card-body flex-1 min-h-[340px]">
-        <div className="h-full min-h-0">
+      <div className="card-body flex-1 min-h-[340px] overflow-visible">
+        <div className="h-full min-h-0 overflow-visible">
           {error ? (
             <div className="text-sm text-red-500 flex items-center justify-center h-full">
               {error.message}
             </div>
           ) : hasData ? (
             <LineChart
+              className="overflow-visible"
               categories={categories}
               series={series}
               type="area"
@@ -129,6 +185,11 @@ export function ChartContent({
           )}
         </div>
       </div>
+      <style jsx global>{`
+        .user-acquisition-chart .apexcharts-tooltip {
+          z-index: 80 !important;
+        }
+      `}</style>
     </div>
   );
 }
