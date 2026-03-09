@@ -17,6 +17,40 @@ interface ChartContentProps {
   formatNumber: (value: number) => string;
 }
 
+const SPANISH_MONTHS = [
+  "ene",
+  "feb",
+  "mar",
+  "abr",
+  "may",
+  "jun",
+  "jul",
+  "ago",
+  "sep",
+  "oct",
+  "nov",
+  "dic",
+];
+
+function formatXAxisLabel(label: string): string {
+  const value = String(label ?? "").trim();
+  const isoDateMatch = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+
+  if (!isoDateMatch) {
+    return value;
+  }
+
+  const monthIndex = Number(isoDateMatch[2]) - 1;
+  const day = isoDateMatch[3];
+  const month = SPANISH_MONTHS[monthIndex];
+
+  if (!month) {
+    return value;
+  }
+
+  return `${month}-${day}`;
+}
+
 export function ChartContent({ chartData, formatNumber }: ChartContentProps) {
   return (
     <div className="h-80">
@@ -45,6 +79,7 @@ export function ChartContent({ chartData, formatNumber }: ChartContentProps) {
           xaxis: {
             categories: chartData.categories,
             labels: {
+              formatter: (value: string) => formatXAxisLabel(value),
               style: {
                 colors: "var(--apexcharts-text-color)",
               },

@@ -13,19 +13,28 @@ interface UsePageSelectionOptions {
 export function usePageSelection(options: UsePageSelectionOptions = {}) {
   const { topItems = [], autoSelectCount = 5 } = options;
   const [selectedPaths, setSelectedPaths] = useState<string[]>([]);
-  const [hasAutoSelected, setHasAutoSelected] = useState(false);
 
-  // Auto-select top N items when data loads (only once)
+  // Auto-select top N on first load and keep selection valid across dataset changes
   useEffect(() => {
-    if (!hasAutoSelected && topItems.length > 0 && selectedPaths.length === 0) {
-      const topPaths = topItems
-        .slice(0, Math.min(autoSelectCount, 8))
-        .map((item) => item.path);
-
-      setSelectedPaths(topPaths);
-      setHasAutoSelected(true);
+    if (topItems.length === 0) {
+      return;
     }
-  }, [topItems, autoSelectCount, hasAutoSelected, selectedPaths.length]);
+
+    const availablePaths = new Set(topItems.map((item) => item.path));
+    const topPaths = topItems
+      .slice(0, Math.min(autoSelectCount, 8))
+      .map((item) => item.path);
+
+    setSelectedPaths((prev) => {
+      const stillAvailable = prev.filter((path) => availablePaths.has(path));
+
+      if (stillAvailable.length > 0) {
+        return stillAvailable;
+      }
+
+      return topPaths;
+    });
+  }, [topItems, autoSelectCount]);
 
   // Handle selection toggle
   const handleItemToggle = useCallback((path: string) => {

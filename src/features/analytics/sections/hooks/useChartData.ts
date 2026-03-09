@@ -3,7 +3,6 @@
  */
 
 import { colorForPath, getContrastingColors } from "@/lib/analytics/colors";
-import { formatChartLabelsSimple } from "@/lib/utils/charts/labelFormatting";
 import { useMemo } from "react";
 
 interface SeriesData {
@@ -41,16 +40,13 @@ export function useChartData(
         return null;
       }
 
-      // Process categories using smart label formatting based on granularity
+      // Keep raw xLabels to preserve unique keys across granularities
       let categories: string[] = [];
 
       if (seriesData.xLabels && Array.isArray(seriesData.xLabels)) {
-        const granularity =
-          (seriesData.granularity as "d" | "w" | "m" | "y") || "d";
-        categories = formatChartLabelsSimple(
-          seriesData.xLabels,
-          granularity
-        ).filter((cat) => cat && cat.trim() !== "");
+        categories = seriesData.xLabels
+          .map((label) => String(label ?? "").trim())
+          .filter((label) => label !== "");
       }
 
       // Get contrasting colors for maximum differentiation
