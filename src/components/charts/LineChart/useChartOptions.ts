@@ -12,7 +12,7 @@ export function useChartOptions(
   showLegend: boolean,
   legendPosition: "bottom" | "top" | "right" | "left",
   isDark: boolean,
-  optionsExtra: ApexOptions | undefined
+  optionsExtra: ApexOptions | undefined,
 ) {
   const axisLabelColor = isDark ? "#9CA3AF" : "#6B7280";
   const gridColor = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)";
@@ -100,8 +100,56 @@ export function useChartOptions(
       colors,
     };
 
-    // Merge opcional del consumidor
-    const merged = { ...base, ...(optionsExtra ?? {}) };
+    const extra = optionsExtra ?? {};
+    const baseYAxis = Array.isArray(base.yaxis) ? undefined : base.yaxis;
+    const extraYAxis = Array.isArray(extra.yaxis) ? undefined : extra.yaxis;
+
+    // Merge opcional del consumidor (profundo para no perder config base de ejes)
+    const merged: ApexOptions = {
+      ...base,
+      ...extra,
+      chart: {
+        ...base.chart,
+        ...extra.chart,
+      },
+      xaxis: {
+        ...base.xaxis,
+        ...extra.xaxis,
+        type: "category",
+        labels: {
+          ...base.xaxis?.labels,
+          ...extra.xaxis?.labels,
+          style: {
+            ...base.xaxis?.labels?.style,
+            ...extra.xaxis?.labels?.style,
+          },
+        },
+      },
+      yaxis: {
+        ...base.yaxis,
+        ...extra.yaxis,
+        labels: {
+          ...baseYAxis?.labels,
+          ...extraYAxis?.labels,
+          style: {
+            ...baseYAxis?.labels?.style,
+            ...extraYAxis?.labels?.style,
+          },
+        },
+      },
+      grid: {
+        ...base.grid,
+        ...extra.grid,
+      },
+      tooltip: {
+        ...base.tooltip,
+        ...extra.tooltip,
+      },
+      legend: {
+        ...base.legend,
+        ...extra.legend,
+      },
+    };
 
     // Proteger las categories
     if (merged.xaxis && categories?.length > 0) {

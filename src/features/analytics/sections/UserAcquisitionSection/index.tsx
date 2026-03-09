@@ -22,6 +22,7 @@ export default function UserAcquisitionSection() {
 
   return (
     <ChartContent
+      granularity={granularity}
       categories={categories}
       series={series}
       colorsByName={colorsByName}

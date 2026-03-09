@@ -28,7 +28,7 @@ interface ChartData {
 
 export function useChartData(
   seriesData: SeriesData | null | undefined,
-  selectedPaths: string[]
+  selectedPaths: string[],
 ): ChartData | null {
   return useMemo(() => {
     try {

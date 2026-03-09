@@ -111,7 +111,7 @@ export function ChartContent({ chartData, formatNumber }: ChartContentProps) {
           },
         }}
         series={chartData.series.filter(
-          (s): s is NonNullable<typeof s> => s !== null
+          (s): s is NonNullable<typeof s> => s !== null,
         )}
         type="line"
         height={CHART_HEIGHT}
