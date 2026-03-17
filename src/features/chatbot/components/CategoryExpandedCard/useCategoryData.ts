@@ -1,5 +1,8 @@
 import type { DonutDatum } from "@/lib/types";
-import { fillMissingDates } from "@/lib/utils/time/fillMissingDates";
+import {
+  bucketSeriesPoints,
+  buildChartBucketPlan,
+} from "@/lib/utils/time/chartBucketing";
 import { computeRangesForSeries } from "@/lib/utils/time/timeWindows";
 import { useMemo } from "react";
 import type {
@@ -24,6 +27,7 @@ export function useCategoryData({
         donutData: [],
         lineSeriesData: [],
         lineSeriesPrev: [],
+        chartGranularity: granularity,
         totalInteractions: 0,
       };
     }
@@ -57,26 +61,22 @@ export function useCategoryData({
       );
     }
 
-    // Materializar serie completa: generar TODAS las fechas del rango
     let lineSeriesCurrent: Array<{ label: string; value: number }> = [];
+    let chartGranularity = granularity;
 
     if (startDate && endDate) {
-      // Convertir YYYYMMDD → YYYY-MM-DD
       const startISO = startDate.replace(/(\d{4})(\d{2})(\d{2})/, "$1-$2-$3");
       const endISO = endDate.replace(/(\d{4})(\d{2})(\d{2})/, "$1-$2-$3");
-
-      // Generar rango completo con fillMissingDates (reutiliza la lógica)
-      lineSeriesCurrent = fillMissingDates(
+      const currentPlan = buildChartBucketPlan(startISO, endISO);
+      chartGranularity = currentPlan.bucketGranularity;
+      lineSeriesCurrent = bucketSeriesPoints(
         Array.from(timeMapCurrent.entries()).map(([label, value]) => ({
           label,
           value,
         })),
-        granularity,
-        startISO,
-        endISO,
+        currentPlan,
       );
     } else {
-      // Fallback: usar solo datos disponibles
       lineSeriesCurrent = Array.from(timeMapCurrent.entries())
         .map(([label, value]) => ({ label, value }))
         .sort((a, b) => a.label.localeCompare(b.label));
@@ -86,10 +86,13 @@ export function useCategoryData({
     let lineSeriesPrevious: Array<{ label: string; value: number }> = [];
 
     if (startDate && endDate) {
-      // Calcular rango previous usando computeRangesForSeries
       const startISO = startDate.replace(/(\d{4})(\d{2})(\d{2})/, "$1-$2-$3");
       const endISO = endDate.replace(/(\d{4})(\d{2})(\d{2})/, "$1-$2-$3");
       const ranges = computeRangesForSeries(granularity, startISO, endISO);
+      const previousPlan = buildChartBucketPlan(
+        ranges.previous.start,
+        ranges.previous.end,
+      );
 
       if (level1Data.raw?.level1DataPrevious) {
         const prevData = level1Data.raw.level1DataPrevious;
@@ -111,31 +114,18 @@ export function useCategoryData({
           }
         }
 
-        const prevKeysSorted = Array.from(timeMapPrev.keys()).sort((a, b) =>
-          a.localeCompare(b),
-        );
-        const prevStart = prevKeysSorted[0] ?? ranges.previous.start;
-        const prevEnd =
-          prevKeysSorted[prevKeysSorted.length - 1] ?? ranges.previous.end;
-
-        // Generar rango completo con fillMissingDates
-        lineSeriesPrevious = fillMissingDates(
+        lineSeriesPrevious = bucketSeriesPoints(
           Array.from(timeMapPrev.entries()).map(([label, value]) => ({
             label,
             value,
           })),
-          granularity,
-          prevStart,
-          prevEnd,
+          previousPlan,
         );
       } else {
-        // Si no hay datos previous, crear serie vacía con el rango completo
-        lineSeriesPrevious = fillMissingDates(
-          [],
-          granularity,
-          ranges.previous.start,
-          ranges.previous.end,
-        );
+        lineSeriesPrevious = previousPlan.buckets.map((bucket) => ({
+          label: bucket.label,
+          value: 0,
+        }));
       }
     }
 
@@ -143,6 +133,7 @@ export function useCategoryData({
       donutData: donut,
       lineSeriesData: lineSeriesCurrent,
       lineSeriesPrev: lineSeriesPrevious,
+      chartGranularity,
       totalInteractions: level1Data.total,
     };
   }, [level1Data, startDate, endDate, granularity]);

@@ -7,7 +7,7 @@ import ChartSection from "@/features/home/sectors/SectorExpandedCard/ChartSectio
 import type { Granularity, SeriesPoint } from "@/lib/types";
 import { formatChartLabelsSimple } from "@/lib/utils/charts/labelFormatting";
 import { getSeriesLabels } from "@/lib/utils/charts/tooltipLabels";
-import { minLen } from "./helpers";
+import { minLen, shouldUseSingleDayComparison } from "./helpers";
 
 type LineSideProps = {
   series: { current: SeriesPoint[]; previous: SeriesPoint[] };
@@ -15,8 +15,8 @@ type LineSideProps = {
 };
 
 export function LineSide({ series, granularity = "d" }: LineSideProps) {
-  // ✅ Para granularidad "d": GroupedBarChart con 1 fecha, 2 barras (current vs previous)
-  if (granularity === "d") {
+  // Comparación de 2 barras solo cuando el rango visual equivale a un único bucket.
+  if (granularity === "d" && shouldUseSingleDayComparison(series)) {
     // Tomar SOLO el último punto (ayer)
     const lastCurrent = series.current[series.current.length - 1];
     const lastPrevious = series.previous[series.previous.length - 1];

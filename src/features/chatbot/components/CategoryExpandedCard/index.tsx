@@ -70,13 +70,18 @@ export default function CategoryExpandedCard({
   });
 
   // Hook: Transformar datos a formato ChartPair
-  const { donutData, lineSeriesData, lineSeriesPrev, totalInteractions } =
-    useCategoryData({
-      level1Data: level1Data ?? null,
-      granularity,
-      startDate,
-      endDate,
-    });
+  const {
+    donutData,
+    lineSeriesData,
+    lineSeriesPrev,
+    chartGranularity,
+    totalInteractions,
+  } = useCategoryData({
+    level1Data: level1Data ?? null,
+    granularity,
+    startDate,
+    endDate,
+  });
 
   // Subtítulo dinámico
   const subtitle = navigation.selectedTownId
@@ -151,7 +156,7 @@ export default function CategoryExpandedCard({
           onDonutSlice={handleTownClick}
           donutCenterLabel={`${totalInteractions.toLocaleString()} Interacciones`}
           showActivityButton={false}
-          granularity={granularity}
+          granularity={chartGranularity}
           className=""
         />
       )}

@@ -24,6 +24,7 @@ export type TownDataResult = {
   donutData: Array<{ label: string; value: number; color?: string }>;
   lineSeriesData: Array<{ label: string; value: number }>;
   lineSeriesPrev: Array<{ label: string; value: number }>;
+  chartGranularity: WindowGranularity;
   totalInteractions: number;
 };
 

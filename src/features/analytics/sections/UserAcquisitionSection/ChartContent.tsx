@@ -1,6 +1,7 @@
 import LineChart from "@/components/charts/LineChart";
 import Header from "@/components/common/Header";
 import type { Granularity } from "@/lib/types";
+import { formatNormalizedChartLabel } from "@/lib/utils/charts/labelFormatting";
 import type { ApexOptions } from "apexcharts";
 import { UserPlus } from "lucide-react";
 
@@ -13,72 +14,8 @@ interface ChartContentProps {
   hasData: boolean;
 }
 
-const SPANISH_MONTHS = [
-  "ene",
-  "feb",
-  "mar",
-  "abr",
-  "may",
-  "jun",
-  "jul",
-  "ago",
-  "sep",
-  "oct",
-  "nov",
-  "dic",
-];
-
-function formatUserAcquisitionLabel(
-  value: string,
-  granularity: Granularity,
-): string {
-  const raw = String(value ?? "").trim();
-
-  const isoDay = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  const isoMonth = raw.match(/^(\d{4})-(\d{2})$/);
-
-  if (granularity === "d") {
-    if (isoDay) return isoDay[3];
-    return raw;
-  }
-
-  if (granularity === "w") {
-    if (isoDay) {
-      const month = SPANISH_MONTHS[Number(isoDay[2]) - 1];
-      return month ? `${month}-${isoDay[3]}` : raw;
-    }
-    return raw;
-  }
-
-  if (granularity === "m") {
-    if (isoDay) return isoDay[3];
-    return raw;
-  }
-
-  if (granularity === "y") {
-    if (isoMonth) {
-      const month = SPANISH_MONTHS[Number(isoMonth[2]) - 1];
-      return month ?? raw;
-    }
-    if (isoDay) {
-      const month = SPANISH_MONTHS[Number(isoDay[2]) - 1];
-      return month ?? raw;
-    }
-  }
-
-  return raw;
-}
-
 function formatXAxisTickLabel(value: string, granularity: Granularity): string {
-  const baseLabel = formatUserAcquisitionLabel(value, granularity);
-
-  if (granularity === "m") {
-    const day = Number.parseInt(baseLabel, 10);
-    if (!Number.isFinite(day)) return baseLabel;
-    return day % 4 === 1 ? baseLabel : "";
-  }
-
-  return baseLabel;
+  return formatNormalizedChartLabel(value, granularity);
 }
 
 function formatTooltipDate(value: string): string {
@@ -88,14 +25,14 @@ function formatTooltipDate(value: string): string {
 
   if (isoDay) {
     const year = isoDay[1];
-    const month = SPANISH_MONTHS[Number(isoDay[2]) - 1] ?? isoDay[2];
+    const month = formatNormalizedChartLabel(`${isoDay[1]}-${isoDay[2]}`, "y");
     const day = isoDay[3];
     return `${day}-${month}-${year}`;
   }
 
   if (isoMonth) {
     const year = isoMonth[1];
-    const month = SPANISH_MONTHS[Number(isoMonth[2]) - 1] ?? isoMonth[2];
+    const month = formatNormalizedChartLabel(raw, "y");
     return `${month}-${year}`;
   }
 
@@ -115,9 +52,11 @@ export function ChartContent({
       labels: {
         formatter: (value: string) => formatXAxisTickLabel(value, granularity),
         style: { colors: "#FB923C" },
+        ...(granularity === "m" && { showDuplicates: false }),
       },
       axisBorder: { color: "#FB923C" },
       axisTicks: { color: "#FB923C" },
+      ...(granularity === "m" && { tickAmount: 4 }),
     },
     yaxis: { labels: { style: { colors: "#FB923C" } } },
     tooltip: {
